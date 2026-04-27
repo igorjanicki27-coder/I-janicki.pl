@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Kolekcja opinii ────────────────────────────────────────────
+    match /reviews/{reviewId} {
+
+      // Odczyt: tylko zatwierdzone opinie są publiczne
+      allow read: if resource.data.approved == true;
+
+      // Tworzenie: klient może dodać opinię TYLKO jako niezatwierdzoną
+      // (approved musi być false, nie może wysyłać cudzych danych)
+      allow create: if request.resource.data.approved == false
+                    && request.resource.data.keys().hasAll(['name','email','comment','rating','timestamp','approved'])
+                    && request.resource.data.name  is string
+                    && request.resource.data.email is string
+                    && request.resource.data.comment is string
+                    && request.resource.data.rating is int
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5;
+
+      // Aktualizacja: dozwolona tylko jeśli:
+      //   • aktualnie approved == false (nie można "cofnąć" zatwierdzenia)
+      //   • nowe dane ustawiają approved == true
+      //   • zmieniane jest TYLKO pole approved (updateMask)
+      allow update: if resource.data.approved == false
+                    && request.resource.data.approved == true
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approved']);
+
+      // Usuwanie: zabronione dla wszystkich
+      allow delete: if false;
+    }
+
+    // ── Wszystkie inne kolekcje: brak dostępu ─────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

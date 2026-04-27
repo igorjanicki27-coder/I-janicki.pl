@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>i-JANICKI — strony, aplikacje i opieka IT</title>
+  <meta name="description" content="i-JANICKI tworzy strony internetowe, aplikacje i zapewnia opiekę IT dla małych biznesów." />
+  <meta name="theme-color" content="#0a0d12" />
+  <meta property="og:title" content="i-JANICKI" />
+  <meta property="og:description" content="Strony internetowe, aplikacje i opieka IT dla małych biznesów." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="boot-screen" id="bootScreen" aria-hidden="true">
+    <div class="boot-box">
+      <div class="boot-brand">i-JANICKI</div>
+      <div class="boot-line"><span class="boot-key">init</span><span class="boot-value">loading terminal shell...</span></div>
+      <div class="boot-line"><span class="boot-key">ui</span><span class="boot-value">preparing interactive session...</span></div>
+      <div class="boot-line"><span class="boot-key">status</span><span class="boot-value boot-done">ready</span></div>
+    </div>
+  </div>
+
+  <div class="resume-overlay hidden" id="resumeOverlay">
+    <div class="resume-card">
+      <p class="resume-title" data-i18n="resumeTitle">Wykryto poprzednią sesję</p>
+      <p class="resume-text" data-i18n="resumeText">Czy chcesz kontynuować ostatnie miejsce, czy zacząć od początku?</p>
+      <div class="resume-actions">
+        <button class="ghost-btn" id="resumeYes" data-i18n="resumeContinue">Kontynuuj</button>
+        <button class="ghost-btn" id="resumeNo" data-i18n="resumeRestart">Zacznij od początku</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">$ <span>i-JANICKI</span></div>
+      <div class="topbar-actions">
+        <button type="button" class="tiny-btn" id="themeToggle" aria-label="Przełącz motyw">
+          <span id="themeLabel">jasny</span>
+        </button>
+        <div class="lang-switch" aria-label="Language switcher">
+          <button type="button" class="tiny-btn is-active" data-lang="pl">PL</button>
+          <button type="button" class="tiny-btn" data-lang="en">EN</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="terminal-wrap">
+      <section class="terminal-panel">
+        <div class="terminal-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="head-title" data-i18n="headTitle">interaktywna sesja</div>
+        </div>
+
+        <div class="terminal-body" id="terminalBody" tabindex="0" aria-label="Terminal">
+          <div id="terminalOutput" class="terminal-output"></div>
+          <div class="mobile-next-wrap">
+            <button type="button" id="mobileNext" class="mobile-next hidden" data-i18n="mobileNext">Dalej</button>
+          </div>
+        </div>
+
+        <div class="terminal-inputbar">
+          <div class="prompt"><span class="prompt-user">igor@i-janicki</span><span class="prompt-path">:~$</span></div>
+          <input id="commandInput" class="command-input" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+
+        <div class="terminal-help" id="terminalHelp">
+          <span class="help-label" data-i18n="helpLabel">Skróty:</span>
+          <span class="help-item" data-i18n="helpEnter">Enter / Spacja — dalej</span>
+          <span class="help-item" data-i18n="helpScroll">Kółko — zwykłe przewijanie terminala</span>
+          <span class="help-item" data-i18n="helpCommands">Komendy: pomoc, wyczyść, kontakt, cennik</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="contactFormTemplate">
+    <div class="form-shell">
+      <form id="contactForm" class="terminal-form" novalidate>
+        <input type="hidden" name="_subject" value="Nowe zapytanie z i-janicki.pl" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="text" name="_honey" class="honey-field" tabindex="-1" autocomplete="off" />
+        <div class="field-line"><label>imię</label><input name="name" required maxlength="80" /></div>
+        <div class="field-line"><label>e-mail</label><input name="email" type="email" required maxlength="120" /></div>
+        <div class="field-line"><label>budżet</label><input name="budget" maxlength="80" placeholder="np. 2000–4000 PLN" /></div>
+        <div class="field-line is-area"><label>opis projektu</label><textarea name="message" required maxlength="1600" rows="5"></textarea></div>
+        <button type="submit" class="submit-btn">wyślij</button>
+      </form>
+    </div>
+  </template>
+
+  <template id="callbackFormTemplate">
+    <div class="form-shell">
+      <form id="callbackForm" class="terminal-form" novalidate>
+        <input type="hidden" name="_subject" value="Prośba o oddzwonienie z i-janicki.pl" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="text" name="_honey" class="honey-field" tabindex="-1" autocomplete="off" />
+        <div class="field-line"><label>imię</label><input name="name" required maxlength="80" /></div>
+        <div class="field-line"><label>telefon</label><input name="phone" required maxlength="40" /></div>
+        <div class="field-line"><label>kiedy oddzwonić</label><input name="preferred_time" maxlength="120" placeholder="np. jutro po 16:00" /></div>
+        <div class="field-line is-area"><label>krótka notatka</label><textarea name="message" maxlength="1000" rows="4"></textarea></div>
+        <button type="submit" class="submit-btn">wyślij prośbę</button>
+      </form>
+    </div>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>

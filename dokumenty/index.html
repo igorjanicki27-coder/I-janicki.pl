@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pl" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dokumenty — i-JANICKI</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-0: #000; --bg-1: #0b0e13; --bg-2: #12172a;
+      --text: #e6e8ff; --text-dim: #9aa0c3; --muted: #6b7193;
+      --accent-1: #7f40ff; --accent-4: #40c9ff;
+      --border: rgba(127,64,255,0.35); --border-soft: rgba(127,64,255,0.18);
+      --panel-bg: rgba(15,19,32,0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100vh; background: var(--bg-0); color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+    body { background: radial-gradient(ellipse at 50% 30%,#1a1033 0%,#05060c 65%,#000 100%); }
+
+    /* Topbar */
+    .topbar {
+      display: flex; align-items: center; gap: 16px; padding: 14px 24px;
+      border-bottom: 1px solid var(--border-soft);
+      background: rgba(5,6,12,0.8); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .brand {
+      font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700;
+      letter-spacing: 3px; text-decoration: none;
+      background: linear-gradient(135deg,#baeaff,#7f40ff 50%,#ff00d4);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .topbar-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: var(--muted); letter-spacing: 1px; }
+
+    /* Main */
+    .main { max-width: 760px; margin: 0 auto; padding: 40px 24px 60px; }
+    h1 {
+      font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700;
+      letter-spacing: 2px; margin-bottom: 8px;
+      background: linear-gradient(135deg,#baeaff,#7f40ff 60%,#ff00d4);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+    /* Document items */
+    .doc-list { display: flex; flex-direction: column; gap: 12px; }
+    .doc-item {
+      border: 1px solid var(--border-soft); border-radius: 16px;
+      background: var(--panel-bg); backdrop-filter: blur(14px);
+      overflow: hidden; transition: border-color 0.2s;
+    }
+    .doc-item:hover { border-color: var(--accent-1); }
+
+    .doc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 16px 20px; cursor: pointer;
+    }
+    .doc-header-title {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+      color: var(--text); letter-spacing: 0.5px;
+    }
+    .doc-toggle {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      background: rgba(127,64,255,0.12); border: 1px solid var(--border-soft);
+      display: grid; place-items: center; color: var(--accent-4); font-size: 16px;
+      transition: transform 0.3s, background 0.2s; user-select: none;
+    }
+    .doc-item.is-open .doc-toggle { transform: rotate(45deg); background: rgba(127,64,255,0.22); }
+
+    .doc-body {
+      display: none; padding: 0 20px 20px;
+      color: var(--text-dim); font-size: 14px; line-height: 1.75;
+    }
+    .doc-item.is-open .doc-body { display: block; }
+
+    /* Document content typography */
+    .doc-body h2 { font-family: 'Orbitron', sans-serif; font-size: 1.05rem;
+      letter-spacing: 1px; color: #baeaff; margin-bottom: 1.2rem; margin-top: 0.5rem; }
+    .doc-body h3 { font-size: 0.9rem; color: var(--text); margin: 1.2rem 0 0.4rem;
+      font-weight: 700; }
+    .doc-body p { margin-bottom: 0.7rem; }
+    .doc-body a { color: var(--accent-4); }
+    .doc-body strong { color: var(--text); }
+    .doc-body ul, .doc-body ol { padding-left: 1.4rem; margin-bottom: 0.7rem; }
+    .doc-body li { margin-bottom: 0.3rem; }
+    .doc-body hr { border: none; border-top: 1px solid var(--border-soft); margin: 1rem 0; }
+
+    /* Loading */
+    .doc-loading { color: var(--muted); font-size: 13px; }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--muted); text-decoration: none; padding: 6px 12px;
+      border: 1px solid var(--border-soft); border-radius: 8px;
+      transition: color 0.2s, border-color 0.2s; margin-bottom: 28px;
+    }
+    .back-link:hover { color: var(--accent-4); border-color: var(--accent-4); }
+
+    /* Footer */
+    footer {
+      text-align: center; padding: 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="../">i-JANICKI</a>
+  <span class="topbar-sub">/ Dokumenty prawne</span>
+</header>
+
+<main class="main">
+  <a class="back-link" href="../">← Strona główna</a>
+  <h1>Dokumenty</h1>
+  <p class="subtitle">Regulamin i polityki obowiązujące w serwisie i-janicki.pl</p>
+
+  <div class="doc-list" id="docList">
+
+    <div class="doc-item" data-src="regulamin.html">
+      <div class="doc-header">
+        <span class="doc-header-title">📋 Regulamin witryny</span>
+        <div class="doc-toggle">+</div>
+      </div>
+      <div class="doc-body" id="body-regulamin">
+        <div class="doc-loading">Ładowanie…</div>
+      </div>
+    </div>
+
+    <div class="doc-item" data-src="polityka-prywatnosci.html">
+      <div class="doc-header">
+        <span class="doc-header-title">🔒 Polityka prywatności</span>
+        <div class="doc-toggle">+</div>
+      </div>
+      <div class="doc-body" id="body-polityka-prywatnosci">
+        <div class="doc-loading">Ładowanie…</div>
+      </div>
+    </div>
+
+    <div class="doc-item" data-src="polityka-rodo.html">
+      <div class="doc-header">
+        <span class="doc-header-title">🛡 Polityka RODO</span>
+        <div class="doc-toggle">+</div>
+      </div>
+      <div class="doc-body" id="body-polityka-rodo">
+        <div class="doc-loading">Ładowanie…</div>
+      </div>
+    </div>
+
+    <div class="doc-item" data-src="polityka-wspolpracy.html">
+      <div class="doc-header">
+        <span class="doc-header-title">🤝 Polityka współpracy</span>
+        <div class="doc-toggle">+</div>
+      </div>
+      <div class="doc-body" id="body-polityka-wspolpracy">
+        <div class="doc-loading">Ładowanie…</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>© <span id="year"></span> i-JANICKI · <a href="mailto:igor.janicki27@gmail.com" style="color:#40c9ff">igor.janicki27@gmail.com</a></footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  document.querySelectorAll('.doc-item').forEach(item => {
+    const header  = item.querySelector('.doc-header');
+    const body    = item.querySelector('.doc-body');
+    const src     = item.dataset.src;
+    let   loaded  = false;
+
+    header.addEventListener('click', async () => {
+      const willOpen = !item.classList.contains('is-open');
+      item.classList.toggle('is-open');
+
+      if (willOpen && !loaded) {
+        loaded = true;
+        try {
+          const res  = await fetch(src);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          body.innerHTML = await res.text();
+        } catch {
+          body.innerHTML = '<p style="color:#ff6b6b">Nie udało się załadować dokumentu.</p>';
+        }
+      }
+    });
+  });
+</script>
+</body>
+</html>

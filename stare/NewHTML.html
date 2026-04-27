@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>i-JANICKI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      position: relative;
+      color: #d7efe8;
+    }
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .background {
+      position: absolute;
+      inset: 0;
+      background: #000;
+    }
+
+    .frame {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      overflow: hidden;
+      aspect-ratio: 1536 / 960;
+    }
+
+    .bg-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.18) translateX(7.4%) translateY(0.5%);
+      transform-origin: center center;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .hud-shell,
+    .hud-corner,
+    .hud-arc,
+    .hud-centerline,
+    .hud-scanframe {
+      display: none;
+    }
+
+    .screen-area {
+      position: absolute;
+      left: 22.75%;
+      top: 2.6%;
+      width: 75.33%;
+      height: 72.78%;
+      overflow: hidden;
+      border-radius: 2px;
+      background:
+        linear-gradient(90deg, rgba(255, 176, 110, 0.12) 0%, rgba(255, 176, 110, 0.07) 14%, rgba(10, 14, 14, 0.84) 30%, rgba(2, 6, 6, 0.92) 100%),
+        radial-gradient(circle at 14% 34%, rgba(255, 188, 120, 0.12), transparent 26%),
+        radial-gradient(circle at 24% 46%, rgba(255,255,255,0.03), transparent 22%),
+        linear-gradient(180deg, rgba(10, 14, 14, 0.84), rgba(2, 6, 6, 0.92));
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.018),
+        inset 110px 0 160px rgba(255, 176, 110, 0.08),
+        inset 0 0 50px rgba(0,0,0,0.28);
+      z-index: 3;
+      isolation: isolate;
+    }
+    .hud-shell,
+    .hud-corner,
+    .hud-arc,
+    .hud-centerline,
+    .hud-scanframe {
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .hud-shell {
+      position: absolute;
+      inset: 2.2%;
+      border-radius: 28px;
+      background: none;
+      border: 1px solid rgba(255, 190, 132, 0.16);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+        0 0 0 1px rgba(255, 166, 98, 0.03);
+      opacity: 0.9;
+      z-index: 8;
+    }
+
+    .hud-shell::before,
+    .hud-shell::after {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border-radius: 20px;
+      pointer-events: none;
+    }
+
+    .hud-shell::before {
+      border: 1px solid rgba(255, 196, 140, 0.08);
+      mask-image: linear-gradient(90deg, rgba(0,0,0,0.24), #000 12%, #000 88%, rgba(0,0,0,0.24));
+      opacity: 0.8;
+    }
+
+    .hud-shell::after {
+      background:
+        linear-gradient(90deg, transparent 0 6%, rgba(255, 188, 120, 0.08) 10%, transparent 14% 86%, rgba(255, 188, 120, 0.08) 90%, transparent 94%),
+        linear-gradient(180deg, transparent 0 8%, rgba(255, 188, 120, 0.05) 12%, transparent 16% 84%, rgba(255, 188, 120, 0.05) 88%, transparent 92%);
+      opacity: 0.22;
+      mix-blend-mode: screen;
+    }
+
+    .hud-corner {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      z-index: 9;
+      opacity: 0.9;
+    }
+
+    .hud-corner::before,
+    .hud-corner::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 188, 120, 0.32);
+      box-shadow: 0 0 10px rgba(255, 174, 106, 0.1);
+    }
+
+    .hud-corner::before {
+      width: 74px;
+      height: 1px;
+    }
+
+    .hud-corner::after {
+      width: 1px;
+      height: 74px;
+    }
+
+    .hud-corner.tl {
+      left: 2.2%;
+      top: 2.2%;
+    }
+
+    .hud-corner.tl::before,
+    .hud-corner.tl::after {
+      left: 0;
+      top: 0;
+    }
+
+    .hud-corner.tr {
+      right: 2.2%;
+      top: 2.2%;
+    }
+
+    .hud-corner.tr::before,
+    .hud-corner.tr::after {
+      right: 0;
+      top: 0;
+    }
+
+    .hud-corner.br {
+      right: 2.2%;
+      bottom: 2.2%;
+    }
+
+    .hud-corner.br::before,
+    .hud-corner.br::after {
+      right: 0;
+      bottom: 0;
+    }
+
+    .hud-corner.bl {
+      left: 2.2%;
+      bottom: 2.2%;
+    }
+
+    .hud-corner.bl::before,
+    .hud-corner.bl::after {
+      left: 0;
+      bottom: 0;
+    }
+
+    .hud-arc {
+      position: absolute;
+      left: 50%;
+      top: 2.7%;
+      width: 280px;
+      height: 72px;
+      transform: translateX(-50%);
+      background: none;
+      border-top: 1px solid rgba(255, 188, 120, 0.18);
+      border-left: 1px solid transparent;
+      border-right: 1px solid transparent;
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+      opacity: 0.7;
+      z-index: 9;
+    }
+
+    .hud-centerline {
+      position: absolute;
+      left: 50%;
+      top: 2.7%;
+      bottom: 2.7%;
+      width: 1px;
+      transform: translateX(-50%);
+      height: auto;
+      background: linear-gradient(180deg, rgba(255, 188, 120, 0.14), rgba(255, 188, 120, 0.03) 18%, rgba(255, 188, 120, 0.02) 82%, rgba(255, 188, 120, 0.12));
+      opacity: 0.18;
+      z-index: 8;
+    }
+
+    .hud-scanframe {
+      position: absolute;
+      inset: 6.4% 5.2% 6.8% 5.2%;
+      background: none;
+      border: 1px solid rgba(255, 188, 120, 0.08);
+      border-radius: 16px;
+      opacity: 0.45;
+      z-index: 8;
+    }
+
+    .screen-vignette,
+    .screen-reflection,
+    .screen-scanlines,
+    .screen-noise,
+    .screen-sunshade,
+    .screen-glow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .screen-glow {
+      background:
+        radial-gradient(132% 98% at 52% 58%, rgba(92, 150, 176, 0.014), transparent 70%),
+        radial-gradient(68% 84% at 18% 24%, rgba(255, 188, 120, 0.016), transparent 82%),
+        radial-gradient(66% 58% at 82% 16%, rgba(206, 224, 255, 0.01), transparent 84%);
+      mix-blend-mode: screen;
+      opacity: 0.08;
+    }
+
+    .screen-sunshade {
+      background:
+        linear-gradient(100deg,
+          rgba(255, 203, 148, 0.032) 0%,
+          rgba(255, 187, 126, 0.014) 18%,
+          rgba(26, 34, 42, 0) 48%,
+          rgba(8, 12, 16, 0.026) 78%,
+          rgba(4, 6, 8, 0.058) 100%),
+        radial-gradient(72% 118% at -8% 50%, rgba(255, 196, 132, 0.022), transparent 82%),
+        linear-gradient(180deg, rgba(255,255,255,0.009), rgba(0,0,0,0.006) 40%, rgba(0,0,0,0.052) 100%);
+      mix-blend-mode: soft-light;
+      opacity: 0.12;
+    }
+
+    .screen-reflection {
+      background:
+        linear-gradient(108deg,
+          rgba(255,255,255,0.022) 0%,
+          rgba(255,255,255,0.009) 10%,
+          rgba(255,255,255,0.003) 18%,
+          transparent 30%),
+        linear-gradient(108deg,
+          rgba(255, 230, 198, 0.013) 0%,
+          rgba(255, 230, 198, 0.005) 7%,
+          transparent 15%),
+        linear-gradient(90deg,
+          transparent 0 6.2%,
+          rgba(255, 232, 202, 0.011) 7%,
+          rgba(255, 232, 202, 0.004) 8.6%,
+          transparent 10% 18%,
+          rgba(214, 232, 255, 0.006) 19.2%,
+          transparent 20% 100%),
+        linear-gradient(180deg,
+          rgba(255,255,255,0.008) 0%,
+          rgba(255,255,255,0.0025) 24%,
+          rgba(0,0,0,0) 52%,
+          rgba(0,0,0,0.02) 100%);
+      opacity: 0.07;
+      mix-blend-mode: screen;
+    }
+
+    .screen-vignette {
+      background:
+        radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.11) 82%, rgba(0,0,0,0.24) 100%),
+        linear-gradient(90deg, rgba(0,0,0,0.11), transparent 14%, transparent 86%, rgba(0,0,0,0.14)),
+        linear-gradient(180deg, rgba(0,0,0,0.05), transparent 12%, transparent 88%, rgba(0,0,0,0.11));
+    }
+
+    .screen-scanlines {
+      display: none;
+    }
+
+    .screen-noise {
+      display: none;
+    }
+
+    .code-stage {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 12%;
+      overflow: auto;
+      color: rgba(228, 244, 236, 0.92);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: clamp(12px, 0.92vw, 17px);
+      line-height: 1.44;
+      letter-spacing: 0.01em;
+      text-shadow: 0 0 8px rgba(255, 184, 118, 0.06);
+      padding: 2.8% 2.8% 1.6% 2.9%;
+    }
+
+    .code-layer {
+      position: relative;
+      min-height: 100%;
+      white-space: normal;
+      animation: none;
+    }
+
+    .code-line {
+      display: block;
+    }
+    .code-block {
+      display: block;
+    }
+
+    .dim { color: rgba(196, 214, 208, 0.72); }
+    .soft { color: rgba(162, 207, 255, 0.88); }
+    .warn { color: rgba(255, 199, 136, 0.95); }
+    .accent { color: rgba(170, 255, 222, 0.98); }
+
+    .typing-line {
+      position: absolute;
+      left: 2.4%;
+      right: 2.4%;
+      bottom: 2.2%;
+      height: 5.1%;
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+      color: rgba(245, 238, 226, 0.96);
+      text-shadow: 0 0 10px rgba(255, 184, 118, 0.08);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: clamp(13px, 1vw, 19px);
+      z-index: 4;
+      padding-top: 0.2%;
+      border-top: 1px solid rgba(255, 184, 118, 0.12);
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1));
+    }
+
+    .prompt {
+      color: rgba(255, 192, 124, 0.98);
+    }
+
+    .typed-text {
+      min-width: 1ch;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .cmd-prefix {
+      color: rgba(214, 196, 171, 0.68);
+    }
+
+    .cmd-section {
+      color: rgba(246, 233, 211, 0.96);
+    }
+
+    .typing-line.is-sending .prompt {
+      color: rgba(255, 222, 168, 0.96);
+    }
+
+    .cursor {
+      width: 0.62em;
+      height: 1.08em;
+      background: rgba(255, 226, 192, 0.92);
+      box-shadow: 0 0 10px rgba(255, 188, 120, 0.14);
+      animation: blink 1s steps(1) infinite;
+    }
+
+    .status-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0.9%;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 186, 120, 0.34) 0%,
+        rgba(255, 160, 96, 0.18) 24%,
+        rgba(255, 132, 88, 0.12) 58%,
+        rgba(255, 214, 176, 0.08) 100%
+      );
+      box-shadow: 0 0 10px rgba(255, 174, 106, 0.12);
+      opacity: 0.78;
+      z-index: 5;
+    }
+
+    .tv-remote {
+      position: absolute;
+      left: 2.9%;
+      top: 14%;
+      width: clamp(108px, 8.8vw, 140px);
+      padding: 10px 9px 12px;
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(9, 13, 18, 0.94), rgba(6, 9, 13, 0.9)),
+        repeating-linear-gradient(180deg, rgba(118, 186, 215, 0.035) 0 1px, rgba(0,0,0,0) 1px 3px);
+      border: 1px solid rgba(116, 196, 232, 0.24);
+      box-shadow:
+        inset 0 0 0 1px rgba(170, 226, 255, 0.07),
+        inset 0 12px 22px rgba(102, 182, 220, 0.07),
+        0 10px 28px rgba(0,0,0,0.42);
+      z-index: 13;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      pointer-events: auto;
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      overflow: hidden;
+    }
+
+    .tv-remote::before {
+      content: "CONTROL DOCK";
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 8px;
+      letter-spacing: 0.16em;
+      color: rgba(182, 225, 245, 0.62);
+      text-align: center;
+      margin-bottom: -1px;
+    }
+
+    .remote-top {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1px;
+    }
+
+    .remote-lang {
+      appearance: none;
+      border: 1px solid rgba(119, 199, 233, 0.32);
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(19, 27, 36, 0.95), rgba(9, 12, 17, 0.95));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    }
+
+    .remote-lang:hover,
+    .remote-lang:focus-visible {
+      transform: translateY(-1px);
+      border-color: rgba(134, 221, 255, 0.56);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 0 14px rgba(95, 185, 226, 0.24);
+      outline: none;
+    }
+
+    .remote-flag-stack {
+      width: 18px;
+      height: 18px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+    }
+
+    .remote-flag {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      transition: transform 360ms cubic-bezier(.22,.78,.2,1), opacity 280ms ease;
+      will-change: transform, opacity;
+    }
+
+    .remote-lang[data-active-lang="pl"] .remote-flag[data-lang="pl"],
+    .remote-lang[data-active-lang="en"] .remote-flag[data-lang="en"] {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .remote-lang[data-active-lang="pl"] .remote-flag[data-lang="en"] {
+      transform: translateY(130%) scale(0.8);
+      opacity: 0;
+    }
+
+    .remote-lang[data-active-lang="en"] .remote-flag[data-lang="pl"] {
+      transform: translateY(-130%) scale(0.8);
+      opacity: 0;
+    }
+
+    .remote-chip {
+      border-radius: 10px;
+      padding: 6px 7px;
+      background: linear-gradient(180deg, rgba(10, 18, 24, 0.94), rgba(5, 10, 14, 0.9));
+      border: 1px solid rgba(119, 199, 233, 0.2);
+      box-shadow: inset 0 0 12px rgba(102, 184, 220, 0.08);
+    }
+
+    .remote-chip-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 8px;
+      color: rgba(167, 205, 223, 0.72);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .remote-chip-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 10px;
+      color: rgba(208, 246, 255, 0.94);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .remote-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .remote-btn {
+      line-height: 1;
+      text-decoration: none;
+      display: inline-flex;
+      border: 1px solid rgba(112, 191, 224, 0.26);
+      cursor: pointer;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.46rem;
+      background:
+        linear-gradient(180deg, rgba(12, 24, 33, 0.86), rgba(8, 13, 18, 0.94));
+      color: rgba(204, 241, 255, 0.96);
+      border-radius: 11px;
+      font-weight: 600;
+      padding: 0.5rem 0.46rem;
+      padding-left: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: border-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 9px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .remote-btn:hover,
+    .remote-btn:focus-visible {
+      border-color: rgba(132, 222, 255, 0.58);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        0 0 12px rgba(98, 188, 227, 0.24);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .remote-btn__icon-wrapper {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      position: relative;
+      color: rgba(16, 26, 34, 0.94);
+      background-color: rgba(193, 236, 255, 0.96);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .remote-btn:hover .remote-btn__icon-wrapper,
+    .remote-btn:focus-visible .remote-btn__icon-wrapper {
+      color: rgba(9, 13, 18, 0.96);
+    }
+
+    .remote-btn__icon-svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .remote-btn__icon-svg--copy {
+      position: absolute;
+      transform: translate(-140%, 140%);
+    }
+
+    .remote-btn:hover .remote-btn__icon-svg:first-child,
+    .remote-btn:focus-visible .remote-btn__icon-svg:first-child {
+      transition: transform 0.3s ease-in-out;
+      transform: translate(140%, -140%);
+    }
+
+    .remote-btn:hover .remote-btn__icon-svg--copy,
+    .remote-btn:focus-visible .remote-btn__icon-svg--copy {
+      transition: transform 0.3s ease-in-out 0.1s;
+      transform: translate(0);
+    }
+
+    .remote-level {
+      height: 7px;
+      border-radius: 5px;
+      background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 7px, rgba(0,0,0,0) 7px 10px),
+        rgba(5, 14, 20, 0.92);
+      overflow: hidden;
+      border: 1px solid rgba(121, 201, 234, 0.23);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.48);
+    }
+
+    .remote-level-fill {
+      display: block;
+      height: 100%;
+      width: 42%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(92, 204, 255, 0.72), rgba(178, 238, 255, 0.9));
+      transition: width 180ms ease;
+    }
+
+    .remote-round-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .remote-icon-btn {
+      appearance: none;
+      border: 1px solid rgba(112, 191, 224, 0.3);
+      background: linear-gradient(180deg, rgba(11, 23, 30, 0.92), rgba(7, 12, 17, 0.96));
+      color: rgba(208, 245, 255, 0.96);
+      border-radius: 10px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform 180ms ease, border-color 220ms ease, box-shadow 220ms ease;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .remote-icon-btn:hover,
+    .remote-icon-btn:focus-visible {
+      transform: translateY(-1px);
+      border-color: rgba(136, 224, 255, 0.62);
+      box-shadow: 0 0 10px rgba(95, 185, 226, 0.24);
+      outline: none;
+    }
+
+    .remote-icon-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .section-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7em;
+      color: rgba(231, 242, 238, 0.9);
+      text-shadow: 0 0 10px rgba(255, 184, 118, 0.06);
+    }
+
+    .section-title {
+      color: rgba(255, 212, 162, 0.94);
+      font-size: 1.22em;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .section-subtitle {
+      color: rgba(212, 232, 226, 0.84);
+      max-width: 92%;
+    }
+
+    .section-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.38em;
+      margin-top: 0.2em;
+    }
+
+    .section-list li::before {
+      content: ">";
+      color: rgba(255, 188, 120, 0.76);
+      margin-right: 0.6em;
+    }
+
+    .section-empty {
+      color: rgba(208, 220, 216, 0.58);
+      letter-spacing: 0.02em;
+      padding-top: 0.4em;
+    }
+
+    .label {
+      position: absolute;
+      top: 24px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: rgba(255, 188, 120, 0.8);
+      text-align: center;
+      pointer-events: none;
+      display: none;
+    }
+
+    @keyframes scrollLoop {
+      from { transform: translateY(0); }
+      to { transform: translateY(-50%); }
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    @keyframes grainMove {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(10px, -8px); }
+      50% { transform: translate(-8px, 6px); }
+      75% { transform: translate(6px, 8px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @media (min-aspect-ratio: 1536/960) {
+      .frame {
+        width: 100vw;
+        height: calc(100vw * (960 / 1536));
+      }
+    }
+
+    @media (max-aspect-ratio: 1536/960) {
+      .frame {
+        height: 100vh;
+        width: calc(100vh * (1536 / 960));
+      }
+    }
+
+    @media (max-width: 900px) {
+      .code-stage {
+        font-size: clamp(9px, 0.96vw, 13px);
+      }
+
+      .typing-line {
+        min-height: 24px;
+        font-size: clamp(10px, 0.9vw, 13px);
+      }
+
+      .tv-remote {
+        left: 2%;
+        top: 13%;
+        width: clamp(88px, 11vw, 104px);
+        padding: 9px 8px 11px;
+        gap: 8px;
+      }
+
+      .remote-chip-value {
+        font-size: 9px;
+      }
+
+      .remote-btn {
+        padding: 0.48rem 0.5rem;
+        padding-left: 9px;
+        font-size: 9px;
+      }
+
+      .remote-btn__icon-wrapper {
+        width: 20px;
+        height: 20px;
+      }
+
+      .remote-icon-btn {
+        height: 30px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .code-stage {
+        font-size: clamp(8px, 0.98vw, 10px);
+        line-height: 1.3;
+        padding: 2.2% 2.2% 1.1% 2.3%;
+      }
+
+      .typing-line {
+        left: 2.2%;
+        right: 2.2%;
+        bottom: 1.8%;
+        min-height: 20px;
+        font-size: clamp(9px, 0.92vw, 11px);
+      }
+
+      .tv-remote {
+        left: 1.5%;
+        top: 12.2%;
+        width: 80px;
+        padding: 8px 6px 10px;
+        border-radius: 20px;
+      }
+
+      .remote-lang {
+        width: 30px;
+        height: 30px;
+      }
+
+      .remote-flag-stack {
+        width: 16px;
+        height: 16px;
+      }
+
+      .remote-chip-label {
+        font-size: 7px;
+      }
+
+      .remote-chip-value {
+        font-size: 8px;
+      }
+
+      .remote-btn {
+        padding: 0.4rem 0.44rem;
+        padding-left: 7px;
+        font-size: 7px;
+      }
+
+      .remote-btn__icon-wrapper {
+        width: 16px;
+        height: 16px;
+      }
+
+      .remote-btn__icon-svg {
+        width: 9px;
+        height: 9px;
+      }
+
+      .remote-icon-btn {
+        height: 24px;
+        font-size: 11px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .code-layer,
+      .cursor,
+      .screen-noise {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="background" aria-hidden="true"></div>
+
+    <div class="frame">
+      <img class="bg-image" src="./tlo.png" alt="" aria-hidden="true" />
+
+      <div class="hud-shell" aria-hidden="true"></div>
+      <div class="hud-corner tl" aria-hidden="true"></div>
+      <div class="hud-corner tr" aria-hidden="true"></div>
+      <div class="hud-corner br" aria-hidden="true"></div>
+      <div class="hud-corner bl" aria-hidden="true"></div>
+      <div class="hud-arc" aria-hidden="true"></div>
+      <div class="hud-centerline" aria-hidden="true"></div>
+      <div class="hud-scanframe" aria-hidden="true"></div>
+
+      <aside class="tv-remote" aria-label="Pilot telewizora">
+        <div class="remote-top">
+          <button class="remote-lang" id="langToggle" type="button" aria-label="Przełącz język" data-active-lang="pl">
+            <span class="remote-flag-stack" aria-hidden="true">
+              <span class="remote-flag" data-lang="pl">🇵🇱</span>
+              <span class="remote-flag" data-lang="en">🇬🇧</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="remote-chip">
+          <div class="remote-chip-label" id="channelCaption">Kanał</div>
+          <div class="remote-chip-value" id="channelLabel">Brak</div>
+        </div>
+
+        <div class="remote-group">
+          <button class="remote-btn" id="channelUpBtn" type="button" aria-label="Kanał w górę">
+            <span>CH +</span>
+            <span class="remote-btn__icon-wrapper" aria-hidden="true">
+              <svg class="remote-btn__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+              <svg class="remote-btn__icon-svg remote-btn__icon-svg--copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+            </span>
+          </button>
+
+          <button class="remote-btn" id="channelDownBtn" type="button" aria-label="Kanał w dół">
+            <span>CH -</span>
+            <span class="remote-btn__icon-wrapper" aria-hidden="true">
+              <svg class="remote-btn__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+              <svg class="remote-btn__icon-svg remote-btn__icon-svg--copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="remote-group">
+          <button class="remote-btn" id="volumeUpBtn" type="button" aria-label="Głośniej">
+            <span>VOL +</span>
+            <span class="remote-btn__icon-wrapper" aria-hidden="true">
+              <svg class="remote-btn__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+              <svg class="remote-btn__icon-svg remote-btn__icon-svg--copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+            </span>
+          </button>
+
+          <button class="remote-btn" id="volumeDownBtn" type="button" aria-label="Ciszej">
+            <span>VOL -</span>
+            <span class="remote-btn__icon-wrapper" aria-hidden="true">
+              <svg class="remote-btn__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+              <svg class="remote-btn__icon-svg remote-btn__icon-svg--copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6L18 18"></path>
+                <path d="M10 18H18V10"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="remote-level" aria-hidden="true">
+          <span class="remote-level-fill" id="volumeFill"></span>
+        </div>
+
+        <div class="remote-round-row">
+          <button class="remote-icon-btn" id="contactBtn" type="button" aria-label="Kontakt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6.5 7.5h11a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H12l-4.5 3v-3H6.5a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3z"></path>
+            </svg>
+          </button>
+          <button class="remote-icon-btn" id="pricingBtn" type="button" aria-label="Cennik">$</button>
+        </div>
+      </aside>
+
+      <div class="screen-area" aria-hidden="true">
+        <div class="code-stage" id="codeStage">
+          <div class="code-layer" id="codeLayerA"></div>
+        </div>
+
+        <div class="typing-line">
+          <span class="prompt">&gt;</span>
+          <span class="typed-text" id="typedText"></span>
+          <span class="cursor"></span>
+        </div>
+
+        <div class="status-bar"></div>
+        <div class="screen-sunshade"></div>
+        <div class="screen-glow"></div>
+        <div class="screen-reflection"></div>
+        <div class="screen-scanlines"></div>
+        <div class="screen-noise"></div>
+        <div class="screen-vignette"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const layerA = document.getElementById('codeLayerA');
+      const typedText = document.getElementById('typedText');
+      const typingLine = document.querySelector('.typing-line');
+      const langToggle = document.getElementById('langToggle');
+      const channelCaption = document.getElementById('channelCaption');
+      const channelLabel = document.getElementById('channelLabel');
+      const channelUpBtn = document.getElementById('channelUpBtn');
+      const channelDownBtn = document.getElementById('channelDownBtn');
+      const volumeUpBtn = document.getElementById('volumeUpBtn');
+      const volumeDownBtn = document.getElementById('volumeDownBtn');
+      const contactBtn = document.getElementById('contactBtn');
+      const pricingBtn = document.getElementById('pricingBtn');
+      const volumeFill = document.getElementById('volumeFill');
+      const channelOrder = ['about', 'scope', 'process', 'workmode', 'projects', 'pricing', 'contact'];
+
+      const i18n = {
+        pl: {
+          commandPrefix: 'pokaż sekcję | ',
+          emptyLabel: 'Wybierz sekcję, aby wyświetlić treść.',
+          langAria: 'Przełącz na angielski',
+          remoteChannelLabel: 'Kanał',
+          remoteNoChannel: 'Brak',
+          remoteContactAria: 'Kontakt',
+          remotePricingAria: 'Cennik',
+          remoteChannelUpAria: 'Kanał w górę',
+          remoteChannelDownAria: 'Kanał w dół',
+          remoteVolumeUpAria: 'Głośniej',
+          remoteVolumeDownAria: 'Ciszej',
+          sections: {
+            about: {
+              button: 'O mnie',
+              command: 'o mnie',
+              title: 'O mnie',
+              subtitle: 'Projektuję i wdrażam strony, które dobrze wyglądają i działają szybko.',
+              items: [
+                'Skupiam się na czytelnej komunikacji i estetyce premium.',
+                'Łączę projekt graficzny z praktyczną implementacją.',
+                'Prowadzę projekty od koncepcji do publikacji.'
+              ]
+            },
+            scope: {
+              button: 'Zakres',
+              command: 'zakres',
+              title: 'Zakres',
+              subtitle: 'Pracuję kompleksowo lub modułowo, zależnie od potrzeb projektu.',
+              items: [
+                'Strony firmowe, landing page i rozbudowane sekcje sprzedażowe.',
+                'Audyt UX, copy i struktury informacji.',
+                'Optymalizacja wydajności i wdrożenia techniczne.'
+              ]
+            },
+            process: {
+              button: 'Proces',
+              command: 'proces',
+              title: 'Proces',
+              subtitle: 'Każdy etap ma jasny cel i szybki feedback.',
+              items: [
+                '1. Brief i kierunek wizualny.',
+                '2. Makieta oraz dopracowanie sekcji.',
+                '3. Wdrożenie, testy i publikacja.'
+              ]
+            },
+            workmode: {
+              button: 'Tryb pracy',
+              command: 'tryb pracy',
+              title: 'Tryb Pracy',
+              subtitle: 'Współpraca asynchroniczna z regularnymi checkpointami.',
+              items: [
+                'Krótka aktualizacja postępu po każdej większej zmianie.',
+                'Priorytet dla decyzji, które realnie wpływają na wynik.',
+                'Stały kontakt i szybkie iteracje.'
+              ]
+            },
+            projects: {
+              button: 'Projekty',
+              command: 'projekty',
+              title: 'Projekty',
+              subtitle: 'Wybrane realizacje pokazujące różne style i cele biznesowe.',
+              items: [
+                'Strony sprzedażowe z naciskiem na konwersję.',
+                'Portfolia i strony osobiste z mocnym brandingiem.',
+                'Odświeżenia istniejących witryn i migracje.'
+              ]
+            },
+            pricing: {
+              button: 'Cennik',
+              command: 'cennik',
+              title: 'Cennik',
+              subtitle: 'Wstępne widełki projektowe, finalna wycena po briefie.',
+              items: [
+                'Start: od 1200 PLN, prosta strona wizytówka.',
+                'Standard: od 2500 PLN, rozbudowany landing.',
+                'Pro: wycena indywidualna dla większych wdrożeń.'
+              ]
+            },
+            contact: {
+              button: 'Kontakt',
+              command: 'kontakt',
+              title: 'Kontakt',
+              subtitle: 'Najłatwiej ruszyć od krótkiej wiadomości o celu strony.',
+              items: [
+                'Opisz projekt i termin, w którym chcesz wystartować.',
+                'Dostaniesz propozycję zakresu i kolejnych kroków.',
+                'Po akceptacji planu przechodzimy do realizacji.'
+              ]
+            }
+          }
+        },
+        en: {
+          commandPrefix: 'show section | ',
+          emptyLabel: 'Select a section to display content.',
+          langAria: 'Switch to Polish',
+          remoteChannelLabel: 'Channel',
+          remoteNoChannel: 'None',
+          remoteContactAria: 'Contact',
+          remotePricingAria: 'Pricing',
+          remoteChannelUpAria: 'Channel up',
+          remoteChannelDownAria: 'Channel down',
+          remoteVolumeUpAria: 'Volume up',
+          remoteVolumeDownAria: 'Volume down',
+          sections: {
+            about: {
+              button: 'About Me',
+              command: 'about me',
+              title: 'About Me',
+              subtitle: 'I design and build websites that look sharp and run fast.',
+              items: [
+                'Clear communication and premium visual quality first.',
+                'Design direction paired with practical implementation.',
+                'Projects handled from concept to launch.'
+              ]
+            },
+            scope: {
+              button: 'Scope',
+              command: 'scope',
+              title: 'Scope',
+              subtitle: 'I can deliver full projects or focused modules.',
+              items: [
+                'Company websites, landing pages, and sales sections.',
+                'UX, copy and information structure audits.',
+                'Performance optimization and technical delivery.'
+              ]
+            },
+            process: {
+              button: 'Process',
+              command: 'process',
+              title: 'Process',
+              subtitle: 'Each stage has a clear goal and quick feedback.',
+              items: [
+                '1. Brief and visual direction.',
+                '2. Section mockups and refinements.',
+                '3. Build, test and release.'
+              ]
+            },
+            workmode: {
+              button: 'Work Mode',
+              command: 'work mode',
+              title: 'Work Mode',
+              subtitle: 'Async collaboration with regular checkpoints.',
+              items: [
+                'Short progress updates after major changes.',
+                'Priority on decisions that impact outcomes.',
+                'Fast iterations and reliable communication.'
+              ]
+            },
+            projects: {
+              button: 'Projects',
+              command: 'projects',
+              title: 'Projects',
+              subtitle: 'Selected work across different styles and business goals.',
+              items: [
+                'Conversion-focused sales pages.',
+                'Personal and portfolio websites with strong branding.',
+                'Website refreshes and migration work.'
+              ]
+            },
+            pricing: {
+              button: 'Pricing',
+              command: 'pricing',
+              title: 'Pricing',
+              subtitle: 'Initial ranges, final quote after brief.',
+              items: [
+                'Starter: from 1200 PLN for a simple site.',
+                'Standard: from 2500 PLN for an expanded landing page.',
+                'Pro: custom quote for larger implementations.'
+              ]
+            },
+            contact: {
+              button: 'Contact',
+              command: 'contact',
+              title: 'Contact',
+              subtitle: 'The fastest start is a short message with your goal.',
+              items: [
+                'Describe the project and your target launch date.',
+                'You will get a proposed scope and next steps.',
+                'After approval, we move straight to implementation.'
+              ]
+            }
+          }
+        }
+      };
+
+      let currentLang = 'pl';
+      let activeSection = null;
+      let typingTimerId = null;
+      let charIndex = 0;
+      let typingPrefix = '';
+      let typingSection = '';
+      let volumeLevel = 46;
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function setTypingMarkup(visibleLength) {
+        const command = `${typingPrefix}${typingSection}`;
+        const visible = command.slice(0, visibleLength);
+        const prefixPart = visible.slice(0, Math.min(visible.length, typingPrefix.length));
+        const sectionPart = visible.length > typingPrefix.length
+          ? visible.slice(typingPrefix.length)
+          : '';
+
+        typedText.innerHTML =
+          `<span class="cmd-prefix">${escapeHtml(prefixPart)}</span>` +
+          `<span class="cmd-section">${escapeHtml(sectionPart)}</span>`;
+      }
+
+      function clearTyping() {
+        if (typingTimerId !== null) {
+          clearTimeout(typingTimerId);
+          typingTimerId = null;
+        }
+        charIndex = 0;
+        typingPrefix = '';
+        typingSection = '';
+        typedText.textContent = '';
+        typingLine.classList.remove('is-sending');
+      }
+
+      function runSingleCommand(sectionKey) {
+        clearTyping();
+        const dictionary = i18n[currentLang];
+        const sectionData = dictionary.sections[sectionKey];
+        if (!sectionData) {
+          return;
+        }
+
+        typingPrefix = dictionary.commandPrefix;
+        typingSection = sectionData.command;
+
+        function typeNextChar() {
+          const totalLength = (typingPrefix + typingSection).length;
+          charIndex += 1;
+          setTypingMarkup(charIndex);
+
+          if (charIndex < totalLength) {
+            typingTimerId = setTimeout(typeNextChar, 60);
+            return;
+          }
+
+          typingLine.classList.add('is-sending');
+          typingTimerId = setTimeout(() => {
+            typedText.textContent = '';
+            typingLine.classList.remove('is-sending');
+            typingTimerId = null;
+          }, 440);
+        }
+
+        typingTimerId = setTimeout(typeNextChar, 80);
+      }
+
+      function renderSectionContent() {
+        const dictionary = i18n[currentLang];
+        if (!activeSection) {
+          layerA.innerHTML = `<div class="section-empty">${escapeHtml(dictionary.emptyLabel)}</div>`;
+          return;
+        }
+
+        const sectionData = dictionary.sections[activeSection];
+        if (!sectionData) {
+          layerA.innerHTML = `<div class="section-empty">${escapeHtml(dictionary.emptyLabel)}</div>`;
+          return;
+        }
+
+        const renderedItems = sectionData.items
+          .map(item => `<li>${escapeHtml(item)}</li>`)
+          .join('');
+
+        layerA.innerHTML = `
+          <div class="section-panel">
+            <div class="section-title">${escapeHtml(sectionData.title)}</div>
+            <div class="section-subtitle">${escapeHtml(sectionData.subtitle)}</div>
+            <ul class="section-list">${renderedItems}</ul>
+          </div>
+        `;
+      }
+
+      function updateVolume(delta) {
+        volumeLevel = Math.max(0, Math.min(100, volumeLevel + delta));
+        volumeFill.style.width = `${volumeLevel}%`;
+      }
+
+      function renderRemote() {
+        const dictionary = i18n[currentLang];
+        const activeSectionData = activeSection ? dictionary.sections[activeSection] : null;
+
+        channelCaption.textContent = dictionary.remoteChannelLabel;
+        channelLabel.textContent = activeSectionData ? activeSectionData.button : dictionary.remoteNoChannel;
+
+        langToggle.setAttribute('aria-label', dictionary.langAria);
+        langToggle.dataset.activeLang = currentLang;
+
+        channelUpBtn.setAttribute('aria-label', dictionary.remoteChannelUpAria);
+        channelDownBtn.setAttribute('aria-label', dictionary.remoteChannelDownAria);
+        volumeUpBtn.setAttribute('aria-label', dictionary.remoteVolumeUpAria);
+        volumeDownBtn.setAttribute('aria-label', dictionary.remoteVolumeDownAria);
+        contactBtn.setAttribute('aria-label', dictionary.remoteContactAria);
+        pricingBtn.setAttribute('aria-label', dictionary.remotePricingAria);
+      }
+
+      function activateSection(sectionKey, options = {}) {
+        const { toggle = true } = options;
+
+        if (toggle && activeSection === sectionKey) {
+          activeSection = null;
+          renderRemote();
+          renderSectionContent();
+          clearTyping();
+          return;
+        }
+
+        activeSection = sectionKey;
+        renderRemote();
+        renderSectionContent();
+        runSingleCommand(sectionKey);
+      }
+
+      function switchChannel(direction) {
+        if (!activeSection) {
+          const fallback = direction > 0 ? channelOrder[0] : channelOrder[channelOrder.length - 1];
+          activateSection(fallback, { toggle: false });
+          return;
+        }
+
+        const index = channelOrder.indexOf(activeSection);
+        const safeIndex = index === -1 ? 0 : index;
+        const nextIndex = (safeIndex + direction + channelOrder.length) % channelOrder.length;
+        activateSection(channelOrder[nextIndex], { toggle: false });
+      }
+
+      channelUpBtn.addEventListener('click', () => {
+        switchChannel(1);
+      });
+
+      channelDownBtn.addEventListener('click', () => {
+        switchChannel(-1);
+      });
+
+      volumeUpBtn.addEventListener('click', () => {
+        updateVolume(8);
+      });
+
+      volumeDownBtn.addEventListener('click', () => {
+        updateVolume(-8);
+      });
+
+      pricingBtn.addEventListener('click', () => {
+        activateSection('pricing');
+      });
+
+      contactBtn.addEventListener('click', () => {
+        activateSection('contact');
+      });
+
+      langToggle.addEventListener('click', () => {
+        currentLang = currentLang === 'pl' ? 'en' : 'pl';
+        renderRemote();
+        renderSectionContent();
+        if (activeSection) {
+          runSingleCommand(activeSection);
+          return;
+        }
+        clearTyping();
+      });
+
+      updateVolume(0);
+      renderRemote();
+      renderSectionContent();
+      clearTyping();
+    })();
+  </script>
+</body>
+</html>
