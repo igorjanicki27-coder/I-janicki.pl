@@ -90,6 +90,7 @@ const dom = {
   get starPicker()     { return $('modalStarPicker');       },
   get themeToggle()    { return $('themeToggle');           },
   get year()           { return $('year');                  },
+  get brandName()      { return document.querySelector('.brand-name'); },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -139,7 +140,14 @@ const TRANSLATIONS = {
     'btn-contact': 'Kontakt',
     'btn-reviews': 'Opinie',
     'greeting-title': 'i-JANEK',
-    'greeting-text': '<p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Będę Ci towarzyszył, abyś mógł lepiej poznać ofertę <strong>i-JANICKI</strong>.</p><p>Gotowy? Kliknij <em>Dalej</em>! 🚀</p>',
+    'greeting-text': '<p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
+    'greeting-ready': 'Gotowy? Kliknij <em>Dalej</em>! 🚀',
+    'lang-label': '🌐 Język',
+    'lang-pl': '🇵🇱 PL',
+    'lang-en': '🇬🇧 EN',
+    'theme-label': '🎨 Motyw',
+    'theme-dark': '🌙 Ciemny',
+    'theme-light': '☀ Jasny',
     'name-prompt': 'Jak mam się do Ciebie zwracać?',
     'name-placeholder': 'Wpisz swoje imię…',
     'next-btn': 'Dalej →',
@@ -154,7 +162,14 @@ const TRANSLATIONS = {
     'btn-contact': 'Contact',
     'btn-reviews': 'Reviews',
     'greeting-title': 'i-JANEK',
-    'greeting-text': '<p>Hello! I\'m <strong>i-JANEK</strong> — your virtual assistant.</p><p>I\'ll help you learn more about <strong>i-JANICKI</strong> services.</p><p>Ready? Click <em>Next</em>! 🚀</p>',
+    'greeting-text': '<p>Hello! I\'m <strong>i-JANEK</strong> — your virtual assistant.</p><p>I\'ll help you learn more about <strong>i-JANICKI</strong> services.</p>',
+    'greeting-ready': 'Ready? Click <em>Next</em>! 🚀',
+    'lang-label': '🌐 Language',
+    'lang-pl': '🇵🇱 PL',
+    'lang-en': '🇬🇧 EN',
+    'theme-label': '🎨 Theme',
+    'theme-dark': '🌙 Dark',
+    'theme-light': '☀ Light',
     'name-prompt': 'What\'s your name?',
     'name-placeholder': 'Type your name…',
     'next-btn': 'Next →',
@@ -310,23 +325,27 @@ function startTutorial() {
   buildDots();
   dom.tutProgress.hidden = false;
   dom.tutNav.hidden      = false;
+  if (dom.brandName) dom.brandName.hidden = true;
   goStep(0);
 }
 
 function buildDots() {
   dom.tutDots.innerHTML = '';
-  for (let i = FIRST_SECTION; i <= LAST_SECTION; i++) {
-    const d = document.createElement('div');
+  const labels = ['🌐', '🍪', '👤', '1', '2', '3', '4', '5', '6', '⭐', '✓'];
+  for (let i = 0; i < STEPS.length; i++) {
+    const d = document.createElement('button');
     d.className = 'tut-dot';
+    d.textContent = labels[i] || (i + 1);
+    d.type = 'button';
+    d.addEventListener('click', () => goStep(i));
     dom.tutDots.appendChild(d);
   }
 }
 
 function refreshDots() {
   dom.tutDots.querySelectorAll('.tut-dot').forEach((d, i) => {
-    const si = tutStep - FIRST_SECTION;  // section index (negative before section steps)
-    d.classList.toggle('is-done',    i < si);
-    d.classList.toggle('is-current', i === si);
+    d.classList.toggle('is-done',    i < tutStep);
+    d.classList.toggle('is-current', i === tutStep);
   });
 }
 
@@ -356,12 +375,6 @@ function goStep(idx) {
   const step     = STEPS[tutStep];
   const dir      = idx >= prevStep ? 1 : -1;
 
-  // Auto-skip cookies step if already decided
-  if (step.id === 'cookies' && localStorage.getItem(LS.COOKIE_DECISION)) {
-    goStep(tutStep + dir);
-    return;
-  }
-
   refreshDots();
   refreshNavButtons();
   closeModal();
@@ -385,27 +398,27 @@ function renderGreeting() {
 
   setPanel('i-JANEK', `
     <div class="tut-message">
-      <p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p>
-      <p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>
+      ${t('greeting-text')}
     </div>
     <div class="greeting-prefs">
-      <div class="pref-row">
-        <span class="pref-label">🌐 Język</span>
+      <div class="pref-column">
+        <span class="pref-label">${t('lang-label')}</span>
         <div class="pref-btns">
-          <button class="choice-btn ${currentLang === 'pl' ? 'is-active' : ''}" id="gLangPL">🇵🇱 PL</button>
-          <button class="choice-btn ${currentLang === 'en' ? 'is-active' : ''}" id="gLangEN">🇬🇧 EN</button>
+          <button class="choice-btn ${currentLang === 'pl' ? 'is-active' : ''}" id="gLangPL">${t('lang-pl')}</button>
+          <button class="choice-btn ${currentLang === 'en' ? 'is-active' : ''}" id="gLangEN">${t('lang-en')}</button>
         </div>
       </div>
-      <div class="pref-row">
-        <span class="pref-label">🎨 Motyw</span>
+      <div class="pref-separator"></div>
+      <div class="pref-column">
+        <span class="pref-label">${t('theme-label')}</span>
         <div class="pref-btns">
-          <button class="choice-btn ${isDark ? 'is-active' : ''}" id="gThemeDark">🌙 Ciemny</button>
-          <button class="choice-btn ${!isDark ? 'is-active' : ''}" id="gThemeLight">☀ Jasny</button>
+          <button class="choice-btn ${isDark ? 'is-active' : ''}" id="gThemeDark">${t('theme-dark')}</button>
+          <button class="choice-btn ${!isDark ? 'is-active' : ''}" id="gThemeLight">${t('theme-light')}</button>
         </div>
       </div>
     </div>
     <div class="tut-message" style="margin-top:10px">
-      <p>Gotowy? Kliknij <em>Dalej</em>! 🚀</p>
+      <p>${t('greeting-ready')}</p>
     </div>
   `);
 
@@ -475,12 +488,6 @@ function renderSectionStep(step) {
   const n   = userName ? `, ${escHtml(userName)}` : '';
   const msg = SECTION_MSG[step.id]?.(n) ?? step.label;
 
-  // Kontakt otwiera się zawsze w modalnym oknie
-  if (step.topic === 'contact') {
-    openModal('contact');
-    return;
-  }
-
   // Treść sekcji wewnątrz panelu robota (nie osobny panel boczny)
   setPanel('i-JANEK', `
     <div class="tut-message"><p>${msg}</p></div>
@@ -493,18 +500,33 @@ function renderSectionStep(step) {
   // Dodaj klasę do panelu żeby był scrollable
   $('panel')?.classList.add('has-section');
   dom.bot.classList.add('is-pointing');
+
+  // Setup form handlers jeśli to kontakt
+  if (step.topic === 'contact') {
+    setupContactForm();
+    prefillContact();
+  }
 }
 
 function renderReviewStep() {
   const n = userName ? `, ${escHtml(userName)}` : '';
+  const msg = `Mamy prawie koniec${n}! ⭐ Chcesz wystawić opinię lub zobaczyć, co piszą inni?`;
+
   setPanel('i-JANEK', `
-    <div class="tut-message">
-      <p>Mamy prawie koniec${n}! ⭐ Chcesz wystawić opinię lub zobaczyć, co piszą inni?</p>
-      <p>Kliknij przycisk <em>Opinie</em> lub po prostu kliknij <em>Dalej</em>, by pominąć.</p>
-    </div>
+    <div class="tut-message"><p>${msg}</p></div>
+    <div class="section-step-content" id="secContent"></div>
   `);
 
-  openModal('reviews');
+  const tpl = document.getElementById('tpl-reviews');
+  if (tpl) $('secContent').appendChild(tpl.content.cloneNode(true));
+
+  $('panel')?.classList.add('has-section');
+  setupReviewForm();
+
+  requestAnimationFrame(() => {
+    const el = $('modalReviewsCarousel');
+    if (el) loadReviews(el);
+  });
 }
 
 function renderFinish() {
@@ -599,6 +621,7 @@ function hideStageContent() {
 function showReturning() {
   dom.tutProgress.hidden = true;
   dom.tutNav.hidden      = true;
+  if (dom.brandName) dom.brandName.hidden = false;
 
   const n = userName ? escHtml(userName) : 'ponownie';
   setPanel('Witaj ponownie!', `
@@ -787,10 +810,18 @@ function initCookiePanel() {
 
 function updateCookieAnalyticsStatus() {
   const statusEl = $('cookieAnalyticsStatus');
+  const badgeEl = document.querySelector('.cookie-badge-extra');
   if (!statusEl) return;
   const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
-  statusEl.textContent = analyticsOn ? '✓ włączony' : '✗ wyłączony';
+  statusEl.textContent = analyticsOn ? '✓' : '✗';
   statusEl.style.color = analyticsOn ? 'var(--accent-4)' : 'var(--muted)';
+  if (badgeEl) {
+    if (analyticsOn) {
+      badgeEl.classList.add('is-enabled');
+    } else {
+      badgeEl.classList.remove('is-enabled');
+    }
+  }
 }
 
 function cookieDecide(analytics) {
