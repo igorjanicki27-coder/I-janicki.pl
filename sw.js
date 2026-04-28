@@ -5,8 +5,8 @@
 
 'use strict';
 
-const CACHE_NAME    = 'ijanecki-v3';
-const CACHE_FOREVER = 'ijanecki-static-v3';   // fonts, icons — very long-lived
+const CACHE_NAME    = 'ijanecki-v4';
+const CACHE_FOREVER = 'ijanecki-static-v4';   // fonts, icons — very long-lived
 
 // Assets to pre-cache on install
 const PRECACHE = [

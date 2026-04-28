@@ -8,6 +8,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Google Analytics — ładuje się TYLKO po zgodzie użytkownika -->
+  <script>
+    window._gaLoaded = false;
+    window.loadGA = function () {
+      if (window._gaLoaded) return;
+      window._gaLoaded = true;
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-XQDCV6ZK3S';
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', 'G-XQDCV6ZK3S');
+    };
+    if (localStorage.getItem('ijanek_cookie_analytics') === 'true') window.loadGA();
+  </script>
+
   <style>
     :root {
       --bg-0: #000; --bg-1: #0b0e13; --bg-2: #12172a;

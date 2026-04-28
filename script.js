@@ -49,6 +49,17 @@ const LAST_SECTION  = 8;   // contact — next button shows "Wyślij →"
 const REVIEWS_STEP  = 9;
 const FINISH_STEP   = 10;
 
+// Helper function to get the effective steps array (filtered if cookies decided)
+function getSteps() {
+  return window.FILTERED_STEPS || STEPS;
+}
+
+// Helper function to find step index by ID
+function getStepIndex(stepId) {
+  const steps = getSteps();
+  return steps.findIndex(s => s.id === stepId);
+}
+
 // ─────────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────────
@@ -56,6 +67,7 @@ let tutStep      = 0;
 let userName     = localStorage.getItem(LS.NAME) || '';
 let tutDone      = localStorage.getItem(LS.TUTORIAL_DONE) === 'true';
 let reviewRating = 0;
+let visitedSteps = new Set(); // Track which steps user has visited
 
 // ─────────────────────────────────────────────────────────────────
 // DOM REFS (lazy getters so we don't need to worry about order)
@@ -192,7 +204,8 @@ function changeLang(lang) {
   localStorage.setItem(LS.LANG, lang);
   applyLanguage(lang);
   // Jeśli jesteśmy na kroku powitalnym, przerysuj go żeby zmienić tekst
-  if (STEPS[tutStep]?.id === 'greeting') {
+  const steps = getSteps();
+  if (steps[tutStep]?.id === 'greeting') {
     renderGreeting();
   }
 }
@@ -212,7 +225,8 @@ function applyLanguage(lang) {
   });
 
   if (dom.tutNext) {
-    const isLastSec = tutStep === LAST_SECTION;
+    const steps = getSteps();
+    const isLastSec = tutStep === (steps.length - 2); // Last section before finish
     dom.tutNext.textContent = isLastSec
       ? (lang === 'en' ? 'Send →' : 'Wyślij →')
       : (lang === 'en' ? 'Next →' : 'Dalej →');
@@ -292,12 +306,15 @@ function initGlobalClick() {
   });
 
   $('tutSkip').addEventListener('click', () => {
-    goStep(FINISH_STEP);
+    const steps = getSteps();
+    goStep(steps.length - 1);
   });
 
   $('tutNext').addEventListener('click', () => {
+    const steps = getSteps();
+    const step = steps[tutStep];
     // Cookie step: must decide before continuing
-    if (STEPS[tutStep].id === 'cookies' && !localStorage.getItem(LS.COOKIE_DECISION)) {
+    if (step.id === 'cookies' && !localStorage.getItem(LS.COOKIE_DECISION)) {
       dom.panelContent.animate(
         [{ transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' },
          { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }],
@@ -306,14 +323,14 @@ function initGlobalClick() {
       return;
     }
     // Contact step: validate + submit the form first; form submit handler advances the step
-    if (STEPS[tutStep].id === 'contact') {
+    if (step.id === 'contact') {
       $('contactForm')?.requestSubmit();
       return;
     }
     // Name step: save before advancing
-    if (STEPS[tutStep].id === 'name') captureName();
+    if (step.id === 'name') captureName();
 
-    if (tutStep < STEPS.length - 1) goStep(tutStep + 1);
+    if (tutStep < steps.length - 1) goStep(tutStep + 1);
   });
 }
 
@@ -321,7 +338,15 @@ function initGlobalClick() {
 // TUTORIAL — STATE MACHINE
 // ─────────────────────────────────────────────────────────────────
 function startTutorial() {
+  // Filter out cookies step if cookies decision has already been made
+  if (localStorage.getItem(LS.COOKIE_DECISION) !== null) {
+    window.FILTERED_STEPS = STEPS.filter(step => step.id !== 'cookies');
+  } else {
+    window.FILTERED_STEPS = STEPS;
+  }
+
   tutStep = 0;
+  visitedSteps.clear();
   buildDots();
   dom.tutProgress.hidden = false;
   dom.tutNav.hidden      = false;
@@ -331,31 +356,38 @@ function startTutorial() {
 
 function buildDots() {
   dom.tutDots.innerHTML = '';
-  const labels = ['🌐', '🍪', '👤', '1', '2', '3', '4', '5', '6', '⭐', '✓'];
-  for (let i = 0; i < STEPS.length; i++) {
+  const steps = getSteps();
+  for (let i = 0; i < steps.length; i++) {
     const d = document.createElement('button');
     d.className = 'tut-dot';
-    d.textContent = labels[i] || (i + 1);
     d.type = 'button';
-    d.addEventListener('click', () => goStep(i));
+    d.setAttribute('aria-label', `Krok ${i + 1}`);
+    const maxVisited = Math.max(...visitedSteps, 0);
+    const canClick = i <= maxVisited;
+    d.disabled = !canClick;
+    d.addEventListener('click', () => {
+      if (canClick) goStep(i);
+    });
     dom.tutDots.appendChild(d);
   }
 }
 
 function refreshDots() {
+  const maxVisited = Math.max(...visitedSteps, 0);
   dom.tutDots.querySelectorAll('.tut-dot').forEach((d, i) => {
     d.classList.toggle('is-done',    i < tutStep);
     d.classList.toggle('is-current', i === tutStep);
+    const canClick = i <= maxVisited;
+    d.disabled = !canClick;
   });
 }
 
 function refreshNavButtons() {
-  const step         = STEPS[tutStep];
+  const steps = getSteps();
+  const step         = steps[tutStep];
   const isFirst      = tutStep === 0;
-  const isLastSec    = tutStep === LAST_SECTION;
+  const isLastSec    = tutStep === (steps.length - 2); // Last section before finish
   const cookieNeeded = step.id === 'cookies' && !localStorage.getItem(LS.COOKIE_DECISION);
-  // Skippable from name step onward (not on greeting or cookies)
-  const skippable    = tutStep >= 2 && tutStep < FINISH_STEP && step.id !== 'cookies';
 
   dom.tutBack.hidden              = isFirst;
   dom.tutBack.disabled            = isFirst;
@@ -363,17 +395,32 @@ function refreshNavButtons() {
   dom.tutNext.textContent         = isLastSec ? 'Wyślij →' : 'Dalej →';
   dom.tutNext.classList.toggle('is-send', isLastSec);
 
-  dom.tutSkip.disabled            = !skippable;
-  dom.tutSkip.style.display       = skippable ? '' : 'none';
+  // Skip button disabled — can't skip to unvisited steps
+  dom.tutSkip.disabled            = true;
+  dom.tutSkip.style.display       = 'none';
 
   dom.tutNav.classList.toggle('has-back', !isFirst);
 }
 
 function goStep(idx) {
+  const steps = getSteps();
   const prevStep = tutStep;
-  tutStep = Math.max(0, Math.min(idx, STEPS.length - 1));
-  const step     = STEPS[tutStep];
-  const dir      = idx >= prevStep ? 1 : -1;
+
+  // Allow going back or staying at current step
+  // Only allow going forward if already visited the target step
+  const maxAllowed = Math.max(...visitedSteps, 0);
+  const targetIdx = Math.max(0, Math.min(idx, steps.length - 1));
+
+  // If trying to skip ahead to unvisited step, don't allow it
+  if (targetIdx > maxAllowed && !visitedSteps.has(targetIdx)) {
+    return;
+  }
+
+  tutStep = targetIdx;
+  const step = steps[tutStep];
+
+  // Mark current step as visited
+  visitedSteps.add(tutStep);
 
   refreshDots();
   refreshNavButtons();
@@ -777,8 +824,10 @@ function setupContactForm() {
         form.reset();
         prefillContact();
         // Jeśli jesteśmy na kroku kontaktu w tutorialu, przejdź do następnego (Opinie)
-        if (STEPS[tutStep]?.id === 'contact') {
-          setTimeout(() => goStep(REVIEWS_STEP), 1500);
+        const steps = getSteps();
+        if (steps[tutStep]?.id === 'contact') {
+          const reviewIdx = getStepIndex('reviews');
+          setTimeout(() => goStep(reviewIdx), 1500);
         }
       } else {
         throw new Error(data.message || 'Błąd serwera');
@@ -841,7 +890,8 @@ function closeCookiePanel() {
   dom.cookieOverlay.hidden = true;
   dom.cookieOverlay.setAttribute('aria-hidden', 'true');
   // Jeśli jesteśmy na kroku cookies tutoriala i decyzja właśnie podjęta — przejdź dalej
-  if (STEPS[tutStep]?.id === 'cookies' && localStorage.getItem(LS.COOKIE_DECISION)) {
+  const steps = getSteps();
+  if (steps[tutStep]?.id === 'cookies' && localStorage.getItem(LS.COOKIE_DECISION)) {
     goStep(tutStep + 1);
   }
 }

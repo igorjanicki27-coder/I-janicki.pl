@@ -53,12 +53,11 @@
   <header class="topbar">
     <a class="brand" href="#" aria-label="i-JANICKI home">
       <span class="brand-name">i-JANICKI</span>
+      <!-- Pasek postępu tutoriala -->
+      <div class="tutorial-progress" id="tutorialProgress" hidden>
+        <div class="tut-progress-steps" id="tutProgressSteps"></div>
+      </div>
     </a>
-
-    <!-- Pasek postępu tutoriala -->
-    <div class="tutorial-progress" id="tutorialProgress" hidden>
-      <div class="tut-progress-steps" id="tutProgressSteps"></div>
-    </div>
   </header>
 
   <!-- ═══════════════ GŁÓWNA SCENA ═══════════════ -->
@@ -248,10 +247,8 @@
   <template id="tpl-about">
     <h2 id="modalTitle" class="modal-section-title">O mnie</h2>
     <div class="about-card">
-      <div class="about-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <div class="about-ico">
+        <img src="./icons/igor.jpg" alt="Igor Janicki" />
       </div>
       <h3>Igor Janicki</h3>
       <p class="about-handle">@i-janicki · Wrocław</p>
@@ -261,7 +258,8 @@
         Pracuję zarówno z klientami lokalnymi, jak i zdalnie.
       </p>
       <ul class="about-list">
-        <li>Strony i aplikacje na zamówienie</li>
+        <li>Strony internetowe na zamówienie</li>
+        <li>Aplikacje webowe i mobilne na zamówienie</li>
         <li>Konfiguracja sieci i administracja</li>
         <li>Wsparcie i opieka IT</li>
       </ul>
@@ -360,7 +358,7 @@
         <p class="price-desc">Strona wizytówkowa lub portfolio. Responsywna, szybka, zoptymalizowana pod SEO.</p>
       </div>
       <div class="price-card">
-        <h3>Aplikacja webowa</h3>
+        <h3>Aplikacja </h3>
         <p class="price"><span>od</span> <b>5 000 zł</b></p>
         <p class="price-desc">Panel, system, aplikacja z logiką biznesową i bazą danych.</p>
       </div>
