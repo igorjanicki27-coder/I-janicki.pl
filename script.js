@@ -14,6 +14,7 @@ const EMAILJS_SERVICE  = 'service_0m7ieum';
 const EMAILJS_TEMPLATE = 'template_gd8aaq5';
 const EMAILJS_KEY      = 'BugGXsqvUvMyP4buf';
 const OWNER_EMAIL      = 'igor.janicki27@gmail.com';
+const WEB3FORMS_KEY    = 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
 
 // ─────────────────────────────────────────────────────────────────
 // STORAGE KEYS
@@ -1308,7 +1309,7 @@ async function submitReview(e) {
         <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
       </div>`;
     reviewRating = 0;
-    setTimeout(() => { closeModal(); goStep(getStepIndex('finish')); }, 3000);
+    setTimeout(() => { closeModal(); finishTutorial(); }, 3000);
 
   } catch (err) {
     console.warn(err);
@@ -1375,6 +1376,9 @@ async function handleApproveReview() {
       }
     );
     if (res.ok) {
+      // Krótkie opóźnienie aby Firestore zdążył z propagacją zmiany approved=true
+      await new Promise(r => setTimeout(r, 500));
+
       // Pobierz dane opinii aby wysłać powiadomienie do właściciela
       const getRes = await fetch(`${FIRESTORE_BASE}/reviews/${reviewId}`);
       if (getRes.ok) {
