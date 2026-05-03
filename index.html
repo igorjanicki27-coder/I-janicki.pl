@@ -109,7 +109,7 @@
         <rect id="eyelidR" x="119" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)" style="transform-box:fill-box;transform-origin:center top"/>
 
         <!-- Usta — delikatny uśmiech -->
-        <path id="botMouth" d="M92 124 Q110 137 128 124" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path id="botMouth" d="M94 128 Q110 135 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
 
         <!-- Uszy boczne -->
         <rect x="36" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
@@ -134,6 +134,7 @@
     <!-- Panel / Dymek robota -->
     <section class="panel" id="panel" aria-live="polite" aria-label="Asystent i-JANEK">
       <div class="panel-header" id="panelHeader">
+        <div class="panel-logo" id="panelLogo" hidden>i-JANICKI</div>
         <div class="loader" aria-hidden="true">
           <div class="spinner loader-spinner">
             <div class="spinner1"></div>
@@ -270,6 +271,11 @@
     <h2 id="modalTitle" class="modal-section-title">Usługi</h2>
     <div class="svc-grid">
       <div class="svc">
+        <div class="svc-ico">⌬</div>
+        <h3>Projektowanie</h3>
+        <p>Projektuję i wdrażam loga i ikony.</p>
+      </div>
+      <div class="svc">
         <div class="svc-ico">⟨⟩</div>
         <h3>Strony internetowe</h3>
         <p>Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.</p>
@@ -279,7 +285,7 @@
         <h3>Aplikacje webowe</h3>
         <p>Tworzę aplikacje webowe z użytkowymi interfejsami, integracjami API i panelami administracyjnymi.</p>
       </div>
-            <div class="svc">
+      <div class="svc">
         <div class="svc-ico">▣</div>
         <h3>Aplikacje mobilne</h3>
         <p>Tworzę aplikacje mobilne, intergruje je ze stronami lub innymi aplikacjami.</p>
@@ -288,11 +294,6 @@
         <div class="svc-ico">⌬</div>
         <h3>Konfiguracja sieci</h3>
         <p>Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego.</p>
-      </div>
-            <div class="svc">
-        <div class="svc-ico">⌬</div>
-        <h3>Projektowanie</h3>
-        <p>Projektuję i wdrażam loga i ikony.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">✦</div>
@@ -304,35 +305,42 @@
 
   <template id="tpl-projects">
     <h2 id="modalTitle" class="modal-section-title">Projekty</h2>
-    <p class="section-lead">Wybrane realizacje — najedź, aby zobaczyć opis.</p>
-    <div class="projects-row">
-      <a class="project-item" href="https://strzelca.pl" target="_blank" rel="noopener noreferrer">
-        <div class="project-logo">
-          <img src="./icons/strzelca.png" alt="strzelca.pl" loading="lazy" />
+
+    <!-- Sekcja stron -->
+    <h3 class="section-sub">Strony internetowe</h3>
+    <div class="projects-list">
+      <a class="project-strip" href="https://strzelca.pl" target="_blank" rel="noopener noreferrer">
+        <div class="project-num">01</div>
+        <div class="project-content">
+          <strong>strzelca.pl</strong>
+          <p>Portal strzelecki — aktualności, wyniki zawodów i regulaminy.</p>
         </div>
-        <span class="project-name">strzelca.pl</span>
-        <div class="project-hover">Portal strzelecki — aktualności, wyniki zawodów i regulaminy.</div>
       </a>
-      <a class="project-item" href="https://get-dmg.com" target="_blank" rel="noopener noreferrer">
-        <div class="project-logo">
-          <img src="./icons/get-dmg.png" alt="get-dmg.com" loading="lazy" />
+      <a class="project-strip" href="https://get-dmg.com" target="_blank" rel="noopener noreferrer">
+        <div class="project-num">02</div>
+        <div class="project-content">
+          <strong>get-dmg.com</strong>
+          <p>Serwis z aplikacjami i narzędziami dedykowanymi na macOS.</p>
         </div>
-        <span class="project-name">get-dmg.com</span>
-        <div class="project-hover">Serwis z aplikacjami i narzędziami dedykowanymi na macOS.</div>
       </a>
-      <a class="project-item" href="https://sredzka-korona.pl" target="_blank" rel="noopener noreferrer">
-        <div class="project-logo">
-          <img src="./icons/sredzka-korona.png" alt="Średzka Korona" loading="lazy" />
+      <a class="project-strip" href="https://sredzka-korona.pl" target="_blank" rel="noopener noreferrer">
+        <div class="project-num">03</div>
+        <div class="project-content">
+          <strong>sredzka-korona.pl</strong>
+          <p>Strona dla lokalnej marki wina i restauracji.</p>
         </div>
-        <span class="project-name">sredzka-korona.pl</span>
-        <div class="project-hover">Strona dla lokalnej marki wina i restauracji.</div>
       </a>
-      <div class="project-item project-app">
-        <div class="project-logo">
-          <img src="./icons/icon.png" alt="myIP" loading="lazy" />
+    </div>
+
+    <!-- Sekcja aplikacji -->
+    <h3 class="section-sub" style="margin-top: 24px;">Aplikacje</h3>
+    <div class="projects-list">
+      <div class="project-strip project-app">
+        <div class="project-num">01</div>
+        <div class="project-content">
+          <strong>myIP</strong>
+          <p>Aplikacja macOS — publiczny adres IP i informacje o sieci.</p>
         </div>
-        <span class="project-name">myIP</span>
-        <div class="project-hover">Aplikacja macOS — publiczny adres IP i informacje o sieci.</div>
       </div>
     </div>
   </template>
@@ -466,5 +474,27 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script src="script.js" defer></script>
+  <script>
+    (function() {
+      var NORMAL = 'M94 128 Q110 135 126 128';
+      var CLICK  = 'M100 120 Q110 130 120 120';
+      document.addEventListener('mousedown', function() {
+        var m = document.getElementById('botMouth');
+        var elL = document.getElementById('eyelidL');
+        var elR = document.getElementById('eyelidR');
+        if (m) m.setAttribute('d', CLICK);
+        if (elL) { elL.style.animation = 'none'; elL.style.transform = 'scaleY(0.55)'; }
+        if (elR) { elR.style.animation = 'none'; elR.style.transform = 'scaleY(0.55)'; }
+      });
+      document.addEventListener('mouseup', function() {
+        var m = document.getElementById('botMouth');
+        var elL = document.getElementById('eyelidL');
+        var elR = document.getElementById('eyelidR');
+        if (m) m.setAttribute('d', NORMAL);
+        if (elL) { elL.style.transform = ''; elL.style.animation = ''; }
+        if (elR) { elR.style.transform = ''; elR.style.animation = ''; }
+      });
+    })();
+  </script>
 </body>
 </html>

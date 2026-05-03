@@ -10,7 +10,9 @@
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_PROJECT = 'i-janicki';
 const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
-const WEB3FORMS_KEY    = 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
+const EMAILJS_SERVICE  = 'service_0m7ieum';
+const EMAILJS_TEMPLATE = 'template_gd8aaq5';
+const EMAILJS_KEY      = 'BugGXsqvUvMyP4buf';
 const OWNER_EMAIL      = 'igor.janicki27@gmail.com';
 
 // ─────────────────────────────────────────────────────────────────
@@ -28,7 +30,7 @@ const SS = { SECTION: 'ijanek_active_section' };
 
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL STEPS
-// 0:greeting(+lang+theme)  1:cookies  2:name  3-8:sections  9:reviews  10:finish
+// 0:greeting(+lang+theme)  1:cookies  2:name  3-8:sections  9:reviews
 // ─────────────────────────────────────────────────────────────────
 const STEPS = [
   { id: 'greeting'                                            },  // 0 (lang+theme inside)
@@ -41,13 +43,11 @@ const STEPS = [
   { id: 'pricing',  topic: 'pricing',  label: 'Cennik'       },  // 7
   { id: 'contact',  topic: 'contact',  label: 'Kontakt'      },  // 8
   { id: 'reviews'                                             },  // 9
-  { id: 'finish'                                              },  // 10
 ];
 
 const FIRST_SECTION = 3;
-const LAST_SECTION  = 8;   // contact — next button shows "Wyślij →"
+const LAST_SECTION  = 8;
 const REVIEWS_STEP  = 9;
-const FINISH_STEP   = 10;
 
 // Helper function to get the effective steps array (filtered if cookies decided)
 function getSteps() {
@@ -227,9 +227,7 @@ function applyLanguage(lang) {
   if (dom.tutNext) {
     const steps = getSteps();
     const isLastSec = tutStep === (steps.length - 2); // Last section before finish
-    dom.tutNext.textContent = isLastSec
-      ? (lang === 'en' ? 'Send →' : 'Wyślij →')
-      : (lang === 'en' ? 'Next →' : 'Dalej →');
+    dom.tutNext.textContent = lang === 'en' ? 'Next →' : 'Dalej →';
   }
 
   if (dom.tutBack) dom.tutBack.textContent = '←';
@@ -322,13 +320,14 @@ function initGlobalClick() {
       );
       return;
     }
-    // Contact step: validate + submit the form first; form submit handler advances the step
-    if (step.id === 'contact') {
-      $('contactForm')?.requestSubmit();
-      return;
-    }
     // Name step: save before advancing
     if (step.id === 'name') captureName();
+
+    // Last step (reviews): finish tutorial
+    if (tutStep === steps.length - 1) {
+      finishTutorial();
+      return;
+    }
 
     if (tutStep < steps.length - 1) goStep(tutStep + 1);
   });
@@ -350,7 +349,10 @@ function startTutorial() {
   buildDots();
   dom.tutProgress.hidden = false;
   dom.tutNav.hidden      = false;
-  if (dom.brandName) dom.brandName.hidden = true;
+  const brandName = document.querySelector('.brand-name');
+  if (brandName) {
+    brandName.style.display = 'none';
+  }
   goStep(0);
 }
 
@@ -363,7 +365,7 @@ function buildDots() {
     d.type = 'button';
     d.setAttribute('aria-label', `Krok ${i + 1}`);
     const maxVisited = Math.max(...visitedSteps, 0);
-    const canClick = i <= maxVisited;
+    const canClick = i <= maxVisited + 1;
     d.disabled = !canClick;
     d.addEventListener('click', () => {
       if (canClick) goStep(i);
@@ -377,7 +379,7 @@ function refreshDots() {
   dom.tutDots.querySelectorAll('.tut-dot').forEach((d, i) => {
     d.classList.toggle('is-done',    i < tutStep);
     d.classList.toggle('is-current', i === tutStep);
-    const canClick = i <= maxVisited;
+    const canClick = i <= maxVisited + 1;
     d.disabled = !canClick;
   });
 }
@@ -386,14 +388,14 @@ function refreshNavButtons() {
   const steps = getSteps();
   const step         = steps[tutStep];
   const isFirst      = tutStep === 0;
-  const isLastSec    = tutStep === (steps.length - 2); // Last section before finish
+  const isLast       = tutStep === steps.length - 1;
   const cookieNeeded = step.id === 'cookies' && !localStorage.getItem(LS.COOKIE_DECISION);
 
   dom.tutBack.hidden              = isFirst;
   dom.tutBack.disabled            = isFirst;
   dom.tutNext.disabled            = cookieNeeded;
-  dom.tutNext.textContent         = isLastSec ? 'Wyślij →' : 'Dalej →';
-  dom.tutNext.classList.toggle('is-send', isLastSec);
+  dom.tutNext.textContent         = isLast ? 'Zakończ' : 'Dalej →';
+  dom.tutNext.classList.toggle('is-send', isLast);
 
   // Skip button disabled — can't skip to unvisited steps
   dom.tutSkip.disabled            = true;
@@ -406,18 +408,21 @@ function goStep(idx) {
   const steps = getSteps();
   const prevStep = tutStep;
 
-  // Allow going back or staying at current step
-  // Only allow going forward if already visited the target step
-  const maxAllowed = Math.max(...visitedSteps, 0);
+  // Allow going back or to next unvisited step, but not skipping ahead
+  const maxVisited = Math.max(...visitedSteps, 0);
   const targetIdx = Math.max(0, Math.min(idx, steps.length - 1));
 
-  // If trying to skip ahead to unvisited step, don't allow it
-  if (targetIdx > maxAllowed && !visitedSteps.has(targetIdx)) {
+  // Prevent skipping ahead more than one step forward
+  if (targetIdx > maxVisited + 1) {
     return;
   }
 
   tutStep = targetIdx;
   const step = steps[tutStep];
+
+  const stage = document.getElementById('stage');
+  if (stage) stage.scrollTop = 0;
+  window.scrollTo({ top: 0 });
 
   // Mark current step as visited
   visitedSteps.add(tutStep);
@@ -433,7 +438,6 @@ function goStep(idx) {
     case 'name':     renderNameInput();       break;
     case 'cookies':  renderCookieStep();      break;
     case 'reviews':  renderReviewStep();      break;
-    case 'finish':   renderFinish();          break;
     default:         renderSectionStep(step); break;
   }
 }
@@ -569,6 +573,7 @@ function renderReviewStep() {
 
   $('panel')?.classList.add('has-section');
   setupReviewForm();
+  prefillReviewName();
 
   requestAnimationFrame(() => {
     const el = $('modalReviewsCarousel');
@@ -579,16 +584,21 @@ function renderReviewStep() {
 function renderFinish() {
   dom.bot.classList.remove('is-pointing');
   dom.tutProgress.hidden = true;
-  dom.tutNav.hidden      = true;
+  dom.tutNav.hidden      = false;
   closeModal();
   $('panel')?.classList.remove('has-section');
 
-  const nameHtml = userName ? `<strong>${escHtml(userName)}</strong>` : '';
-  const comma    = nameHtml ? `, ${nameHtml}` : '';
-  setPanel('i-JANEK', `
+  // Show full brand name after tutorial
+  const brandName = document.querySelector('.brand-name');
+  if (brandName) {
+    brandName.textContent = 'i-JANICKI';
+  }
+
+  const n = userName ? escHtml(userName) : 'Przyjacielu';
+  setPanel('Witaj ponownie!', `
     <div class="tut-message">
-      <p>To koniec naszej podróży${comma}. Mam nadzieję, że oferta Cię zainteresowała! 🎉</p>
-      <p>Możesz teraz swobodnie przeglądać sekcje:</p>
+      <p><strong>To już jest koniec!</strong></p>
+      <p>${n}, prowadziłem Cię po wszystkich zakładkach jakie możesz znaleźć na tej stronie. Jeżeli chciałbyś do czegoś wrócić - wybierz temat poniżej, a jeżeli chcesz abym oprowadził Cię po stronie ponownie - kliknij Prezentacja!</p>
     </div>
     <div class="tut-options">
       <button class="snav-item" data-topic="about">👤 O mnie</button>
@@ -597,11 +607,10 @@ function renderFinish() {
       <button class="snav-item" data-topic="process">🤝 Współpraca</button>
       <button class="snav-item" data-topic="pricing">💰 Cennik</button>
       <button class="snav-item" data-topic="contact">✉ Kontakt</button>
+      <button class="snav-item" data-topic="tutorial"><span>⟳</span> Prezentacja</button>
     </div>
-    <button class="tut-restart-btn" id="tutRestartBtn">⟳ Wstęp od nowa</button>
-  `);
+  `, true);
 
-  $('tutRestartBtn')?.addEventListener('click', restartTutorial);
   markTutorialDone();
 }
 
@@ -619,6 +628,11 @@ function captureName() {
 
 function prefillContact() {
   const fn = $('f-name');
+  if (fn && userName) fn.value = userName;
+}
+
+function prefillReviewName() {
+  const fn = $('modalReviewName');
   if (fn && userName) fn.value = userName;
 }
 
@@ -668,7 +682,10 @@ function hideStageContent() {
 function showReturning() {
   dom.tutProgress.hidden = true;
   dom.tutNav.hidden      = true;
-  if (dom.brandName) dom.brandName.hidden = false;
+  const brandName = document.querySelector('.brand-name');
+  if (brandName) {
+    brandName.textContent = 'i-JANICKI';
+  }
 
   const n = userName ? escHtml(userName) : 'ponownie';
   setPanel('Witaj ponownie!', `
@@ -684,9 +701,9 @@ function showReturning() {
       <button class="opt" data-topic="pricing">💰 Cennik</button>
       <button class="opt" data-topic="contact"><span class="opt-icon">✉</span> Kontakt</button>
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
-      <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon">⟳</span> Samouczek</button>
+      <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
     </div>
-  `);
+  `, true);
 
   // Reviews now accessible via modal only
 }
@@ -745,6 +762,7 @@ function openModal(topic) {
 
   if (topic === 'reviews') {
     setupReviewForm();
+    prefillReviewName();
     requestAnimationFrame(() => {
       const el = $('modalReviewsCarousel');
       if (el) loadReviews(el);
@@ -1198,36 +1216,37 @@ async function submitReview(e) {
     const fsData = await fsRes.json();
     const docId  = fsData.name?.split('/').pop() || '';
 
-    // 3 — Wyślij e-mail do AUTORA opinii z prośbą o potwierdzenie
+    // 3 — Wyślij e-mail do AUTORA opinii z prośbą o potwierdzenie (EmailJS)
     const verifyUrl = `https://i-janicki.pl?verify_review=${docId}&email=${encodeURIComponent(email)}`;
-    fetch('https://api.web3forms.com/submit', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_KEY,
-        to_email:   email,
-        subject:    'Potwierdź twoją opinię na stronie i-janicki.pl',
-        from_name:  'i-JANICKI',
-        message: [
-          `Cześć ${name}!`,
-          '',
-          'Dziękujemy za wystawienie opinii. Aby ją opublikować, potwierdź ją jednym kliknięciem poniżej:',
-          '',
-          verifyUrl,
-          '',
-          'Jeśli to nie Ty, możesz zignorować tę wiadomość.',
-          '',
-          '—',
-          'i-JANICKI',
-        ].join('\n'),
-        replyto: email,
-      }),
-    }).catch(() => {});
+    try {
+      const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id:  EMAILJS_SERVICE,
+          template_id: EMAILJS_TEMPLATE,
+          user_id:     EMAILJS_KEY,
+          template_params: {
+            to_email:   email,
+            name:       name,
+            verify_url: verifyUrl,
+          },
+        }),
+      });
+      if (!emailRes.ok) {
+        console.warn('EmailJS błąd:', emailRes.status, await emailRes.text());
+      }
+    } catch (emailErr) {
+      console.warn('EmailJS fetch nieudany:', emailErr);
+    }
 
-    setReviewStatus('ok', '✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.');
-    dom.reviewForm.reset();
+    const formContainer = dom.reviewForm.closest('.modal-review-form-container');
+    formContainer.innerHTML = `
+      <div class="review-success">
+        <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
+      </div>`;
     reviewRating = 0;
-    renderStars(0);
+    setTimeout(() => { closeModal(); goStep(getStepIndex('finish')); }, 3000);
 
   } catch (err) {
     console.warn(err);
@@ -1249,9 +1268,11 @@ function setReviewStatus(type, msg) {
 // ─────────────────────────────────────────────────────────────────
 // PANEL HELPER
 // ─────────────────────────────────────────────────────────────────
-function setPanel(title, html) {
+function setPanel(title, html, showLogo = false) {
   dom.panelTitle.textContent = title;
   dom.panelContent.innerHTML = html;
+  const logo = document.getElementById('panelLogo');
+  if (logo) logo.hidden = !showLogo;
   // [data-doc] and [data-topic] are handled by global delegation in initGlobalClick()
 }
 
@@ -1386,13 +1407,28 @@ function initCursor() {
   });
 
   // Efekt kliknięcia
+  const MOUTH_NORMAL = 'M92 124 Q110 137 128 124';
+  const MOUTH_CLICK  = 'M93 127 Q110 122 127 127';
+
   document.addEventListener('mousedown', () => {
     dot.classList.add('is-click');
     ring.classList.add('is-click');
+    const m = document.getElementById('botMouth');
+    const elL = document.getElementById('eyelidL');
+    const elR = document.getElementById('eyelidR');
+    if (m) m.setAttribute('d', MOUTH_CLICK);
+    if (elL) { elL.style.animation = 'none'; elL.style.transform = 'scaleY(0.55)'; }
+    if (elR) { elR.style.animation = 'none'; elR.style.transform = 'scaleY(0.55)'; }
   });
   document.addEventListener('mouseup', () => {
     dot.classList.remove('is-click');
     ring.classList.remove('is-click');
+    const m = document.getElementById('botMouth');
+    const elL = document.getElementById('eyelidL');
+    const elR = document.getElementById('eyelidR');
+    if (m) m.setAttribute('d', MOUTH_NORMAL);
+    if (elL) { elL.style.transform = ''; elL.style.animation = ''; }
+    if (elR) { elR.style.transform = ''; elR.style.animation = ''; }
   });
 
   // Ukryj gdy kursor opuszcza okno
@@ -1411,6 +1447,8 @@ function initCursor() {
 // ─────────────────────────────────────────────────────────────────
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
   }
 }
