@@ -1021,7 +1021,7 @@ function closeDoc() {
 //     allow create: if request.resource.data.approved == false;
 //     allow update: if resource.data.approved == false
 //                   && request.resource.data.approved == true;
-//     allow list:   if request.query.filter == 'approved == true';
+//     allow list:   if true;  // needed by runQuery
 //   }
 //
 // For ordered queries, create a composite index in Firebase Console:
@@ -1029,37 +1029,47 @@ function closeDoc() {
 // ─────────────────────────────────────────────────────────────────
 
 /**
- * Pobiera wszystkie opinie z Firestore i filtruje zatwierdzone po stronie klienta.
- * Używa listDocuments zamiast runQuery, aby uniknąć błędu 403 (runQuery wymaga
- * uprawnienia 'list', które może być zablokowane przez security rules).
+ * Pobiera zatwierdzone opinie z Firestore używając runQuery z filtrem.
+ * Filtrowanie po approved == true odbywa się po stronie serwera,
+ * więc niezatwierdzone opinie nigdy nie opuszczają bazy danych.
+ * Wymaga reguły 'allow list' w security rules Firestore.
  */
 async function loadReviews(container) {
   if (!container) return;
   container.innerHTML = '<div class="reviews-loading"><span>Ładowanie opinii…</span></div>';
 
   try {
-    // Użyj listDocuments zamiast runQuery — wymaga tylko uprawnienia 'read'
-    const res = await fetch(`${FIRESTORE_BASE}/reviews`, {
-      method:  'GET',
+    const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from:  [{ collectionId: 'reviews' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'approved' },
+              op:    'EQUAL',
+              value: { booleanValue: true },
+            },
+          },
+          orderBy: [
+            { field: { fieldPath: 'rating' }, direction: 'DESCENDING' },
+            { field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' },
+          ],
+        },
+      }),
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
 
-    // listDocuments zwraca { documents: [...] }
-    let docs = data.documents || [];
+    // runQuery zwraca tablicę { document: {...}, readTime: "..." }
+    const docs = Array.isArray(data)
+      ? data.filter(r => r.document).map(r => r.document)
+      : [];
 
-    let reviews = docs.map(d => parseDoc(d))
-      .filter(r => r.approved === true);
-
-    // Sort: rating desc, then newest first
-    reviews.sort((a, b) =>
-      b.rating !== a.rating
-        ? b.rating - a.rating
-        : new Date(b.timestamp) - new Date(a.timestamp)
-    );
+    const reviews = docs.map(d => parseDoc(d));
 
     if (!reviews.length) {
       container.innerHTML = '<p class="reviews-empty">Brak opinii — bądź pierwszy! ⬆</p>';
