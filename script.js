@@ -1019,39 +1019,40 @@ function closeDoc() {
 //   match /reviews/{id} {
 //     allow read:   if resource.data.approved == true;
 //     allow create: if request.resource.data.approved == false;
+//     allow update: if resource.data.approved == false
+//                   && request.resource.data.approved == true;
+//     allow list:   if request.query.filter == 'approved == true';
 //   }
 //
 // For ordered queries, create a composite index in Firebase Console:
 //   Collection: reviews | Fields: rating DESC, timestamp DESC
 // ─────────────────────────────────────────────────────────────────
+
+/**
+ * Pobiera wszystkie opinie z Firestore i filtruje zatwierdzone po stronie klienta.
+ * Używa listDocuments zamiast runQuery, aby uniknąć błędu 403 (runQuery wymaga
+ * uprawnienia 'list', które może być zablokowane przez security rules).
+ */
 async function loadReviews(container) {
   if (!container) return;
   container.innerHTML = '<div class="reviews-loading"><span>Ładowanie opinii…</span></div>';
 
   try {
-    const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
-      method:  'POST',
+    // Użyj listDocuments zamiast runQuery — wymaga tylko uprawnienia 'read'
+    const res = await fetch(`${FIRESTORE_BASE}/reviews`, {
+      method:  'GET',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        structuredQuery: {
-          from:  [{ collectionId: 'reviews' }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'approved' },
-              op:    'EQUAL',
-              value: { booleanValue: true },
-            },
-          },
-          limit: 50,
-        },
-      }),
     });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
 
-    let reviews = Array.isArray(data)
-      ? data.filter(r => r.document).map(r => parseDoc(r.document))
-      : [];
+    // listDocuments zwraca { documents: [...] }
+    let docs = data.documents || [];
+
+    let reviews = docs.map(d => parseDoc(d))
+      .filter(r => r.approved === true);
 
     // Sort: rating desc, then newest first
     reviews.sort((a, b) =>
@@ -1073,6 +1074,7 @@ async function loadReviews(container) {
     container.innerHTML = '<p class="reviews-empty" style="opacity:.4">Nie udało się załadować opinii.</p>';
   }
 }
+
 
 function parseDoc(doc) {
   const f = doc.fields || {};
@@ -1109,28 +1111,20 @@ function buildCard(r) {
 
 async function checkReviewLimits(email) {
   try {
-    const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
-      method:  'POST',
+    // Użyj listDocuments zamiast runQuery — unikamy błędu 403 (brak uprawnienia 'list')
+    const res = await fetch(`${FIRESTORE_BASE}/reviews`, {
+      method:  'GET',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        structuredQuery: {
-          from:  [{ collectionId: 'reviews' }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'email' },
-              op:    'EQUAL',
-              value: { stringValue: email },
-            },
-          },
-          limit: 10,
-        },
-      }),
     });
 
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
     const data = await res.json();
-    const reviews = Array.isArray(data)
-      ? data.filter(r => r.document).map(r => parseDoc(r.document))
-      : [];
+    const docs = data.documents || [];
+
+    // Filtruj po emailu po stronie klienta
+    const reviews = docs.map(d => parseDoc(d))
+      .filter(r => r.email === email);
 
     if (!reviews.length) {
       return { blocked: false };
@@ -1303,19 +1297,37 @@ async function submitReview(e) {
       console.warn('EmailJS fetch nieudany:', emailErr);
     }
 
-    const formContainer = dom.reviewForm.closest('.modal-review-form-container');
-    formContainer.innerHTML = `
-      <div class="review-success">
-        <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
-      </div>`;
-    reviewRating = 0;
-    setTimeout(() => { closeModal(); finishTutorial(); }, 3000);
+    // Jeśli formularz jest w modalu — zamknij modal; jeśli w tutorialu — nie zamykaj
+    const isInModal = dom.reviewForm.closest('.modal-root') !== null;
+    if (isInModal) {
+      const formContainer = dom.reviewForm.closest('.modal-review-form-container');
+      formContainer.innerHTML = `
+        <div class="review-success">
+          <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
+        </div>`;
+      reviewRating = 0;
+      setTimeout(() => { closeModal(); finishTutorial(); }, 3000);
+    } else {
+      // Jesteśmy w tutorialu — formularz jest w panelu, podmieniamy zawartość
+      const formContainer = dom.reviewForm.closest('.modal-review-form-container');
+      if (formContainer) {
+        formContainer.innerHTML = `
+          <div class="review-success">
+            <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
+          </div>`;
+      }
+      reviewRating = 0;
+      // Od razu zakończ tutorial (bez closeModal, bo modal nie jest otwarty)
+      setTimeout(() => finishTutorial(), 1500);
+    }
 
   } catch (err) {
     console.warn(err);
     setReviewStatus('err', '✗ Coś poszło nie tak. Spróbuj ponownie.');
   } finally {
-    submitBtn.disabled = false;
+    if (submitBtn && submitBtn.parentNode) {
+      submitBtn.disabled = false;
+    }
   }
 }
 
