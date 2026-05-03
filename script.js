@@ -164,8 +164,21 @@ const TRANSLATIONS = {
     'name-placeholder': 'Wpisz swoje imię…',
     'next-btn': 'Dalej →',
     'send-btn': 'Wyślij →',
+    'cookie-title': 'Pliki cookie 🍪',
+    'cookie-decided': 'Twoje preferencje cookie zostały zapisane.',
+    'cookie-ga-on': '✓ włączony',
+    'cookie-ga-off': '✗ wyłączony',
+    'cookie-change': 'Możesz je zmienić w każdej chwili — kliknij 🍪 w stopce.',
+    'cookie-msg': 'Ta strona korzysta z plików cookie. <strong>Niezbędne</strong> (sesja, imię, preferencje) zawsze aktywne.',
+    'cookie-ask': 'Czy wyrażasz zgodę na <strong>Google Analytics</strong>?',
+    'cookie-essential': 'Tylko niezbędne',
+    'cookie-all': 'Akceptuję wszystkie',
+    'cookie-doc-privacy': 'Polityka prywatności i cookies →',
+    'cookie-doc-rodo': 'Polityka RODO →',
+    'cookie-doc-coop': 'Polityka współpracy →',
   },
   en: {
+
     'btn-about': 'About',
     'btn-services': 'Services',
     'btn-projects': 'Projects',
@@ -186,7 +199,20 @@ const TRANSLATIONS = {
     'name-placeholder': 'Type your name…',
     'next-btn': 'Next →',
     'send-btn': 'Send →',
+    'cookie-title': 'Cookies 🍪',
+    'cookie-decided': 'Your cookie preferences have been saved.',
+    'cookie-ga-on': '✓ enabled',
+    'cookie-ga-off': '✗ disabled',
+    'cookie-change': 'You can change them anytime — click 🍪 in the footer.',
+    'cookie-msg': 'This site uses cookies. <strong>Essential</strong> (session, name, preferences) are always active.',
+    'cookie-ask': 'Do you agree to <strong>Google Analytics</strong>?',
+    'cookie-essential': 'Essential only',
+    'cookie-all': 'Accept all',
+    'cookie-doc-privacy': 'Privacy & cookies policy →',
+    'cookie-doc-rodo': 'GDPR policy →',
+    'cookie-doc-coop': 'Collaboration policy →',
   },
+
 };
 
 let currentLang = 'pl';
@@ -391,8 +417,10 @@ function refreshNavButtons() {
   const isLast       = tutStep === steps.length - 1;
   const cookieNeeded = step.id === 'cookies' && !localStorage.getItem(LS.COOKIE_DECISION);
 
-  dom.tutBack.hidden              = isFirst;
-  dom.tutBack.disabled            = isFirst;
+  // W kroku cookies ukrywamy przyciski nawigacji do czasu podjęcia decyzji
+  dom.tutBack.hidden              = isFirst || cookieNeeded;
+  dom.tutBack.disabled            = isFirst || cookieNeeded;
+  dom.tutNext.hidden              = cookieNeeded;
   dom.tutNext.disabled            = cookieNeeded;
   dom.tutNext.textContent         = isLast ? 'Zakończ' : 'Dalej →';
   dom.tutNext.classList.toggle('is-send', isLast);
@@ -401,7 +429,7 @@ function refreshNavButtons() {
   dom.tutSkip.disabled            = true;
   dom.tutSkip.style.display       = 'none';
 
-  dom.tutNav.classList.toggle('has-back', !isFirst);
+  dom.tutNav.classList.toggle('has-back', !isFirst && !cookieNeeded);
 }
 
 function goStep(idx) {
@@ -506,21 +534,26 @@ function renderCookieStep() {
 
   const html = decided
     ? `<div class="tut-message">
-         <p>Twoje preferencje cookie zostały zapisane.</p>
-         <p>Google Analytics: <strong>${analyticsOn ? '✓ włączony' : '✗ wyłączony'}</strong>.</p>
-         <p>Możesz je zmienić w każdej chwili — kliknij 🍪 w stopce.</p>
+         <p>${t('cookie-decided')}</p>
+         <p>Google Analytics: <strong>${analyticsOn ? t('cookie-ga-on') : t('cookie-ga-off')}</strong>.</p>
+         <p>${t('cookie-change')}</p>
        </div>`
     : `<div class="tut-message">
-         <p>Ta strona korzysta z plików cookie. <strong>Niezbędne</strong> (sesja, imię, preferencje) zawsze aktywne.</p>
-         <p>Czy wyrażasz zgodę na <strong>Google Analytics</strong>?</p>
+         <p>${t('cookie-msg')}</p>
+         <p>${t('cookie-ask')}</p>
          <div class="cookie-inline-btns">
-           <button class="cookie-btn cookie-btn-essential" id="tutCookieNo">Tylko niezbędne</button>
-           <button class="cookie-btn cookie-btn-all"       id="tutCookieYes">Akceptuję wszystkie</button>
+           <button class="cookie-btn cookie-btn-essential" id="tutCookieNo">${t('cookie-essential')}</button>
+           <button class="cookie-btn cookie-btn-all"       id="tutCookieYes">${t('cookie-all')}</button>
          </div>
-         <button class="cookie-doc-link" data-doc="polityka-rodo" style="margin-top:.75rem">Polityka RODO →</button>
+         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.75rem">
+           <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
+           <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
+           <button class="cookie-doc-link" data-doc="polityka-wspolpracy">${t('cookie-doc-coop')}</button>
+         </div>
        </div>`;
 
-  setPanel('Pliki cookie 🍪', html);
+  setPanel(t('cookie-title'), html);
+
 
   $('tutCookieNo')?.addEventListener('click',  () => { cookieDecide(false); goStep(tutStep + 1); });
   $('tutCookieYes')?.addEventListener('click', () => { cookieDecide(true);  goStep(tutStep + 1); });
@@ -636,6 +669,34 @@ function prefillReviewName() {
   if (fn && userName) fn.value = userName;
 }
 
+function finishTutorial() {
+  markTutorialDone();
+  dom.tutProgress.hidden = true;
+  dom.tutNav.hidden      = true;
+  const brandName = document.querySelector('.brand-name');
+  if (brandName) {
+    brandName.textContent = 'i-JANICKI';
+    brandName.style.display = '';
+  }
+  const n = userName ? escHtml(userName) : '';
+  setPanel('To już jest koniec!', `
+    <div class="tut-message">
+      <p>Świetnie! ${n ? 'Masz już ogólny pogląd na to, czym się zajmuję, <strong>' + escHtml(n) + '</strong>.' : 'Masz już ogólny pogląd na to, czym się zajmuję.'}
+        Klikając w sekcje poniżej, możesz wrócić do interesujących Cię informacji, albo jeszcze raz przejść samouczek.</p>
+    </div>
+    <div class="options">
+      <button class="opt" data-topic="about">👤 O mnie</button>
+      <button class="opt" data-topic="services"><span class="opt-icon">⚙</span> Usługi</button>
+      <button class="opt" data-topic="projects">🗂 Projekty</button>
+      <button class="opt" data-topic="process">🤝 Współpraca</button>
+      <button class="opt" data-topic="pricing">💰 Cennik</button>
+      <button class="opt" data-topic="contact"><span class="opt-icon">✉</span> Kontakt</button>
+      <button class="opt" data-topic="reviews">⭐ Opinie</button>
+      <button class="opt" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
+    </div>
+  `, false);
+}
+
 function markTutorialDone() {
   localStorage.setItem(LS.TUTORIAL_DONE, 'true');
   tutDone = true;
@@ -685,6 +746,7 @@ function showReturning() {
   const brandName = document.querySelector('.brand-name');
   if (brandName) {
     brandName.textContent = 'i-JANICKI';
+    brandName.style.display = '';
   }
 
   const n = userName ? escHtml(userName) : 'ponownie';
@@ -703,7 +765,7 @@ function showReturning() {
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
       <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
     </div>
-  `, true);
+  `, false);
 
   // Reviews now accessible via modal only
 }
