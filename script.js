@@ -824,6 +824,7 @@ function openModal(topic) {
   }
 
   if (topic === 'reviews') {
+    dom.modalRoot.querySelector('.modal').classList.add('modal--wide');
     setupReviewForm();
     prefillReviewName();
     requestAnimationFrame(() => {
@@ -844,6 +845,7 @@ function openModal(topic) {
 function closeModal() {
   dom.modalRoot.hidden = true;
   dom.modalRoot.setAttribute('aria-hidden', 'true');
+  dom.modalRoot.querySelector('.modal')?.classList.remove('modal--wide');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1108,7 +1110,44 @@ function buildCard(r) {
     <p class="review-card-comment">${escHtml(r.comment)}</p>
     <div class="review-card-name">${escHtml(r.name)}</div>
     <div class="review-card-date">${date}</div>`;
+
+  // Kliknięcie karty otwiera modal podglądu z pełnym tekstem
+  div.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openReviewPreview(r, filled, empty, date);
+  });
+
   return div;
+}
+
+function openReviewPreview(r, filled, empty, date) {
+  // Usuń istniejący overlay jeśli jest
+  const existing = document.querySelector('.review-preview-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'review-preview-overlay';
+  overlay.innerHTML = `
+    <div class="review-preview-card">
+      <button class="review-preview-close" aria-label="Zamknij">✕</button>
+      <div class="review-preview-stars">${filled}${empty}</div>
+      <p class="review-preview-comment">${escHtml(r.comment)}</p>
+      <div class="review-preview-name">${escHtml(r.name)}</div>
+      <div class="review-preview-date">${date}</div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Zamknięcie po kliknięciu w overlay (tło) lub przycisk X
+  const close = () => overlay.remove();
+  overlay.querySelector('.review-preview-close').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  // Zamknięcie po Escape
+  const onKey = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1476,7 +1515,7 @@ function initCursor() {
   })();
 
   // Efekt hover nad interaktywnymi elementami
-  const INTERACTIVE = 'a, button, input, textarea, select, label, [role="button"], .card, .opt, .snav-item, .star, .tut-btn';
+  const INTERACTIVE = 'a, button, input, textarea, select, label, [role="button"], .card, .opt, .snav-item, .star, .tut-btn, .review-card';
   document.addEventListener('mouseover', e => {
     if (e.target.closest(INTERACTIVE)) {
       dot.classList.add('is-hover');
