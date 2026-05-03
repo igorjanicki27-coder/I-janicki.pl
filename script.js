@@ -1052,10 +1052,6 @@ async function loadReviews(container) {
               value: { booleanValue: true },
             },
           },
-          orderBy: [
-            { field: { fieldPath: 'rating' }, direction: 'DESCENDING' },
-            { field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' },
-          ],
         },
       }),
     });
