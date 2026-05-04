@@ -8,25 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="documents-content.js"></script>
 
-  <!-- Google Analytics — ładuje się TYLKO po zgodzie użytkownika -->
-  <script>
-    window._gaLoaded = false;
-    window.loadGA = function () {
-      if (window._gaLoaded) return;
-      window._gaLoaded = true;
-      var s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-XQDCV6ZK3S';
-      document.head.appendChild(s);
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      window.gtag = gtag;
-      gtag('js', new Date());
-      gtag('config', 'G-XQDCV6ZK3S');
-    };
-    if (localStorage.getItem('ijanek_cookie_analytics') === 'true') window.loadGA();
-  </script>
+  <script src="../analytics.js"></script>
 
   <style>
     :root {
@@ -175,16 +159,25 @@
       </div>
     </div>
 
+    <div class="doc-item" data-src="regulamin-wspolpracy.html">
+      <div class="doc-header">
+        <span class="doc-header-title">📄 Regulamin współpracy B2B</span>
+        <div class="doc-toggle">+</div>
+      </div>
+      <div class="doc-body" id="body-regulamin-wspolpracy">
+        <div class="doc-loading">Ładowanie…</div>
+      </div>
+    </div>
+
     <div class="doc-item" data-src="polityka-wspolpracy.html">
       <div class="doc-header">
-        <span class="doc-header-title">🤝 Polityka współpracy</span>
+        <span class="doc-header-title">🤝 Polityka współpracy i przetwarzania danych</span>
         <div class="doc-toggle">+</div>
       </div>
       <div class="doc-body" id="body-polityka-wspolpracy">
         <div class="doc-loading">Ładowanie…</div>
       </div>
     </div>
-
   </div>
 </main>
 
@@ -199,19 +192,14 @@
     const src     = item.dataset.src;
     let   loaded  = false;
 
-    header.addEventListener('click', async () => {
+    header.addEventListener('click', () => {
       const willOpen = !item.classList.contains('is-open');
       item.classList.toggle('is-open');
 
       if (willOpen && !loaded) {
         loaded = true;
-        try {
-          const res  = await fetch(src);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          body.innerHTML = await res.text();
-        } catch {
-          body.innerHTML = '<p style="color:#ff6b6b">Nie udało się załadować dokumentu.</p>';
-        }
+        const key = src.replace('.html', '');
+        body.innerHTML = DOCUMENTS_CONTENT[key] || '<p style="color:#ff6b6b">Nie udało się załadować dokumentu.</p>';
       }
     });
   });

@@ -4,39 +4,213 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0b0e13" />
-  <meta name="description" content="i-JANICKI — strony i aplikacje na zamówienie, konfiguracja sieciowa, opieka IT." />
-  <meta name="robots" content="index,follow" />
-  <meta property="og:title" content="i-JANICKI — strony, aplikacje, sieci, opieka IT" />
-  <meta property="og:description" content="Tworzenie stron i aplikacji na zamówienie, konfiguracja sieciowa, opieka IT." />
+  <meta name="description" content="i-JANICKI — strony internetowe i aplikacje webowe na zamówienie, Wrocław. Zoptymalizowane pod SEO, responsywne, szybkie. Konfiguracja sieci LAN/WLAN i opieka IT. Igor Janicki." />
+  <meta name="keywords" content="strony internetowe Wrocław, tworzenie stron www, aplikacje webowe na zamówienie, SEO pozycjonowanie, web developer Wrocław, konfiguracja sieci, opieka IT, programista Wrocław, i-JANICKI" />
+  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+  <meta name="author" content="Igor Janicki" />
+  <meta name="geo.region" content="PL-DS" />
+  <meta name="geo.placename" content="Wrocław" />
+  <meta name="geo.position" content="51.1079;17.0385" />
+  <meta name="ICBM" content="51.1079, 17.0385" />
+  <link rel="canonical" href="https://i-janicki.pl/" />
+  <link rel="alternate" hreflang="pl" href="https://i-janicki.pl/" />
+  <link rel="alternate" hreflang="en" href="https://i-janicki.pl/" />
+  <link rel="alternate" hreflang="x-default" href="https://i-janicki.pl/" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="i-JANICKI — Strony internetowe, aplikacje webowe, sieci IT | Wrocław" />
+  <meta property="og:description" content="Tworzę strony internetowe i aplikacje webowe zoptymalizowane pod SEO. Konfiguracja sieci LAN/WLAN, opieka IT. Igor Janicki — Wrocław i cała Polska." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://i-janicki.pl" />
-  <title>i-JANICKI — strony · aplikacje · sieci · IT</title>
+  <meta property="og:url" content="https://i-janicki.pl/" />
+  <meta property="og:site_name" content="i-JANICKI" />
+  <meta property="og:locale" content="pl_PL" />
+  <meta property="og:locale:alternate" content="en_GB" />
+  <meta property="og:image" content="https://i-janicki.pl/icons/icon.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:image:alt" content="i-JANICKI logo — web developer Wrocław" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="i-JANICKI — Strony internetowe i aplikacje webowe | Wrocław" />
+  <meta name="twitter:description" content="Tworzę strony www i aplikacje webowe zoptymalizowane pod SEO. Konfiguracja sieci, opieka IT — Wrocław i cała Polska." />
+  <meta name="twitter:image" content="https://i-janicki.pl/icons/icon.png" />
+
+  <title>i-JANICKI — Strony internetowe · Aplikacje webowe · Sieci · IT | Wrocław</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Google Analytics — ładuje się TYLKO po zgodzie użytkownika -->
-  <script>
-    window._gaLoaded = false;
-    window.loadGA = function () {
-      if (window._gaLoaded) return;
-      window._gaLoaded = true;
-      var s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-XQDCV6ZK3S';
-      document.head.appendChild(s);
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      window.gtag = gtag;
-      gtag('js', new Date());
-      gtag('config', 'G-XQDCV6ZK3S');
-    };
-    if (localStorage.getItem('ijanek_cookie_analytics') === 'true') window.loadGA();
+  <script src="analytics.js"></script>
+
+  <link rel="stylesheet" href="styles.css?v=4" />
+
+  <!-- Structured Data — WebSite -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://i-janicki.pl/#website",
+    "name": "i-JANICKI",
+    "url": "https://i-janicki.pl/",
+    "inLanguage": ["pl", "en"],
+    "description": "Tworzenie stron internetowych i aplikacji webowych na zamówienie, konfiguracja sieci LAN/WLAN, opieka IT — Igor Janicki, Wrocław.",
+    "publisher": { "@id": "https://i-janicki.pl/#business" }
+  }
   </script>
 
-  <link rel="stylesheet" href="styles.css" />
+  <!-- Structured Data — LocalBusiness + Person -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": ["LocalBusiness", "ProfessionalService"],
+    "@id": "https://i-janicki.pl/#business",
+    "name": "i-JANICKI",
+    "alternateName": "Igor Janicki",
+    "description": "Profesjonalne tworzenie stron internetowych i aplikacji webowych zoptymalizowanych pod SEO, konfiguracja sieci LAN/WLAN, opieka IT. Obsługa klientów lokalnych i zdalnych.",
+    "url": "https://i-janicki.pl/",
+    "email": "igor.janicki27@gmail.com",
+    "founder": {
+      "@type": "Person",
+      "@id": "https://i-janicki.pl/#person",
+      "name": "Igor Janicki",
+      "jobTitle": "Web Developer & IT Specialist",
+      "url": "https://i-janicki.pl/",
+      "knowsAbout": ["Tworzenie stron internetowych", "SEO", "Aplikacje webowe", "Konfiguracja sieci", "Opieka IT"]
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Wrocław",
+      "addressRegion": "dolnośląskie",
+      "addressCountry": "PL"
+    },
+    "areaServed": [
+      { "@type": "City", "name": "Wrocław" },
+      { "@type": "Country", "name": "Polska" }
+    ],
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Usługi i-JANICKI",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Strony internetowe na zamówienie",
+            "description": "Projektuję i wdrażam responsywne strony internetowe zoptymalizowane pod SEO — od wizytówek po rozbudowane portale."
+          },
+          "priceSpecification": { "@type": "PriceSpecification", "price": "1500", "priceCurrency": "PLN", "minPrice": "1500" }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Aplikacje webowe na zamówienie",
+            "description": "Tworzę aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi."
+          },
+          "priceSpecification": { "@type": "PriceSpecification", "price": "5000", "priceCurrency": "PLN", "minPrice": "5000" }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Konfiguracja sieci LAN/WLAN i VPN",
+            "description": "Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego."
+          },
+          "priceSpecification": { "@type": "PriceSpecification", "price": "150", "priceCurrency": "PLN", "unitText": "godzina" }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Opieka IT — abonament",
+            "description": "Bieżące wsparcie techniczne, aktualizacje i monitoring systemów."
+          },
+          "priceSpecification": { "@type": "PriceSpecification", "price": "300", "priceCurrency": "PLN", "unitText": "miesiąc" }
+        }
+      ]
+    },
+    "image": "https://i-janicki.pl/icons/icon.png",
+    "priceRange": "od 1 500 zł",
+    "sameAs": ["https://i-janicki.pl/"]
+  }
+  </script>
+
+  <!-- Structured Data — FAQPage (rich results w Google) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Jakie usługi oferuje i-JANICKI?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję zarówno klientów lokalnych z Wrocławia, jak i zdalnie z całej Polski."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Ile kosztuje wykonanie strony internetowej na zamówienie?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Ceny stron internetowych na zamówienie zaczynają się od 1 500 zł za prostą stronę wizytówkową lub portfolio. Rozbudowane portale i sklepy internetowe wyceniam indywidualnie — po krótkiej rozmowie o zakresie i funkcjonalnościach. Zawsze otrzymujesz szczegółową wycenę przed podpisaniem umowy, bez ukrytych kosztów."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Jak długo trwa stworzenie strony internetowej?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, rozbudowany portal lub aplikacja webowa — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Czy tworzysz strony internetowe dla firm z Wrocławia i okolic?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tak — specjalizuję się w tworzeniu stron internetowych dla firm z Wrocławia i Dolnego Śląska, ale realizuję projekty dla klientów z całej Polski. Pracuję zdalnie lub spotykam się osobiście — jak wolisz. Każda strona jest responsywna, szybka i zoptymalizowana pod wyszukiwarki."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Czy tworzysz aplikacje webowe i mobilne na zamówienie?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tak. Projektuję i wdrażam aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi. Tworzę też aplikacje mobilne i integruję je ze stronami internetowymi lub innymi systemami. Każdy projekt jest dopasowany do indywidualnych potrzeb klienta."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Jak wygląda współpraca przy tworzeniu strony internetowej?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Proces przebiega w 5 krokach: (1) wstępna rozmowa o celach i zakresie, (2) wycena i podpisanie umowy, (3) realizacja etapami z regularnym raportowaniem, (4) testy na różnych urządzeniach i przeglądarkach z poprawkami, (5) wdrożenie i wsparcie po starcie. Zero niespodzianek."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Czy oferujesz opiekę IT i wsparcie po oddaniu strony?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tak — w ramach abonamentu IT oferuję bieżące wsparcie techniczne, aktualizacje, monitoring bezpieczeństwa i drobne modyfikacje strony. To idealne rozwiązanie dla firm, które chcą mieć pewność, że ich strona internetowa zawsze działa sprawnie i bezpiecznie."
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 
@@ -109,7 +283,7 @@
         <rect id="eyelidR" x="119" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)" style="transform-box:fill-box;transform-origin:center top"/>
 
         <!-- Usta — delikatny uśmiech -->
-        <path id="botMouth" d="M94 128 Q110 135 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path id="botMouth" d="M94 128 Q110 136 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
 
         <!-- Uszy boczne -->
         <rect x="36" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
@@ -219,7 +393,7 @@
         <button class="cookie-doc-link" data-doc="regulamin">Regulamin witryny</button>
         <button class="cookie-doc-link" data-doc="polityka-prywatnosci">Polityka prywatności</button>
         <button class="cookie-doc-link" data-doc="polityka-rodo">Polityka RODO</button>
-        <button class="cookie-doc-link" data-doc="polityka-wspolpracy">Polityka współpracy</button>
+        <a class="cookie-doc-link" href="./dokumenty">Wszystkie dokumenty</a>
       </div>
 
       <div class="cookie-actions">
@@ -473,26 +647,19 @@
   <div class="cursor-dot"  id="cursorDot"  aria-hidden="true"></div>
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
-  <script src="script.js" defer></script>
+  <script src="dokumenty/documents-content.js"></script>
+  <script src="script.js?v=5" defer></script>
   <script>
     (function() {
-      var NORMAL = 'M94 128 Q110 135 126 128';
-      var CLICK  = 'M100 120 Q110 130 120 120';
+      var NORMAL = 'M94 128 Q110 136 126 128';
+      var CLICK  = 'M100 126 a10,8 0 0,1 20,0 a10,8 0 0,1 -20,0';
       document.addEventListener('mousedown', function() {
         var m = document.getElementById('botMouth');
-        var elL = document.getElementById('eyelidL');
-        var elR = document.getElementById('eyelidR');
-        if (m) m.setAttribute('d', CLICK);
-        if (elL) { elL.style.animation = 'none'; elL.style.transform = 'scaleY(0.55)'; }
-        if (elR) { elR.style.animation = 'none'; elR.style.transform = 'scaleY(0.55)'; }
+        if (m) { m.setAttribute('d', CLICK); m.setAttribute('fill', '#0f1320'); }
       });
       document.addEventListener('mouseup', function() {
         var m = document.getElementById('botMouth');
-        var elL = document.getElementById('eyelidL');
-        var elR = document.getElementById('eyelidR');
-        if (m) m.setAttribute('d', NORMAL);
-        if (elL) { elL.style.transform = ''; elL.style.animation = ''; }
-        if (elR) { elR.style.transform = ''; elR.style.animation = ''; }
+        if (m) { m.setAttribute('d', NORMAL); m.setAttribute('fill', 'none'); }
       });
     })();
   </script>

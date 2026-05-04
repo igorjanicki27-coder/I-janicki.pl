@@ -120,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursor();
   registerSW();
   handleApproveReview();
+  window.maybeTrackHomeVisit?.();
 
   if (tutDone) {
     showReturning();
@@ -352,6 +353,7 @@ function initGlobalClick() {
 
     // Last step (reviews): finish tutorial
     if (tutStep === steps.length - 1) {
+      window.trackTutorialComplete?.();
       finishTutorial();
       return;
     }
@@ -646,6 +648,7 @@ function renderFinish() {
   `, true);
 
   markTutorialDone();
+  injectFaqBtn();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -687,15 +690,17 @@ function finishTutorial() {
     </div>
     <div class="options">
       <button class="opt" data-topic="about">👤 O mnie</button>
-      <button class="opt" data-topic="services"><span class="opt-icon">⚙</span> Usługi</button>
+      <button class="opt" data-topic="services">⚙️ Usługi</button>
       <button class="opt" data-topic="projects">🗂 Projekty</button>
       <button class="opt" data-topic="process">🤝 Współpraca</button>
       <button class="opt" data-topic="pricing">💰 Cennik</button>
-      <button class="opt" data-topic="contact"><span class="opt-icon">✉</span> Kontakt</button>
+      <button class="opt" data-topic="contact">✉️ Kontakt</button>
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
       <button class="opt" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
     </div>
   `, false);
+
+  injectFaqBtn();
 }
 
 function markTutorialDone() {
@@ -758,17 +763,17 @@ function showReturning() {
     </div>
     <div class="options">
       <button class="opt" data-topic="about">👤 O mnie</button>
-      <button class="opt" data-topic="services"><span class="opt-icon">⚙</span> Usługi</button>
+      <button class="opt" data-topic="services">⚙️ Usługi</button>
       <button class="opt" data-topic="projects">🗂 Projekty</button>
       <button class="opt" data-topic="process">🤝 Współpraca</button>
       <button class="opt" data-topic="pricing">💰 Cennik</button>
-      <button class="opt" data-topic="contact"><span class="opt-icon">✉</span> Kontakt</button>
+      <button class="opt" data-topic="contact">✉️ Kontakt</button>
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
       <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
     </div>
   `, false);
 
-  // Reviews now accessible via modal only
+  injectFaqBtn();
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -960,7 +965,10 @@ function cookieDecide(analytics) {
   localStorage.setItem(LS.COOKIE_DECISION,  analytics ? 'all' : 'essential');
   localStorage.setItem(LS.COOKIE_ANALYTICS, analytics ? 'true' : 'false');
   updateCookieAnalyticsStatus();
-  if (analytics) window.loadGA?.();
+  if (analytics) {
+    window.loadGA?.();
+    window.maybeTrackHomeVisit?.();
+  }
 }
 
 function openCookiePanel() {
@@ -993,20 +1001,12 @@ function initDocViewer() {
   $('docClose').addEventListener('click', closeDoc);
 }
 
-async function openDoc(name) {
+function openDoc(name) {
   dom.docTitle.textContent = DOC_TITLES[name] || name;
-  dom.docContent.innerHTML = '<div class="doc-loading">Ładowanie dokumentu…</div>';
+  dom.docContent.innerHTML = DOCUMENTS_CONTENT[name] ||
+    '<p style="padding:2rem;text-align:center;opacity:.5">Nie można załadować dokumentu.</p>';
   dom.docOverlay.hidden = false;
   dom.docOverlay.setAttribute('aria-hidden', 'false');
-
-  try {
-    const res = await fetch(`./dokumenty/${name}.html`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    dom.docContent.innerHTML = await res.text();
-  } catch {
-    dom.docContent.innerHTML =
-      '<p style="padding:2rem;text-align:center;opacity:.5">Nie można załadować dokumentu.</p>';
-  }
 }
 
 function closeDoc() {
@@ -1530,28 +1530,20 @@ function initCursor() {
   });
 
   // Efekt kliknięcia
-  const MOUTH_NORMAL = 'M92 124 Q110 137 128 124';
-  const MOUTH_CLICK  = 'M93 127 Q110 122 127 127';
+  const MOUTH_NORMAL = 'M94 128 Q110 136 126 128';
+  const MOUTH_CLICK  = 'M100 126 a10,8 0 0,1 20,0 a10,8 0 0,1 -20,0';
 
   document.addEventListener('mousedown', () => {
     dot.classList.add('is-click');
     ring.classList.add('is-click');
     const m = document.getElementById('botMouth');
-    const elL = document.getElementById('eyelidL');
-    const elR = document.getElementById('eyelidR');
-    if (m) m.setAttribute('d', MOUTH_CLICK);
-    if (elL) { elL.style.animation = 'none'; elL.style.transform = 'scaleY(0.55)'; }
-    if (elR) { elR.style.animation = 'none'; elR.style.transform = 'scaleY(0.55)'; }
+    if (m) { m.setAttribute('d', MOUTH_CLICK); m.setAttribute('fill', '#0f1320'); }
   });
   document.addEventListener('mouseup', () => {
     dot.classList.remove('is-click');
     ring.classList.remove('is-click');
     const m = document.getElementById('botMouth');
-    const elL = document.getElementById('eyelidL');
-    const elR = document.getElementById('eyelidR');
-    if (m) m.setAttribute('d', MOUTH_NORMAL);
-    if (elL) { elL.style.transform = ''; elL.style.animation = ''; }
-    if (elR) { elR.style.transform = ''; elR.style.animation = ''; }
+    if (m) { m.setAttribute('d', MOUTH_NORMAL); m.setAttribute('fill', 'none'); }
   });
 
   // Ukryj gdy kursor opuszcza okno
@@ -1574,4 +1566,128 @@ function registerSW() {
       regs.forEach(r => r.unregister());
     });
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FAQ — przycisk + modal z akordeonem
+// ─────────────────────────────────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: 'Jakie usługi oferuje i-JANICKI?',
+    a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję zarówno klientów lokalnych z Wrocławia, jak i zdalnie z całej Polski.',
+  },
+  {
+    q: 'Ile kosztuje wykonanie strony internetowej na zamówienie?',
+    a: 'Ceny stron internetowych na zamówienie zaczynają się od 1 500 zł za prostą stronę wizytówkową lub portfolio. Rozbudowane portale i sklepy internetowe wyceniam indywidualnie — po krótkiej rozmowie o zakresie i funkcjonalnościach. Zawsze otrzymujesz szczegółową wycenę przed podpisaniem umowy, bez ukrytych kosztów.',
+  },
+  {
+    q: 'Jak długo trwa stworzenie strony internetowej?',
+    a: 'Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, rozbudowany portal lub aplikacja webowa — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe.',
+  },
+  {
+    q: 'Czy tworzysz strony internetowe dla firm z Wrocławia i okolic?',
+    a: 'Tak — specjalizuję się w tworzeniu stron internetowych dla firm z Wrocławia i Dolnego Śląska, ale realizuję projekty dla klientów z całej Polski. Pracuję zdalnie lub spotykam się osobiście — jak wolisz. Każda strona jest responsywna, szybka i zoptymalizowana pod wyszukiwarki.',
+  },
+  {
+    q: 'Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?',
+    a: 'Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce.',
+  },
+  {
+    q: 'Czy tworzysz aplikacje webowe i mobilne na zamówienie?',
+    a: 'Tak. Projektuję i wdrażam aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi. Tworzę też aplikacje mobilne i integruję je ze stronami internetowymi lub innymi systemami. Każdy projekt jest dopasowany do indywidualnych potrzeb klienta.',
+  },
+  {
+    q: 'Jak wygląda współpraca przy tworzeniu strony internetowej?',
+    a: 'Proces przebiega w 5 krokach: (1) wstępna rozmowa o celach i zakresie, (2) wycena i podpisanie umowy, (3) realizacja etapami z regularnym raportowaniem, (4) testy na różnych urządzeniach i przeglądarkach z poprawkami, (5) wdrożenie i wsparcie po starcie. Zero niespodzianek.',
+  },
+  {
+    q: 'Czy oferujesz opiekę IT i wsparcie po oddaniu strony?',
+    a: 'Tak — w ramach abonamentu IT oferuję bieżące wsparcie techniczne, aktualizacje, monitoring bezpieczeństwa i drobne modyfikacje strony. To idealne rozwiązanie dla firm, które chcą mieć pewność, że ich strona internetowa zawsze działa sprawnie i bezpiecznie.',
+  },
+];
+
+function injectFaqBtn() {
+  const panel = $('panel');
+  if (!panel) return;
+  panel.querySelector('.panel-faq-btn')?.remove();
+  const btn = document.createElement('button');
+  btn.className = 'panel-faq-btn';
+  btn.type = 'button';
+  btn.setAttribute('aria-label', 'FAQ — Często zadawane pytania');
+  btn.textContent = 'FAQ';
+  btn.addEventListener('click', openFaqModal);
+  panel.appendChild(btn);
+}
+
+function openFaqModal() {
+  document.querySelector('.faq-modal-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'faq-modal-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'FAQ — Często zadawane pytania');
+
+  const itemsHtml = FAQ_ITEMS.map((item, i) => `
+    <div class="faq-item">
+      <button class="faq-question" type="button" aria-expanded="false" aria-controls="faq-ans-${i}">
+        <span>${escHtml(item.q)}</span>
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-ans-${i}" hidden>
+        <p>${escHtml(item.a)}</p>
+      </div>
+    </div>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="faq-modal">
+      <div class="faq-modal-header">
+        <div>
+          <h2 class="faq-modal-title">FAQ</h2>
+          <p class="faq-modal-sub">Często zadawane pytania</p>
+        </div>
+        <button class="faq-modal-close" type="button" aria-label="Zamknij FAQ">✕</button>
+      </div>
+      <div class="faq-list">${itemsHtml}</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeFaqModal(); });
+  overlay.querySelector('.faq-modal-close').addEventListener('click', closeFaqModal);
+
+  overlay.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isOpen  = btn.getAttribute('aria-expanded') === 'true';
+      const answerId = btn.getAttribute('aria-controls');
+      overlay.querySelectorAll('.faq-question').forEach(b => {
+        b.setAttribute('aria-expanded', 'false');
+        b.closest('.faq-item').classList.remove('is-open');
+        const a = document.getElementById(b.getAttribute('aria-controls'));
+        if (a) a.hidden = true;
+      });
+      if (!isOpen) {
+        btn.setAttribute('aria-expanded', 'true');
+        btn.closest('.faq-item').classList.add('is-open');
+        const ans = document.getElementById(answerId);
+        if (ans) ans.hidden = false;
+      }
+    });
+  });
+
+  const onKey = e => {
+    if (e.key === 'Escape') { closeFaqModal(); document.removeEventListener('keydown', onKey); }
+  };
+  document.addEventListener('keydown', onKey);
+
+  requestAnimationFrame(() => overlay.classList.add('is-visible'));
+}
+
+function closeFaqModal() {
+  const overlay = document.querySelector('.faq-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('is-visible');
+  setTimeout(() => overlay.remove(), 280);
 }
