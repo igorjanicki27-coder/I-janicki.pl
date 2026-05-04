@@ -69,6 +69,8 @@ let userName     = localStorage.getItem(LS.NAME) || '';
 let tutDone      = localStorage.getItem(LS.TUTORIAL_DONE) === 'true';
 let reviewRating = 0;
 let visitedSteps = new Set(); // Track which steps user has visited
+let currentView = null;
+let currentDocName = null;
 
 // ─────────────────────────────────────────────────────────────────
 // DOM REFS (lazy getters so we don't need to worry about order)
@@ -154,6 +156,7 @@ const TRANSLATIONS = {
     'btn-pricing': 'Cennik',
     'btn-contact': 'Kontakt',
     'btn-reviews': 'Opinie',
+    'btn-tutorial': 'Prezentacja',
     'greeting-title': 'i-JANEK',
     'greeting-text': '<p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
     'greeting-ready': 'Gotowy? Kliknij <em>Dalej</em>! 🚀',
@@ -166,7 +169,22 @@ const TRANSLATIONS = {
     'name-prompt': 'Jak mam się do Ciebie zwracać?',
     'name-placeholder': 'Wpisz swoje imię…',
     'next-btn': 'Dalej →',
+    'finish-btn': 'Zakończ',
+    'skip-btn': 'Pomiń',
     'send-btn': 'Wyślij →',
+    'brand-home': 'Strona główna i-JANICKI',
+    'assistant-panel': 'Asystent i-JANEK',
+    'section-content': 'Treść sekcji',
+    'cookie-settings-title': 'Ustawienia plików cookie',
+    'cookie-settings-change': 'Zmień ustawienia cookies',
+    'close': 'Zamknij',
+    'close-doc': 'Zamknij dokument',
+    'close-faq': 'Zamknij FAQ',
+    'doc-overlay': 'Dokument',
+    'doc-title-default': 'Dokument',
+    'doc-loading': 'Ładowanie dokumentu…',
+    'doc-load-error': 'Nie można załadować dokumentu.',
+    'tutorial-step': 'Krok {number}',
     'cookie-title': 'Pliki cookie 🍪',
     'cookie-decided': 'Twoje preferencje cookie zostały zapisane.',
     'cookie-ga-on': '✓ włączony',
@@ -188,16 +206,117 @@ const TRANSLATIONS = {
     'cookie-doc-privacy': 'Polityka prywatności',
     'cookie-doc-rodo': 'Polityka RODO',
     'cookie-doc-all-docs': 'Wszystkie dokumenty',
+    'name-title': 'Jak mam się do Ciebie zwracać?',
+    'about-photo-alt': 'Igor Janicki',
+    'about-handle': '@i-janicki · Wrocław',
+    'about-lead': 'Tworzę strony internetowe i aplikacje webowe na zamówienie, pomagam w konfiguracji sieci i oferuję bieżącą opiekę IT. Pracuję zarówno z klientami lokalnymi, jak i zdalnie.',
+    'about-li-web': 'Strony internetowe na zamówienie',
+    'about-li-apps': 'Aplikacje webowe i mobilne na zamówienie',
+    'about-li-network': 'Konfiguracja sieci i administracja',
+    'about-li-support': 'Wsparcie i opieka IT',
+    'services-design-title': 'Projektowanie',
+    'services-design-desc': 'Projektuję i wdrażam loga i ikony.',
+    'services-web-title': 'Strony internetowe',
+    'services-web-desc': 'Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.',
+    'services-webapps-title': 'Aplikacje webowe',
+    'services-webapps-desc': 'Tworzę aplikacje webowe z użytkowymi interfejsami, integracjami API i panelami administracyjnymi.',
+    'services-mobile-title': 'Aplikacje mobilne',
+    'services-mobile-desc': 'Tworzę aplikacje mobilne, integruję je ze stronami lub innymi aplikacjami.',
+    'services-network-title': 'Konfiguracja sieci',
+    'services-network-desc': 'Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego.',
+    'services-it-title': 'Opieka IT',
+    'services-it-desc': 'Bieżące wsparcie techniczne, aktualizacje i monitoring systemów — abonamentowo.',
+    'projects-web-title': 'Strony internetowe',
+    'projects-strzelca-desc': 'Portal strzelecki — aktualności, wyniki zawodów i regulaminy.',
+    'projects-dmg-desc': 'Serwis z aplikacjami i narzędziami dedykowanymi na macOS.',
+    'projects-korona-desc': 'Strona dla lokalnej marki wina i restauracji.',
+    'projects-apps-title': 'Aplikacje',
+    'projects-myip-desc': 'Aplikacja macOS — publiczny adres IP i informacje o sieci.',
+    'process-step1-title': 'Wstępna rozmowa',
+    'process-step1-desc': 'Omawiamy Twoje potrzeby, cel projektu i zakres prac. Możemy porozmawiać przez telefon, e-mail lub Zoom.',
+    'process-step2-title': 'Wycena i umowa',
+    'process-step2-desc': 'Przygotowuję wycenę i propozycję umowy. Ustalamy harmonogram i zakres — bez niespodzianek.',
+    'process-step3-title': 'Realizacja',
+    'process-step3-desc': 'Pracuję etapami, regularnie raportując postęp i konsultując kluczowe decyzje.',
+    'process-step4-title': 'Testy i poprawki',
+    'process-step4-desc': 'Testuję projekt na różnych urządzeniach i przeglądarkach. Wprowadzam poprawki według Twoich uwag.',
+    'process-step5-title': 'Wdrożenie i wsparcie',
+    'process-step5-desc': 'Przekazuję gotowy projekt i oferuję wsparcie po wdrożeniu oraz dalszą opiekę IT.',
+    'pricing-lead': 'Orientacyjne ceny — każdy projekt wyceniam indywidualnie.',
+    'pricing-from': 'od',
+    'pricing-web-title': 'Strona internetowa',
+    'pricing-web-desc': 'Strona wizytówkowa lub portfolio. Responsywna, szybka, zoptymalizowana pod SEO.',
+    'pricing-app-title': 'Aplikacja',
+    'pricing-app-desc': 'Panel, system, aplikacja z logiką biznesową i bazą danych.',
+    'pricing-network-title': 'Sieć / Administracja',
+    'pricing-network-desc': 'Projekt i konfiguracja sieci, VPN, bezpieczeństwo.',
+    'pricing-it-title': 'Opieka IT (abonament)',
+    'pricing-it-desc': 'Bieżące wsparcie, monitoring, aktualizacje.',
+    'pricing-note': 'Podane ceny są orientacyjne — każdy projekt wyceniam indywidualnie po wstępnej rozmowie.',
+    'contact-lead': 'Napisz do mnie — odpowiem możliwie szybko.',
+    'contact-name-label': 'Nadawca',
+    'contact-name-placeholder': 'Imię lub pseudonim',
+    'contact-email-label': 'E-mail / nr tel',
+    'contact-email-placeholder': 'e-mail lub numer telefonu',
+    'contact-message-label': 'Wiadomość',
+    'contact-message-placeholder': 'Opisz swój projekt lub zapytanie…',
+    'contact-submit': 'WYŚLIJ',
+    'contact-wait': '✗ Poczekaj jeszcze {seconds}s przed kolejnym wysłaniem.',
+    'contact-invalid': '✗ Podaj poprawny adres e-mail lub numer telefonu.',
+    'contact-sending': 'Wysyłanie…',
+    'contact-sent': '✓ Wiadomość wysłana! Odpiszę możliwie szybko.',
+    'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na igor.janicki27@gmail.com',
+    'reviews-lead': 'Tu możesz przeczytać opinie dotychczasowych klientów.',
+    'reviews-loading': 'Ładowanie opinii…',
+    'reviews-empty': 'Brak opinii — bądź pierwszy! ⬆',
+    'reviews-error': 'Nie udało się załadować opinii.',
+    'reviews-anonymous': 'Anonimowy',
+    'reviews-form-title': 'Zostaw opinię',
+    'reviews-stars-label': 'Wybierz ocenę',
+    'reviews-star-1': '1 gwiazdka',
+    'reviews-star-2': '2 gwiazdki',
+    'reviews-star-3': '3 gwiazdki',
+    'reviews-star-4': '4 gwiazdki',
+    'reviews-star-5': '5 gwiazdek',
+    'reviews-name-placeholder': 'Twoje imię',
+    'reviews-email-placeholder': 'E-mail (weryfikacja — nie będzie widoczny)',
+    'reviews-comment-placeholder': 'Twoja opinia…',
+    'reviews-submit': 'WYŚLIJ OPINIĘ',
+    'reviews-choose-rating': 'Wybierz ocenę (1–5 gwiazdek).',
+    'reviews-invalid-name': 'Imię musi mieć co najmniej 3 znaki.',
+    'reviews-invalid-email': 'Podaj poprawny adres e-mail (potrzebny do weryfikacji).',
+    'reviews-invalid-comment': 'Napisz krótką opinię (min. 5 znaków).',
+    'reviews-checking': 'Sprawdzanie…',
+    'reviews-sending': 'Wysyłanie…',
+    'reviews-success': '✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.',
+    'reviews-submit-error': '✗ Coś poszło nie tak. Spróbuj ponownie.',
+    'reviews-already-submitted': '✗ Już wysłałeś opinię. Każdy e-mail może wysłać tylko jedną opinię.',
+    'reviews-wait-days': '✗ Czekaj {days} dni na następną próbę (poprzednia opinia czeka na weryfikację).',
+    'reviews-wait-hours': '✗ Czekaj jeszcze {hours}h na następną opinię.',
+    'returning-title': 'Witaj ponownie!',
+    'returning-message': 'Witaj ponownie, <strong>{name}</strong>! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
+    'returning-message-no-name': 'Witaj ponownie! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
+    'tutorial-complete-title': 'To już jest koniec!',
+    'tutorial-complete-message-with-name': 'Świetnie! Masz już ogólny pogląd na to, czym się zajmuję, <strong>{name}</strong>.',
+    'tutorial-complete-message-no-name': 'Masz już ogólny pogląd na to, czym się zajmuję.',
+    'tutorial-complete-next': 'Klikając w sekcje poniżej, możesz wrócić do interesujących Cię informacji albo jeszcze raz przejść samouczek.',
+    'tutorial-summary-title': 'Witaj ponownie!',
+    'tutorial-summary-message': '{name}, prowadziłem Cię po wszystkich zakładkach, jakie możesz znaleźć na tej stronie. Jeśli chcesz do czegoś wrócić, wybierz temat poniżej, a jeśli chcesz abym oprowadził Cię po stronie ponownie, kliknij Prezentacja!',
+    'review-step-message': 'Mamy prawie koniec{name}! ⭐ Chcesz wystawić opinię lub zobaczyć, co piszą inni?',
+    'faq-aria': 'FAQ — Często zadawane pytania',
+    'faq-subtitle': 'Często zadawane pytania',
+    'verify-success': '✓ Opinia potwierdzona! Dzięki za opinię 🎉',
+    'verify-error': '✗ Nie udało się zweryfikować opinii.',
   },
   en: {
     'btn-about': 'About',
     'btn-services': 'Services',
-
     'btn-projects': 'Projects',
     'btn-process': 'Collaboration',
     'btn-pricing': 'Pricing',
     'btn-contact': 'Contact',
     'btn-reviews': 'Reviews',
+    'btn-tutorial': 'Tutorial',
     'greeting-title': 'i-JANEK',
     'greeting-text': '<p>Hello! I\'m <strong>i-JANEK</strong> — your virtual assistant.</p><p>I\'ll help you learn more about <strong>i-JANICKI</strong> services.</p>',
     'greeting-ready': 'Ready? Click <em>Next</em>! 🚀',
@@ -210,7 +329,22 @@ const TRANSLATIONS = {
     'name-prompt': 'What\'s your name?',
     'name-placeholder': 'Type your name…',
     'next-btn': 'Next →',
+    'finish-btn': 'Finish',
+    'skip-btn': 'Skip',
     'send-btn': 'Send →',
+    'brand-home': 'i-JANICKI home page',
+    'assistant-panel': 'i-JANEK assistant',
+    'section-content': 'Section content',
+    'cookie-settings-title': 'Cookie settings',
+    'cookie-settings-change': 'Change cookie settings',
+    'close': 'Close',
+    'close-doc': 'Close document',
+    'close-faq': 'Close FAQ',
+    'doc-overlay': 'Document',
+    'doc-title-default': 'Document',
+    'doc-loading': 'Loading document…',
+    'doc-load-error': 'Unable to load the document.',
+    'tutorial-step': 'Step {number}',
     'cookie-title': 'Cookies 🍪',
     'cookie-decided': 'Your cookie preferences have been saved.',
     'cookie-ga-on': '✓ enabled',
@@ -232,8 +366,108 @@ const TRANSLATIONS = {
     'cookie-doc-privacy': 'Privacy & cookies policy',
     'cookie-doc-rodo': 'GDPR policy',
     'cookie-doc-all-docs': 'All documents',
+    'name-title': 'What should I call you?',
+    'about-photo-alt': 'Igor Janicki',
+    'about-handle': '@i-janicki · Wroclaw',
+    'about-lead': 'I build custom websites and web apps, help with network setup, and provide ongoing IT support. I work with both local and remote clients.',
+    'about-li-web': 'Custom websites',
+    'about-li-apps': 'Custom web and mobile apps',
+    'about-li-network': 'Network setup and administration',
+    'about-li-support': 'IT support and ongoing care',
+    'services-design-title': 'Design',
+    'services-design-desc': 'I design and implement logos and icons.',
+    'services-web-title': 'Websites',
+    'services-web-desc': 'I design and deliver custom websites, from business cards to larger portals. Responsive, fast, and SEO-friendly.',
+    'services-webapps-title': 'Web apps',
+    'services-webapps-desc': 'I build web apps with practical interfaces, API integrations, and admin panels.',
+    'services-mobile-title': 'Mobile apps',
+    'services-mobile-desc': 'I create mobile apps and integrate them with websites or other applications.',
+    'services-network-title': 'Network setup',
+    'services-network-desc': 'I design and configure LAN/WLAN networks, VPNs, and network security systems.',
+    'services-it-title': 'IT support',
+    'services-it-desc': 'Ongoing technical support, updates, and system monitoring on a subscription basis.',
+    'projects-web-title': 'Websites',
+    'projects-strzelca-desc': 'Shooting portal with news, competition results, and rules.',
+    'projects-dmg-desc': 'A site with apps and tools dedicated to macOS.',
+    'projects-korona-desc': 'A website for a local wine and restaurant brand.',
+    'projects-apps-title': 'Apps',
+    'projects-myip-desc': 'macOS app with public IP and network information.',
+    'process-step1-title': 'Intro call',
+    'process-step1-desc': 'We discuss your needs, project goal, and scope. We can talk by phone, email, or Zoom.',
+    'process-step2-title': 'Quote and agreement',
+    'process-step2-desc': 'I prepare a quote and agreement proposal. We align timeline and scope with no surprises.',
+    'process-step3-title': 'Delivery',
+    'process-step3-desc': 'I work in stages, regularly reporting progress and discussing key decisions.',
+    'process-step4-title': 'Testing and fixes',
+    'process-step4-desc': 'I test the project on different devices and browsers and make revisions based on your feedback.',
+    'process-step5-title': 'Launch and support',
+    'process-step5-desc': 'I hand over the finished project and provide post-launch support and further IT care.',
+    'pricing-lead': 'Indicative pricing — every project is quoted individually.',
+    'pricing-from': 'from',
+    'pricing-web-title': 'Website',
+    'pricing-web-desc': 'Business card website or portfolio. Responsive, fast, and SEO-optimized.',
+    'pricing-app-title': 'Application',
+    'pricing-app-desc': 'Panel, system, or app with business logic and a database.',
+    'pricing-network-title': 'Network / Administration',
+    'pricing-network-desc': 'Network design and setup, VPNs, security.',
+    'pricing-it-title': 'IT support (subscription)',
+    'pricing-it-desc': 'Ongoing support, monitoring, and updates.',
+    'pricing-note': 'Prices are indicative — every project is quoted individually after an initial conversation.',
+    'contact-lead': 'Send me a message — I\'ll reply as soon as possible.',
+    'contact-name-label': 'Sender',
+    'contact-name-placeholder': 'Name or nickname',
+    'contact-email-label': 'E-mail / phone',
+    'contact-email-placeholder': 'e-mail or phone number',
+    'contact-message-label': 'Message',
+    'contact-message-placeholder': 'Describe your project or question…',
+    'contact-submit': 'SEND',
+    'contact-wait': '✗ Please wait {seconds}s before sending another message.',
+    'contact-invalid': '✗ Enter a valid e-mail address or phone number.',
+    'contact-sending': 'Sending…',
+    'contact-sent': '✓ Message sent! I\'ll get back to you as soon as possible.',
+    'contact-error': '✗ Something went wrong. Please write directly to igor.janicki27@gmail.com',
+    'reviews-lead': 'Here you can read reviews from previous clients.',
+    'reviews-loading': 'Loading reviews…',
+    'reviews-empty': 'No reviews yet — be the first! ⬆',
+    'reviews-error': 'Unable to load reviews.',
+    'reviews-anonymous': 'Anonymous',
+    'reviews-form-title': 'Leave a review',
+    'reviews-stars-label': 'Choose a rating',
+    'reviews-star-1': '1 star',
+    'reviews-star-2': '2 stars',
+    'reviews-star-3': '3 stars',
+    'reviews-star-4': '4 stars',
+    'reviews-star-5': '5 stars',
+    'reviews-name-placeholder': 'Your name',
+    'reviews-email-placeholder': 'E-mail (for verification — not visible publicly)',
+    'reviews-comment-placeholder': 'Your review…',
+    'reviews-submit': 'SEND REVIEW',
+    'reviews-choose-rating': 'Choose a rating (1–5 stars).',
+    'reviews-invalid-name': 'Name must contain at least 3 characters.',
+    'reviews-invalid-email': 'Enter a valid e-mail address (needed for verification).',
+    'reviews-invalid-comment': 'Write a short review (minimum 5 characters).',
+    'reviews-checking': 'Checking…',
+    'reviews-sending': 'Sending…',
+    'reviews-success': '✓ Thank you! Confirm the link in your e-mail to publish the review.',
+    'reviews-submit-error': '✗ Something went wrong. Please try again.',
+    'reviews-already-submitted': '✗ You have already submitted a review. Each e-mail can submit only one review.',
+    'reviews-wait-days': '✗ Wait {days} more days before another attempt (your previous review is still pending verification).',
+    'reviews-wait-hours': '✗ Please wait {hours} more hours before sending another review.',
+    'returning-title': 'Welcome back!',
+    'returning-message': 'Welcome back, <strong>{name}</strong>! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
+    'returning-message-no-name': 'Welcome back! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
+    'tutorial-complete-title': 'That\'s the end!',
+    'tutorial-complete-message-with-name': 'Great! You already have a good overview of what I do, <strong>{name}</strong>.',
+    'tutorial-complete-message-no-name': 'You already have a good overview of what I do.',
+    'tutorial-complete-next': 'Use the sections below to return to the details you need or go through the tutorial again.',
+    'tutorial-summary-title': 'Welcome back!',
+    'tutorial-summary-message': '{name}, I\'ve walked you through every section on this site. If you want to return to anything, choose a topic below, and if you want another guided tour, click Tutorial!',
+    'review-step-message': 'We\'re almost done{name}! ⭐ Would you like to leave a review or see what others wrote?',
+    'faq-aria': 'FAQ — Frequently asked questions',
+    'faq-subtitle': 'Frequently asked questions',
+    'verify-success': '✓ Review confirmed! Thanks for your feedback 🎉',
+    'verify-error': '✗ The review could not be verified.',
   },
-
 };
 
 
@@ -243,7 +477,7 @@ function initLang() {
   const saved = localStorage.getItem(LS.LANG) || 'pl';
   currentLang = saved;
   document.documentElement.lang = saved;
-  applyLanguage(saved);
+  applyLanguage(saved, { rerender: false });
 }
 
 function changeLang(lang) {
@@ -251,44 +485,116 @@ function changeLang(lang) {
   document.documentElement.lang = lang;
   localStorage.setItem(LS.LANG, lang);
   applyLanguage(lang);
-  // Jeśli jesteśmy na kroku powitalnym, przerysuj go żeby zmienić tekst
-  const steps = getSteps();
-  if (steps[tutStep]?.id === 'greeting') {
-    renderGreeting();
-  }
 }
 
 function t(key) {
   return TRANSLATIONS[currentLang]?.[key] ?? TRANSLATIONS.pl[key] ?? key;
 }
 
-function applyLanguage(lang) {
-  document.querySelectorAll('[data-topic]').forEach(btn => {
-    const topic = btn.dataset.topic;
-    if (topic === 'tutorial') {
-      btn.textContent = lang === 'en' ? '⟳ Tutorial' : '⟳ Samouczek';
-    } else {
-      btn.textContent = getLangLabel(topic, lang);
-    }
-  });
+function tf(key, vars = {}) {
+  return t(key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ''));
+}
 
-  if (dom.tutNext) {
-    const steps = getSteps();
-    const isLastSec = tutStep === (steps.length - 2); // Last section before finish
-    dom.tutNext.textContent = lang === 'en' ? 'Next →' : 'Dalej →';
+function applyLanguage(_lang, { rerender = true } = {}) {
+  localizeTemplates();
+  localizeRoot(document);
+  if (dom.tutBack) dom.tutBack.textContent = '←';
+  refreshNavButtons();
+  if (rerender) rerenderVisibleUi();
+}
+
+function localizeTemplates() {
+  document.querySelectorAll('template').forEach(tpl => localizeRoot(tpl.content));
+}
+
+function localizeRoot(root) {
+  root.querySelectorAll?.('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  root.querySelectorAll?.('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  root.querySelectorAll?.('[data-i18n-placeholder]').forEach(el => {
+    el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder));
+  });
+  root.querySelectorAll?.('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+  });
+  root.querySelectorAll?.('[data-i18n-title]').forEach(el => {
+    el.setAttribute('title', t(el.dataset.i18nTitle));
+  });
+  root.querySelectorAll?.('[data-i18n-alt]').forEach(el => {
+    el.setAttribute('alt', t(el.dataset.i18nAlt));
+  });
+}
+
+function rerenderVisibleUi() {
+  localizeRoot(document);
+
+  if (!dom.cookieOverlay.hidden) {
+    dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
+    updateCookieAnalyticsStatus();
+    dom.cookieOverlay.hidden = false;
+    dom.cookieOverlay.setAttribute('aria-hidden', 'false');
   }
 
-  if (dom.tutBack) dom.tutBack.textContent = '←';
-  if (dom.tutSkip) dom.tutSkip.textContent = lang === 'en' ? 'Skip' : 'Pomiń';
+  if (!dom.docOverlay.hidden && currentDocName) {
+    openDoc(currentDocName);
+  }
+
+  if (document.querySelector('.faq-modal-overlay')) {
+    openFaqModal();
+  }
+
+  if (!tutDone) {
+    const step = getSteps()[tutStep];
+    if (!step) return;
+    switch (step.id) {
+      case 'greeting': renderGreeting(); break;
+      case 'name': renderNameInput(); break;
+      case 'cookies': renderCookieStep(); break;
+      case 'reviews': renderReviewStep(); break;
+      default: renderSectionStep(step); break;
+    }
+    refreshDots();
+    refreshNavButtons();
+    return;
+  }
+
+  if (!dom.modalRoot.hidden) {
+    const topic = sessionStorage.getItem(SS.SECTION);
+    if (topic) openModal(topic);
+  }
+
+  if (currentView === 'finished') {
+    finishTutorial();
+  } else {
+    showReturning();
+  }
 }
 
 function getLangLabel(topic, lang) {
-  const labels = {
-    pl: { about: 'O mnie', services: 'Usługi', projects: 'Projekty', process: 'Współpraca', pricing: 'Cennik', contact: 'Kontakt', reviews: 'Opinie' },
-    en: { about: 'About', services: 'Services', projects: 'Projects', process: 'Collaboration', pricing: 'Pricing', contact: 'Contact', reviews: 'Reviews' },
-  };
-  return labels[lang]?.[topic] ?? labels.pl[topic];
+  return TRANSLATIONS[lang]?.[`btn-${topic}`] ?? TRANSLATIONS.pl[`btn-${topic}`] ?? topic;
 }
+
+const SECTION_MSG = {
+  pl: {
+    about: n => `Pozwól, że się przedstawię${n}! Tutaj dowiesz się, <strong>kim jestem</strong>, skąd pochodzę i czym się zajmuję.`,
+    services: () => 'Tu znajdziesz moje <strong>Usługi</strong> — strony, aplikacje webowe, sieci LAN/WLAN i opieka IT.',
+    projects: () => 'Moje <strong>Projekty</strong> — wybrane realizacje. Zerknij, co już stworzyłem.',
+    process: () => 'Tak wygląda <strong>Proces współpracy</strong> — od pierwszej rozmowy do wdrożenia. Zero niespodzianek.',
+    pricing: () => 'Orientacyjny <strong>Cennik</strong>. Każdy projekt wyceniam indywidualnie — tu znajdziesz punkt wyjścia.',
+    contact: n => `Czas na <strong>Kontakt</strong>${n}! Masz pytanie lub projekt? Napisz — chętnie porozmawiam! 😊`,
+  },
+  en: {
+    about: n => `Let me introduce myself${n}! Here you'll learn <strong>who I am</strong>, where I come from, and what I do.`,
+    services: () => 'Here you can explore my <strong>services</strong> — websites, web apps, LAN/WLAN networks, and IT support.',
+    projects: () => 'These are my <strong>projects</strong> — selected work I\'ve already delivered.',
+    process: () => 'This is what the <strong>collaboration process</strong> looks like — from the first conversation to launch. No surprises.',
+    pricing: () => 'Here is the <strong>pricing overview</strong>. Every project is quoted individually, and this gives you a solid starting point.',
+    contact: n => `Time for <strong>contact</strong>${n}! Have a question or a project in mind? Send me a message — I\'d be happy to talk. 😊`,
+  },
+};
 
 // ─────────────────────────────────────────────────────────────────
 // EYE TRACKING
@@ -423,7 +729,7 @@ function buildDots() {
     const d = document.createElement('button');
     d.className = 'tut-dot';
     d.type = 'button';
-    d.setAttribute('aria-label', `Krok ${i + 1}`);
+    d.setAttribute('aria-label', tf('tutorial-step', { number: i + 1 }));
     const maxVisited = Math.max(...visitedSteps, 0);
     const canClick = i <= maxVisited + 1;
     d.disabled = !canClick;
@@ -439,6 +745,7 @@ function refreshDots() {
   dom.tutDots.querySelectorAll('.tut-dot').forEach((d, i) => {
     d.classList.toggle('is-done',    i < tutStep);
     d.classList.toggle('is-current', i === tutStep);
+    d.setAttribute('aria-label', tf('tutorial-step', { number: i + 1 }));
     const canClick = i <= maxVisited + 1;
     d.disabled = !canClick;
   });
@@ -456,12 +763,13 @@ function refreshNavButtons() {
   dom.tutBack.disabled            = isFirst || cookieNeeded;
   dom.tutNext.hidden              = cookieNeeded;
   dom.tutNext.disabled            = cookieNeeded;
-  dom.tutNext.textContent         = isLast ? 'Zakończ' : 'Dalej →';
+  dom.tutNext.textContent         = isLast ? t('finish-btn') : t('next-btn');
   dom.tutNext.classList.toggle('is-send', isLast);
 
   // Skip button disabled — can't skip to unvisited steps
   dom.tutSkip.disabled            = true;
   dom.tutSkip.style.display       = 'none';
+  dom.tutSkip.textContent         = t('skip-btn');
 
   dom.tutNav.classList.toggle('has-back', !isFirst && !cookieNeeded);
 }
@@ -507,9 +815,10 @@ function goStep(idx) {
 // ─── Step renders ─────────────────────────────────────────────────
 
 function renderGreeting() {
+  currentView = 'greeting';
   const isDark = document.documentElement.dataset.theme !== 'light';
 
-  setPanel('i-JANEK', `
+  setPanel(t('greeting-title'), `
     <div class="tut-message">
       ${t('greeting-text')}
     </div>
@@ -545,11 +854,12 @@ function renderGreeting() {
 }
 
 function renderNameInput() {
-  setPanel('Jak mam się do Ciebie zwracać?', `
+  currentView = 'name';
+  setPanel(t('name-title'), `
     <div class="tut-message">
       <div class="name-input-wrap">
         <input type="text" class="name-input" id="nameInput"
-               placeholder="Wpisz swoje imię…"
+               placeholder="${t('name-placeholder')}"
                value="${escHtml(userName)}"
                maxlength="40" autocomplete="given-name" />
       </div>
@@ -563,6 +873,7 @@ function renderNameInput() {
 }
 
 function renderCookieStep() {
+  currentView = 'cookies';
   setPanel('', renderCookiePanelHtml('tutorial'), false, false);
   updateCookieAnalyticsStatus();
 }
@@ -614,21 +925,13 @@ function renderCookiePanelHtml(mode) {
     </div>`;
 }
 
-const SECTION_MSG = {
-  about:    n  => `Pozwól, że się przedstawię${n}! Tutaj dowiesz się, <strong>kim jestem</strong>, skąd pochodzę i czym się zajmuję.`,
-  services: _n => `Tu znajdziesz moje <strong>Usługi</strong> — strony, aplikacje webowe, sieci LAN/WLAN i opieka IT.`,
-  projects: _n => `Moje <strong>Projekty</strong> — wybrane realizacje. Zerknij, co już stworzyłem.`,
-  process:  _n => `Tak wygląda <strong>Proces współpracy</strong> — od pierwszej rozmowy do wdrożenia. Zero niespodzianek.`,
-  pricing:  _n => `Orientacyjny <strong>Cennik</strong>. Każdy projekt wyceniam indywidualnie — tu znajdziesz punkt wyjścia.`,
-  contact:  n  => `Czas na <strong>Kontakt</strong>${n}! Masz pytanie lub projekt? Napisz — chętnie porozmawiam! 😊`,
-};
-
 function renderSectionStep(step) {
-  const n   = userName ? `, ${escHtml(userName)}` : '';
-  const msg = SECTION_MSG[step.id]?.(n) ?? step.label;
+  currentView = 'section';
+  const n = userName ? `, ${escHtml(userName)}` : '';
+  const msg = SECTION_MSG[currentLang]?.[step.id]?.(n) ?? step.label;
 
   // Treść sekcji wewnątrz panelu robota (nie osobny panel boczny)
-  setPanel('i-JANEK', `
+  setPanel(t('greeting-title'), `
     <div class="tut-message"><p>${msg}</p></div>
     <div class="section-step-content" id="secContent"></div>
   `);
@@ -648,10 +951,11 @@ function renderSectionStep(step) {
 }
 
 function renderReviewStep() {
+  currentView = 'reviews';
   const n = userName ? `, ${escHtml(userName)}` : '';
-  const msg = `Mamy prawie koniec${n}! ⭐ Chcesz wystawić opinię lub zobaczyć, co piszą inni?`;
+  const msg = tf('review-step-message', { name: n });
 
-  setPanel('i-JANEK', `
+  setPanel(t('greeting-title'), `
     <div class="tut-message"><p>${msg}</p></div>
     <div class="section-step-content" id="secContent"></div>
   `);
@@ -670,6 +974,7 @@ function renderReviewStep() {
 }
 
 function renderFinish() {
+  currentView = 'finished';
   dom.bot.classList.remove('is-pointing');
   dom.tutProgress.hidden = true;
   dom.tutNav.hidden      = false;
@@ -682,20 +987,15 @@ function renderFinish() {
     brandName.textContent = 'i-JANICKI';
   }
 
-  const n = userName ? escHtml(userName) : 'Przyjacielu';
-  setPanel('Witaj ponownie!', `
+  const n = userName ? escHtml(userName) : (currentLang === 'en' ? 'friend' : 'Przyjacielu');
+  setPanel(t('tutorial-summary-title'), `
     <div class="tut-message">
-      <p><strong>To już jest koniec!</strong></p>
-      <p>${n}, prowadziłem Cię po wszystkich zakładkach jakie możesz znaleźć na tej stronie. Jeżeli chciałbyś do czegoś wrócić - wybierz temat poniżej, a jeżeli chcesz abym oprowadził Cię po stronie ponownie - kliknij Prezentacja!</p>
+      <p><strong>${t('tutorial-complete-title')}</strong></p>
+      <p>${tf('tutorial-summary-message', { name: n })}</p>
     </div>
     <div class="tut-options">
-      <button class="snav-item" data-topic="about">👤 O mnie</button>
-      <button class="snav-item" data-topic="services">⚙ Usługi</button>
-      <button class="snav-item" data-topic="projects">🗂 Projekty</button>
-      <button class="snav-item" data-topic="process">🤝 Współpraca</button>
-      <button class="snav-item" data-topic="pricing">💰 Cennik</button>
-      <button class="snav-item" data-topic="contact">✉ Kontakt</button>
-      <button class="snav-item" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
+      ${renderTopicButtons('snav-item')}
+      ${renderTutorialButton('snav-item')}
     </div>
   `, true);
 
@@ -725,7 +1025,28 @@ function prefillReviewName() {
   if (fn && userName) fn.value = userName;
 }
 
+const TOPIC_ICONS = {
+  about: '👤',
+  services: '⚙️',
+  projects: '🗂',
+  process: '🤝',
+  pricing: '💰',
+  contact: '✉️',
+  reviews: '⭐',
+};
+
+function renderTopicButtons(buttonClass) {
+  return ['about', 'services', 'projects', 'process', 'pricing', 'contact', 'reviews']
+    .map(topic => `<button class="${buttonClass}" data-topic="${topic}">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</button>`)
+    .join('');
+}
+
+function renderTutorialButton(buttonClass) {
+  return `<button class="${buttonClass}" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> ${t('btn-tutorial')}</button>`;
+}
+
 function finishTutorial() {
+  currentView = 'finished';
   markTutorialDone();
   dom.tutProgress.hidden = true;
   dom.tutNav.hidden      = true;
@@ -735,20 +1056,16 @@ function finishTutorial() {
     brandName.style.display = '';
   }
   const n = userName ? escHtml(userName) : '';
-  setPanel('To już jest koniec!', `
+  const intro = n
+    ? tf('tutorial-complete-message-with-name', { name: n })
+    : t('tutorial-complete-message-no-name');
+  setPanel(t('tutorial-complete-title'), `
     <div class="tut-message">
-      <p>Świetnie! ${n ? 'Masz już ogólny pogląd na to, czym się zajmuję, <strong>' + escHtml(n) + '</strong>.' : 'Masz już ogólny pogląd na to, czym się zajmuję.'}
-        Klikając w sekcje poniżej, możesz wrócić do interesujących Cię informacji, albo jeszcze raz przejść samouczek.</p>
+      <p>${intro} ${t('tutorial-complete-next')}</p>
     </div>
     <div class="options">
-      <button class="opt" data-topic="about">👤 O mnie</button>
-      <button class="opt" data-topic="services">⚙️ Usługi</button>
-      <button class="opt" data-topic="projects">🗂 Projekty</button>
-      <button class="opt" data-topic="process">🤝 Współpraca</button>
-      <button class="opt" data-topic="pricing">💰 Cennik</button>
-      <button class="opt" data-topic="contact">✉️ Kontakt</button>
-      <button class="opt" data-topic="reviews">⭐ Opinie</button>
-      <button class="opt" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
+      ${renderTopicButtons('opt')}
+      ${renderTutorialButton('opt')}
     </div>
   `, false);
 
@@ -799,6 +1116,7 @@ function hideStageContent() {
 // RETURNING USER
 // ─────────────────────────────────────────────────────────────────
 function showReturning() {
+  currentView = 'returning';
   dom.tutProgress.hidden = true;
   dom.tutNav.hidden      = true;
   const brandName = document.querySelector('.brand-name');
@@ -807,21 +1125,13 @@ function showReturning() {
     brandName.style.display = '';
   }
 
-  const n = userName ? escHtml(userName) : 'ponownie';
-  setPanel('Witaj ponownie!', `
+  setPanel(t('returning-title'), `
     <div class="tut-message">
-      <p>Witaj ponownie, <strong>${n}</strong>!
-         Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?</p>
+      <p>${userName ? tf('returning-message', { name: escHtml(userName) }) : t('returning-message-no-name')}</p>
     </div>
     <div class="options">
-      <button class="opt" data-topic="about">👤 O mnie</button>
-      <button class="opt" data-topic="services">⚙️ Usługi</button>
-      <button class="opt" data-topic="projects">🗂 Projekty</button>
-      <button class="opt" data-topic="process">🤝 Współpraca</button>
-      <button class="opt" data-topic="pricing">💰 Cennik</button>
-      <button class="opt" data-topic="contact">✉️ Kontakt</button>
-      <button class="opt" data-topic="reviews">⭐ Opinie</button>
-      <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
+      ${renderTopicButtons('opt')}
+      ${renderTutorialButton('opt opt-tutorial')}
     </div>
   `, false);
 
@@ -933,7 +1243,7 @@ function setupContactForm() {
     if (lastSubmit && Date.now() - parseInt(lastSubmit, 10) < FORM_RATE_LIMIT) {
       const sek = Math.ceil((FORM_RATE_LIMIT - (Date.now() - parseInt(lastSubmit, 10))) / 1000);
       status.className   = 'form-status is-error';
-      status.textContent = `✗ Poczekaj jeszcze ${sek}s przed kolejnym wysłaniem.`;
+      status.textContent = tf('contact-wait', { seconds: sek });
       return;
     }
 
@@ -941,11 +1251,11 @@ function setupContactForm() {
     const contact = $('f-email')?.value.trim() || '';
     if (!isValidEmailOrPhone(contact)) {
       status.className   = 'form-status is-error';
-      status.textContent = '✗ Podaj poprawny adres e-mail lub numer telefonu.';
+      status.textContent = t('contact-invalid');
       return;
     }
 
-    btnText.textContent    = 'Wysyłanie…';
+    btnText.textContent    = t('contact-sending');
     btn.disabled           = true;
     status.textContent     = '';
     status.className       = 'form-status';
@@ -960,7 +1270,7 @@ function setupContactForm() {
       if (data.success) {
         localStorage.setItem(FORM_RATE_KEY, String(Date.now()));
         status.className   = 'form-status is-ok';
-        status.textContent = '✓ Wiadomość wysłana! Odpiszę możliwie szybko.';
+        status.textContent = t('contact-sent');
         form.reset();
         prefillContact();
         // Jeśli jesteśmy na kroku kontaktu w tutorialu, przejdź do następnego (Opinie)
@@ -974,9 +1284,9 @@ function setupContactForm() {
       }
     } catch {
       status.className   = 'form-status is-error';
-      status.textContent = '✗ Coś poszło nie tak. Napisz bezpośrednio na igor.janicki27@gmail.com';
+      status.textContent = t('contact-error');
     } finally {
-      btnText.textContent = 'WYŚLIJ';
+      btnText.textContent = t('contact-submit');
       btn.disabled        = false;
     }
   });
@@ -1037,10 +1347,18 @@ function closeCookiePanel() {
 // DOCUMENT VIEWER
 // ─────────────────────────────────────────────────────────────────
 const DOC_TITLES = {
-  'regulamin':            'Regulamin witryny',
-  'polityka-prywatnosci': 'Polityka prywatności',
-  'polityka-rodo':        'Polityka RODO',
-  'polityka-wspolpracy':  'Polityka współpracy',
+  pl: {
+    'regulamin': 'Regulamin witryny',
+    'polityka-prywatnosci': 'Polityka prywatności',
+    'polityka-rodo': 'Polityka RODO',
+    'polityka-wspolpracy': 'Polityka współpracy',
+  },
+  en: {
+    'regulamin': 'Website rules',
+    'polityka-prywatnosci': 'Privacy policy',
+    'polityka-rodo': 'GDPR policy',
+    'polityka-wspolpracy': 'Cooperation policy',
+  },
 };
 
 function initDocViewer() {
@@ -1048,14 +1366,16 @@ function initDocViewer() {
 }
 
 function openDoc(name) {
-  dom.docTitle.textContent = DOC_TITLES[name] || name;
+  currentDocName = name;
+  dom.docTitle.textContent = DOC_TITLES[currentLang]?.[name] || DOC_TITLES.pl[name] || name;
   dom.docContent.innerHTML = DOCUMENTS_CONTENT[name] ||
-    '<p style="padding:2rem;text-align:center;opacity:.5">Nie można załadować dokumentu.</p>';
+    `<p style="padding:2rem;text-align:center;opacity:.5">${t('doc-load-error')}</p>`;
   dom.docOverlay.hidden = false;
   dom.docOverlay.setAttribute('aria-hidden', 'false');
 }
 
 function closeDoc() {
+  currentDocName = null;
   dom.docOverlay.hidden = true;
   dom.docOverlay.setAttribute('aria-hidden', 'true');
 }
@@ -1084,7 +1404,7 @@ function closeDoc() {
  */
 async function loadReviews(container) {
   if (!container) return;
-  container.innerHTML = '<div class="reviews-loading"><span>Ładowanie opinii…</span></div>';
+  container.innerHTML = `<div class="reviews-loading"><span>${t('reviews-loading')}</span></div>`;
 
   try {
     const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
@@ -1116,7 +1436,7 @@ async function loadReviews(container) {
     const reviews = docs.map(d => parseDoc(d));
 
     if (!reviews.length) {
-      container.innerHTML = '<p class="reviews-empty">Brak opinii — bądź pierwszy! ⬆</p>';
+      container.innerHTML = `<p class="reviews-empty">${t('reviews-empty')}</p>`;
       return;
     }
 
@@ -1125,7 +1445,7 @@ async function loadReviews(container) {
 
   } catch (err) {
     console.warn('Reviews load error:', err);
-    container.innerHTML = '<p class="reviews-empty" style="opacity:.4">Nie udało się załadować opinii.</p>';
+    container.innerHTML = `<p class="reviews-empty" style="opacity:.4">${t('reviews-error')}</p>`;
   }
 }
 
@@ -1133,7 +1453,7 @@ async function loadReviews(container) {
 function parseDoc(doc) {
   const f = doc.fields || {};
   return {
-    name:      f.name?.stringValue                                      || 'Anonimowy',
+    name:      f.name?.stringValue                                      || t('reviews-anonymous'),
     email:     f.email?.stringValue                                     || '',
     comment:   f.comment?.stringValue                                   || '',
     rating:    +(f.rating?.integerValue    ?? f.rating?.doubleValue    ?? 0),
@@ -1147,7 +1467,7 @@ function buildCard(r) {
   div.className = `review-card${r.rating >= 5 ? ' max-stars' : ''}`;
   const filled = '★'.repeat(Math.max(0, Math.min(5, r.rating)));
   const empty  = '☆'.repeat(5 - filled.length);
-  const date   = new Date(r.timestamp).toLocaleDateString('pl-PL', {
+  const date   = new Date(r.timestamp).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'pl-PL', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
   // Class names match styles.css: .review-card-stars / .review-card-name / .review-card-comment / .review-card-date
@@ -1175,7 +1495,7 @@ function openReviewPreview(r, filled, empty, date) {
   overlay.className = 'review-preview-overlay';
   overlay.innerHTML = `
     <div class="review-preview-card">
-      <button class="review-preview-close" aria-label="Zamknij">✕</button>
+      <button class="review-preview-close" aria-label="${t('close')}">✕</button>
       <div class="review-preview-stars">${filled}${empty}</div>
       <p class="review-preview-comment">${escHtml(r.comment)}</p>
       <div class="review-preview-name">${escHtml(r.name)}</div>
@@ -1230,7 +1550,7 @@ async function checkReviewLimits(email) {
     if (approved) {
       return {
         blocked: true,
-        message: '✗ Już wysłałeś opinię. Każdy e-mail może wysłać tylko jedną opinię.'
+        message: t('reviews-already-submitted')
       };
     }
 
@@ -1251,7 +1571,7 @@ async function checkReviewLimits(email) {
       const daysLeft = Math.ceil((day7 - timeSince) / (24 * 60 * 60 * 1000));
       return {
         blocked: true,
-        message: `✗ Czekaj ${daysLeft} dni na następną próbę (poprzednia opinia czeka na weryfikację).`
+        message: tf('reviews-wait-days', { days: daysLeft })
       };
     }
 
@@ -1260,7 +1580,7 @@ async function checkReviewLimits(email) {
       const hoursLeft = Math.ceil((day24h - timeSince) / (60 * 60 * 1000));
       return {
         blocked: true,
-        message: `✗ Czekaj jeszcze ${hoursLeft}h na następną opinię.`
+        message: tf('reviews-wait-hours', { hours: hoursLeft })
       };
     }
 
@@ -1303,7 +1623,7 @@ async function submitReview(e) {
   e.preventDefault();
 
   if (!reviewRating) {
-    setReviewStatus('err', 'Wybierz ocenę (1–5 gwiazdek).');
+    setReviewStatus('err', t('reviews-choose-rating'));
     return;
   }
 
@@ -1313,24 +1633,24 @@ async function submitReview(e) {
 
   // Walidacja imienia (min. 3 znaki bez spacji)
   if (name.replace(/\s/g, '').length < 3) {
-    setReviewStatus('err', 'Imię musi mieć co najmniej 3 znaki.');
+    setReviewStatus('err', t('reviews-invalid-name'));
     return;
   }
 
   // Walidacja e-mail
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-    setReviewStatus('err', 'Podaj poprawny adres e-mail (potrzebny do weryfikacji).');
+    setReviewStatus('err', t('reviews-invalid-email'));
     return;
   }
 
   if (!comment || comment.length < 5) {
-    setReviewStatus('err', 'Napisz krótką opinię (min. 5 znaków).');
+    setReviewStatus('err', t('reviews-invalid-comment'));
     return;
   }
 
   const submitBtn = dom.reviewForm.querySelector('.review-submit-btn');
   submitBtn.disabled = true;
-  setReviewStatus('', 'Sprawdzanie…');
+  setReviewStatus('', t('reviews-checking'));
 
   // Sprawdź ograniczenia emaila
   const limitCheck = await checkReviewLimits(email);
@@ -1340,7 +1660,7 @@ async function submitReview(e) {
     return;
   }
 
-  setReviewStatus('', 'Wysyłanie…');
+  setReviewStatus('', t('reviews-sending'));
 
   try {
     // 1 — Zapisz do Firestore (approved:false — do zatwierdzenia przez właściciela e-mailem)
@@ -1394,7 +1714,7 @@ async function submitReview(e) {
       const formContainer = dom.reviewForm.closest('.modal-review-form-container');
       formContainer.innerHTML = `
         <div class="review-success">
-          <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
+          <p class="review-success-msg">${t('reviews-success')}</p>
         </div>`;
       reviewRating = 0;
       setTimeout(() => { closeModal(); finishTutorial(); }, 3000);
@@ -1404,7 +1724,7 @@ async function submitReview(e) {
       if (formContainer) {
         formContainer.innerHTML = `
           <div class="review-success">
-            <p class="review-success-msg">✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.</p>
+            <p class="review-success-msg">${t('reviews-success')}</p>
           </div>`;
       }
       reviewRating = 0;
@@ -1414,7 +1734,7 @@ async function submitReview(e) {
 
   } catch (err) {
     console.warn(err);
-    setReviewStatus('err', '✗ Coś poszło nie tak. Spróbuj ponownie.');
+    setReviewStatus('err', t('reviews-submit-error'));
   } finally {
     if (submitBtn && submitBtn.parentNode) {
       submitBtn.disabled = false;
@@ -1435,6 +1755,7 @@ function setReviewStatus(type, msg) {
 // PANEL HELPER
 // ─────────────────────────────────────────────────────────────────
 function setPanel(title, html, showLogo = false, showHeader = true) {
+  removeFaqBtn();
   if (dom.panelTitle) dom.panelTitle.textContent = title;
   if (dom.panelHeader) dom.panelHeader.hidden = !showHeader;
   if (dom.panelContent) dom.panelContent.innerHTML = html;
@@ -1510,13 +1831,13 @@ async function handleApproveReview() {
         }).catch(() => {});
       }
 
-      showToast('✓ Opinia potwierdzona! Dzięki za opinię 🎉', 'ok');
+      showToast(t('verify-success'), 'ok');
     } else {
       throw new Error(`HTTP ${res.status}`);
     }
   } catch (err) {
     console.warn('Verify error:', err);
-    showToast('✗ Nie udało się zweryfikować opinii.', 'err');
+    showToast(t('verify-error'), 'err');
   }
 }
 
@@ -1618,52 +1939,92 @@ function registerSW() {
 // ─────────────────────────────────────────────────────────────────
 // FAQ — przycisk + modal z akordeonem
 // ─────────────────────────────────────────────────────────────────
-const FAQ_ITEMS = [
-  {
-    q: 'Jakie usługi oferuje i-JANICKI?',
-    a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję zarówno klientów lokalnych z Wrocławia, jak i zdalnie z całej Polski.',
-  },
-  {
-    q: 'Ile kosztuje wykonanie strony internetowej na zamówienie?',
-    a: 'Ceny stron internetowych na zamówienie zaczynają się od 1 500 zł za prostą stronę wizytówkową lub portfolio. Rozbudowane portale i sklepy internetowe wyceniam indywidualnie — po krótkiej rozmowie o zakresie i funkcjonalnościach. Zawsze otrzymujesz szczegółową wycenę przed podpisaniem umowy, bez ukrytych kosztów.',
-  },
-  {
-    q: 'Jak długo trwa stworzenie strony internetowej?',
-    a: 'Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, rozbudowany portal lub aplikacja webowa — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe.',
-  },
-  {
-    q: 'Czy tworzysz strony internetowe dla firm z Wrocławia i okolic?',
-    a: 'Tak — specjalizuję się w tworzeniu stron internetowych dla firm z Wrocławia i Dolnego Śląska, ale realizuję projekty dla klientów z całej Polski. Pracuję zdalnie lub spotykam się osobiście — jak wolisz. Każda strona jest responsywna, szybka i zoptymalizowana pod wyszukiwarki.',
-  },
-  {
-    q: 'Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?',
-    a: 'Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce.',
-  },
-  {
-    q: 'Czy tworzysz aplikacje webowe i mobilne na zamówienie?',
-    a: 'Tak. Projektuję i wdrażam aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi. Tworzę też aplikacje mobilne i integruję je ze stronami internetowymi lub innymi systemami. Każdy projekt jest dopasowany do indywidualnych potrzeb klienta.',
-  },
-  {
-    q: 'Jak wygląda współpraca przy tworzeniu strony internetowej?',
-    a: 'Proces przebiega w 5 krokach: (1) wstępna rozmowa o celach i zakresie, (2) wycena i podpisanie umowy, (3) realizacja etapami z regularnym raportowaniem, (4) testy na różnych urządzeniach i przeglądarkach z poprawkami, (5) wdrożenie i wsparcie po starcie. Zero niespodzianek.',
-  },
-  {
-    q: 'Czy oferujesz opiekę IT i wsparcie po oddaniu strony?',
-    a: 'Tak — w ramach abonamentu IT oferuję bieżące wsparcie techniczne, aktualizacje, monitoring bezpieczeństwa i drobne modyfikacje strony. To idealne rozwiązanie dla firm, które chcą mieć pewność, że ich strona internetowa zawsze działa sprawnie i bezpiecznie.',
-  },
-];
+const FAQ_ITEMS = {
+  pl: [
+    {
+      q: 'Jakie usługi oferuje i-JANICKI?',
+      a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję zarówno klientów lokalnych z Wrocławia, jak i zdalnie z całej Polski.',
+    },
+    {
+      q: 'Ile kosztuje wykonanie strony internetowej na zamówienie?',
+      a: 'Ceny stron internetowych na zamówienie zaczynają się od 1 500 zł za prostą stronę wizytówkową lub portfolio. Rozbudowane portale i sklepy internetowe wyceniam indywidualnie — po krótkiej rozmowie o zakresie i funkcjonalnościach. Zawsze otrzymujesz szczegółową wycenę przed podpisaniem umowy, bez ukrytych kosztów.',
+    },
+    {
+      q: 'Jak długo trwa stworzenie strony internetowej?',
+      a: 'Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, rozbudowany portal lub aplikacja webowa — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe.',
+    },
+    {
+      q: 'Czy tworzysz strony internetowe dla firm z Wrocławia i okolic?',
+      a: 'Tak — specjalizuję się w tworzeniu stron internetowych dla firm z Wrocławia i Dolnego Śląska, ale realizuję projekty dla klientów z całej Polski. Pracuję zdalnie lub spotykam się osobiście — jak wolisz. Każda strona jest responsywna, szybka i zoptymalizowana pod wyszukiwarki.',
+    },
+    {
+      q: 'Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?',
+      a: 'Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce.',
+    },
+    {
+      q: 'Czy tworzysz aplikacje webowe i mobilne na zamówienie?',
+      a: 'Tak. Projektuję i wdrażam aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi. Tworzę też aplikacje mobilne i integruję je ze stronami internetowymi lub innymi systemami. Każdy projekt jest dopasowany do indywidualnych potrzeb klienta.',
+    },
+    {
+      q: 'Jak wygląda współpraca przy tworzeniu strony internetowej?',
+      a: 'Proces przebiega w 5 krokach: (1) wstępna rozmowa o celach i zakresie, (2) wycena i podpisanie umowy, (3) realizacja etapami z regularnym raportowaniem, (4) testy na różnych urządzeniach i przeglądarkach z poprawkami, (5) wdrożenie i wsparcie po starcie. Zero niespodzianek.',
+    },
+    {
+      q: 'Czy oferujesz opiekę IT i wsparcie po oddaniu strony?',
+      a: 'Tak — w ramach abonamentu IT oferuję bieżące wsparcie techniczne, aktualizacje, monitoring bezpieczeństwa i drobne modyfikacje strony. To idealne rozwiązanie dla firm, które chcą mieć pewność, że ich strona internetowa zawsze działa sprawnie i bezpiecznie.',
+    },
+  ],
+  en: [
+    {
+      q: 'What services does i-JANICKI offer?',
+      a: 'i-JANICKI provides end-to-end IT services: custom websites and web apps, logo and visual identity design, LAN/WLAN and VPN network setup, and ongoing IT support on a subscription basis. I work with both local clients in Wroclaw and remote clients across Poland.',
+    },
+    {
+      q: 'How much does a custom website cost?',
+      a: 'Custom website projects start from PLN 1,500 for a simple business-card site or portfolio. Larger portals and e-commerce projects are quoted individually after a short conversation about scope and features. You always receive a detailed quote before any agreement is signed.',
+    },
+    {
+      q: 'How long does it take to build a website?',
+      a: 'Delivery time depends on the project scope. A simple business-card website is usually ready in 1 to 2 weeks, while a larger portal or web application may take 4 to 12 weeks. I keep you updated at every stage and discuss key decisions along the way.',
+    },
+    {
+      q: 'Do you build websites for companies in Wroclaw and nearby areas?',
+      a: 'Yes. I specialize in websites for companies in Wroclaw and Lower Silesia, but I also deliver projects for clients across Poland. We can work remotely or meet in person, whichever fits better. Every website is responsive, fast, and search-engine friendly.',
+    },
+    {
+      q: 'Are websites built by i-JANICKI responsive and fast?',
+      a: 'Yes. Every website I build works well on phones, tablets, and desktops. I focus on fast loading, lightweight code, and optimized images, which helps achieve better Google PageSpeed results and stronger visibility in search.',
+    },
+    {
+      q: 'Do you build custom web and mobile applications?',
+      a: 'Yes. I design and implement web applications with business logic, API integrations, and admin panels. I also create mobile apps and connect them with websites or other systems. Every project is tailored to the client\'s needs.',
+    },
+    {
+      q: 'What does collaboration look like when building a website?',
+      a: 'The process follows 5 steps: (1) an initial conversation about goals and scope, (2) quote and agreement, (3) staged implementation with regular updates, (4) testing on different devices and browsers with revisions, and (5) launch and post-launch support. No surprises.',
+    },
+    {
+      q: 'Do you offer IT support after launch?',
+      a: 'Yes. As part of the IT support subscription, I provide ongoing technical support, updates, security monitoring, and small website adjustments. It is a good fit for companies that want confidence that their site keeps working smoothly and securely.',
+    },
+  ],
+};
 
 function injectFaqBtn() {
   const panel = $('panel');
   if (!panel) return;
-  panel.querySelector('.panel-faq-btn')?.remove();
+  removeFaqBtn();
   const btn = document.createElement('button');
   btn.className = 'panel-faq-btn';
   btn.type = 'button';
-  btn.setAttribute('aria-label', 'FAQ — Często zadawane pytania');
+  btn.setAttribute('aria-label', t('faq-aria'));
   btn.textContent = 'FAQ';
   btn.addEventListener('click', openFaqModal);
   panel.appendChild(btn);
+}
+
+function removeFaqBtn() {
+  $('panel')?.querySelector('.panel-faq-btn')?.remove();
 }
 
 function openFaqModal() {
@@ -1673,9 +2034,9 @@ function openFaqModal() {
   overlay.className = 'faq-modal-overlay';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'FAQ — Często zadawane pytania');
+  overlay.setAttribute('aria-label', t('faq-aria'));
 
-  const itemsHtml = FAQ_ITEMS.map((item, i) => `
+  const itemsHtml = (FAQ_ITEMS[currentLang] || FAQ_ITEMS.pl).map((item, i) => `
     <div class="faq-item">
       <button class="faq-question" type="button" aria-expanded="false" aria-controls="faq-ans-${i}">
         <span>${escHtml(item.q)}</span>
@@ -1692,9 +2053,9 @@ function openFaqModal() {
       <div class="faq-modal-header">
         <div>
           <h2 class="faq-modal-title">FAQ</h2>
-          <p class="faq-modal-sub">Często zadawane pytania</p>
+          <p class="faq-modal-sub">${t('faq-subtitle')}</p>
         </div>
-        <button class="faq-modal-close" type="button" aria-label="Zamknij FAQ">✕</button>
+        <button class="faq-modal-close" type="button" aria-label="${t('close-faq')}">✕</button>
       </div>
       <div class="faq-list">${itemsHtml}</div>
     </div>

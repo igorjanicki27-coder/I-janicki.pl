@@ -225,7 +225,7 @@
 
   <!-- ═══════════════ TOPBAR ═══════════════ -->
   <header class="topbar">
-    <a class="brand" href="#" aria-label="i-JANICKI home">
+    <a class="brand" href="#" aria-label="i-JANICKI home" data-i18n-aria-label="brand-home">
       <span class="brand-name">i-JANICKI</span>
       <!-- Pasek postępu tutoriala -->
       <div class="tutorial-progress" id="tutorialProgress" hidden>
@@ -306,7 +306,7 @@
     </div>
 
     <!-- Panel / Dymek robota -->
-    <section class="panel" id="panel" aria-live="polite" aria-label="Asystent i-JANEK">
+    <section class="panel" id="panel" aria-live="polite" aria-label="Asystent i-JANEK" data-i18n-aria-label="assistant-panel">
       <div class="panel-header" id="panelHeader">
         <div class="panel-logo" id="panelLogo" hidden>i-JANICKI</div>
         <div class="loader" aria-hidden="true">
@@ -331,8 +331,8 @@
     </div><!-- /stage-bot -->
 
     <!-- Prawa kolumna: treść sekcji (widoczna podczas kroków tutoriala) -->
-    <div class="stage-content" id="stageContent" hidden aria-label="Treść sekcji">
-      <button class="stage-content-close" id="stageContentClose" aria-label="Zamknij">✕</button>
+    <div class="stage-content" id="stageContent" hidden aria-label="Treść sekcji" data-i18n-aria-label="section-content">
+      <button class="stage-content-close" id="stageContentClose" aria-label="Zamknij" data-i18n-aria-label="close">✕</button>
       <div class="stage-content-inner" id="stageContentInner"></div>
     </div>
 
@@ -343,14 +343,14 @@
     <span>© <span id="year"></span> i-JANICKI</span>
     <span class="foot-sep">·</span>
     <a href="mailto:igor.janicki27@gmail.com" class="foot-mail">igor.janicki27@gmail.com</a>
-    <button class="cookie-foot-btn" id="cookieFootBtn" title="Ustawienia plików cookie" aria-label="Zmień ustawienia cookies">🍪</button>
+    <button class="cookie-foot-btn" id="cookieFootBtn" title="Ustawienia plików cookie" aria-label="Zmień ustawienia cookies" data-i18n-title="cookie-settings-title" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
 
   <!-- ═══════════════ MODAL (sekcje treści) ═══════════════ -->
   <div class="modal-root" id="modalRoot" aria-hidden="true" role="presentation">
     <div class="modal-backdrop" data-close></div>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <button class="modal-close" data-close aria-label="Zamknij">✕</button>
+      <button class="modal-close" data-close aria-label="Zamknij" data-i18n-aria-label="close">✕</button>
       <div class="modal-body" id="modalBody"></div>
     </div>
   </div>
@@ -405,14 +405,14 @@
 
   <!-- ═══════════════ PRZEGLĄDARKA DOKUMENTÓW ═══════════════ -->
   <div class="doc-overlay" id="docOverlay" role="dialog" aria-modal="true"
-       aria-label="Dokument" aria-hidden="true" hidden>
+       aria-label="Dokument" aria-hidden="true" hidden data-i18n-aria-label="doc-overlay">
     <div class="doc-panel">
       <div class="doc-panel-header">
-        <span id="docTitle" class="doc-panel-title">Dokument</span>
-        <button class="doc-close" id="docClose" aria-label="Zamknij dokument">✕</button>
+        <span id="docTitle" class="doc-panel-title" data-i18n="doc-title-default">Dokument</span>
+        <button class="doc-close" id="docClose" aria-label="Zamknij dokument" data-i18n-aria-label="close-doc">✕</button>
       </div>
       <div class="doc-content" id="docContent">
-        <div class="doc-loading">Ładowanie dokumentu…</div>
+        <div class="doc-loading" data-i18n="doc-loading">Ładowanie dokumentu…</div>
       </div>
     </div>
   </div>
@@ -420,147 +420,147 @@
   <!-- ═══════════════ SZABLONY TREŚCI SEKCJI ═══════════════ -->
 
   <template id="tpl-about">
-    <h2 id="modalTitle" class="modal-section-title">O mnie</h2>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-about">O mnie</h2>
     <div class="about-card">
       <div class="about-ico">
-        <img src="./icons/Igor.jpg" alt="Igor Janicki" />
+        <img src="./icons/Igor.jpg" alt="Igor Janicki" data-i18n-alt="about-photo-alt" />
       </div>
       <h3>Igor Janicki</h3>
-      <p class="about-handle">@i-janicki · Wrocław</p>
-      <p class="about-lead">
+      <p class="about-handle" data-i18n="about-handle">@i-janicki · Wrocław</p>
+      <p class="about-lead" data-i18n="about-lead">
         Tworzę strony internetowe i aplikacje webowe na zamówienie,
         pomagam w konfiguracji sieci i oferuję bieżącą opiekę IT.
         Pracuję zarówno z klientami lokalnymi, jak i zdalnie.
       </p>
       <ul class="about-list">
-        <li>Strony internetowe na zamówienie</li>
-        <li>Aplikacje webowe i mobilne na zamówienie</li>
-        <li>Konfiguracja sieci i administracja</li>
-        <li>Wsparcie i opieka IT</li>
+        <li data-i18n="about-li-web">Strony internetowe na zamówienie</li>
+        <li data-i18n="about-li-apps">Aplikacje webowe i mobilne na zamówienie</li>
+        <li data-i18n="about-li-network">Konfiguracja sieci i administracja</li>
+        <li data-i18n="about-li-support">Wsparcie i opieka IT</li>
       </ul>
     </div>
   </template>
 
   <template id="tpl-services">
-    <h2 id="modalTitle" class="modal-section-title">Usługi</h2>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-services">Usługi</h2>
     <div class="svc-grid">
       <div class="svc">
         <div class="svc-ico">⌬</div>
-        <h3>Projektowanie</h3>
-        <p>Projektuję i wdrażam loga i ikony.</p>
+        <h3 data-i18n="services-design-title">Projektowanie</h3>
+        <p data-i18n="services-design-desc">Projektuję i wdrażam loga i ikony.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">⟨⟩</div>
-        <h3>Strony internetowe</h3>
-        <p>Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.</p>
+        <h3 data-i18n="services-web-title">Strony internetowe</h3>
+        <p data-i18n="services-web-desc">Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">▣</div>
-        <h3>Aplikacje webowe</h3>
-        <p>Tworzę aplikacje webowe z użytkowymi interfejsami, integracjami API i panelami administracyjnymi.</p>
+        <h3 data-i18n="services-webapps-title">Aplikacje webowe</h3>
+        <p data-i18n="services-webapps-desc">Tworzę aplikacje webowe z użytkowymi interfejsami, integracjami API i panelami administracyjnymi.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">▣</div>
-        <h3>Aplikacje mobilne</h3>
-        <p>Tworzę aplikacje mobilne, intergruje je ze stronami lub innymi aplikacjami.</p>
+        <h3 data-i18n="services-mobile-title">Aplikacje mobilne</h3>
+        <p data-i18n="services-mobile-desc">Tworzę aplikacje mobilne, intergruje je ze stronami lub innymi aplikacjami.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">⌬</div>
-        <h3>Konfiguracja sieci</h3>
-        <p>Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego.</p>
+        <h3 data-i18n="services-network-title">Konfiguracja sieci</h3>
+        <p data-i18n="services-network-desc">Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">✦</div>
-        <h3>Opieka IT</h3>
-        <p>Bieżące wsparcie techniczne, aktualizacje i monitoring systemów — abonamentowo.</p>
+        <h3 data-i18n="services-it-title">Opieka IT</h3>
+        <p data-i18n="services-it-desc">Bieżące wsparcie techniczne, aktualizacje i monitoring systemów — abonamentowo.</p>
       </div>
     </div>
   </template>
 
   <template id="tpl-projects">
-    <h2 id="modalTitle" class="modal-section-title">Projekty</h2>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-projects">Projekty</h2>
 
     <!-- Sekcja stron -->
-    <h3 class="section-sub">Strony internetowe</h3>
+    <h3 class="section-sub" data-i18n="projects-web-title">Strony internetowe</h3>
     <div class="projects-list">
       <a class="project-strip" href="https://strzelca.pl" target="_blank" rel="noopener noreferrer">
         <div class="project-num">01</div>
         <div class="project-content">
           <strong>strzelca.pl</strong>
-          <p>Portal strzelecki — aktualności, wyniki zawodów i regulaminy.</p>
+          <p data-i18n="projects-strzelca-desc">Portal strzelecki — aktualności, wyniki zawodów i regulaminy.</p>
         </div>
       </a>
       <a class="project-strip" href="https://get-dmg.com" target="_blank" rel="noopener noreferrer">
         <div class="project-num">02</div>
         <div class="project-content">
           <strong>get-dmg.com</strong>
-          <p>Serwis z aplikacjami i narzędziami dedykowanymi na macOS.</p>
+          <p data-i18n="projects-dmg-desc">Serwis z aplikacjami i narzędziami dedykowanymi na macOS.</p>
         </div>
       </a>
       <a class="project-strip" href="https://sredzka-korona.pl" target="_blank" rel="noopener noreferrer">
         <div class="project-num">03</div>
         <div class="project-content">
           <strong>sredzka-korona.pl</strong>
-          <p>Strona dla lokalnej marki wina i restauracji.</p>
+          <p data-i18n="projects-korona-desc">Strona dla lokalnej marki wina i restauracji.</p>
         </div>
       </a>
     </div>
 
     <!-- Sekcja aplikacji -->
-    <h3 class="section-sub" style="margin-top: 24px;">Aplikacje</h3>
+    <h3 class="section-sub" style="margin-top: 24px;" data-i18n="projects-apps-title">Aplikacje</h3>
     <div class="projects-list">
       <div class="project-strip project-app">
         <div class="project-num">01</div>
         <div class="project-content">
           <strong>myIP</strong>
-          <p>Aplikacja macOS — publiczny adres IP i informacje o sieci.</p>
+          <p data-i18n="projects-myip-desc">Aplikacja macOS — publiczny adres IP i informacje o sieci.</p>
         </div>
       </div>
     </div>
   </template>
 
   <template id="tpl-process">
-    <h2 id="modalTitle" class="modal-section-title">Proces współpracy</h2>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-process">Proces współpracy</h2>
     <ol class="steps">
-      <li><span class="step-num">01</span><div><strong>Wstępna rozmowa</strong><p>Omawiamy Twoje potrzeby, cel projektu i zakres prac. Możemy porozmawiać przez telefon, e-mail lub Zoom.</p></div></li>
-      <li><span class="step-num">02</span><div><strong>Wycena i umowa</strong><p>Przygotowuję wycenę i propozycję umowy. Ustalamy harmonogram i zakres — bez niespodzianek.</p></div></li>
-      <li><span class="step-num">03</span><div><strong>Realizacja</strong><p>Pracuję etapami, regularnie raportując postęp i konsultując kluczowe decyzje.</p></div></li>
-      <li><span class="step-num">04</span><div><strong>Testy i poprawki</strong><p>Testuję projekt na różnych urządzeniach i przeglądarkach. Wprowadzam poprawki wg Twoich uwag.</p></div></li>
-      <li><span class="step-num">05</span><div><strong>Wdrożenie i wsparcie</strong><p>Przekazuję gotowy projekt i oferuję wsparcie po wdrożeniu oraz dalszą opiekę IT.</p></div></li>
+      <li><span class="step-num">01</span><div><strong data-i18n="process-step1-title">Wstępna rozmowa</strong><p data-i18n="process-step1-desc">Omawiamy Twoje potrzeby, cel projektu i zakres prac. Możemy porozmawiać przez telefon, e-mail lub Zoom.</p></div></li>
+      <li><span class="step-num">02</span><div><strong data-i18n="process-step2-title">Wycena i umowa</strong><p data-i18n="process-step2-desc">Przygotowuję wycenę i propozycję umowy. Ustalamy harmonogram i zakres — bez niespodzianek.</p></div></li>
+      <li><span class="step-num">03</span><div><strong data-i18n="process-step3-title">Realizacja</strong><p data-i18n="process-step3-desc">Pracuję etapami, regularnie raportując postęp i konsultując kluczowe decyzje.</p></div></li>
+      <li><span class="step-num">04</span><div><strong data-i18n="process-step4-title">Testy i poprawki</strong><p data-i18n="process-step4-desc">Testuję projekt na różnych urządzeniach i przeglądarkach. Wprowadzam poprawki wg Twoich uwag.</p></div></li>
+      <li><span class="step-num">05</span><div><strong data-i18n="process-step5-title">Wdrożenie i wsparcie</strong><p data-i18n="process-step5-desc">Przekazuję gotowy projekt i oferuję wsparcie po wdrożeniu oraz dalszą opiekę IT.</p></div></li>
     </ol>
   </template>
 
   <template id="tpl-pricing">
-    <h2 id="modalTitle" class="modal-section-title">Cennik</h2>
-    <p class="section-lead">Orientacyjne ceny — każdy projekt wyceniam indywidualnie.</p>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-pricing">Cennik</h2>
+    <p class="section-lead" data-i18n="pricing-lead">Orientacyjne ceny — każdy projekt wyceniam indywidualnie.</p>
     <div class="price-grid">
       <div class="price-card">
-        <h3>Strona internetowa</h3>
-        <p class="price"><span>od</span> <b>1 500 zł</b></p>
-        <p class="price-desc">Strona wizytówkowa lub portfolio. Responsywna, szybka, zoptymalizowana pod SEO.</p>
+        <h3 data-i18n="pricing-web-title">Strona internetowa</h3>
+        <p class="price"><span data-i18n="pricing-from">od</span> <b>1 500 zł</b></p>
+        <p class="price-desc" data-i18n="pricing-web-desc">Strona wizytówkowa lub portfolio. Responsywna, szybka, zoptymalizowana pod SEO.</p>
       </div>
       <div class="price-card">
-        <h3>Aplikacja </h3>
-        <p class="price"><span>od</span> <b>5 000 zł</b></p>
-        <p class="price-desc">Panel, system, aplikacja z logiką biznesową i bazą danych.</p>
+        <h3 data-i18n="pricing-app-title">Aplikacja</h3>
+        <p class="price"><span data-i18n="pricing-from">od</span> <b>5 000 zł</b></p>
+        <p class="price-desc" data-i18n="pricing-app-desc">Panel, system, aplikacja z logiką biznesową i bazą danych.</p>
       </div>
       <div class="price-card">
-        <h3>Sieć / Administracja</h3>
-        <p class="price"><span>od</span> <b>150 zł/h</b></p>
-        <p class="price-desc">Projekt i konfiguracja sieci, VPN, bezpieczeństwo.</p>
+        <h3 data-i18n="pricing-network-title">Sieć / Administracja</h3>
+        <p class="price"><span data-i18n="pricing-from">od</span> <b>150 zł/h</b></p>
+        <p class="price-desc" data-i18n="pricing-network-desc">Projekt i konfiguracja sieci, VPN, bezpieczeństwo.</p>
       </div>
       <div class="price-card">
-        <h3>Opieka IT (abonament)</h3>
-        <p class="price"><span>od</span> <b>300 zł/mc</b></p>
-        <p class="price-desc">Bieżące wsparcie, monitoring, aktualizacje.</p>
+        <h3 data-i18n="pricing-it-title">Opieka IT (abonament)</h3>
+        <p class="price"><span data-i18n="pricing-from">od</span> <b>300 zł/mc</b></p>
+        <p class="price-desc" data-i18n="pricing-it-desc">Bieżące wsparcie, monitoring, aktualizacje.</p>
       </div>
     </div>
-    <p class="price-note">Podane ceny są orientacyjne — każdy projekt wyceniam indywidualnie po wstępnej rozmowie.</p>
+    <p class="price-note" data-i18n="pricing-note">Podane ceny są orientacyjne — każdy projekt wyceniam indywidualnie po wstępnej rozmowie.</p>
   </template>
 
   <template id="tpl-contact">
-    <h2 id="modalTitle" class="modal-section-title">Kontakt</h2>
-    <p class="section-lead">Napisz do mnie — odpowiem możliwie szybko.</p>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-contact">Kontakt</h2>
+    <p class="section-lead" data-i18n="contact-lead">Napisz do mnie — odpowiem możliwie szybko.</p>
     <form class="form-container" id="contactForm" novalidate>
       <input type="hidden" name="access_key" value="e1b3a82b-63d0-4f05-a808-676a7b22537a" />
       <input type="hidden" name="subject" value="i-janicki.pl — nowe zapytanie" />
@@ -568,16 +568,16 @@
       <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
       <div class="form">
         <div class="form-group">
-          <label for="f-name">Nadawca</label>
-          <input id="f-name" name="name" type="text" required minlength="2" autocomplete="name" placeholder="Imię lub pseudonim" />
+          <label for="f-name" data-i18n="contact-name-label">Nadawca</label>
+          <input id="f-name" name="name" type="text" required minlength="2" autocomplete="name" placeholder="Imię lub pseudonim" data-i18n-placeholder="contact-name-placeholder" />
         </div>
         <div class="form-group">
-          <label for="f-email">E-MAIL / NR TEL</label>
-          <input id="f-email" name="email" type="text" required autocomplete="email" placeholder="e-mail lub numer telefonu" />
+          <label for="f-email" data-i18n="contact-email-label">E-MAIL / NR TEL</label>
+          <input id="f-email" name="email" type="text" required autocomplete="email" placeholder="e-mail lub numer telefonu" data-i18n-placeholder="contact-email-placeholder" />
         </div>
         <div class="form-group">
-          <label for="f-msg">Wiadomość</label>
-          <textarea id="f-msg" name="message" required minlength="10" placeholder="Opisz swój projekt lub zapytanie…"></textarea>
+          <label for="f-msg" data-i18n="contact-message-label">Wiadomość</label>
+          <textarea id="f-msg" name="message" required minlength="10" placeholder="Opisz swój projekt lub zapytanie…" data-i18n-placeholder="contact-message-placeholder"></textarea>
         </div>
         <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
         <button type="submit" class="btn">
@@ -586,20 +586,20 @@
             <div class="circle-container"><div class="circle"></div></div>
             <div class="circle-container"><div class="circle"></div></div>
           </div>
-          <strong id="submitBtnText">WYŚLIJ</strong>
+          <strong id="submitBtnText" data-i18n="contact-submit">WYŚLIJ</strong>
         </button>
       </div>
     </form>
   </template>
 
   <template id="tpl-reviews">
-    <h2 id="modalTitle" class="modal-section-title">Opinie</h2>
+    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-reviews">Opinie</h2>
     <div class="modal-reviews-container">
       <!-- Lewa kolumna: Opinie klientów -->
       <div class="reviews-carousel-section">
-        <p class="section-lead">Tu możesz przeczytać opinie dotychczasowych klientów.</p>
+        <p class="section-lead" data-i18n="reviews-lead">Tu możesz przeczytać opinie dotychczasowych klientów.</p>
         <div id="modalReviewsCarousel" class="reviews-carousel modal-carousel">
-          <div class="reviews-loading"><span>Ładowanie opinii…</span></div>
+          <div class="reviews-loading"><span data-i18n="reviews-loading">Ładowanie opinii…</span></div>
         </div>
       </div>
 
@@ -608,25 +608,25 @@
 
       <!-- Prawa kolumna: Formularz opinii -->
       <div class="modal-review-form-container">
-        <h3 class="reviews-section-title">Zostaw opinię</h3>
+        <h3 class="reviews-section-title" data-i18n="reviews-form-title">Zostaw opinię</h3>
         <form id="modalReviewForm" class="review-form" novalidate>
-          <div class="star-picker" id="modalStarPicker" role="radiogroup" aria-label="Wybierz ocenę">
-            <button type="button" class="star" data-val="1" aria-label="1 gwiazdka">★</button>
-            <button type="button" class="star" data-val="2" aria-label="2 gwiazdki">★</button>
-            <button type="button" class="star" data-val="3" aria-label="3 gwiazdki">★</button>
-            <button type="button" class="star" data-val="4" aria-label="4 gwiazdki">★</button>
-            <button type="button" class="star" data-val="5" aria-label="5 gwiazdek">★</button>
+          <div class="star-picker" id="modalStarPicker" role="radiogroup" aria-label="Wybierz ocenę" data-i18n-aria-label="reviews-stars-label">
+            <button type="button" class="star" data-val="1" aria-label="1 gwiazdka" data-i18n-aria-label="reviews-star-1">★</button>
+            <button type="button" class="star" data-val="2" aria-label="2 gwiazdki" data-i18n-aria-label="reviews-star-2">★</button>
+            <button type="button" class="star" data-val="3" aria-label="3 gwiazdki" data-i18n-aria-label="reviews-star-3">★</button>
+            <button type="button" class="star" data-val="4" aria-label="4 gwiazdki" data-i18n-aria-label="reviews-star-4">★</button>
+            <button type="button" class="star" data-val="5" aria-label="5 gwiazdek" data-i18n-aria-label="reviews-star-5">★</button>
           </div>
           <input type="hidden" id="modalReviewRating" value="0" />
           <div class="review-form-fields">
             <div class="review-field">
-              <input type="text" id="modalReviewName" placeholder="Twoje imię" required minlength="2" autocomplete="name" />
+              <input type="text" id="modalReviewName" placeholder="Twoje imię" required minlength="2" autocomplete="name" data-i18n-placeholder="reviews-name-placeholder" />
             </div>
             <div class="review-field">
-              <input type="email" id="modalReviewEmail" placeholder="E-mail (weryfikacja — nie będzie widoczny)" required autocomplete="email" />
+              <input type="email" id="modalReviewEmail" placeholder="E-mail (weryfikacja — nie będzie widoczny)" required autocomplete="email" data-i18n-placeholder="reviews-email-placeholder" />
             </div>
             <div class="review-field">
-              <textarea id="modalReviewComment" placeholder="Twoja opinia…" rows="3" required minlength="5" maxlength="1000"></textarea>
+              <textarea id="modalReviewComment" placeholder="Twoja opinia…" rows="3" required minlength="5" maxlength="1000" data-i18n-placeholder="reviews-comment-placeholder"></textarea>
             </div>
           </div>
           <div class="review-form-status" id="modalReviewStatus" role="status" aria-live="polite"></div>
@@ -636,7 +636,7 @@
               <div class="circle-container-r"><div class="circle-r"></div></div>
               <div class="circle-container-r"><div class="circle-r"></div></div>
             </div>
-            <strong>WYŚLIJ OPINIĘ</strong>
+            <strong data-i18n="reviews-submit">WYŚLIJ OPINIĘ</strong>
           </button>
         </form>
       </div>

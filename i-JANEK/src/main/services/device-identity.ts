@@ -1,7 +1,9 @@
 import os from 'node:os'
 import { app } from 'electron'
-import { machineIdSync } from 'node-machine-id'
+import nodeMachineId from 'node-machine-id'
 import type { SystemContext } from '@shared/contracts'
+
+const { machineIdSync } = nodeMachineId
 
 export function getSystemContext(): SystemContext {
   const hostname = os.hostname()

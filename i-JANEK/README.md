@@ -13,7 +13,7 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 ## Szybki start
 
 1. Skopiuj `.env.example` do `.env`.
-2. Uzupełnij konfigurację Firebase. Publiczna konfiguracja jest już wpisana do lokalnego `.env`, ale nadal potrzebny jest dokładny `VITE_FIREBASE_DATABASE_URL`, jeśli chcesz wyjść z trybu demo.
+2. Uzupełnij konfigurację Firebase oraz lokalny `I_JANEK_AES_VAULT_KEY`. Nie commituj tego klucza do repo.
 3. Dodaj ikony builda:
    - `build/icon.png`
    - `build/icon.ico`
