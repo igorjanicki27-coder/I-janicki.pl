@@ -1,0 +1,45 @@
+{
+  "name": "i-janek",
+  "version": "0.1.0",
+  "private": true,
+  "description": "i-JANEK desktop supervision platform for Master/Slave IT support workflows.",
+  "author": "i-JANICKI",
+  "type": "module",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "vue-tsc --noEmit && electron-vite build && electron-builder",
+    "build:dir": "vue-tsc --noEmit && electron-vite build && electron-builder --dir",
+    "preview": "electron-vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "dayjs": "^1.11.13",
+    "electron-store": "^10.1.0",
+    "firebase": "^11.6.1",
+    "googleapis": "^148.0.0",
+    "lucide-vue-next": "^0.511.0",
+    "mime-types": "^3.0.1",
+    "node-machine-id": "^1.1.12",
+    "pinia": "^3.0.3",
+    "systeminformation": "^5.25.11",
+    "uuid": "^11.1.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "autoprefixer": "^10.4.21",
+    "electron": "^35.1.4",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.1.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.2",
+    "vue-tsc": "^2.2.8"
+  }
+}

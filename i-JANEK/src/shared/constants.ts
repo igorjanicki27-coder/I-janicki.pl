@@ -1,0 +1,9 @@
+export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com'
+export const DEFAULT_VAULT_KEY = '123QWEasd'
+export const DEFAULT_ALERT_CPU_TEMP = 90
+export const DEFAULT_ALERT_DISK_USAGE = 90
+export const DEFAULT_TELEMETRY_INTERVAL_MIN = 60
+export const DEFAULT_ALERT_INTERVAL_MIN = 5
+export const DEFAULT_INVENTORY_INTERVAL_HOURS = 168
+export const DEFAULT_SYNC_FILE_MB = 100
+export const EVENT_HISTORY_RETENTION_DAYS = 30

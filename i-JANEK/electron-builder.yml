@@ -1,0 +1,29 @@
+appId: pl.i-janicki.desktop
+productName: i-JANEK
+directories:
+  buildResources: build
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+extraResources:
+  - from: resources/
+    to: resources
+asarUnpack:
+  - resources/**
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+publish:
+  provider: github
+  owner: REPLACE_ME
+  repo: REPLACE_ME
+  private: true
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  artifactName: i-JANEK-Setup-${version}.${ext}
+  include: build/installer.nsh

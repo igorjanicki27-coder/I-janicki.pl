@@ -175,14 +175,15 @@ const TRANSLATIONS = {
     'cookie-ask': 'Czy wyrażasz zgodę na <strong>Google Analytics</strong>?',
     'cookie-essential': 'Tylko niezbędne',
     'cookie-all': 'Akceptuję wszystkie',
-    'cookie-doc-privacy': 'Polityka prywatności i cookies →',
-    'cookie-doc-rodo': 'Polityka RODO →',
-    'cookie-doc-coop': 'Polityka współpracy →',
+    'cookie-doc-regulamin': 'Regulamin witryny',
+    'cookie-doc-privacy': 'Polityka prywatności',
+    'cookie-doc-rodo': 'Polityka RODO',
+    'cookie-doc-all-docs': 'Wszystkie dokumenty',
   },
   en: {
-
     'btn-about': 'About',
     'btn-services': 'Services',
+
     'btn-projects': 'Projects',
     'btn-process': 'Collaboration',
     'btn-pricing': 'Pricing',
@@ -210,12 +211,14 @@ const TRANSLATIONS = {
     'cookie-ask': 'Do you agree to <strong>Google Analytics</strong>?',
     'cookie-essential': 'Essential only',
     'cookie-all': 'Accept all',
-    'cookie-doc-privacy': 'Privacy & cookies policy →',
-    'cookie-doc-rodo': 'GDPR policy →',
-    'cookie-doc-coop': 'Collaboration policy →',
+    'cookie-doc-regulamin': 'Website rules',
+    'cookie-doc-privacy': 'Privacy & cookies policy',
+    'cookie-doc-rodo': 'GDPR policy',
+    'cookie-doc-all-docs': 'All documents',
   },
 
 };
+
 
 let currentLang = 'pl';
 
@@ -549,10 +552,12 @@ function renderCookieStep() {
            <button class="cookie-btn cookie-btn-all"       id="tutCookieYes">${t('cookie-all')}</button>
          </div>
          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.75rem">
+           <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
            <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
            <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
-           <button class="cookie-doc-link" data-doc="polityka-wspolpracy">${t('cookie-doc-coop')}</button>
+           <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
          </div>
+
        </div>`;
 
   setPanel(t('cookie-title'), html);
