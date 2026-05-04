@@ -538,12 +538,21 @@ function renderCookieStep() {
   const decided     = !!localStorage.getItem(LS.COOKIE_DECISION);
   const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
 
+  const docsRow = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.75rem">
+      <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
+      <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
+      <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
+      <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
+    </div>`;
+
   const html = decided
     ? `<div class="tut-message">
          <p>${t('cookie-decided')}</p>
          <p>Google Analytics: <strong>${analyticsOn ? t('cookie-ga-on') : t('cookie-ga-off')}</strong>.</p>
          <p>${t('cookie-change')}</p>
-       </div>`
+       </div>
+       ${docsRow}`
     : `<div class="tut-message">
          <p>${t('cookie-msg')}</p>
          <p>${t('cookie-ask')}</p>
@@ -551,14 +560,9 @@ function renderCookieStep() {
            <button class="cookie-btn cookie-btn-essential" id="tutCookieNo">${t('cookie-essential')}</button>
            <button class="cookie-btn cookie-btn-all"       id="tutCookieYes">${t('cookie-all')}</button>
          </div>
-         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.75rem">
-           <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
-           <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
-           <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
-           <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
-         </div>
+       </div>
+       ${docsRow}`;
 
-       </div>`;
 
   setPanel(t('cookie-title'), html);
 

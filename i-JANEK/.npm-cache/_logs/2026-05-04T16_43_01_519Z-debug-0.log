@@ -1,0 +1,199 @@
+0 verbose cli /usr/local/bin/node /usr/local/bin/npm
+1 info using npm@11.6.2
+2 info using node@v24.12.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/janicki/myApps/I-janicki.pl/i-JANEK/.npmrc
+5 silly config load:file:/Users/janicki/.npmrc
+6 silly config load:file:/Users/janicki/.npm-global/etc/npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_01_519Z-
+10 verbose logfile /Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_01_519Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest chokidar@^4.0.3
+15 silly packumentCache full:https://registry.npmjs.org/chokidar cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/chokidar 172ms (cache miss)
+17 silly packumentCache full:https://registry.npmjs.org/chokidar set size:undefined disposed:false
+18 silly fetch manifest dayjs@^1.11.13
+19 silly packumentCache full:https://registry.npmjs.org/dayjs cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/dayjs 72ms (cache miss)
+21 silly packumentCache full:https://registry.npmjs.org/dayjs set size:undefined disposed:false
+22 silly fetch manifest electron-store@^10.1.0
+23 silly packumentCache full:https://registry.npmjs.org/electron-store cache-miss
+24 http fetch GET 200 https://registry.npmjs.org/electron-store 379ms (cache miss)
+25 silly packumentCache full:https://registry.npmjs.org/electron-store set size:undefined disposed:false
+26 silly fetch manifest firebase@^11.6.1
+27 silly packumentCache full:https://registry.npmjs.org/firebase cache-miss
+28 http fetch GET 200 https://registry.npmjs.org/firebase 431ms (cache miss)
+29 silly packumentCache full:https://registry.npmjs.org/firebase set size:undefined disposed:false
+30 silly fetch manifest googleapis@^148.0.0
+31 silly packumentCache full:https://registry.npmjs.org/googleapis cache-miss
+32 http fetch GET 200 https://registry.npmjs.org/googleapis 58ms (cache miss)
+33 silly packumentCache full:https://registry.npmjs.org/googleapis set size:undefined disposed:false
+34 silly fetch manifest lucide-vue-next@^0.511.0
+35 silly packumentCache full:https://registry.npmjs.org/lucide-vue-next cache-miss
+36 http fetch GET 200 https://registry.npmjs.org/lucide-vue-next 79ms (cache miss)
+37 silly packumentCache full:https://registry.npmjs.org/lucide-vue-next set size:undefined disposed:false
+38 silly fetch manifest vue@^3.5.13
+39 silly packumentCache full:https://registry.npmjs.org/vue cache-miss
+40 http fetch GET 200 https://registry.npmjs.org/vue 79ms (cache miss)
+41 silly packumentCache full:https://registry.npmjs.org/vue set size:undefined disposed:false
+42 silly fetch manifest typescript@^5.8.3
+43 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+44 http fetch GET 200 https://registry.npmjs.org/typescript 247ms (cache miss)
+45 silly packumentCache full:https://registry.npmjs.org/typescript set size:undefined disposed:false
+46 silly fetch manifest mime-types@^3.0.1
+47 silly packumentCache full:https://registry.npmjs.org/mime-types cache-miss
+48 http fetch GET 200 https://registry.npmjs.org/mime-types 46ms (cache miss)
+49 silly packumentCache full:https://registry.npmjs.org/mime-types set size:undefined disposed:false
+50 silly fetch manifest node-machine-id@^1.1.12
+51 silly packumentCache full:https://registry.npmjs.org/node-machine-id cache-miss
+52 http fetch GET 200 https://registry.npmjs.org/node-machine-id 41ms (cache miss)
+53 silly packumentCache full:https://registry.npmjs.org/node-machine-id set size:undefined disposed:false
+54 silly fetch manifest pinia@^3.0.3
+55 silly packumentCache full:https://registry.npmjs.org/pinia cache-miss
+56 http fetch GET 200 https://registry.npmjs.org/pinia 47ms (cache miss)
+57 silly packumentCache full:https://registry.npmjs.org/pinia set size:undefined disposed:false
+58 silly fetch manifest systeminformation@^5.25.11
+59 silly packumentCache full:https://registry.npmjs.org/systeminformation cache-miss
+60 http fetch GET 200 https://registry.npmjs.org/systeminformation 84ms (cache miss)
+61 silly packumentCache full:https://registry.npmjs.org/systeminformation set size:undefined disposed:false
+62 silly fetch manifest uuid@^11.1.0
+63 silly packumentCache full:https://registry.npmjs.org/uuid cache-miss
+64 http fetch GET 200 https://registry.npmjs.org/uuid 41ms (cache miss)
+65 silly packumentCache full:https://registry.npmjs.org/uuid set size:undefined disposed:false
+66 silly fetch manifest vue-router@^4.5.1
+67 silly packumentCache full:https://registry.npmjs.org/vue-router cache-miss
+68 http fetch GET 200 https://registry.npmjs.org/vue-router 59ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/vue-router set size:undefined disposed:false
+70 silly fetch manifest @types/mime-types@^3.0.1
+71 silly packumentCache full:https://registry.npmjs.org/@types%2fmime-types cache-miss
+72 http fetch GET 200 https://registry.npmjs.org/@types%2fmime-types 43ms (cache miss)
+73 silly packumentCache full:https://registry.npmjs.org/@types%2fmime-types set size:undefined disposed:false
+74 silly fetch manifest @types/node@^22.14.0
+75 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+76 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 191ms (cache miss)
+77 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:undefined disposed:false
+78 silly fetch manifest @vitejs/plugin-vue@^6.0.6
+79 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fplugin-vue cache-miss
+80 http cache https://registry.npmjs.org/@vitejs%2fplugin-vue 3ms (cache hit)
+81 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fplugin-vue set size:420146 disposed:false
+82 silly fetch manifest vite@^7.0.0
+83 silly packumentCache full:https://registry.npmjs.org/vite cache-miss
+84 http cache https://registry.npmjs.org/vite 35ms (cache hit)
+85 silly packumentCache full:https://registry.npmjs.org/vite set size:38816674 disposed:false
+86 silly fetch manifest jiti@>=1.21.0
+87 silly packumentCache full:https://registry.npmjs.org/jiti cache-miss
+88 http fetch GET 200 https://registry.npmjs.org/jiti 45ms (cache miss)
+89 silly packumentCache full:https://registry.npmjs.org/jiti set size:undefined disposed:false
+90 silly fetch manifest less@^4.0.0
+91 silly packumentCache full:https://registry.npmjs.org/less cache-miss
+92 http fetch GET 200 https://registry.npmjs.org/less 47ms (cache miss)
+93 silly packumentCache full:https://registry.npmjs.org/less set size:undefined disposed:false
+94 silly fetch manifest lightningcss@^1.21.0
+95 silly packumentCache full:https://registry.npmjs.org/lightningcss cache-miss
+96 http fetch GET 200 https://registry.npmjs.org/lightningcss 37ms (cache miss)
+97 silly packumentCache full:https://registry.npmjs.org/lightningcss set size:undefined disposed:false
+98 silly fetch manifest sass@^1.70.0
+99 silly packumentCache full:https://registry.npmjs.org/sass cache-miss
+100 http fetch GET 200 https://registry.npmjs.org/sass 56ms (cache miss)
+101 silly packumentCache full:https://registry.npmjs.org/sass set size:undefined disposed:false
+102 silly fetch manifest sass-embedded@^1.70.0
+103 silly packumentCache full:https://registry.npmjs.org/sass-embedded cache-miss
+104 http fetch GET 200 https://registry.npmjs.org/sass-embedded 43ms (cache miss)
+105 silly packumentCache full:https://registry.npmjs.org/sass-embedded set size:undefined disposed:false
+106 silly fetch manifest stylus@>=0.54.8
+107 silly packumentCache full:https://registry.npmjs.org/stylus cache-miss
+108 http fetch GET 200 https://registry.npmjs.org/stylus 45ms (cache miss)
+109 silly packumentCache full:https://registry.npmjs.org/stylus set size:undefined disposed:false
+110 silly fetch manifest sugarss@^5.0.0
+111 silly packumentCache full:https://registry.npmjs.org/sugarss cache-miss
+112 http fetch GET 200 https://registry.npmjs.org/sugarss 37ms (cache miss)
+113 silly packumentCache full:https://registry.npmjs.org/sugarss set size:undefined disposed:false
+114 silly fetch manifest postcss@^8.5.3
+115 silly packumentCache full:https://registry.npmjs.org/postcss cache-miss
+116 http fetch GET 200 https://registry.npmjs.org/postcss 57ms (cache miss)
+117 silly packumentCache full:https://registry.npmjs.org/postcss set size:undefined disposed:false
+118 silly fetch manifest terser@^5.16.0
+119 silly packumentCache full:https://registry.npmjs.org/terser cache-miss
+120 http fetch GET 200 https://registry.npmjs.org/terser 53ms (cache miss)
+121 silly packumentCache full:https://registry.npmjs.org/terser set size:undefined disposed:false
+122 silly fetch manifest tsx@^4.8.1
+123 silly packumentCache full:https://registry.npmjs.org/tsx cache-miss
+124 http fetch GET 200 https://registry.npmjs.org/tsx 44ms (cache miss)
+125 silly packumentCache full:https://registry.npmjs.org/tsx set size:undefined disposed:false
+126 silly fetch manifest yaml@^2.4.2
+127 silly packumentCache full:https://registry.npmjs.org/yaml cache-miss
+128 http fetch GET 200 https://registry.npmjs.org/yaml 46ms (cache miss)
+129 silly packumentCache full:https://registry.npmjs.org/yaml set size:undefined disposed:false
+130 silly fetch manifest autoprefixer@^10.4.21
+131 silly packumentCache full:https://registry.npmjs.org/autoprefixer cache-miss
+132 http fetch GET 200 https://registry.npmjs.org/autoprefixer 72ms (cache miss)
+133 silly packumentCache full:https://registry.npmjs.org/autoprefixer set size:undefined disposed:false
+134 silly fetch manifest electron@^35.1.4
+135 silly packumentCache full:https://registry.npmjs.org/electron cache-miss
+136 http fetch GET 200 https://registry.npmjs.org/electron 137ms (cache miss)
+137 silly packumentCache full:https://registry.npmjs.org/electron set size:undefined disposed:false
+138 silly fetch manifest electron-builder@^26.0.12
+139 silly packumentCache full:https://registry.npmjs.org/electron-builder cache-miss
+140 http fetch GET 200 https://registry.npmjs.org/electron-builder 282ms (cache miss)
+141 silly packumentCache full:https://registry.npmjs.org/electron-builder set size:undefined disposed:false
+142 silly fetch manifest electron-vite@^3.1.0
+143 silly packumentCache full:https://registry.npmjs.org/electron-vite cache-miss
+144 http fetch GET 200 https://registry.npmjs.org/electron-vite 40ms (cache miss)
+145 silly packumentCache full:https://registry.npmjs.org/electron-vite set size:undefined disposed:false
+146 silly fetch manifest @swc/core@^1.0.0
+147 silly packumentCache full:https://registry.npmjs.org/@swc%2fcore cache-miss
+148 http fetch GET 200 https://registry.npmjs.org/@swc%2fcore 117ms (cache miss)
+149 silly packumentCache full:https://registry.npmjs.org/@swc%2fcore set size:undefined disposed:false
+150 silly fetch manifest @swc/helpers@>=0.5.17
+151 silly packumentCache full:https://registry.npmjs.org/@swc%2fhelpers cache-miss
+152 http fetch GET 200 https://registry.npmjs.org/@swc%2fhelpers 72ms (cache miss)
+153 silly packumentCache full:https://registry.npmjs.org/@swc%2fhelpers set size:undefined disposed:false
+154 silly fetch manifest vite@^4.0.0 || ^5.0.0 || ^6.0.0
+155 silly packumentCache full:https://registry.npmjs.org/vite cache-miss
+156 http cache https://registry.npmjs.org/vite 36ms (cache hit)
+157 silly packumentCache full:https://registry.npmjs.org/vite set size:38816674 disposed:false
+158 verbose stack Error: unable to resolve dependency tree
+158 verbose stack     at #failPeerConflict (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:1420:25)
+158 verbose stack     at #loadPeerSet (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:1386:33)
+158 verbose stack     at async #buildDepStep (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:929:11)
+158 verbose stack     at async Arborist.buildIdealTree (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/build-ideal-tree.js:182:7)
+158 verbose stack     at async Promise.all (index 1)
+158 verbose stack     at async Arborist.reify (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:114:5)
+158 verbose stack     at async Install.exec (/usr/local/lib/node_modules/npm/lib/commands/install.js:150:5)
+158 verbose stack     at async Npm.exec (/usr/local/lib/node_modules/npm/lib/npm.js:208:9)
+158 verbose stack     at async module.exports (/usr/local/lib/node_modules/npm/lib/cli/entry.js:67:5)
+159 error code ERESOLVE
+160 error ERESOLVE unable to resolve dependency tree
+161 error
+162 error While resolving: i-janek@0.1.0
+162 error Found: vite@7.3.2
+162 error node_modules/vite
+162 error   dev vite@"^7.0.0" from the root project
+162 error
+162 error Could not resolve dependency:
+162 error peer vite@"^4.0.0 || ^5.0.0 || ^6.0.0" from electron-vite@3.1.0
+162 error node_modules/electron-vite
+162 error   dev electron-vite@"^3.1.0" from the root project
+162 error
+162 error Fix the upstream dependency conflict, or retry
+162 error this command with --force or --legacy-peer-deps
+162 error to accept an incorrect (and potentially broken) dependency resolution.
+163 error
+163 error
+163 error For a full report see:
+163 error /Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_01_519Z-eresolve-report.txt
+164 silly unfinished npm timer reify 1777912981646
+165 silly unfinished npm timer reify:loadTrees 1777912981647
+166 silly unfinished npm timer idealTree:buildDeps 1777912981651
+167 silly unfinished npm timer idealTree:#root 1777912981652
+168 verbose cwd /Users/janicki/myApps/I-janicki.pl/i-JANEK
+169 verbose os Darwin 25.3.0
+170 verbose node v24.12.0
+171 verbose npm  v11.6.2
+172 verbose exit 1
+173 verbose code 1
+174 error A complete log of this run can be found in: /Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_01_519Z-debug-0.log

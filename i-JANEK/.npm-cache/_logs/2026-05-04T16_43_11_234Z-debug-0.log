@@ -1,0 +1,19 @@
+0 verbose cli /usr/local/bin/node /usr/local/bin/npm
+1 info using npm@11.6.2
+2 info using node@v24.12.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/janicki/myApps/I-janicki.pl/i-JANEK/.npmrc
+5 silly config load:file:/Users/janicki/.npmrc
+6 silly config load:file:/Users/janicki/.npm-global/etc/npmrc
+7 verbose title npm view vite@6 version
+8 verbose argv "view" "vite@6" "version" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_11_234Z-
+10 verbose logfile /Users/janicki/myApps/I-janicki.pl/i-JANEK/.npm-cache/_logs/2026-05-04T16_43_11_234Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://registry.npmjs.org/vite 173ms (cache revalidated)
+13 verbose cwd /Users/janicki/myApps/I-janicki.pl/i-JANEK
+14 verbose os Darwin 25.3.0
+15 verbose node v24.12.0
+16 verbose npm  v11.6.2
+17 verbose exit 0
+18 info ok

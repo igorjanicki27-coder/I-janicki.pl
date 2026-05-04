@@ -23,7 +23,5 @@ publish:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
   artifactName: i-JANEK-Setup-${version}.${ext}
   include: build/installer.nsh

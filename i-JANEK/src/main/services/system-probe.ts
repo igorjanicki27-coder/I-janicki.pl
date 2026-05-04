@@ -84,7 +84,7 @@ export async function collectTelemetry(): Promise<DeviceTelemetry> {
 }
 
 async function getInstalledApps() {
-  const script = @'
+  const script = `
 $paths = @(
   "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*",
   "HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*",
@@ -96,7 +96,7 @@ $apps = foreach ($path in $paths) {
     Select-Object DisplayName, DisplayVersion, Publisher
 }
 $apps | Sort-Object DisplayName -Unique | ConvertTo-Json -Depth 4
-'@
+`
 
   const result = await runWindowsScript(script)
   if (!result.stdout) return []

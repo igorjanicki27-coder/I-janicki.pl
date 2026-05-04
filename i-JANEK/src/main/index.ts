@@ -14,7 +14,7 @@ let tray: Tray | null = null
 let forceQuit = false
 
 function getIconPath() {
-  return path.join(app.getAppPath(), 'build', 'icon.png')
+  return app.isPackaged ? path.join(process.resourcesPath, 'resources', 'icon.png') : path.join(app.getAppPath(), 'build', 'icon.png')
 }
 
 function createWindow() {

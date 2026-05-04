@@ -33,6 +33,10 @@ export interface DeviceRecord extends DeviceIdentity {
   offline?: boolean
   telemetry?: DeviceTelemetry
   backupPolicy?: BackupPolicy
+  backupSnapshot?: BackupSnapshot
+  inventoryCapturedAt?: number
+  inventoryReportUrl?: string
+  approvedBy?: string
   rustdesk?: RustDeskState
 }
 
