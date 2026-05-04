@@ -585,7 +585,7 @@ html[data-theme="light"] .opt { background: rgba(255,255,255,0.5); }
 .opt[data-topic="tutorial"], .snav-item[data-topic="tutorial"] { gap: 4px; }
 .opt[data-topic="tutorial"] .opt-icon,
 .snav-item[data-topic="tutorial"] .opt-icon {
-  transform: translateY(-1px);
+  transform: translateY(0);
 }
 .opt-primary { background: linear-gradient(135deg,rgba(127,64,255,0.25),rgba(255,0,212,0.25)); border-color: var(--accent-3); }
 .opt-primary:hover { box-shadow: 0 0 0 1px var(--accent-3),0 10px 30px -10px rgba(255,0,212,0.6); }
