@@ -98,6 +98,10 @@ const device = computed(() => store.selectedDevice)
             <span>Uruchom RustDesk</span>
             <Rocket class="h-4 w-4" />
           </button>
+          <button class="glass-button w-full justify-between" type="button" @click="store.revokeConsent()">
+            <span>Wycofaj zgodę</span>
+            <ShieldCheck class="h-4 w-4" />
+          </button>
           <button class="glass-button w-full justify-between" type="button" @click="store.signOut()">
             <span>Wyloguj</span>
             <Bell class="h-4 w-4" />

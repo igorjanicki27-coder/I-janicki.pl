@@ -22,7 +22,8 @@ export function getRustDeskState(): RustDeskState {
   const binaryPath = resolveBinaryPath()
   return {
     binaryPath,
-    installed: Boolean(binaryPath)
+    installed: Boolean(binaryPath),
+    publicKeyConfigured: Boolean(process.env.RUSTDESK_PUBLIC_KEY)
   }
 }
 
@@ -39,6 +40,8 @@ export async function launchRustDesk(): Promise<RustDeskState> {
   return {
     ...state,
     lastLaunchAt: Date.now(),
-    sessionHint: 'RustDesk uruchomiony lokalnie. W celu pełnego osadzenia w ramce potrzebny jest finalny wariant klienta lub web client.'
+    sessionHint: state.publicKeyConfigured
+      ? 'RustDesk uruchomiony lokalnie na publicznej infrastrukturze z przygotowanym miejscem na klucz publiczny RSK.'
+      : 'RustDesk uruchomiony lokalnie na publicznej infrastrukturze. Aby domknąć wariant hybrydowy, uzupełnij RUSTDESK_PUBLIC_KEY.'
   }
 }

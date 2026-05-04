@@ -1,1 +1,11 @@
 .aider*
+node_modules/
+.npm-cache/
+.env
+i-JANEK/node_modules/
+i-JANEK/.npm-cache/
+i-JANEK/.env
+i-JANEK/out/
+i-JANEK/dist/
+i-JANEK/dist-electron/
+i-JANEK/build/iJanekPriv.key

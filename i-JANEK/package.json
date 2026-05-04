@@ -5,7 +5,7 @@
   "description": "i-JANEK desktop supervision platform for Master/Slave IT support workflows.",
   "author": "i-JANICKI",
   "type": "module",
-  "main": "dist-electron/main/index.js",
+  "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "vue-tsc --noEmit && electron-vite build && electron-builder",

@@ -18,6 +18,10 @@ async function listFiles(rootPath: string): Promise<string[]> {
   return nested.flat()
 }
 
+function expandWindowsEnv(inputPath: string) {
+  return inputPath.replace(/%([^%]+)%/g, (_match, variableName) => process.env[variableName] ?? `%${variableName}%`)
+}
+
 async function ensureFolder(drive: ReturnType<typeof google.drive>, name: string, parentId?: string) {
   const existing = await drive.files.list({
     q: [
@@ -46,7 +50,7 @@ async function ensureFolder(drive: ReturnType<typeof google.drive>, name: string
   return created.data.id!
 }
 
-export async function syncBackup(policy: BackupPolicy, accessToken: string, deviceId: string): Promise<BackupSnapshot> {
+export async function syncBackup(policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string): Promise<BackupSnapshot> {
   const manifest = localStore.get('backupManifest')
   const deviceManifest = manifest[deviceId]?.fileStates ?? {}
   const skippedReasons: BackupSnapshot['skippedReasons'] = []
@@ -55,7 +59,7 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
   const drive = google.drive({ version: 'v3', auth: driveAuth })
 
   const rootFolderId = await ensureFolder(drive, policy.driveFolderName)
-  const deviceFolderId = await ensureFolder(drive, deviceId, rootFolderId)
+  const deviceFolderId = await ensureFolder(drive, hostname, rootFolderId)
 
   await drive.permissions.create({
     fileId: rootFolderId,
@@ -76,9 +80,10 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
   const syncThreshold = policy.syncUnderMb * 1024 * 1024
 
   for (const watchedPath of policy.watchedPaths) {
-    if (!fs.existsSync(watchedPath)) continue
+    const resolvedWatchedPath = expandWindowsEnv(watchedPath)
+    if (!fs.existsSync(resolvedWatchedPath)) continue
 
-    const files = await listFiles(watchedPath)
+    const files = await listFiles(resolvedWatchedPath)
     for (const filePath of files) {
       const stats = await fsp.stat(filePath)
       if (!stats.isFile()) continue
@@ -106,7 +111,7 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
         continue
       }
 
-      const relativeName = path.relative(watchedPath, filePath).replace(/\\/g, '/')
+      const relativeName = path.relative(resolvedWatchedPath, filePath).replace(/\\/g, '/')
       await drive.files.create({
         requestBody: {
           name: relativeName,

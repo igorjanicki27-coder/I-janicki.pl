@@ -4,3 +4,4 @@ out/
 dist/
 dist-electron/
 .env
+build/iJanekPriv.key

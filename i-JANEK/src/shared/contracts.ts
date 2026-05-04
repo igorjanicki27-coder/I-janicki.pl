@@ -30,6 +30,7 @@ export interface DeviceRecord extends DeviceIdentity {
   createdAt: number
   updatedAt: number
   consentAcceptedAt?: number
+  consent?: ConsentRecord | null
   offline?: boolean
   telemetry?: DeviceTelemetry
   backupPolicy?: BackupPolicy
@@ -142,6 +143,7 @@ export interface RustDeskState {
   installed: boolean
   lastLaunchAt?: number
   sessionHint?: string
+  publicKeyConfigured?: boolean
 }
 
 export interface SystemContext extends DeviceIdentity {

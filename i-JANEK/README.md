@@ -13,11 +13,11 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 ## Szybki start
 
 1. Skopiuj `.env.example` do `.env`.
-2. Uzupełnij konfigurację Firebase i ewentualnie `RUSTDESK_BINARY_PATH`.
+2. Uzupełnij konfigurację Firebase. Publiczna konfiguracja jest już wpisana do lokalnego `.env`, ale nadal potrzebny jest dokładny `VITE_FIREBASE_DATABASE_URL`, jeśli chcesz wyjść z trybu demo.
 3. Dodaj ikony builda:
    - `build/icon.png`
    - `build/icon.ico`
-4. Dodaj certyfikat do `resources/certs/iJanekCert.cer`.
+4. Certyfikat publiczny jest oczekiwany w `build/iJanekCert.cer`. Klucz prywatny `build/iJanekPriv.key` nigdy nie powinien trafić do repo.
 5. Uruchom:
 
 ```bash
@@ -29,5 +29,7 @@ npm run dev
 
 - Masterem jest wyłącznie `igor.janicki27@gmail.com`.
 - Nowe urządzenie jest zawsze oznaczone jako `pending`, dopóki Master nie zatwierdzi go w Firestore.
-- Przy braku kluczy Firebase projekt startuje w trybie demo (`VITE_ENABLE_MOCK_BACKEND=true`).
+- Przy braku `VITE_FIREBASE_DATABASE_URL` projekt pozostaje w trybie demo (`VITE_ENABLE_MOCK_BACKEND=true`), żeby nie zgadywać endpointu Realtime Database.
+- Domyślne katalogi backupu dla Windows to `%USERPROFILE%\\Desktop`, `%USERPROFILE%\\Documents` i `%USERPROFILE%\\Pictures`.
+- Auto-update jest przygotowany pod publiczne repo `igorjanicki27-coder/I-janicki.pl`.
 - Funkcje Windows-only są chronione fallbackami, więc projekt kompiluje się także na macOS, ale pełna diagnostyka i instalator wymagają Windowsa.

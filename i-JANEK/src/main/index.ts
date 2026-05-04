@@ -24,9 +24,10 @@ function createWindow() {
     minWidth: 1080,
     minHeight: 760,
     backgroundColor: '#070b14',
+    icon: getIconPath(),
     titleBarStyle: 'hiddenInset',
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
@@ -43,7 +44,7 @@ function createWindow() {
   if (process.env.ELECTRON_RENDERER_URL) {
     void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    void mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'))
+    void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -89,14 +90,18 @@ function registerIpc() {
       new Notification({ title, body }).show()
     }
   })
+  ipcMain.handle('system:get-consent', async () => localStore.get('consent') ?? null)
+  ipcMain.handle('system:set-consent', async (_event, consent) => {
+    localStore.set('consent', consent)
+  })
   ipcMain.handle('telemetry:collect', async () => collectTelemetry())
   ipcMain.handle('telemetry:inventory', async () => collectInventory())
   ipcMain.handle('terminal:execute', async (_event, shell: CommandShell, command: string) => executeTerminalCommand(shell, command))
   ipcMain.handle('vault:encrypt', async (_event, plainText: string) => encryptVaultSecret(plainText))
   ipcMain.handle('rustdesk:get-state', async () => getRustDeskState())
   ipcMain.handle('rustdesk:launch', async () => launchRustDesk())
-  ipcMain.handle('backup:sync', async (_event, policy: BackupPolicy, accessToken: string, deviceId: string) =>
-    syncBackup(policy, accessToken, deviceId)
+  ipcMain.handle('backup:sync', async (_event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
+    syncBackup(policy, accessToken, deviceId, hostname)
   )
 }
 

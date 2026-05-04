@@ -109,14 +109,24 @@ onMounted(() => {
       <section v-else-if="needsConsent" class="mx-auto flex h-full max-w-3xl items-center justify-center">
         <div class="glass-panel w-full rounded-[36px] p-8 lg:p-10">
           <div class="mono text-xs uppercase tracking-[0.3em] text-cyan-300">RODO / Consent</div>
-          <h2 class="mt-3 text-3xl font-semibold text-white">Zgoda na diagnostykę zdalną</h2>
-          <p class="mt-4 text-base leading-8 text-[var(--text-dim)]">
-            Aplikacja zbiera temperatury CPU, listę procesów, inwentaryzację hardware i logi zdalnego serwisu. Każde nowe
-            urządzenie pozostaje zablokowane do czasu ręcznej akceptacji przez Mastera.
-          </p>
+          <h2 class="mt-3 text-3xl font-semibold text-white">Zgoda na opiekę informatyczną i-JANEK</h2>
+          <div class="mt-4 space-y-4 text-base leading-8 text-[var(--text-dim)]">
+            <p>Klikając „Akceptuję”, wyrażasz zgodę na:</p>
+            <ul class="space-y-2 text-sm leading-7">
+              <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
+              <li>Uruchamianie zdalnych skryptów naprawczych w celu optymalizacji systemu.</li>
+              <li>Synchronizację wybranych folderów z Twoim kontem Google Drive w celach backupu.</li>
+              <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-Janicki.pl.</li>
+            </ul>
+            <p>
+              Twoje dane są szyfrowane AES-256 i przesyłane bezpiecznym kanałem. Możesz wycofać zgodę w ustawieniach
+              aplikacji, co spowoduje zaprzestanie monitoringu.
+            </p>
+            <p>Każde nowe urządzenie pozostaje zablokowane do czasu ręcznej akceptacji przez Mastera.</p>
+          </div>
           <label class="mt-8 flex items-start gap-3 rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm leading-7 text-[var(--text-dim)]">
             <input checked type="checkbox" class="mt-1 h-4 w-4 accent-cyan-400" />
-            <span>Akceptuję politykę prywatności i wyrażam zgodę na zdalną diagnostykę, backup i czat serwisowy.</span>
+            <span>Akceptuję politykę prywatności i wyrażam zgodę na diagnostykę, zdalny serwis i backup zgodnie z powyższą informacją.</span>
           </label>
           <button class="glass-button mt-6" type="button" @click="store.acceptConsent()">Przejdź dalej i zarejestruj urządzenie</button>
         </div>

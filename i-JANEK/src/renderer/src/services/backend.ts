@@ -49,6 +49,7 @@ export interface BackendClient {
   publishInventory: (device: DeviceRecord, inventory: InventoryReport) => Promise<void>
   publishBackupSnapshot: (device: DeviceRecord, snapshot: BackupSnapshot) => Promise<void>
   upsertBackupPolicy: (deviceId: string, policy: BackupPolicy) => Promise<void>
+  updateConsent: (deviceId: string, consent: ConsentRecord | null) => Promise<void>
   queueCommand: (device: DeviceRecord, payload: Pick<TerminalCommand, 'shell' | 'command' | 'requestedBy'>) => Promise<void>
   subscribePendingCommands: (device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) => Unsubscribe
   completeCommand: (device: DeviceRecord, command: TerminalCommand) => Promise<void>
@@ -71,14 +72,14 @@ function toAppUser(user: User, accessToken?: string): AppUser {
   }
 }
 
-function defaultBackupPolicy(hostname: string): BackupPolicy {
+function defaultBackupPolicy(_hostname: string): BackupPolicy {
   return {
     enabled: true,
     maxFileSizeMb: 200,
     maxQuotaGb: 5,
     syncUnderMb: Number(import.meta.env.VITE_DEFAULT_SYNC_MB || DEFAULT_SYNC_FILE_MB),
-    watchedPaths: ['C:\\Users\\Public\\Documents', 'C:\\Users\\Public\\Desktop'],
-    driveFolderName: `i-JANEK_Backup/${hostname}`,
+    watchedPaths: ['%USERPROFILE%\\Desktop', '%USERPROFILE%\\Documents', '%USERPROFILE%\\Pictures'],
+    driveFolderName: 'i-JANEK_Backup',
     sharedWith: import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL
   }
 }
@@ -125,6 +126,7 @@ class FirebaseBackend implements BackendClient {
       updatedAt: Date.now(),
       lastSeenAt: Date.now(),
       consentAcceptedAt: consent?.acceptedAt ?? existing?.consentAcceptedAt,
+      consent: consent ?? existing?.consent ?? null,
       backupPolicy: existing?.backupPolicy ?? defaultBackupPolicy(context.hostname),
       rustdesk: existing?.rustdesk ?? { installed: false }
     }
@@ -217,6 +219,15 @@ class FirebaseBackend implements BackendClient {
   async upsertBackupPolicy(deviceId: string, policy: BackupPolicy) {
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
       backupPolicy: policy,
+      updatedAt: Date.now()
+    })
+  }
+
+  async updateConsent(deviceId: string, consent: ConsentRecord | null) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      consent,
+      consentAcceptedAt: consent?.acceptedAt ?? null,
+      monitoringEnabled: Boolean(consent?.diagnosticsConsent),
       updatedAt: Date.now()
     })
   }
@@ -381,6 +392,7 @@ class MockBackend implements BackendClient {
       updatedAt: Date.now(),
       lastSeenAt: Date.now(),
       consentAcceptedAt: consent?.acceptedAt,
+      consent: consent ?? null,
       backupPolicy: defaultBackupPolicy(context.hostname),
       rustdesk: { installed: false }
     }
@@ -444,6 +456,15 @@ class MockBackend implements BackendClient {
 
   async upsertBackupPolicy(deviceId: string, policy: BackupPolicy) {
     this.devices = this.devices.map((device) => (device.deviceId === deviceId ? { ...device, backupPolicy: policy } : device))
+    this.emitDevices()
+  }
+
+  async updateConsent(deviceId: string, consent: ConsentRecord | null) {
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId
+        ? { ...device, consent, consentAcceptedAt: consent?.acceptedAt, updatedAt: Date.now() }
+        : device
+    )
     this.emitDevices()
   }
 

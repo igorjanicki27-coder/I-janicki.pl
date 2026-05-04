@@ -60,6 +60,7 @@ export const useAppStore = defineStore('app', () => {
   async function bootstrap() {
     backend.value = createBackendClient()
     systemContext.value = await window.janek.system.getContext()
+    consent.value = await window.janek.system.getConsent()
     applyTheme('dark')
 
     const authUnsubscribe = backend.value.subscribeAuth(async (nextUser) => {
@@ -165,10 +166,21 @@ export const useAppStore = defineStore('app', () => {
       diagnosticsConsent: true,
       policyVersion: '2026-05-04'
     }
+    await window.janek.system.setConsent(consent.value)
 
     if (user.value?.role === 'slave' && systemContext.value) {
       const ensured = await backend.value!.ensureDeviceRecord(user.value, systemContext.value, consent.value)
       selectedDeviceId.value = ensured.deviceId
+    }
+  }
+
+  async function revokeConsent() {
+    stopIntervals()
+    const device = selectedDevice.value
+    consent.value = null
+    await window.janek.system.setConsent(null)
+    if (device) {
+      await backend.value?.updateConsent(device.deviceId, null)
     }
   }
 
@@ -275,7 +287,7 @@ export const useAppStore = defineStore('app', () => {
 
   async function runBackupCycle(device: DeviceRecord) {
     if (!device.backupPolicy?.enabled || !user.value?.accessToken) return
-    const snapshot = await window.janek.backup.sync(device.backupPolicy, user.value.accessToken, device.deviceId)
+    const snapshot = await window.janek.backup.sync(device.backupPolicy, user.value.accessToken, device.deviceId, device.hostname)
     backupSnapshots.value[device.deviceId] = snapshot
     await backend.value?.publishBackupSnapshot(device, snapshot)
   }
@@ -321,6 +333,7 @@ export const useAppStore = defineStore('app', () => {
     signInDemo,
     signOut,
     acceptConsent,
+    revokeConsent,
     approveDevice,
     sendChatMessage,
     queueTerminalCommand,

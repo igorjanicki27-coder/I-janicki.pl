@@ -3,23 +3,28 @@ productName: i-JANEK
 directories:
   buildResources: build
 files:
-  - dist/**
-  - dist-electron/**
+  - out/**
   - package.json
 extraResources:
   - from: resources/
     to: resources
+  - from: build/iJanekCert.cer
+    to: resources/certs/iJanekCert.cer
+  - from: build/icon.png
+    to: resources/icon.png
+  - from: build/icon.ico
+    to: resources/icon.ico
 asarUnpack:
   - resources/**
 win:
   target:
     - nsis
-  icon: build/icon.png
+  icon: build/icon.ico
 publish:
   provider: github
-  owner: REPLACE_ME
-  repo: REPLACE_ME
-  private: true
+  owner: igorjanicki27-coder
+  repo: I-janicki.pl
+  private: false
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

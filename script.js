@@ -82,6 +82,7 @@ const dom = {
   get pupilR()         { return $('pupilR');                },
   get shineL()         { return $('shineL');                },
   get shineR()         { return $('shineR');                },
+  get panelHeader()    { return $('panelHeader');           },
   get panelTitle()     { return $('panelTitle');            },
   get panelContent()   { return $('panelContent');          },
   get tutNav()         { return $('tutorialNav');           },
@@ -1434,9 +1435,9 @@ function setReviewStatus(type, msg) {
 // PANEL HELPER
 // ─────────────────────────────────────────────────────────────────
 function setPanel(title, html, showLogo = false, showHeader = true) {
-  dom.panelTitle.textContent = title;
-  dom.panelHeader.hidden = !showHeader;
-  dom.panelContent.innerHTML = html;
+  if (dom.panelTitle) dom.panelTitle.textContent = title;
+  if (dom.panelHeader) dom.panelHeader.hidden = !showHeader;
+  if (dom.panelContent) dom.panelContent.innerHTML = html;
   const logo = document.getElementById('panelLogo');
   if (logo) logo.hidden = !showLogo;
   // [data-doc] and [data-topic] are handled by global delegation in initGlobalClick()

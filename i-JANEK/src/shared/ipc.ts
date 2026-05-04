@@ -2,6 +2,7 @@ import type {
   BackupPolicy,
   BackupSnapshot,
   CommandShell,
+  ConsentRecord,
   DeviceTelemetry,
   InventoryReport,
   RustDeskState,
@@ -14,6 +15,8 @@ export interface JanekApi {
     getContext: () => Promise<SystemContext>
     setAutoLaunch: (enabled: boolean) => Promise<void>
     notify: (title: string, body: string) => Promise<void>
+    getConsent: () => Promise<ConsentRecord | null>
+    setConsent: (consent: ConsentRecord | null) => Promise<void>
   }
   telemetry: {
     collect: () => Promise<DeviceTelemetry>
@@ -26,7 +29,7 @@ export interface JanekApi {
     encrypt: (plainText: string) => Promise<string>
   }
   backup: {
-    sync: (policy: BackupPolicy, accessToken: string, deviceId: string) => Promise<BackupSnapshot>
+    sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) => Promise<BackupSnapshot>
   }
   rustdesk: {
     getState: () => Promise<RustDeskState>

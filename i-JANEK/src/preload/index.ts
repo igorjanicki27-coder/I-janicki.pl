@@ -6,7 +6,9 @@ const api: JanekApi = {
   system: {
     getContext: () => ipcRenderer.invoke('system:get-context'),
     setAutoLaunch: (enabled) => ipcRenderer.invoke('system:set-auto-launch', enabled),
-    notify: (title, body) => ipcRenderer.invoke('system:notify', title, body)
+    notify: (title, body) => ipcRenderer.invoke('system:notify', title, body),
+    getConsent: () => ipcRenderer.invoke('system:get-consent'),
+    setConsent: (consent) => ipcRenderer.invoke('system:set-consent', consent)
   },
   telemetry: {
     collect: () => ipcRenderer.invoke('telemetry:collect'),
@@ -19,8 +21,8 @@ const api: JanekApi = {
     encrypt: (plainText: string) => ipcRenderer.invoke('vault:encrypt', plainText)
   },
   backup: {
-    sync: (policy: BackupPolicy, accessToken: string, deviceId: string) =>
-      ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId)
+    sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
+      ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId, hostname)
   },
   rustdesk: {
     getState: () => ipcRenderer.invoke('rustdesk:get-state'),
