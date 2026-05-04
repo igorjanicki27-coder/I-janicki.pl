@@ -15,7 +15,7 @@ const classes = computed(() => {
     case 'critical':
       return 'border-rose-400/30 bg-rose-500/10 text-rose-100'
     default:
-      return 'border-white/10 bg-white/5 text-[var(--text-dim)]'
+      return 'border-fuchsia-400/20 bg-fuchsia-500/10 text-fuchsia-100'
   }
 })
 </script>

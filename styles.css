@@ -22,6 +22,7 @@
   --panel-bg: rgba(15, 19, 32, 0.55);
   --panel-border: rgba(127, 64, 255, 0.35);
   --shadow-neon: 0 0 40px rgba(127, 64, 255, 0.25), 0 0 80px rgba(64, 201, 255, 0.12);
+  --footer-fade-rgb: 5, 6, 12;
 
   --step: 0.5s;
   --ease: linear(0 0%,0.2342 12.49%,0.4374 24.99%,0.6093 37.49%,0.6835 43.74%,
@@ -41,6 +42,7 @@ html[data-theme="light"] {
   --panel-bg: rgba(255, 255, 255, 0.6);
   --panel-border: rgba(127, 64, 255, 0.45);
   --shadow-neon: 0 0 40px rgba(127, 64, 255, 0.18), 0 0 80px rgba(64, 201, 255, 0.08);
+  --footer-fade-rgb: 230, 232, 245;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -331,11 +333,12 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
   align-items: center;
   justify-content: flex-start;
   gap: 16px;
-  padding: 10px 24px 20px;
+  padding: 10px 24px 36px;
   position: relative;
   overflow-y: auto !important;
   max-height: calc(100vh - 100px) !important;
   margin-top: 70px;
+  scroll-padding-bottom: 36px;
   scrollbar-width: thin;
   scrollbar-color: rgba(127,64,255,0.4) transparent;
 }
@@ -426,6 +429,16 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
   display: grid;
   place-items: center;
   animation: bot-pop 0.8s var(--ease) both, bot-bob 4.5s ease-in-out infinite 1s;
+}
+.stage:has(#tutorialNav:not([hidden])) .bot {
+  position: sticky;
+  top: 86px;
+  z-index: 6;
+}
+/* W trybie bez prezentacji .stage jest kontenerem scrolla (overflow-y:auto),
+   więc top musi być małe — względem .stage, nie okna. */
+.stage:not(.is-presenting):has(#tutorialNav:not([hidden])) .bot {
+  top: 10px;
 }
 .bot-svg { width: 100%; height: 100%; filter: drop-shadow(0 10px 40px rgba(127,64,255,0.5)); position: relative; z-index: 2; }
 
@@ -585,7 +598,7 @@ html[data-theme="light"] .opt { background: rgba(255,255,255,0.5); }
 .opt[data-topic="tutorial"], .snav-item[data-topic="tutorial"] { gap: 4px; }
 .opt[data-topic="tutorial"] .opt-icon,
 .snav-item[data-topic="tutorial"] .opt-icon {
-  transform: translateY(0);
+  transform: translateY(0.5px);
 }
 .opt-primary { background: linear-gradient(135deg,rgba(127,64,255,0.25),rgba(255,0,212,0.25)); border-color: var(--accent-3); }
 .opt-primary:hover { box-shadow: 0 0 0 1px var(--accent-3),0 10px 30px -10px rgba(255,0,212,0.6); }
@@ -1102,28 +1115,45 @@ html[data-theme="light"] .review-field textarea { background: rgba(0,0,0,0.04); 
 /* =================== Stopka =================== */
 .foot {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 0px 16px 0px;
+  padding: 30px 16px 18px;
+  margin-top: 8px;
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  line-height: 1;
+  line-height: 1.3;
   color: var(--muted); letter-spacing: 0.5px;
   position: relative; z-index: 5; flex-shrink: 0;
   grid-area: footer;
+  isolation: isolate;
 }
 
-html::before {
+.foot::before {
   content: '';
-  position: fixed;
-  bottom: 0;
+  position: absolute;
+  top: 0;
+  left: clamp(20px, 6vw, 64px);
+  right: clamp(20px, 6vw, 64px);
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(127,64,255,0.32) 18%,
+    rgba(64,201,255,0.28) 50%,
+    rgba(255,0,212,0.28) 82%,
+    transparent 100%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.foot::after {
+  content: '';
+  position: absolute;
   left: 0;
   right: 0;
-  height: 100px;
-  background: linear-gradient(to bottom, transparent 0%, rgba(5,6,12,0.15) 40%, rgba(5,6,12,0.4) 100%);
+  bottom: calc(100% - 1px);
+  height: clamp(56px, 9vh, 92px);
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(var(--footer-fade-rgb), 0.08) 48%,
+    rgba(var(--footer-fade-rgb), 0.28) 100%);
   pointer-events: none;
-  z-index: 999;
-}
-
-html[data-theme="light"]::before {
-  background: linear-gradient(to bottom, transparent 0%, rgba(230,232,245,0.15) 40%, rgba(230,232,245,0.4) 100%);
 }
 .foot-sep { opacity: 0.5; }
 .foot-mail { text-decoration: none; color: var(--text-dim); transition: color 0.2s; }
@@ -1449,6 +1479,7 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   }
 
   .bot { width: min(140px, 34vw); }
+  .stage:has(#tutorialNav:not([hidden])) .bot { top: 72px; }
 
   .panel {
     width: 100%;

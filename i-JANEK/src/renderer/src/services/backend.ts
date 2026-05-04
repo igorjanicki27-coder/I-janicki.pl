@@ -29,7 +29,7 @@ import type {
   TerminalCommand
 } from '@shared/contracts'
 import { DEFAULT_MASTER_EMAIL, DEFAULT_SYNC_FILE_MB } from '@shared/constants'
-import { firebaseServices, hasFirebaseConfig } from './firebase'
+import { firebaseServices, hasFirebaseCoreConfig } from './firebase'
 
 type Unsubscribe = () => void
 
@@ -512,7 +512,7 @@ class MockBackend implements BackendClient {
 }
 
 export function createBackendClient(): BackendClient {
-  if (hasFirebaseConfig && import.meta.env.VITE_ENABLE_MOCK_BACKEND !== 'true') {
+  if (hasFirebaseCoreConfig && import.meta.env.VITE_ENABLE_MOCK_BACKEND !== 'true') {
     return new FirebaseBackend()
   }
   return new MockBackend()

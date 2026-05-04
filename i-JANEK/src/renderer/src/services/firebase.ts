@@ -14,16 +14,25 @@ const firebaseConfig = {
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
 }
 
-export const hasFirebaseConfig = Object.values(firebaseConfig).every(Boolean)
+export const hasFirebaseCoreConfig = [
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+  firebaseConfig.storageBucket,
+  firebaseConfig.messagingSenderId,
+  firebaseConfig.appId
+].every(Boolean)
 
-const app = hasFirebaseConfig ? (getApps()[0] ?? initializeApp(firebaseConfig)) : null
+const app = hasFirebaseCoreConfig ? (getApps()[0] ?? initializeApp(firebaseConfig)) : null
+
+const database = app && firebaseConfig.databaseURL ? getDatabase(app, firebaseConfig.databaseURL) : null
 
 export const firebaseServices = app
   ? {
       app,
       auth: getAuth(app),
       firestore: getFirestore(app),
-      database: getDatabase(app),
+      database: database as ReturnType<typeof getDatabase>,
       storage: getStorage(app)
     }
   : null
