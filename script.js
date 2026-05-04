@@ -175,6 +175,14 @@ const TRANSLATIONS = {
     'cookie-ask': 'Czy wyrażasz zgodę na <strong>Google Analytics</strong>?',
     'cookie-essential': 'Tylko niezbędne',
     'cookie-all': 'Akceptuję wszystkie',
+    'cookie-desc': 'Ta strona używa plików cookie i pamięci lokalnej. Część jest <strong>niezbędna</strong> do działania (sesja, preferencje, stan samouczka) i nie wymaga zgody. Pozostałe (Google Analytics) pomagają ulepszać stronę — wymagają Twojej zgody zgodnie z RODO.',
+    'cookie-essential-title': 'Niezbędne',
+    'cookie-essential-desc': 'Sesja, preferencje, stan samouczka i Twoje imię. Zawsze aktywne — niezbędne do działania strony.',
+    'cookie-analytics-title': 'Analityczne — Google Analytics',
+    'cookie-analytics-desc': 'Anonimowe dane o ruchu: odwiedziny, czas spędzony, źródła. Pomaga ulepszać stronę.',
+    'cookie-badge-essential': 'Niezbędne',
+    'cookie-badge-extra': 'Dodatkowe',
+    'cookie-extra': 'Dodatkowe',
     'cookie-doc-regulamin': 'Regulamin witryny',
     'cookie-doc-privacy': 'Polityka prywatności',
     'cookie-doc-rodo': 'Polityka RODO',
@@ -211,6 +219,14 @@ const TRANSLATIONS = {
     'cookie-ask': 'Do you agree to <strong>Google Analytics</strong>?',
     'cookie-essential': 'Essential only',
     'cookie-all': 'Accept all',
+    'cookie-desc': 'This site uses cookies and local storage. Some are <strong>essential</strong> for operation (session, preferences, tutorial state) and do not require consent. Others (Google Analytics) help improve the site and require your consent under GDPR.',
+    'cookie-essential-title': 'Essential',
+    'cookie-essential-desc': 'Session, preferences, tutorial state and your name. Always active because they are required for the site to work.',
+    'cookie-analytics-title': 'Analytics — Google Analytics',
+    'cookie-analytics-desc': 'Anonymous traffic data: visits, time spent, sources. Helps improve the site.',
+    'cookie-badge-essential': 'Essential',
+    'cookie-badge-extra': 'Additional',
+    'cookie-extra': 'Additional',
     'cookie-doc-regulamin': 'Website rules',
     'cookie-doc-privacy': 'Privacy & cookies policy',
     'cookie-doc-rodo': 'GDPR policy',
@@ -313,10 +329,21 @@ function moveEye(pupil, shine, cx, cy, mx, my, maxR) {
 // ─────────────────────────────────────────────────────────────────
 function initGlobalClick() {
   document.addEventListener('click', e => {
+    const cookieBtn = e.target.closest('[data-cookie-action]');
     const docBtn   = e.target.closest('[data-doc]');
     const topicBtn = e.target.closest('[data-topic]');
     const closeBtn = e.target.closest('[data-close]');
 
+    if (cookieBtn) {
+      const mode = cookieBtn.closest('[data-cookie-mode]')?.dataset.cookieMode || 'overlay';
+      cookieDecide(cookieBtn.dataset.cookieAction === 'all');
+      if (mode === 'tutorial') {
+        goStep(tutStep + 1);
+      } else {
+        closeCookiePanel();
+      }
+      return;
+    }
     if (docBtn)   { openDoc(docBtn.dataset.doc);          return; }
     if (topicBtn) { handleTopic(topicBtn.dataset.topic);  return; }
     if (closeBtn) { closeModal();                          return; }
@@ -535,40 +562,55 @@ function renderNameInput() {
 }
 
 function renderCookieStep() {
-  const decided     = !!localStorage.getItem(LS.COOKIE_DECISION);
-  const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
+  setPanel('', renderCookiePanelHtml('tutorial'), false, false);
+  updateCookieAnalyticsStatus();
+}
 
-  const docsRow = `
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.75rem">
-      <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
-      <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
-      <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
-      <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
+function renderCookiePanelHtml(mode) {
+  const panelClass = mode === 'tutorial' ? 'cookie-panel cookie-panel--embedded' : 'cookie-panel';
+
+  return `
+    <div class="${panelClass}" data-cookie-mode="${mode}">
+      <div class="cookie-header">
+        <span class="cookie-icon" aria-hidden="true">🍪</span>
+        <h2>${t('cookie-title')}</h2>
+      </div>
+      <p class="cookie-desc">
+        ${t('cookie-desc')}
+      </p>
+
+      <div class="cookie-options">
+        <div class="cookie-option">
+          <div class="cookie-option-info">
+            <strong>${t('cookie-essential-title')}</strong>
+            <p>${t('cookie-essential-desc')}</p>
+          </div>
+          <div class="cookie-badge-always cookie-badge-essential">${t('cookie-badge-essential')}</div>
+        </div>
+        <div class="cookie-option">
+          <div class="cookie-option-info">
+            <strong>${t('cookie-analytics-title')}</strong>
+            <p>${t('cookie-analytics-desc')}</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <div class="cookie-status-indicator" data-cookie-analytics-status style="font-size:12px;color:var(--muted)"></div>
+            <div class="cookie-badge-always cookie-badge-extra" data-cookie-badge-extra>${t('cookie-extra')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cookie-docs-row">
+        <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
+        <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
+        <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
+        <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
+      </div>
+
+      <div class="cookie-actions">
+        <button class="cookie-btn cookie-btn-essential" data-cookie-action="essential">${t('cookie-essential')}</button>
+        <button class="cookie-btn cookie-btn-all" data-cookie-action="all">${t('cookie-all')}</button>
+      </div>
     </div>`;
-
-  const html = decided
-    ? `<div class="tut-message">
-         <p>${t('cookie-decided')}</p>
-         <p>Google Analytics: <strong>${analyticsOn ? t('cookie-ga-on') : t('cookie-ga-off')}</strong>.</p>
-         <p>${t('cookie-change')}</p>
-       </div>
-       ${docsRow}`
-    : `<div class="tut-message">
-         <p>${t('cookie-msg')}</p>
-         <p>${t('cookie-ask')}</p>
-         <div class="cookie-inline-btns">
-           <button class="cookie-btn cookie-btn-essential" id="tutCookieNo">${t('cookie-essential')}</button>
-           <button class="cookie-btn cookie-btn-all"       id="tutCookieYes">${t('cookie-all')}</button>
-         </div>
-       </div>
-       ${docsRow}`;
-
-
-  setPanel(t('cookie-title'), html);
-
-
-  $('tutCookieNo')?.addEventListener('click',  () => { cookieDecide(false); goStep(tutStep + 1); });
-  $('tutCookieYes')?.addEventListener('click', () => { cookieDecide(true);  goStep(tutStep + 1); });
 }
 
 const SECTION_MSG = {
@@ -652,7 +694,7 @@ function renderFinish() {
       <button class="snav-item" data-topic="process">🤝 Współpraca</button>
       <button class="snav-item" data-topic="pricing">💰 Cennik</button>
       <button class="snav-item" data-topic="contact">✉ Kontakt</button>
-      <button class="snav-item" data-topic="tutorial"><span>⟳</span> Prezentacja</button>
+      <button class="snav-item" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
     </div>
   `, true);
 
@@ -705,7 +747,7 @@ function finishTutorial() {
       <button class="opt" data-topic="pricing">💰 Cennik</button>
       <button class="opt" data-topic="contact">✉️ Kontakt</button>
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
-      <button class="opt" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
+      <button class="opt" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
     </div>
   `, false);
 
@@ -778,7 +820,7 @@ function showReturning() {
       <button class="opt" data-topic="pricing">💰 Cennik</button>
       <button class="opt" data-topic="contact">✉️ Kontakt</button>
       <button class="opt" data-topic="reviews">⭐ Opinie</button>
-      <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon">⟳</span> Prezentacja</button>
+      <button class="opt opt-tutorial" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> Prezentacja</button>
     </div>
   `, false);
 
@@ -943,31 +985,24 @@ function setupContactForm() {
 // COOKIE PANEL
 // ─────────────────────────────────────────────────────────────────
 function initCookiePanel() {
+  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
   updateCookieAnalyticsStatus();
-
-  const essBtn = $('cookieEssential');
-  const allBtn = $('cookieAcceptAll');
-  if (essBtn) essBtn.addEventListener('click', () => { cookieDecide(false); closeCookiePanel(); });
-  if (allBtn) allBtn.addEventListener('click', () => { cookieDecide(true);  closeCookiePanel(); });
 
   const footBtn = $('cookieFootBtn');
   if (footBtn) footBtn.addEventListener('click', openCookiePanel);
 }
 
 function updateCookieAnalyticsStatus() {
-  const statusEl = $('cookieAnalyticsStatus');
-  const badgeEl = document.querySelector('.cookie-badge-extra');
-  if (!statusEl) return;
   const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
-  statusEl.textContent = analyticsOn ? '✓' : '✗';
-  statusEl.style.color = analyticsOn ? 'var(--accent-4)' : 'var(--muted)';
-  if (badgeEl) {
-    if (analyticsOn) {
-      badgeEl.classList.add('is-enabled');
-    } else {
-      badgeEl.classList.remove('is-enabled');
+  document.querySelectorAll('[data-cookie-analytics-status]').forEach(statusEl => {
+    statusEl.textContent = analyticsOn ? '✓' : '✗';
+    statusEl.style.color = analyticsOn ? 'var(--accent-4)' : 'var(--muted)';
+  });
+  document.querySelectorAll('[data-cookie-badge-extra]').forEach(badgeEl => {
+    if (badgeEl.classList.contains('cookie-badge-extra')) {
+      badgeEl.classList.toggle('is-enabled', analyticsOn);
     }
-  }
+  });
 }
 
 function cookieDecide(analytics) {
@@ -981,6 +1016,7 @@ function cookieDecide(analytics) {
 }
 
 function openCookiePanel() {
+  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
   updateCookieAnalyticsStatus();
   dom.cookieOverlay.hidden = false;
   dom.cookieOverlay.setAttribute('aria-hidden', 'false');
@@ -1397,8 +1433,9 @@ function setReviewStatus(type, msg) {
 // ─────────────────────────────────────────────────────────────────
 // PANEL HELPER
 // ─────────────────────────────────────────────────────────────────
-function setPanel(title, html, showLogo = false) {
+function setPanel(title, html, showLogo = false, showHeader = true) {
   dom.panelTitle.textContent = title;
+  dom.panelHeader.hidden = !showHeader;
   dom.panelContent.innerHTML = html;
   const logo = document.getElementById('panelLogo');
   if (logo) logo.hidden = !showLogo;
