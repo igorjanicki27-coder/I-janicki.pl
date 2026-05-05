@@ -3,6 +3,28 @@ export type ThemeMode = 'dark' | 'light'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type DeviceHealthState = 'healthy' | 'warning' | 'alert' | 'offline'
 export type CommandShell = 'powershell' | 'cmd'
+export type RemoteActionType = 'notify' | 'restart_prompt' | 'launch_rustdesk'
+export type TelemetryMode = 'standard' | 'aggressive'
+
+export interface MetricThreshold {
+  warning: number
+  critical: number
+}
+
+export interface MetricThresholds {
+  cpuUsage: MetricThreshold
+  gpuUsage: MetricThreshold
+  ramUsage: MetricThreshold
+  diskUsage: MetricThreshold
+  cpuTemp: MetricThreshold
+  gpuTemp: MetricThreshold
+  backupAgeHours: MetricThreshold
+}
+
+export interface RemoteMasterSettings {
+  thresholds: MetricThresholds
+  telemetryMode: TelemetryMode
+}
 
 export interface AppUser {
   uid: string
@@ -25,6 +47,8 @@ export interface DeviceIdentity {
 export interface DeviceRecord extends DeviceIdentity {
   ownerUid: string
   ownerEmail: string
+  deviceAlias?: string
+  aliasCustomizedAt?: number | null
   approvalStatus: ApprovalStatus
   lastSeenAt: number
   createdAt: number
@@ -39,12 +63,26 @@ export interface DeviceRecord extends DeviceIdentity {
   inventoryReportUrl?: string
   approvedBy?: string
   rustdesk?: RustDeskState
+  updateRequest?: UpdateRequest | null
+  lastHandledUpdateRequestId?: string | null
+  lastUpdateResult?: string | null
+  remoteActionRequest?: RemoteActionRequest | null
+  lastHandledRemoteActionRequestId?: string | null
+  lastRemoteActionResult?: string | null
+}
+
+export interface UpdateRequest {
+  id: string
+  requestedAt: number
+  requestedBy: string
 }
 
 export interface DeviceTelemetry {
   capturedAt: number
+  cpuUsagePercent: number
   cpuTemperatureC: number | null
   cpuHotZones: Array<{ label: string; temperatureC: number | null }>
+  gpu?: GpuTelemetry | null
   memoryUsedPercent: number
   disks: Array<{ fs: string; mount: string; usedPercent: number; sizeGb: number }>
   uptimeSeconds: number
@@ -52,6 +90,14 @@ export interface DeviceTelemetry {
   lastShutdownAt?: number | null
   topProcesses: ProcessUsage[]
   state: DeviceHealthState
+}
+
+export interface GpuTelemetry {
+  model: string | null
+  usagePercent: number | null
+  memoryUsedPercent: number | null
+  temperatureC: number | null
+  driverVersion?: string | null
 }
 
 export interface ProcessUsage {
@@ -97,6 +143,12 @@ export interface BackupSnapshot {
   skippedReasons: Array<{ path: string; reason: string }>
 }
 
+export interface BackupRemoteFile {
+  path: string
+  sizeBytes: number
+  modifiedAt: number | null
+}
+
 export interface ChatMessage {
   id: string
   deviceId: string
@@ -106,6 +158,19 @@ export interface ChatMessage {
   createdAt: number
   delivered: boolean
   muted?: boolean
+}
+
+export interface CompanyChatMessage {
+  id: string
+  ownerUid: string
+  ownerEmail: string
+  senderRole: UserRole
+  senderEmail: string
+  body: string
+  createdAt: number
+  delivered: boolean
+  deviceId?: string
+  deviceLabel?: string
 }
 
 export interface TerminalCommand {
@@ -124,12 +189,22 @@ export interface TerminalCommand {
 export interface AlertEvent {
   id: string
   deviceId: string
-  type: 'temperature' | 'disk' | 'approval' | 'backup' | 'system'
+  type: 'temperature' | 'usage' | 'disk' | 'approval' | 'backup' | 'system'
   title: string
   message: string
   severity: 'info' | 'warning' | 'critical'
   createdAt: number
   acknowledgedBy?: string
+}
+
+export interface RemoteActionRequest {
+  id: string
+  type: RemoteActionType
+  requestedAt: number
+  requestedBy: string
+  title?: string
+  message: string
+  remindAfterMinutes?: number
 }
 
 export interface ConsentRecord {

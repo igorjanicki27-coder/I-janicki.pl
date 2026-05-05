@@ -26,6 +26,30 @@ function resolveHealthState(cpuTemperatureC: number | null, diskUsage: number): 
   return 'healthy'
 }
 
+function normalizeGpuTelemetry(graphics: Awaited<ReturnType<typeof si.graphics>>): DeviceTelemetry['gpu'] {
+  const primaryController =
+    graphics.controllers.find((controller) => !controller.external && (controller.utilizationGpu || controller.temperatureGpu || controller.model)) ??
+    graphics.controllers.find((controller) => controller.utilizationGpu || controller.temperatureGpu || controller.model) ??
+    graphics.controllers[0]
+
+  if (!primaryController) return null
+
+  const usagePercent = Number.isFinite(primaryController.utilizationGpu) ? Number(primaryController.utilizationGpu!.toFixed(1)) : null
+  const memoryUsedPercent = Number.isFinite(primaryController.utilizationMemory)
+    ? Number(primaryController.utilizationMemory!.toFixed(1))
+    : Number.isFinite(primaryController.memoryUsed) && Number.isFinite(primaryController.memoryTotal) && primaryController.memoryTotal
+      ? Number(((primaryController.memoryUsed! / primaryController.memoryTotal) * 100).toFixed(1))
+      : null
+
+  return {
+    model: primaryController.model || primaryController.name || null,
+    usagePercent,
+    memoryUsedPercent,
+    temperatureC: Number.isFinite(primaryController.temperatureGpu) ? Number(primaryController.temperatureGpu!.toFixed(1)) : null,
+    driverVersion: primaryController.driverVersion ?? null
+  }
+}
+
 async function resolveWindowsTimeSignals() {
   const bootTime = Date.now() - os.uptime() * 1000
 
@@ -40,12 +64,14 @@ async function resolveWindowsTimeSignals() {
 }
 
 export async function collectTelemetry(): Promise<DeviceTelemetry> {
-  const [temp, mem, fsSize, processes, timeSignals] = await Promise.all([
+  const [temp, mem, fsSize, processes, timeSignals, currentLoad, graphics] = await Promise.all([
     si.cpuTemperature(),
     si.mem(),
     si.fsSize(),
     si.processes(),
-    resolveWindowsTimeSignals()
+    resolveWindowsTimeSignals(),
+    si.currentLoad(),
+    si.graphics()
   ])
 
   const cpu = normalizeCpuTemp(temp)
@@ -71,8 +97,10 @@ export async function collectTelemetry(): Promise<DeviceTelemetry> {
 
   return {
     capturedAt: Date.now(),
+    cpuUsagePercent: Number(currentLoad.currentLoad.toFixed(1)),
     cpuTemperatureC: cpu.current,
     cpuHotZones: cpu.zones,
+    gpu: normalizeGpuTelemetry(graphics),
     memoryUsedPercent: Number((((mem.total - mem.available) / mem.total) * 100).toFixed(1)),
     disks,
     uptimeSeconds: os.uptime(),

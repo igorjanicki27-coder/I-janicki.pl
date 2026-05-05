@@ -5,6 +5,7 @@ export interface LocalSchema {
   theme: ThemeMode
   consent?: ConsentRecord | null
   autoLaunch: boolean
+  masterAesKey: string
   rustdeskBinaryPath?: string
   backupManifest: Record<string, BackupSnapshot & { fileStates: Record<string, number> }>
 }
@@ -13,6 +14,7 @@ export const localStore = new Store<LocalSchema>({
   defaults: {
     theme: 'dark',
     autoLaunch: true,
+    masterAesKey: 'i-JANEK123QWEasd',
     backupManifest: {}
   }
 })

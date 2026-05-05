@@ -1,5 +1,11 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getDatabase } from 'firebase/database'
 import { getStorage } from 'firebase/storage'
@@ -22,17 +28,30 @@ export const hasFirebaseCoreConfig = [
   firebaseConfig.messagingSenderId,
   firebaseConfig.appId
 ].every(Boolean)
+export const hasRealtimeDatabaseConfig = Boolean(firebaseConfig.databaseURL)
 
 const app = hasFirebaseCoreConfig ? (getApps()[0] ?? initializeApp(firebaseConfig)) : null
 
 const database = app && firebaseConfig.databaseURL ? getDatabase(app, firebaseConfig.databaseURL) : null
+let auth = app ? null : null
+
+if (app) {
+  try {
+    auth = initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver
+    })
+  } catch {
+    auth = getAuth(app)
+  }
+}
 
 export const firebaseServices = app
   ? {
       app,
-      auth: getAuth(app),
+      auth,
       firestore: getFirestore(app),
-      database: database as ReturnType<typeof getDatabase>,
+      database,
       storage: getStorage(app)
     }
   : null

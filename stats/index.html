@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="../analytics.js"></script>
   <style>
     :root {
@@ -237,49 +239,57 @@
 
     <main>
       <section class="hero">
-        <h1>Prosty podgląd wejść i ukończeń tutoriala</h1>
-        <p>
-          Dane na tej stronie pochodzą tylko od użytkowników, którzy wyrazili zgodę
-          na analitykę. Wejście liczone jest raz na sesję strony głównej, a ukończenie
-          tutoriala po kliknięciu przycisku <strong>Zakończ</strong> w ostatnim kroku.
-        </p>
-        <div class="status" id="statsStatus">Ładowanie danych z Firestore…</div>
+        <div class="status" id="statsStatus">Ladowanie danych z Firestore...</div>
       </section>
 
       <section class="grid" aria-label="Kluczowe statystyki">
         <article class="card">
           <div class="eyebrow">01 · Wejścia</div>
           <div class="metric" id="visitsValue">-</div>
-          <p>Liczba sesji wejścia na stronę główną po zaakceptowaniu analityki.</p>
+          <p>Liczba sesji wejscia na strone glowna po zaakceptowaniu analityki.</p>
         </article>
 
         <article class="card">
           <div class="eyebrow">02 · Tutorial</div>
           <div class="metric" id="tutorialValue">-</div>
-          <p>Liczba kliknięć <strong>Zakończ</strong> na ostatnim kroku samouczka.</p>
+          <p>Liczba klikniec <strong>Zakoncz</strong> na ostatnim kroku samouczka.</p>
         </article>
 
         <article class="card">
-          <div class="eyebrow">03 · Konwersja</div>
-          <div class="metric" id="ratioValue">-</div>
-          <p>Prosty współczynnik ukończenia tutoriala względem wejść.</p>
+          <div class="eyebrow">03 · Sredni czas</div>
+          <div class="metric" id="avgTimeValue">-</div>
+          <p>Sredni czas spedzony na stronie glownej dla zapisanych sesji.</p>
         </article>
       </section>
 
-      <section class="footnote">
-        <strong>Uwaga:</strong> to jest uproszczony dashboard oparty o publiczne
-        zdarzenia zapisywane w Firestore. Jeśli później zechcesz dokładniejsze raporty,
-        segmentację źródeł ruchu albo dane dzienne, kolejnym krokiem będzie widok
-        oparty o GA4 Data API lub BigQuery.
-      </section>
     </main>
   </div>
 
   <script>
     (function () {
-      const firestoreBase =
-        window.IJanickiAnalytics?.config?.firestoreBase ||
-        'https://firestore.googleapis.com/v1/projects/i-janicki/databases/(default)/documents';
+      const firebaseConfig =
+        window.IJanickiAnalytics?.config?.firebaseConfig || {
+          apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
+          authDomain: 'i-janicki.firebaseapp.com',
+          projectId: 'i-janicki',
+          storageBucket: 'i-janicki.firebasestorage.app',
+          messagingSenderId: '745361888690',
+          appId: '1:745361888690:web:1af2df4ddf8fe7b4d600ab',
+        };
+
+      function ensureFirebaseApp() {
+        if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
+          throw new Error('Firebase SDK is not available.');
+        }
+
+        return window.firebase.apps.length
+          ? window.firebase.app()
+          : window.firebase.initializeApp(firebaseConfig);
+      }
+
+      function getFirestore() {
+        return window.firebase.firestore(ensureFirebaseApp());
+      }
 
       function setValue(id, value) {
         const el = document.getElementById(id);
@@ -291,84 +301,65 @@
         if (el) el.textContent = text;
       }
 
-      function buildTypeQuery(type) {
-        return {
-          structuredQuery: {
-            from: [{ collectionId: 'analytics_events' }],
-            where: {
-              fieldFilter: {
-                field: { fieldPath: 'type' },
-                op: 'EQUAL',
-                value: { stringValue: type },
-              },
-            },
-          },
-        };
+      function formatDuration(seconds) {
+        if (!Number.isFinite(seconds) || seconds <= 0) return '0s';
+        if (seconds < 60) return `${Math.round(seconds)}s`;
+
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+
+        if (minutes < 60) {
+          return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+        }
+
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
       }
 
       async function fetchMetricCount(type) {
-        try {
-          const aggregateRes = await fetch(`${firestoreBase}:runAggregationQuery`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              structuredAggregationQuery: {
-                aggregations: [{ alias: 'count', count: {} }],
-                structuredQuery: buildTypeQuery(type).structuredQuery,
-              },
-            }),
-          });
+        const snapshot = await getFirestore()
+          .collection('analytics_events')
+          .where('type', '==', type)
+          .get();
 
-          if (aggregateRes.ok) {
-            const aggregateData = await aggregateRes.json();
-            const row = Array.isArray(aggregateData)
-              ? aggregateData.find((item) => item.result?.aggregateFields?.count)
-              : null;
-            const value = row?.result?.aggregateFields?.count?.integerValue;
+        return snapshot.size;
+      }
 
-            if (value !== undefined) {
-              return Number(value);
-            }
-          }
-        } catch (err) {
-          console.warn('Aggregation query failed, falling back to runQuery:', err);
-        }
+      async function fetchAverageDuration() {
+        const snapshot = await getFirestore()
+          .collection('analytics_events')
+          .where('type', '==', 'session_duration')
+          .get();
 
-        const res = await fetch(`${firestoreBase}:runQuery`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildTypeQuery(type)),
-        });
+        const durations = snapshot.docs
+          .map((doc) => doc.get('durationSeconds'))
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
 
-        if (!res.ok) {
-          throw new Error(`Firestore stats query failed: ${res.status}`);
-        }
-
-        const data = await res.json();
-        return Array.isArray(data) ? data.filter((row) => row.document).length : 0;
+        if (!durations.length) return 0;
+        return durations.reduce((sum, value) => sum + value, 0) / durations.length;
       }
 
       async function loadStats() {
         try {
-          const [visits, tutorialCompletions] = await Promise.all([
+          ensureFirebaseApp();
+          const [visits, tutorialCompletions, averageDuration] = await Promise.all([
             fetchMetricCount('page_visit'),
             fetchMetricCount('tutorial_complete'),
+            fetchAverageDuration(),
           ]);
-
-          const ratio = visits > 0
-            ? `${((tutorialCompletions / visits) * 100).toFixed(1)}%`
-            : '0%';
 
           setValue('visitsValue', String(visits));
           setValue('tutorialValue', String(tutorialCompletions));
-          setValue('ratioValue', ratio);
+          setValue('avgTimeValue', formatDuration(averageDuration));
           setStatus(`Ostatnie odświeżenie: ${new Date().toLocaleString('pl-PL')}`);
         } catch (err) {
           console.warn('Stats page load error:', err);
-          setValue('visitsValue', 'Błąd');
-          setValue('tutorialValue', 'Błąd');
-          setValue('ratioValue', 'Błąd');
-          setStatus('Nie udało się pobrać danych z Firestore. Sprawdź reguły kolekcji analytics_events.');
+          setValue('visitsValue', 'Blad');
+          setValue('tutorialValue', 'Blad');
+          setValue('avgTimeValue', 'Blad');
+          setStatus('Nie udalo sie pobrac danych z Firestore. Sprawdz reguly kolekcji analytics_events.');
         }
       }
 

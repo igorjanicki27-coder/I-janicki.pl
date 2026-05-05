@@ -1,4 +1,5 @@
 import type {
+  BackupRemoteFile,
   BackupPolicy,
   BackupSnapshot,
   CommandShell,
@@ -17,6 +18,14 @@ export interface JanekApi {
     notify: (title: string, body: string) => Promise<void>
     getConsent: () => Promise<ConsentRecord | null>
     setConsent: (consent: ConsentRecord | null) => Promise<void>
+    getMasterAesKey: () => Promise<string>
+    setMasterAesKey: (key: string) => Promise<void>
+    checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
+    promptRestart: (
+      title: string,
+      body: string,
+      remindAfterMinutes?: number
+    ) => Promise<{ status: 'restart_now' | 'remind_later' | 'dismissed'; message: string }>
   }
   telemetry: {
     collect: () => Promise<DeviceTelemetry>
@@ -30,6 +39,12 @@ export interface JanekApi {
   }
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) => Promise<BackupSnapshot>
+    listFiles: (policy: BackupPolicy, accessToken: string, hostname: string) => Promise<BackupRemoteFile[]>
+    restore: (
+      policy: BackupPolicy,
+      accessToken: string,
+      hostname: string
+    ) => Promise<{ restoredFiles: number; restoredBytes: number; destinationPath: string }>
   }
   rustdesk: {
     getState: () => Promise<RustDeskState>

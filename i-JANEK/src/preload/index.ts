@@ -8,7 +8,11 @@ const api: JanekApi = {
     setAutoLaunch: (enabled) => ipcRenderer.invoke('system:set-auto-launch', enabled),
     notify: (title, body) => ipcRenderer.invoke('system:notify', title, body),
     getConsent: () => ipcRenderer.invoke('system:get-consent'),
-    setConsent: (consent) => ipcRenderer.invoke('system:set-consent', consent)
+    setConsent: (consent) => ipcRenderer.invoke('system:set-consent', consent),
+    getMasterAesKey: () => ipcRenderer.invoke('system:get-master-aes-key'),
+    setMasterAesKey: (key) => ipcRenderer.invoke('system:set-master-aes-key', key),
+    checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
+    promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes)
   },
   telemetry: {
     collect: () => ipcRenderer.invoke('telemetry:collect'),
@@ -22,7 +26,11 @@ const api: JanekApi = {
   },
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
-      ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId, hostname)
+      ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId, hostname),
+    listFiles: (policy: BackupPolicy, accessToken: string, hostname: string) =>
+      ipcRenderer.invoke('backup:list-files', policy, accessToken, hostname),
+    restore: (policy: BackupPolicy, accessToken: string, hostname: string) =>
+      ipcRenderer.invoke('backup:restore', policy, accessToken, hostname)
   },
   rustdesk: {
     getState: () => ipcRenderer.invoke('rustdesk:get-state'),

@@ -2,13 +2,33 @@
 
 (function () {
   const MEASUREMENT_ID = 'G-XQDCV6ZK3S';
-  const FIREBASE_PROJECT = 'i-janicki';
-  const FIRESTORE_BASE =
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
+  const FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
+    authDomain: 'i-janicki.firebaseapp.com',
+    projectId: 'i-janicki',
+    storageBucket: 'i-janicki.firebasestorage.app',
+    messagingSenderId: '745361888690',
+    appId: '1:745361888690:web:1af2df4ddf8fe7b4d600ab',
+  };
   const COOKIE_KEY = 'ijanek_cookie_analytics';
   const HOME_VISIT_KEY = 'ijanek_metric_home_visit_logged';
   const TUTORIAL_COMPLETE_KEY = 'ijanek_metric_tutorial_complete_logged';
   const HOME_PATHS = new Set(['/', '/index.html']);
+  const sessionStartedAt = Date.now();
+  let sessionDurationSent = false;
+  let firebaseApp = null;
+
+  function ensureFirebaseApp() {
+    if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
+      throw new Error('Firebase SDK is not available.');
+    }
+
+    if (firebaseApp) return firebaseApp;
+    firebaseApp = window.firebase.apps.length
+      ? window.firebase.app()
+      : window.firebase.initializeApp(FIREBASE_CONFIG);
+    return firebaseApp;
+  }
 
   function hasAnalyticsConsent() {
     try {
@@ -44,29 +64,22 @@
 
   async function writeAnalyticsEvent(type, extraFields) {
     if (!hasAnalyticsConsent()) return false;
-
-    const fields = {
-      type: { stringValue: type },
-      path: { stringValue: window.location.pathname || '/' },
-      timestamp: { timestampValue: new Date().toISOString() },
+    const app = ensureFirebaseApp();
+    const firestore = window.firebase.firestore(app);
+    const payload = {
+      type,
+      path: window.location.pathname || '/',
+      timestamp: new Date(),
     };
 
     if (extraFields) {
       Object.entries(extraFields).forEach(([key, value]) => {
         if (value === undefined || value === null) return;
-        fields[key] = { stringValue: String(value) };
+        payload[key] = value;
       });
     }
 
-    const res = await fetch(`${FIRESTORE_BASE}/analytics_events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Firestore analytics write failed: ${res.status}`);
-    }
+    await firestore.collection('analytics_events').add(payload);
 
     return true;
   }
@@ -134,16 +147,34 @@
     return true;
   }
 
+  function maybeTrackSessionDuration() {
+    if (!hasAnalyticsConsent() || !isHomePath() || sessionDurationSent) return false;
+
+    const durationSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000));
+    sessionDurationSent = true;
+
+    writeAnalyticsEvent('session_duration', {
+      page: 'home',
+      source: 'session_end',
+      durationSeconds,
+    }).catch((err) => {
+      console.warn('Analytics duration fallback error:', err);
+    });
+
+    return true;
+  }
+
   window.IJanickiAnalytics = {
     config: {
       measurementId: MEASUREMENT_ID,
-      firestoreBase: FIRESTORE_BASE,
+      firebaseConfig: FIREBASE_CONFIG,
     },
     hasAnalyticsConsent,
     loadGA,
     maybeTrackHomeVisit,
     trackTutorialComplete,
     trackAnalyticsEvent,
+    maybeTrackSessionDuration,
   };
 
   window.hasAnalyticsConsent = hasAnalyticsConsent;
@@ -151,9 +182,25 @@
   window.maybeTrackHomeVisit = maybeTrackHomeVisit;
   window.trackTutorialComplete = trackTutorialComplete;
   window.trackAnalyticsEvent = trackAnalyticsEvent;
+  window.maybeTrackSessionDuration = maybeTrackSessionDuration;
 
   if (hasAnalyticsConsent()) {
-    loadGA();
-    maybeTrackHomeVisit();
+    try {
+      ensureFirebaseApp();
+      loadGA();
+      maybeTrackHomeVisit();
+    } catch (err) {
+      console.warn('Analytics initialization error:', err);
+    }
   }
+
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      maybeTrackSessionDuration();
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    maybeTrackSessionDuration();
+  });
 })();
