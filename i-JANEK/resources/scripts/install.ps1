@@ -102,11 +102,17 @@ if (-not $rustDeskConfigString) {
   $rustDeskConfigString = [Environment]::GetEnvironmentVariable("RUSTDESK_CONFIG_STRING", "User")
 }
 if (-not $rustDeskConfigString) {
-  $configFile = Join-Path $PSScriptRoot "..\rustdesk-config.txt"
-  if (Test-Path $configFile) {
-    $fromFile = (Get-Content -Path $configFile -Raw).Trim()
-    if ($fromFile -and -not $fromFile.StartsWith("#")) {
-      $rustDeskConfigString = $fromFile
+  $configFiles = @(
+    (Join-Path $PSScriptRoot "..\rustdesk-config.local.txt"),
+    (Join-Path $PSScriptRoot "..\rustdesk-config.txt")
+  )
+  foreach ($configFile in $configFiles) {
+    if (Test-Path $configFile) {
+      $fromFile = (Get-Content -Path $configFile -Raw).Trim()
+      if ($fromFile -and -not $fromFile.StartsWith("#")) {
+        $rustDeskConfigString = $fromFile
+        break
+      }
     }
   }
 }

@@ -5,3 +5,4 @@ dist/
 dist-electron/
 .env
 build/iJanekPriv.key
+resources/rustdesk-config.local.txt

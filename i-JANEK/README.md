@@ -17,7 +17,7 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 3. (RustDesk) Ustaw globalnie na Windows:
    - `RUSTDESK_CONFIG_STRING` (konfiguracja serwera eksportowana z RustDesk)
    - `RUSTDESK_LOCK_CONFIG=1` (wymuszenie blokady ręcznej edycji konfiguracji)
-   - alternatywnie wpisz config string do `resources/rustdesk-config.txt`, aby instalator zrobił wszystko bez ręcznego ustawiania zmiennych na kliencie
+   - alternatywnie wpisz config string do `resources/rustdesk-config.local.txt` (plik lokalny, ignorowany przez git); wzór jest w `resources/rustdesk-config.example.txt`
 4. Dodaj ikony builda:
    - `build/icon.png`
    - `build/icon.ico`
