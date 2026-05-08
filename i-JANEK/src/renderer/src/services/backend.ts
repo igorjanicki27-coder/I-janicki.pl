@@ -2,6 +2,7 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
@@ -123,6 +124,27 @@ function defaultBackupPolicy(_hostname: string): BackupPolicy {
 
 class FirebaseBackend implements BackendClient {
   isMock = false
+  private providerAccessToken?: string
+  private providerAccessTokenUid: string | null = null
+
+  private clearProviderAccessToken() {
+    this.providerAccessToken = undefined
+    this.providerAccessTokenUid = null
+  }
+
+  private rememberProviderAccessToken(user: User, accessToken?: string | null) {
+    if (!accessToken) {
+      this.clearProviderAccessToken()
+      return
+    }
+
+    this.providerAccessToken = accessToken
+    this.providerAccessTokenUid = user.uid
+  }
+
+  private getProviderAccessToken(user: User) {
+    return this.providerAccessTokenUid === user.uid ? this.providerAccessToken : undefined
+  }
 
   subscribeAuth(callback: (user: AppUser | null) => void) {
     const auth = firebaseServices!.auth
@@ -136,7 +158,15 @@ class FirebaseBackend implements BackendClient {
         console.warn('[i-JANEK] Redirect Google sign-in failed:', error)
       }
       if (disposed) return
-      unsubscribe = onAuthStateChanged(auth, (user) => callback(user ? toAppUser(user) : null))
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          this.clearProviderAccessToken()
+          callback(null)
+          return
+        }
+
+        callback(toAppUser(user, this.getProviderAccessToken(user)))
+      })
     })()
 
     return () => {
@@ -154,10 +184,20 @@ class FirebaseBackend implements BackendClient {
 
     const auth = firebaseServices!.auth
     const isElectron = navigator.userAgent.toLowerCase().includes('electron')
+    const canUseDesktopOAuth = isElectron && typeof window.janek?.system.signInWithGoogle === 'function'
+
+    if (canUseDesktopOAuth) {
+      const desktopTokens = await window.janek.system.signInWithGoogle()
+      const credential = GoogleAuthProvider.credential(desktopTokens.idToken, desktopTokens.accessToken)
+      const result = await signInWithCredential(auth, credential)
+      this.rememberProviderAccessToken(result.user, desktopTokens.accessToken)
+      return toAppUser(result.user, desktopTokens.accessToken)
+    }
 
     try {
       const result = await signInWithPopup(auth, provider)
       const credential = GoogleAuthProvider.credentialFromResult(result)
+      this.rememberProviderAccessToken(result.user, credential?.accessToken)
       return toAppUser(result.user, credential?.accessToken)
     } catch (error) {
       const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : ''
@@ -172,8 +212,10 @@ class FirebaseBackend implements BackendClient {
         return new Promise<AppUser>(() => {})
       }
 
-      if (isElectron && fallbackCodes.has(code)) {
-        throw new Error('Logowanie Google popup zostalo zablokowane. Zamknij dodatkowe okna logowania i sprobuj ponownie.')
+      if (isElectron && (fallbackCodes.has(code) || code === 'auth/unauthorized-domain')) {
+        throw new Error(
+          'Desktopowe logowanie Google nie jest jeszcze skonfigurowane. Ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w aplikacji i spróbuj ponownie.'
+        )
       }
 
       throw error
@@ -181,6 +223,7 @@ class FirebaseBackend implements BackendClient {
   }
 
   async signOut() {
+    this.clearProviderAccessToken()
     await firebaseSignOut(firebaseServices!.auth)
   }
 
@@ -747,42 +790,7 @@ class MockBackend implements BackendClient {
       createdAt: Date.now() - 140_000
     }
   ]
-  private chats = new Map<string, CompanyChatMessage[]>([
-    [
-      'mock-client',
-      [
-        {
-          id: 'msg-1',
-          ownerUid: 'mock-client',
-          ownerEmail: 'klient@example.com',
-          senderRole: 'master',
-          senderEmail: DEFAULT_MASTER_EMAIL,
-          body: 'Dzień dobry, widzę alert temperatury. Czy mogę uruchomić diagnostykę?',
-          createdAt: Date.now() - 120_000,
-          delivered: true,
-          deviceId: 'STUDIO-PC-MOCK001',
-          deviceLabel: 'STUDIO-PC'
-        }
-      ]
-    ],
-    [
-      'mock-client-2',
-      [
-        {
-          id: 'msg-2',
-          ownerUid: 'mock-client-2',
-          ownerEmail: 'biuro@firma.pl',
-          senderRole: 'slave',
-          senderEmail: 'biuro@firma.pl',
-          body: 'Proszę o sprawdzenie backupu, ostatnio był problem z dyskiem.',
-          createdAt: Date.now() - 300_000,
-          delivered: true,
-          deviceId: 'BIURO-MOCK003',
-          deviceLabel: 'Biuro-PC'
-        }
-      ]
-    ]
-  ])
+  private chats = new Map<string, CompanyChatMessage[]>()
   private remoteMasterSettings: RemoteMasterSettings = {
     telemetryMode: 'standard',
     companyOptions: ['i-JANEK Demo', 'Firma Klienta', 'Biuro Janicki'],

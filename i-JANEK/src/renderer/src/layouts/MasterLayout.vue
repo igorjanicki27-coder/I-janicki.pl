@@ -34,7 +34,7 @@ interface CompanyConversationEntry {
   companyName: string
   devices: DeviceRecord[]
   latestMessageAt: number
-  isVirtual: boolean
+  isPlaceholder: boolean
 }
 
 const groupedCompanies = computed<CompanyConversationEntry[]>(() => {
@@ -57,13 +57,11 @@ const groupedCompanies = computed<CompanyConversationEntry[]>(() => {
       companyName,
       devices: [device],
       latestMessageAt,
-      isVirtual: false
+      isPlaceholder: false
     })
   }
 
-  const normalizedExistingNames = new Set(
-    [...grouped.values()].map((entry) => entry.companyName.trim().toLowerCase()).filter(Boolean)
-  )
+  const normalizedExistingNames = new Set([...grouped.values()].map((entry) => entry.companyName.trim().toLowerCase()).filter(Boolean))
 
   for (const companyName of store.masterSettings.companyOptions) {
     const trimmed = companyName.trim()
@@ -77,12 +75,12 @@ const groupedCompanies = computed<CompanyConversationEntry[]>(() => {
       companyName: trimmed,
       devices: [],
       latestMessageAt: 0,
-      isVirtual: true
+      isPlaceholder: true
     })
   }
 
   return [...grouped.values()].sort((left, right) => {
-    if (left.isVirtual !== right.isVirtual) return left.isVirtual ? 1 : -1
+    if (left.isPlaceholder !== right.isPlaceholder) return left.isPlaceholder ? 1 : -1
     return (
       right.latestMessageAt - left.latestMessageAt ||
       right.devices.length - left.devices.length ||
@@ -108,10 +106,8 @@ const selectedBackupProgressPercent = computed(() => {
 const activeCompany = computed(
   () => groupedCompanies.value.find((entry) => entry.ownerUid === store.selectedConversationOwnerUid) ?? groupedCompanies.value[0] ?? null
 )
-const conversationTimeline = computed(() =>
-  buildConversationTimeline(activeCompany.value?.isVirtual ? [] : store.selectedConversationMessages)
-)
-const canSendMessageToActiveCompany = computed(() => Boolean(activeCompany.value && !activeCompany.value.isVirtual))
+const conversationTimeline = computed(() => buildConversationTimeline(activeCompany.value ? store.selectedConversationMessages : []))
+const canSendMessageToActiveCompany = computed(() => Boolean(activeCompany.value && !activeCompany.value.isPlaceholder))
 const orderedDevices = computed(() =>
   [...store.devices].sort((left, right) => devicePriorityScore(right) - devicePriorityScore(left) || right.updatedAt - left.updatedAt)
 )
@@ -122,10 +118,7 @@ watch(
     if (store.selectedConversationOwnerUid && groupedCompanies.value.some((entry) => entry.ownerUid === store.selectedConversationOwnerUid)) {
       return
     }
-    const preferred = groupedCompanies.value.find((entry) => !entry.isVirtual) ?? groupedCompanies.value[0]
-    if (preferred) {
-      store.selectedConversationOwnerUid = preferred.ownerUid
-    }
+    store.selectedConversationOwnerUid = groupedCompanies.value[0]?.ownerUid ?? ''
   },
   { immediate: true }
 )
@@ -182,7 +175,7 @@ function devicePriorityScore(device: DeviceRecord) {
 }
 
 function unreadCount(company: CompanyConversationEntry) {
-  if (company.isVirtual) return 0
+  if (company.isPlaceholder) return 0
   const messages = store.companyChats[company.ownerUid] ?? []
   const lastRead = chatReads.value[company.ownerUid] ?? 0
   return messages.filter((message) => message.senderRole === 'slave' && message.createdAt > lastRead).length
@@ -267,7 +260,7 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
 </script>
 
 <template>
-  <div class="grid h-full min-h-0 gap-4 grid-rows-[minmax(320px,1.15fr)_minmax(280px,1fr)] 2xl:grid-rows-[minmax(380px,1.25fr)_minmax(300px,1fr)]">
+  <div class="grid h-full min-h-0 gap-4 grid-rows-[minmax(300px,1fr)_minmax(340px,1.25fr)] 2xl:grid-rows-[minmax(360px,1fr)_minmax(380px,1.35fr)]">
     <section class="glass-panel relative z-20 flex min-h-0 flex-col overflow-hidden rounded-[32px] p-5">
       <div
         class="mt-1 flex items-center"
@@ -544,11 +537,11 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
       </div>
     </section>
 
-    <section class="glass-panel relative z-10 grid min-h-0 overflow-hidden rounded-[32px] p-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+    <section class="glass-panel relative z-10 grid min-h-0 overflow-hidden rounded-[32px] p-5 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside class="min-h-0 overflow-auto border-b border-white/10 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
         <div class="display-font text-base tracking-[0.18em] text-white">WIADOMOŚCI</div>
 
-        <div class="mt-4 space-y-2 pr-1">
+        <div v-if="groupedCompanies.length" class="mt-4 space-y-2 pr-1">
           <button
             v-for="company in groupedCompanies"
             :key="company.key"
@@ -572,59 +565,76 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
             </div>
           </button>
         </div>
+        <div v-else class="mt-4 rounded-[22px] border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-[var(--text-dim)]">
+          Brak aktywnych rozmów.
+          <div class="mt-2 text-xs uppercase tracking-[0.18em] text-white/50">
+            Podłącz urządzenie, aby pojawiły się wiadomości.
+          </div>
+        </div>
       </aside>
 
       <div class="flex min-h-0 flex-col overflow-hidden pt-4 lg:pl-4 lg:pt-0">
-        <div v-if="activeCompany" class="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
-          <div>
-            <div class="text-lg font-semibold text-white">{{ activeCompany.companyName }}</div>
-            <div class="text-sm text-[var(--text-dim)]">{{ activeCompany.ownerEmail || 'Brak aktywnego klienta' }} · {{ activeCompany.devices.length }} komputer(y)</div>
-          </div>
-          <div class="hidden rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-dim)] xl:block">
-            {{ getConversationDevicesLabel(activeCompany.devices) }}
-          </div>
-        </div>
-
-        <div class="mt-4 flex-1 space-y-3 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <template v-for="entry in conversationTimeline" :key="entry.id">
-            <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]">
-              <div class="h-px flex-1 bg-white/10" />
-              <span class="mono">{{ entry.label }}</span>
-              <div class="h-px flex-1 bg-white/10" />
-            </div>
-
-            <div
-              v-else
-              class="max-w-[82%] rounded-[22px] border px-4 py-3 text-sm leading-7"
-              :class="
-                entry.message.senderRole === 'master'
-                  ? 'ml-auto border-cyan-400/30 bg-cyan-500/10 text-white'
-                  : 'border-white/10 bg-white/5 text-white'
-              "
-            >
-              <div class="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
-                <span class="mono">{{ entry.message.senderEmail }}</span>
-                <span class="mono">{{ getMessageDeviceLabel(entry.message) }}</span>
+        <template v-if="activeCompany">
+          <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <div class="text-lg font-semibold text-white">{{ activeCompany.companyName }}</div>
+              <div class="text-sm text-[var(--text-dim)]">
+                {{ activeCompany.isPlaceholder ? 'Brak urządzeń w tej firmie' : activeCompany.ownerEmail || 'Brak aktywnego klienta' }}
+                · {{ activeCompany.devices.length }} komputer(y)
               </div>
-              {{ entry.message.body }}
             </div>
-          </template>
-          <div v-if="!conversationTimeline.length" class="rounded-[22px] border border-white/10 px-4 py-4 text-sm text-[var(--text-dim)]">
-            Brak wiadomości w tej rozmowie.
+            <div class="hidden rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-dim)] xl:block">
+              {{ getConversationDevicesLabel(activeCompany.devices) }}
+            </div>
           </div>
-        </div>
 
-        <div class="mt-4 flex gap-3">
-          <input
-            v-model="store.pendingChatMessage"
-            class="soft-input"
-            :disabled="!canSendMessageToActiveCompany"
-            :placeholder="canSendMessageToActiveCompany ? 'Napisz do firmy...' : 'Wybierz firmę z aktywnym urządzeniem, aby wysłać wiadomość'"
-          />
-          <button class="glass-button" type="button" :disabled="!canSendMessageToActiveCompany" @click="store.sendChatMessage()">
-            <Send class="mr-2 h-4 w-4" />
-            Wyślij
-          </button>
+          <div class="mt-4 flex-1 space-y-3 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <template v-for="entry in conversationTimeline" :key="entry.id">
+              <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]">
+                <div class="h-px flex-1 bg-white/10" />
+                <span class="mono">{{ entry.label }}</span>
+                <div class="h-px flex-1 bg-white/10" />
+              </div>
+
+              <div
+                v-else
+                class="max-w-[82%] rounded-[22px] border px-4 py-3 text-sm leading-7"
+                :class="
+                  entry.message.senderRole === 'master'
+                    ? 'ml-auto border-cyan-400/30 bg-cyan-500/10 text-white'
+                    : 'border-white/10 bg-white/5 text-white'
+                "
+              >
+                <div class="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                  <span class="mono">{{ entry.message.senderEmail }}</span>
+                  <span class="mono">{{ getMessageDeviceLabel(entry.message) }}</span>
+                </div>
+                {{ entry.message.body }}
+              </div>
+            </template>
+            <div v-if="!conversationTimeline.length" class="rounded-[22px] border border-white/10 px-4 py-4 text-sm text-[var(--text-dim)]">
+              {{ activeCompany.isPlaceholder ? 'Ta firma jest już w ustawieniach, ale nie ma jeszcze urządzenia ani wiadomości.' : 'Brak wiadomości w tej rozmowie.' }}
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <input
+              v-model="store.pendingChatMessage"
+              class="soft-input"
+              :disabled="!canSendMessageToActiveCompany"
+              :placeholder="canSendMessageToActiveCompany ? 'Napisz do firmy...' : 'Ta firma nie ma jeszcze urządzenia ani kanału wiadomości'"
+            />
+            <button class="glass-button" type="button" :disabled="!canSendMessageToActiveCompany" @click="store.sendChatMessage()">
+              <Send class="mr-2 h-4 w-4" />
+              Wyślij
+            </button>
+          </div>
+        </template>
+        <div v-else class="flex flex-1 items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-black/10 p-6 text-center text-sm leading-7 text-[var(--text-dim)]">
+          <div>
+            <div class="text-base font-semibold text-white">Brak aktywnych wiadomości</div>
+            <p class="mt-2">Po dodaniu urządzenia lub odebraniu wiadomości ten panel zacznie pokazywać prawdziwą rozmowę.</p>
+          </div>
         </div>
       </div>
     </section>

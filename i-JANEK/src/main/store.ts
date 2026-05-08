@@ -1,3 +1,4 @@
+import './env'
 import Store from 'electron-store'
 import type { BackupSnapshot, ConsentRecord, ThemeMode } from '@shared/contracts'
 
@@ -6,6 +7,7 @@ export interface LocalSchema {
   consent?: ConsentRecord | null
   autoLaunch: boolean
   masterAesKey: string
+  masterAesKeyHistory: string[]
   registeredDeviceId?: string | null
   rustdeskIdentity?: string | null
   rustdeskPassword?: string | null
@@ -19,6 +21,7 @@ export const localStore = new Store<LocalSchema>({
     theme: 'dark',
     autoLaunch: true,
     masterAesKey: process.env.I_JANEK_AES_VAULT_KEY?.trim() || '',
+    masterAesKeyHistory: [],
     registeredDeviceId: null,
     rustdeskIdentity: null,
     rustdeskPassword: null,

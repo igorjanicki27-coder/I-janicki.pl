@@ -12,6 +12,7 @@ const api: JanekApi = {
     getMasterAesKey: () => ipcRenderer.invoke('system:get-master-aes-key'),
     setMasterAesKey: (key) => ipcRenderer.invoke('system:set-master-aes-key', key),
     checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
+    signInWithGoogle: () => ipcRenderer.invoke('system:sign-in-with-google'),
     selectFolder: () => ipcRenderer.invoke('system:select-folder'),
     setRegisteredDeviceId: (deviceId) => ipcRenderer.invoke('system:set-registered-device-id', deviceId),
     promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes),
@@ -26,7 +27,8 @@ const api: JanekApi = {
       ipcRenderer.invoke('terminal:execute', shell, command, deviceId, requestedBy)
   },
   vault: {
-    encrypt: (plainText: string) => ipcRenderer.invoke('vault:encrypt', plainText)
+    encrypt: (plainText: string) => ipcRenderer.invoke('vault:encrypt', plainText),
+    decrypt: (cipherText: string) => ipcRenderer.invoke('vault:decrypt', cipherText)
   },
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>

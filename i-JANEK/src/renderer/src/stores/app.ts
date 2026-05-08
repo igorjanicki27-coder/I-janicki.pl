@@ -904,7 +904,7 @@ export const useAppStore = defineStore('app', () => {
     await window.janek.system.notify('i-JANEK', 'Hasło RustDesk zostało obrócone.')
   }
 
-  function updateMasterSettings(next: Partial<MasterSettings>) {
+  async function updateMasterSettings(next: Partial<MasterSettings>) {
     masterSettings.value = {
       ...masterSettings.value,
       ...next,
@@ -920,14 +920,18 @@ export const useAppStore = defineStore('app', () => {
     applyGlassIntensity(FIXED_GLASS_INTENSITY)
     persistMasterSettings()
     if (user.value?.role === 'master') {
-      void backend.value?.saveRemoteMasterSettings(toRemoteMasterSettings(masterSettings.value))
+      try {
+        await backend.value?.saveRemoteMasterSettings(toRemoteMasterSettings(masterSettings.value))
+      } catch (error) {
+        lastError.value = error instanceof Error ? error.message : 'Nie udało się zsynchronizować ustawień firm.'
+      }
     }
   }
 
   function updateMetricThreshold(metric: keyof MetricThresholds, kind: keyof MetricThreshold, value: number) {
     const current = masterSettings.value.thresholds[metric]
     const sanitized = Number.isFinite(value) ? Math.max(0, value) : current[kind]
-    updateMasterSettings({
+    void updateMasterSettings({
       thresholds: {
         ...masterSettings.value.thresholds,
         [metric]: {
@@ -938,17 +942,21 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
-  function addCompanyOption(name: string) {
+  async function addCompanyOption(name: string) {
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed) return false
     const next = normalizeCompanyOptions([...masterSettings.value.companyOptions, trimmed])
-    if (next.includes(trimmed) && masterSettings.value.companyOptions.includes(trimmed)) return
-    updateMasterSettings({ companyOptions: next })
+    const unchanged =
+      next.length === masterSettings.value.companyOptions.length &&
+      next.every((entry, index) => entry === masterSettings.value.companyOptions[index])
+    if (unchanged) return false
+    await updateMasterSettings({ companyOptions: next })
+    return true
   }
 
-  function removeCompanyOption(name: string) {
+  async function removeCompanyOption(name: string) {
     const next = normalizeCompanyOptions(masterSettings.value.companyOptions.filter((entry) => entry !== name))
-    updateMasterSettings({ companyOptions: next })
+    await updateMasterSettings({ companyOptions: next })
     if (pendingCompanyName.value === name) {
       pendingCompanyName.value = next[0] ?? ''
     }
@@ -958,7 +966,7 @@ export const useAppStore = defineStore('app', () => {
     const trimmed = nextKey.trim()
     if (!trimmed) return
     await window.janek.system.setMasterAesKey(trimmed)
-    updateMasterSettings({ aesKey: trimmed })
+    await updateMasterSettings({ aesKey: trimmed })
   }
 
   async function applySlaveBackupSettings() {

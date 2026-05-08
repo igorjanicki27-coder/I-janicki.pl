@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { LogOut, Send, Trash2, X } from 'lucide-vue-next'
+import { ChevronDown, LogOut, Send, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -106,17 +106,20 @@ async function saveMasterAes() {
   const next = aesDraft.value.trim()
   if (!next || next === store.masterSettings.aesKey) return
   const accepted = window.confirm(
-    'Zmiana klucza AES bez migracji odcina dostęp do wcześniej zaszyfrowanych haseł. Czy na pewno zapisać nowy klucz?'
+    'Nowy klucz zostanie zapisany, a poprzedni pozostanie jako zapasowy klucz do odczytu starszych danych. Kontynuować?'
   )
   if (!accepted) return
   await store.updateMasterAesKey(next)
 }
 
-function addCompanyOption() {
+async function addCompanyOption() {
   const next = companyDraft.value.trim()
   if (!next) return
-  store.addCompanyOption(next)
-  companyDraft.value = ''
+  const added = await store.addCompanyOption(next)
+  if (added) {
+    store.selectedConversationOwnerUid = `virtual:${next}`
+    companyDraft.value = ''
+  }
 }
 
 async function checkForUpdatesNow() {
@@ -263,14 +266,17 @@ function formatRotationDate(timestamp?: number) {
 
               <label class="block text-sm text-[var(--text-dim)]">
                 <span class="mb-2 block">Czestotliwosc telemetrii</span>
-                <select
-                  class="soft-input !py-2"
-                  :value="store.masterSettings.telemetryMode"
-                  @change="store.updateMasterSettings({ telemetryMode: ($event.target as HTMLSelectElement).value as 'standard' | 'aggressive' })"
-                >
-                  <option value="standard">Standard (1h)</option>
-                  <option value="aggressive">Agresywny (10 min)</option>
-                </select>
+                <div class="relative">
+                  <select
+                    class="soft-input !py-2 !pr-10 appearance-none"
+                    :value="store.masterSettings.telemetryMode"
+                    @change="store.updateMasterSettings({ telemetryMode: ($event.target as HTMLSelectElement).value as 'standard' | 'aggressive' })"
+                  >
+                    <option value="standard">Standard (1h)</option>
+                    <option value="aggressive">Agresywny (10 min)</option>
+                  </select>
+                  <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dim)]" />
+                </div>
               </label>
             </div>
           </section>
@@ -285,7 +291,7 @@ function formatRotationDate(timestamp?: number) {
                   <button class="glass-button !px-4" type="button" @click="saveMasterAes">Zapisz</button>
                 </div>
                 <p class="mt-2 text-xs text-amber-200/90">
-                  Uwaga: zmiana klucza bez migracji odetnie dostęp do wcześniej zaszyfrowanych danych.
+                  Zmiana klucza zachowuje poprzedni klucz w historii, więc starsze zaszyfrowane dane nadal pozostają odczytywalne.
                 </p>
               </label>
             </div>

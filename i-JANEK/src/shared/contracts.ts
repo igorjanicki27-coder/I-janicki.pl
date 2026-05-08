@@ -36,6 +36,13 @@ export interface AppUser {
   accessToken?: string
 }
 
+export interface GoogleOAuthTokens {
+  idToken: string
+  accessToken: string
+  refreshToken?: string | null
+  expiresAt?: number | null
+}
+
 export interface DeviceIdentity {
   deviceId: string
   machineId: string

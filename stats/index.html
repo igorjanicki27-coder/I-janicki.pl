@@ -144,6 +144,17 @@
       margin-bottom: 18px;
     }
 
+    .period-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .period-card:last-child {
+      grid-column: span 2;
+    }
+
     .card {
       position: relative;
       overflow: hidden;
@@ -195,6 +206,42 @@
       font-size: 0.95rem;
     }
 
+    .metrics-list {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 12px;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(127, 64, 255, 0.16);
+    }
+
+    .metric-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .metric-label {
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .metric-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.1rem, 2.6vw, 1.55rem);
+      color: var(--text);
+      text-align: right;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
     .footnote {
       padding: 18px 22px;
       border: 1px solid var(--border-soft);
@@ -218,6 +265,8 @@
 
     @media (max-width: 860px) {
       .grid { grid-template-columns: 1fr; }
+      .period-grid { grid-template-columns: 1fr; }
+      .period-card:last-child { grid-column: auto; }
       .topbar {
         flex-direction: column;
         align-items: flex-start;
@@ -239,6 +288,8 @@
 
     <main>
       <section class="hero">
+        <h1>Statystyki aktywnosci</h1>
+        <p>Dane sa podzielone na: dzisiaj, ostatnie 7 dni, biezacy miesiac, biezacy rok oraz caly okres.</p>
         <div class="status" id="statsStatus">Ladowanie danych z Firestore...</div>
       </section>
 
@@ -260,6 +311,62 @@
           <div class="metric" id="avgTimeValue">-</div>
           <p>Sredni czas spedzony na stronie glownej dla zapisanych sesji.</p>
         </article>
+      </section>
+
+      <section class="period-grid" aria-label="Statystyki okresowe">
+        <article class="card period-card">
+          <div class="eyebrow">01 · Dzisiaj</div>
+          <div class="metrics-list">
+            <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="todayVisits">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="todayTutorial">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="todayAvgTime">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="todayReviews">-</strong></div>
+          </div>
+        </article>
+
+        <article class="card period-card">
+          <div class="eyebrow">02 · Ostatnie 7 dni</div>
+          <div class="metrics-list">
+            <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="days7Visits">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="days7Tutorial">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="days7AvgTime">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="days7Reviews">-</strong></div>
+          </div>
+        </article>
+
+        <article class="card period-card">
+          <div class="eyebrow">03 · Biezacy miesiac</div>
+          <div class="metrics-list">
+            <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="monthVisits">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="monthTutorial">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="monthAvgTime">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="monthReviews">-</strong></div>
+          </div>
+        </article>
+
+        <article class="card period-card">
+          <div class="eyebrow">04 · Biezacy rok</div>
+          <div class="metrics-list">
+            <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="yearVisits">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="yearTutorial">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="yearAvgTime">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="yearReviews">-</strong></div>
+          </div>
+        </article>
+
+        <article class="card period-card">
+          <div class="eyebrow">05 · Ogolnie</div>
+          <div class="metrics-list">
+            <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="allVisits">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="allTutorial">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="allAvgTime">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="allReviews">-</strong></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="footnote">
+        <p><strong>Jak czytac dane:</strong> zakres <strong>miesiac</strong> i <strong>rok</strong> dotyczy biezacego miesiaca i biezacego roku. Opinie liczone sa jako zatwierdzone (<code>approved = true</code>).</p>
       </section>
 
     </main>
@@ -317,48 +424,136 @@
         return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
       }
 
-      async function fetchMetricCount(type) {
-        const snapshot = await getFirestore()
-          .collection('analytics_events')
-          .where('type', '==', type)
-          .get();
+      function parseTimestampToMs(value) {
+        if (!value) return NaN;
 
-        return snapshot.size;
+        if (typeof value.toDate === 'function') {
+          return value.toDate().getTime();
+        }
+
+        if (value instanceof Date) {
+          return value.getTime();
+        }
+
+        const parsed = new Date(value);
+        const ms = parsed.getTime();
+        return Number.isFinite(ms) ? ms : NaN;
       }
 
-      async function fetchAverageDuration() {
+      function formatCount(value) {
+        return new Intl.NumberFormat('pl-PL').format(value);
+      }
+
+      async function fetchAnalyticsEvents() {
         const snapshot = await getFirestore()
           .collection('analytics_events')
-          .where('type', '==', 'session_duration')
           .get();
 
-        const durations = snapshot.docs
-          .map((doc) => doc.get('durationSeconds'))
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value));
+        return snapshot.docs.map((doc) => {
+          const type = doc.get('type');
+          const timestampMs = parseTimestampToMs(doc.get('timestamp'));
+          const durationSeconds = Number(doc.get('durationSeconds'));
 
-        if (!durations.length) return 0;
-        return durations.reduce((sum, value) => sum + value, 0) / durations.length;
+          return { type, timestampMs, durationSeconds };
+        }).filter((entry) => Number.isFinite(entry.timestampMs));
+      }
+
+      async function fetchApprovedReviews() {
+        const snapshot = await getFirestore()
+          .collection('reviews')
+          .where('approved', '==', true)
+          .get();
+
+        return snapshot.docs.map((doc) => {
+          const timestampMs = parseTimestampToMs(doc.get('timestamp'));
+          return { timestampMs };
+        }).filter((entry) => Number.isFinite(entry.timestampMs));
+      }
+
+      function getPeriodStartMs(periodKey, now) {
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const day = now.getDate();
+
+        if (periodKey === 'today') return new Date(year, month, day, 0, 0, 0, 0).getTime();
+        if (periodKey === 'days7') return now.getTime() - (7 * 24 * 60 * 60 * 1000);
+        if (periodKey === 'month') return new Date(year, month, 1, 0, 0, 0, 0).getTime();
+        if (periodKey === 'year') return new Date(year, 0, 1, 0, 0, 0, 0).getTime();
+        return Number.NEGATIVE_INFINITY;
+      }
+
+      function isInPeriod(timestampMs, periodKey, nowMs, periodStartMs) {
+        if (!Number.isFinite(timestampMs)) return false;
+        if (periodKey === 'all') return timestampMs <= nowMs;
+        return timestampMs >= periodStartMs && timestampMs <= nowMs;
+      }
+
+      function buildPeriodStats(periodKey, analyticsEvents, approvedReviews, now) {
+        const nowMs = now.getTime();
+        const startMs = getPeriodStartMs(periodKey, now);
+
+        const periodEvents = analyticsEvents.filter((event) =>
+          isInPeriod(event.timestampMs, periodKey, nowMs, startMs)
+        );
+
+        const visits = periodEvents.filter((event) => event.type === 'page_visit').length;
+        const tutorialCompletions = periodEvents.filter((event) => event.type === 'tutorial_complete').length;
+        const durations = periodEvents
+          .filter((event) => event.type === 'session_duration')
+          .map((event) => event.durationSeconds)
+          .filter((value) => Number.isFinite(value) && value >= 0);
+
+        const averageDuration = durations.length
+          ? durations.reduce((sum, value) => sum + value, 0) / durations.length
+          : 0;
+
+        const reviews = approvedReviews.filter((review) =>
+          isInPeriod(review.timestampMs, periodKey, nowMs, startMs)
+        ).length;
+
+        return { visits, tutorialCompletions, averageDuration, reviews };
+      }
+
+      function setPeriodValues(periodPrefix, stats) {
+        setValue(`${periodPrefix}Visits`, formatCount(stats.visits));
+        setValue(`${periodPrefix}Tutorial`, formatCount(stats.tutorialCompletions));
+        setValue(`${periodPrefix}AvgTime`, formatDuration(stats.averageDuration));
+        setValue(`${periodPrefix}Reviews`, formatCount(stats.reviews));
       }
 
       async function loadStats() {
         try {
           ensureFirebaseApp();
-          const [visits, tutorialCompletions, averageDuration] = await Promise.all([
-            fetchMetricCount('page_visit'),
-            fetchMetricCount('tutorial_complete'),
-            fetchAverageDuration(),
+          const [analyticsEvents, approvedReviews] = await Promise.all([
+            fetchAnalyticsEvents(),
+            fetchApprovedReviews(),
           ]);
 
-          setValue('visitsValue', String(visits));
-          setValue('tutorialValue', String(tutorialCompletions));
-          setValue('avgTimeValue', formatDuration(averageDuration));
+          const now = new Date();
+          const globalStats = buildPeriodStats('all', analyticsEvents, approvedReviews, now);
+
+          setValue('visitsValue', formatCount(globalStats.visits));
+          setValue('tutorialValue', formatCount(globalStats.tutorialCompletions));
+          setValue('avgTimeValue', formatDuration(globalStats.averageDuration));
+
+          setPeriodValues('today', buildPeriodStats('today', analyticsEvents, approvedReviews, now));
+          setPeriodValues('days7', buildPeriodStats('days7', analyticsEvents, approvedReviews, now));
+          setPeriodValues('month', buildPeriodStats('month', analyticsEvents, approvedReviews, now));
+          setPeriodValues('year', buildPeriodStats('year', analyticsEvents, approvedReviews, now));
+          setPeriodValues('all', globalStats);
+
           setStatus(`Ostatnie odświeżenie: ${new Date().toLocaleString('pl-PL')}`);
         } catch (err) {
           console.warn('Stats page load error:', err);
           setValue('visitsValue', 'Blad');
           setValue('tutorialValue', 'Blad');
           setValue('avgTimeValue', 'Blad');
+          ['today', 'days7', 'month', 'year', 'all'].forEach((prefix) => {
+            setValue(`${prefix}Visits`, 'Blad');
+            setValue(`${prefix}Tutorial`, 'Blad');
+            setValue(`${prefix}AvgTime`, 'Blad');
+            setValue(`${prefix}Reviews`, 'Blad');
+          });
           setStatus('Nie udalo sie pobrac danych z Firestore. Sprawdz reguly kolekcji analytics_events.');
         }
       }

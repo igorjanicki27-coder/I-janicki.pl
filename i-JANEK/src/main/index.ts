@@ -1,3 +1,4 @@
+import './env'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
@@ -6,9 +7,10 @@ import type { BackupPolicy, CommandShell } from '@shared/contracts'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
-import { encryptVaultSecret } from './services/vault-service'
+import { decryptVaultSecret, encryptVaultSecret } from './services/vault-service'
 import { enforceRustDeskPolicy, getRustDeskState, launchRustDesk, rotateRustDeskPassword } from './services/rustdesk-service'
 import { listBackupFiles, removeBackupPathFromCloud, restoreBackup, syncBackup } from './services/backup-service'
+import { signInWithGoogleDesktop } from './services/google-auth-service'
 import { localStore } from './store'
 
 let mainWindow: BrowserWindow | null = null
@@ -233,8 +235,19 @@ function registerIpc() {
   })
   ipcMain.handle('system:get-master-aes-key', async () => localStore.get('masterAesKey'))
   ipcMain.handle('system:set-master-aes-key', async (_event, key: string) => {
-    localStore.set('masterAesKey', key.trim())
+    const nextKey = key.trim()
+    if (!nextKey) return
+
+    const currentKey = String(localStore.get('masterAesKey') ?? '').trim()
+    if (currentKey && currentKey !== nextKey) {
+      const history = Array.isArray(localStore.get('masterAesKeyHistory')) ? (localStore.get('masterAesKeyHistory') as string[]) : []
+      const nextHistory = [currentKey, ...history.map((entry) => entry.trim()).filter(Boolean).filter((entry) => entry !== nextKey)]
+      localStore.set('masterAesKeyHistory', nextHistory.slice(0, 10))
+    }
+
+    localStore.set('masterAesKey', nextKey)
   })
+  ipcMain.handle('system:sign-in-with-google', async () => signInWithGoogleDesktop())
   ipcMain.handle('system:set-registered-device-id', async (_event, deviceId: string | null) => {
     const normalized = deviceId?.trim() || null
     localStore.set('registeredDeviceId', normalized)
@@ -260,6 +273,11 @@ function registerIpc() {
     executeTerminalCommand(shell, command, deviceId, requestedBy)
   )
   ipcMain.handle('vault:encrypt', async (_event, plainText: string) => encryptVaultSecret(plainText, localStore.get('masterAesKey')))
+  ipcMain.handle('vault:decrypt', async (_event, cipherText: string) => {
+    const currentKey = String(localStore.get('masterAesKey') ?? '').trim()
+    const history = Array.isArray(localStore.get('masterAesKeyHistory')) ? (localStore.get('masterAesKeyHistory') as string[]) : []
+    return decryptVaultSecret(cipherText, [currentKey, ...history])
+  })
   ipcMain.handle('rustdesk:get-state', async (_event, deviceId?: string) => getRustDeskState(deviceId))
   ipcMain.handle('rustdesk:launch', async (_event, deviceId?: string) => launchRustDesk(deviceId))
   ipcMain.handle('rustdesk:rotate-password', async (_event, reason?: 'manual' | 'daily' | 'post_connection') =>

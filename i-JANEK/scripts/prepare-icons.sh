@@ -21,7 +21,7 @@ mkdir -p "$ROOT_DIR/build"
 
 cp "$ICON_SRC" "$ROOT_DIR/build/icon.png"
 
-python3 - "$ICON_SRC" "$ROOT_DIR/build/icon.ico" "$ROOT_DIR/build/icon.icns" <<'PY'
+/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 - "$ICON_SRC" "$ROOT_DIR/build/icon.ico" "$ROOT_DIR/build/icon.icns" <<'PY'
 from PIL import Image
 import sys
 

@@ -5,6 +5,7 @@ import type {
   CommandShell,
   ConsentRecord,
   DeviceTelemetry,
+  GoogleOAuthTokens,
   InventoryReport,
   RustDeskState,
   SystemContext,
@@ -21,6 +22,7 @@ export interface JanekApi {
     getMasterAesKey: () => Promise<string>
     setMasterAesKey: (key: string) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
+    signInWithGoogle: () => Promise<GoogleOAuthTokens>
     selectFolder: () => Promise<string | null>
     setRegisteredDeviceId: (deviceId: string | null) => Promise<void>
     promptRestart: (
@@ -39,6 +41,7 @@ export interface JanekApi {
   }
   vault: {
     encrypt: (plainText: string) => Promise<string>
+    decrypt: (cipherText: string) => Promise<string>
   }
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) => Promise<BackupSnapshot>
