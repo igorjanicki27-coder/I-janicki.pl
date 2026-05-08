@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
-  ChevronLeft,
-  ChevronRight,
   CloudCog,
   Cpu,
   HardDrive,
@@ -18,8 +16,9 @@ import {
 import DeviceTile from '@/components/DeviceTile.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { buildConversationTimeline } from '@/services/chat'
+import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
-import type { DeviceRecord } from '@shared/contracts'
+import type { CompanyChatMessage, DeviceRecord } from '@shared/contracts'
 
 const CHAT_READS_KEY = 'i-janek-master-chat-reads'
 const tabs = ['overview', 'terminal', 'backup', 'inventory'] as const
@@ -27,54 +26,105 @@ const tabs = ['overview', 'terminal', 'backup', 'inventory'] as const
 const store = useAppStore()
 const activeTab = ref<(typeof tabs)[number]>('overview')
 const chatReads = ref<Record<string, number>>({})
-const carouselRef = ref<HTMLElement | null>(null)
 
-const groupedCompanies = computed(() => {
-  const grouped = new Map<
-    string,
-    {
-      ownerUid: string
-      ownerEmail: string
-      devices: DeviceRecord[]
-      latestMessageAt: number
-    }
-  >()
+interface CompanyConversationEntry {
+  key: string
+  ownerUid: string
+  ownerEmail: string
+  companyName: string
+  devices: DeviceRecord[]
+  latestMessageAt: number
+  isVirtual: boolean
+}
+
+const groupedCompanies = computed<CompanyConversationEntry[]>(() => {
+  const grouped = new Map<string, CompanyConversationEntry>()
 
   for (const device of store.devices) {
+    const companyName = device.companyName?.trim() || getCompanyLabel(device.ownerEmail)
     const existing = grouped.get(device.ownerUid)
     const latestMessageAt = (store.companyChats[device.ownerUid] ?? []).at(-1)?.createdAt ?? 0
     if (existing) {
       existing.devices.push(device)
+      existing.companyName = companyName || existing.companyName
       existing.latestMessageAt = Math.max(existing.latestMessageAt, latestMessageAt)
       continue
     }
     grouped.set(device.ownerUid, {
+      key: device.ownerUid,
       ownerUid: device.ownerUid,
       ownerEmail: device.ownerEmail,
+      companyName,
       devices: [device],
-      latestMessageAt
+      latestMessageAt,
+      isVirtual: false
     })
   }
 
-  return [...grouped.values()].sort((left, right) => right.latestMessageAt - left.latestMessageAt || right.devices.length - left.devices.length)
+  const normalizedExistingNames = new Set(
+    [...grouped.values()].map((entry) => entry.companyName.trim().toLowerCase()).filter(Boolean)
+  )
+
+  for (const companyName of store.masterSettings.companyOptions) {
+    const trimmed = companyName.trim()
+    if (!trimmed) continue
+    if (normalizedExistingNames.has(trimmed.toLowerCase())) continue
+    const virtualOwnerUid = `virtual:${trimmed}`
+    grouped.set(virtualOwnerUid, {
+      key: virtualOwnerUid,
+      ownerUid: virtualOwnerUid,
+      ownerEmail: '',
+      companyName: trimmed,
+      devices: [],
+      latestMessageAt: 0,
+      isVirtual: true
+    })
+  }
+
+  return [...grouped.values()].sort((left, right) => {
+    if (left.isVirtual !== right.isVirtual) return left.isVirtual ? 1 : -1
+    return (
+      right.latestMessageAt - left.latestMessageAt ||
+      right.devices.length - left.devices.length ||
+      left.companyName.localeCompare(right.companyName, 'pl')
+    )
+  })
 })
 
 const selectedAlerts = computed(() => {
   if (!store.selectedDevice) return []
   return store.alerts.filter((alert) => alert.deviceId === store.selectedDevice?.deviceId).slice(0, 4)
 })
+const selectedBackupProgress = computed(() => {
+  if (!store.selectedDevice) return null
+  return store.selectedDevice.backupSyncProgress ?? store.backupSyncProgress[store.selectedDevice.deviceId] ?? null
+})
+const selectedBackupProgressPercent = computed(() => {
+  const total = selectedBackupProgress.value?.totalFiles ?? 0
+  if (!total) return 0
+  return Math.min(100, (selectedBackupProgress.value!.processedFiles / total) * 100)
+})
 
-const activeCompany = computed(() => groupedCompanies.value.find((entry) => entry.ownerUid === store.selectedConversationOwnerUid) ?? groupedCompanies.value[0] ?? null)
-const conversationTimeline = computed(() => buildConversationTimeline(store.selectedConversationMessages))
+const activeCompany = computed(
+  () => groupedCompanies.value.find((entry) => entry.ownerUid === store.selectedConversationOwnerUid) ?? groupedCompanies.value[0] ?? null
+)
+const conversationTimeline = computed(() =>
+  buildConversationTimeline(activeCompany.value?.isVirtual ? [] : store.selectedConversationMessages)
+)
+const canSendMessageToActiveCompany = computed(() => Boolean(activeCompany.value && !activeCompany.value.isVirtual))
 const orderedDevices = computed(() =>
   [...store.devices].sort((left, right) => devicePriorityScore(right) - devicePriorityScore(left) || right.updatedAt - left.updatedAt)
 )
 
 watch(
-  () => groupedCompanies.value.map((entry) => entry.ownerUid).join('|'),
+  () => groupedCompanies.value.map((entry) => entry.key).join('|'),
   () => {
-    if (!store.selectedConversationOwnerUid && groupedCompanies.value[0]) {
-      store.selectedConversationOwnerUid = groupedCompanies.value[0].ownerUid
+    if (store.selectedConversationOwnerUid && groupedCompanies.value.some((entry) => entry.ownerUid === store.selectedConversationOwnerUid)) {
+      return
+    }
+    const preferred = groupedCompanies.value.find((entry) => !entry.isVirtual) ?? groupedCompanies.value[0]
+    if (preferred) {
+      store.selectedConversationOwnerUid = preferred.ownerUid
     }
   },
   { immediate: true }
@@ -131,29 +181,21 @@ function devicePriorityScore(device: DeviceRecord) {
   return onlineScore + alertScore + healthScore
 }
 
-function unreadCount(ownerUid: string) {
-  const messages = store.companyChats[ownerUid] ?? []
-  const lastRead = chatReads.value[ownerUid] ?? 0
+function unreadCount(company: CompanyConversationEntry) {
+  if (company.isVirtual) return 0
+  const messages = store.companyChats[company.ownerUid] ?? []
+  const lastRead = chatReads.value[company.ownerUid] ?? 0
   return messages.filter((message) => message.senderRole === 'slave' && message.createdAt > lastRead).length
 }
 
-function isCompanyActive(ownerUid: string) {
-  const company = groupedCompanies.value.find((entry) => entry.ownerUid === ownerUid)
-  if (!company) return false
+function isCompanyActive(company: CompanyConversationEntry) {
   return company.devices.some((device) => isDeviceOnline(device))
 }
 
 function selectDevice(deviceId: string, ownerUid: string) {
   store.selectedDeviceId = deviceId
   store.selectedConversationOwnerUid = ownerUid
-}
-
-function scrollCarousel(direction: 'left' | 'right') {
-  if (!carouselRef.value) return
-  carouselRef.value.scrollBy({
-    left: direction === 'left' ? -380 : 380,
-    behavior: 'smooth'
-  })
+  activeTab.value = 'overview'
 }
 
 function maxDiskUsage() {
@@ -163,6 +205,18 @@ function maxDiskUsage() {
 function backupAgeHours() {
   if (!store.selectedDevice?.backupSnapshot?.scannedAt) return null
   return (Date.now() - store.selectedDevice.backupSnapshot.scannedAt) / (60 * 60 * 1000)
+}
+
+function formatFileSize(sizeBytes: number) {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let value = sizeBytes
+  let idx = 0
+  while (value >= 1024 && idx < units.length - 1) {
+    value /= 1024
+    idx += 1
+  }
+  return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`
 }
 
 function metricClasses(value: number | null | undefined, warning: number, critical: number) {
@@ -189,31 +243,37 @@ function formatDuration(seconds?: number) {
   const minutes = Math.floor((seconds % 3600) / 60)
   return `${hours}h ${minutes}m`
 }
+
+function getDeviceLabel(device?: DeviceRecord | null) {
+  return formatDeviceLabelForMaster(device)
+}
+
+function getConversationDevicesLabel(devices: DeviceRecord[]) {
+  return devices.map((device) => getDeviceLabel(device)).join(', ')
+}
+
+function getMessageDeviceLabel(message: CompanyChatMessage) {
+  const explicitLabel = message.deviceLabel?.trim()
+  if (explicitLabel) return explicitLabel
+
+  if (message.deviceId) {
+    const matchingDevice = store.devices.find((device) => device.deviceId === message.deviceId)
+    if (matchingDevice) return getDeviceLabel(matchingDevice)
+    return message.deviceId
+  }
+
+  return 'firma'
+}
 </script>
 
 <template>
-  <div class="grid h-full min-h-0 gap-4 grid-rows-[minmax(190px,0.45fr)_minmax(0,2.75fr)]">
-    <section class="glass-panel relative flex min-h-0 flex-col overflow-visible rounded-[32px] p-5">
+  <div class="grid h-full min-h-0 gap-4 grid-rows-[minmax(320px,1.15fr)_minmax(280px,1fr)] 2xl:grid-rows-[minmax(380px,1.25fr)_minmax(300px,1fr)]">
+    <section class="glass-panel relative z-20 flex min-h-0 flex-col overflow-hidden rounded-[32px] p-5">
       <div
-        class="relative mt-1 flex items-center"
+        class="mt-1 flex items-center"
         :class="store.selectedDevice ? 'min-h-[96px]' : 'min-h-0 flex-1'"
       >
-        <button
-          class="absolute inset-y-0 left-0 z-10 my-auto flex h-10 items-center px-1 text-white/80 transition hover:text-white"
-          type="button"
-          @click="scrollCarousel('left')"
-        >
-          <ChevronLeft class="h-6 w-6" />
-        </button>
-        <button
-          class="absolute inset-y-0 right-0 z-10 my-auto flex h-10 items-center px-1 text-white/80 transition hover:text-white"
-          type="button"
-          @click="scrollCarousel('right')"
-        >
-          <ChevronRight class="h-6 w-6" />
-        </button>
-
-        <div ref="carouselRef" class="flex w-full snap-x gap-3 overflow-x-auto px-7 pb-1 pr-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div class="flex w-full snap-x gap-2 overflow-x-auto pb-1 sm:gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <DeviceTile
           v-for="device in orderedDevices"
           :key="device.deviceId"
@@ -230,7 +290,7 @@ function formatDuration(seconds?: number) {
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <div class="display-font text-lg tracking-[0.18em] text-white">
-              {{ store.selectedDevice.deviceAlias || store.selectedDevice.hostname }}
+              {{ getDeviceLabel(store.selectedDevice) }}
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <StatusPill :label="store.selectedDevice.approvalStatus" />
@@ -330,7 +390,7 @@ function formatDuration(seconds?: number) {
               <div class="text-sm font-medium text-white">Top procesy</div>
               <div class="mt-3 space-y-2">
                 <div
-                  v-for="proc in store.selectedDevice.telemetry?.topProcesses?.slice(0, 5) ?? []"
+                  v-for="proc in store.selectedDevice.telemetry?.topProcesses?.slice(0, 10) ?? []"
                   :key="proc.pid"
                   class="flex items-center justify-between gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm"
                 >
@@ -413,21 +473,44 @@ function formatDuration(seconds?: number) {
               <div class="flex items-center justify-between"><span>Auto sync</span><span class="mono text-white">{{ store.selectedDevice.backupPolicy?.syncUnderMb ?? 0 }} MB</span></div>
               <div class="flex items-center justify-between"><span>Folder</span><span class="mono text-white">{{ store.selectedDevice.backupPolicy?.driveFolderName ?? '—' }}</span></div>
             </div>
+            <div class="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+              <div class="flex items-center justify-between text-xs text-[var(--text-dim)]">
+                <span>Postęp synchronizacji</span>
+                <span class="mono text-white">
+                  {{ selectedBackupProgress?.processedFiles ?? 0 }} / {{ selectedBackupProgress?.totalFiles ?? 0 }}
+                </span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-black/40">
+                <div
+                  class="h-full rounded-full bg-cyan-300 transition-all"
+                  :style="{ width: `${selectedBackupProgressPercent}%` }"
+                />
+              </div>
+            </div>
             <button class="glass-button mt-4" type="button" @click="store.syncBackupNow()">Uruchom backup teraz</button>
           </div>
 
           <div class="rounded-[20px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-medium text-white">Śledzone katalogi</div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-medium text-white">Pliki backupu (podgląd)</div>
+              <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" @click="store.previewBackupFiles()">
+                Odśwież
+              </button>
+            </div>
             <div class="mt-4 space-y-2">
               <div
-                v-for="pathEntry in store.selectedDevice.backupPolicy?.watchedPaths ?? []"
-                :key="pathEntry"
+                v-for="file in store.selectedBackupFiles"
+                :key="`${file.path}:${file.modifiedAt ?? 0}`"
                 class="rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]"
               >
-                {{ pathEntry }}
+                <div class="truncate text-white">{{ file.path }}</div>
+                <div class="mt-1 flex items-center justify-between text-xs">
+                  <span>{{ formatFileSize(file.sizeBytes) }}</span>
+                  <span>{{ formatDateTime(file.modifiedAt) }}</span>
+                </div>
               </div>
-              <div v-if="!(store.selectedDevice.backupPolicy?.watchedPaths?.length)" class="rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]">
-                Brak skonfigurowanych katalogów.
+              <div v-if="!store.selectedBackupFiles.length" class="rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]">
+                Brak plików w backupie lub brak odczytu.
               </div>
             </div>
           </div>
@@ -451,6 +534,8 @@ function formatDuration(seconds?: number) {
             <div class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
               <div class="flex items-center justify-between"><span>Właściciel</span><span class="mono text-white">{{ store.selectedDevice.ownerEmail }}</span></div>
               <div class="flex items-center justify-between"><span>RustDesk</span><span class="mono text-white">{{ store.selectedDevice.rustdesk?.installed ? 'gotowy' : 'brak' }}</span></div>
+              <div class="flex items-center justify-between"><span>ID RustDesk</span><span class="mono max-w-[220px] truncate text-white">{{ store.selectedDevice.rustdesk?.accessIdentity ?? 'brak' }}</span></div>
+              <div class="flex items-center justify-between"><span>Kod serwisowy</span><span class="mono text-white">{{ store.selectedDevice.rustdesk?.accessCode ?? 'widoczny lokalnie u użytkownika' }}</span></div>
               <div class="flex items-center justify-between"><span>Backup</span><span class="mono text-white">{{ formatDateTime(store.selectedDevice.backupSnapshot?.scannedAt) }}</span></div>
               <div class="flex items-center justify-between"><span>Uptime</span><span class="mono text-white">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</span></div>
             </div>
@@ -459,14 +544,14 @@ function formatDuration(seconds?: number) {
       </div>
     </section>
 
-    <section class="glass-panel grid min-h-0 overflow-hidden rounded-[32px] p-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+    <section class="glass-panel relative z-10 grid min-h-0 overflow-hidden rounded-[32px] p-5 lg:grid-cols-[250px_minmax(0,1fr)]">
       <aside class="min-h-0 overflow-auto border-b border-white/10 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
         <div class="display-font text-base tracking-[0.18em] text-white">WIADOMOŚCI</div>
 
         <div class="mt-4 space-y-2 pr-1">
           <button
             v-for="company in groupedCompanies"
-            :key="company.ownerUid"
+            :key="company.key"
             type="button"
             class="flex w-full items-center justify-between rounded-[22px] border px-4 py-3 text-left transition"
             :class="store.selectedConversationOwnerUid === company.ownerUid ? 'border-cyan-400/35 bg-cyan-400/10' : 'border-white/10 bg-white/5'"
@@ -476,14 +561,14 @@ function formatDuration(seconds?: number) {
               <div class="flex items-center gap-2">
                 <span
                   class="h-2.5 w-2.5 shrink-0 rounded-full"
-                  :class="isCompanyActive(company.ownerUid) ? 'bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]' : 'bg-slate-500/70'"
+                  :class="isCompanyActive(company) ? 'bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]' : 'bg-slate-500/70'"
                 />
-                <div class="truncate text-sm font-semibold text-white">{{ getCompanyLabel(company.ownerEmail) }}</div>
+                <div class="truncate text-sm font-semibold text-white">{{ company.companyName }}</div>
               </div>
-              <div class="truncate text-xs text-[var(--text-dim)]">{{ company.ownerEmail }}</div>
+              <div class="truncate text-xs text-[var(--text-dim)]">{{ company.ownerEmail || 'Brak aktywnego klienta w tej firmie' }}</div>
             </div>
-            <div v-if="unreadCount(company.ownerUid)" class="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-300 px-2 py-1 text-xs font-semibold text-slate-950">
-              {{ unreadCount(company.ownerUid) }}
+            <div v-if="unreadCount(company)" class="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-300 px-2 py-1 text-xs font-semibold text-slate-950">
+              {{ unreadCount(company) }}
             </div>
           </button>
         </div>
@@ -492,35 +577,51 @@ function formatDuration(seconds?: number) {
       <div class="flex min-h-0 flex-col overflow-hidden pt-4 lg:pl-4 lg:pt-0">
         <div v-if="activeCompany" class="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div>
-            <div class="text-lg font-semibold text-white">{{ getCompanyLabel(activeCompany.ownerEmail) }}</div>
-            <div class="text-sm text-[var(--text-dim)]">{{ activeCompany.ownerEmail }} · {{ activeCompany.devices.length }} komputer(y)</div>
+            <div class="text-lg font-semibold text-white">{{ activeCompany.companyName }}</div>
+            <div class="text-sm text-[var(--text-dim)]">{{ activeCompany.ownerEmail || 'Brak aktywnego klienta' }} · {{ activeCompany.devices.length }} komputer(y)</div>
           </div>
           <div class="hidden rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--text-dim)] xl:block">
-            {{ activeCompany.devices.map((device) => device.deviceAlias || device.hostname).join(', ') }}
+            {{ getConversationDevicesLabel(activeCompany.devices) }}
           </div>
         </div>
 
-        <div class="mt-4 flex-1 space-y-3 overflow-auto pr-1">
-          <div
-            v-for="message in store.selectedConversationMessages"
-            :key="message.id"
-            class="max-w-[82%] rounded-[22px] border px-4 py-3 text-sm leading-7"
-            :class="message.senderRole === 'master' ? 'ml-auto border-cyan-400/30 bg-cyan-500/10 text-white' : 'border-white/10 bg-white/5 text-white'"
-          >
-            <div class="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
-              <span class="mono">{{ message.senderEmail }}</span>
-              <span class="mono">{{ message.deviceLabel || message.deviceId || 'firma' }}</span>
+        <div class="mt-4 flex-1 space-y-3 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <template v-for="entry in conversationTimeline" :key="entry.id">
+            <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]">
+              <div class="h-px flex-1 bg-white/10" />
+              <span class="mono">{{ entry.label }}</span>
+              <div class="h-px flex-1 bg-white/10" />
             </div>
-            {{ message.body }}
-          </div>
-          <div v-if="!store.selectedConversationMessages.length" class="rounded-[22px] border border-white/10 px-4 py-4 text-sm text-[var(--text-dim)]">
+
+            <div
+              v-else
+              class="max-w-[82%] rounded-[22px] border px-4 py-3 text-sm leading-7"
+              :class="
+                entry.message.senderRole === 'master'
+                  ? 'ml-auto border-cyan-400/30 bg-cyan-500/10 text-white'
+                  : 'border-white/10 bg-white/5 text-white'
+              "
+            >
+              <div class="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                <span class="mono">{{ entry.message.senderEmail }}</span>
+                <span class="mono">{{ getMessageDeviceLabel(entry.message) }}</span>
+              </div>
+              {{ entry.message.body }}
+            </div>
+          </template>
+          <div v-if="!conversationTimeline.length" class="rounded-[22px] border border-white/10 px-4 py-4 text-sm text-[var(--text-dim)]">
             Brak wiadomości w tej rozmowie.
           </div>
         </div>
 
         <div class="mt-4 flex gap-3">
-          <input v-model="store.pendingChatMessage" class="soft-input" placeholder="Napisz do firmy..." />
-          <button class="glass-button" type="button" @click="store.sendChatMessage()">
+          <input
+            v-model="store.pendingChatMessage"
+            class="soft-input"
+            :disabled="!canSendMessageToActiveCompany"
+            :placeholder="canSendMessageToActiveCompany ? 'Napisz do firmy...' : 'Wybierz firmę z aktywnym urządzeniem, aby wysłać wiadomość'"
+          />
+          <button class="glass-button" type="button" :disabled="!canSendMessageToActiveCompany" @click="store.sendChatMessage()">
             <Send class="mr-2 h-4 w-4" />
             Wyślij
           </button>

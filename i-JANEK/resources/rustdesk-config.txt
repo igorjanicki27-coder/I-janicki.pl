@@ -1,0 +1,2 @@
+# Wklej tutaj RustDesk config string (jedna linia, bez cudzyslowow).
+# Instalator odczyta ten plik, jesli nie ustawiono RUSTDESK_CONFIG_STRING jako zmiennej srodowiskowej.

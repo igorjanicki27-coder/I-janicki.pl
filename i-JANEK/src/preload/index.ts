@@ -12,14 +12,18 @@ const api: JanekApi = {
     getMasterAesKey: () => ipcRenderer.invoke('system:get-master-aes-key'),
     setMasterAesKey: (key) => ipcRenderer.invoke('system:set-master-aes-key', key),
     checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
-    promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes)
+    selectFolder: () => ipcRenderer.invoke('system:select-folder'),
+    setRegisteredDeviceId: (deviceId) => ipcRenderer.invoke('system:set-registered-device-id', deviceId),
+    promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes),
+    promptRemoteConnection: (title, body) => ipcRenderer.invoke('system:prompt-remote-connection', title, body)
   },
   telemetry: {
     collect: () => ipcRenderer.invoke('telemetry:collect'),
     inventory: () => ipcRenderer.invoke('telemetry:inventory')
   },
   terminal: {
-    execute: (shell: CommandShell, command: string) => ipcRenderer.invoke('terminal:execute', shell, command)
+    execute: (shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
+      ipcRenderer.invoke('terminal:execute', shell, command, deviceId, requestedBy)
   },
   vault: {
     encrypt: (plainText: string) => ipcRenderer.invoke('vault:encrypt', plainText)
@@ -29,12 +33,21 @@ const api: JanekApi = {
       ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId, hostname),
     listFiles: (policy: BackupPolicy, accessToken: string, hostname: string) =>
       ipcRenderer.invoke('backup:list-files', policy, accessToken, hostname),
+    removePathFromCloud: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string, watchedPath: string) =>
+      ipcRenderer.invoke('backup:remove-path-from-cloud', policy, accessToken, deviceId, hostname, watchedPath),
     restore: (policy: BackupPolicy, accessToken: string, hostname: string) =>
-      ipcRenderer.invoke('backup:restore', policy, accessToken, hostname)
+      ipcRenderer.invoke('backup:restore', policy, accessToken, hostname),
+    onSyncProgress: (callback) => {
+      const listener = (_event: unknown, payload: { deviceId: string; totalFiles: number; processedFiles: number; uploadedFiles: number }) =>
+        callback(payload)
+      ipcRenderer.on('backup:sync-progress', listener)
+      return () => ipcRenderer.removeListener('backup:sync-progress', listener)
+    }
   },
   rustdesk: {
-    getState: () => ipcRenderer.invoke('rustdesk:get-state'),
-    launch: () => ipcRenderer.invoke('rustdesk:launch')
+    getState: (deviceId?: string) => ipcRenderer.invoke('rustdesk:get-state', deviceId),
+    launch: (deviceId?: string) => ipcRenderer.invoke('rustdesk:launch', deviceId),
+    rotatePassword: (reason?: 'manual' | 'daily' | 'post_connection') => ipcRenderer.invoke('rustdesk:rotate-password', reason)
   }
 }
 

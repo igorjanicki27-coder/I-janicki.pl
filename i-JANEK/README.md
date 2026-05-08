@@ -14,22 +14,51 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 
 1. Skopiuj `.env.example` do `.env`.
 2. Uzupełnij konfigurację Firebase oraz lokalny `I_JANEK_AES_VAULT_KEY`. Nie commituj tego klucza do repo.
-3. Dodaj ikony builda:
+3. (RustDesk) Ustaw globalnie na Windows:
+   - `RUSTDESK_CONFIG_STRING` (konfiguracja serwera eksportowana z RustDesk)
+   - `RUSTDESK_LOCK_CONFIG=1` (wymuszenie blokady ręcznej edycji konfiguracji)
+   - alternatywnie wpisz config string do `resources/rustdesk-config.txt`, aby instalator zrobił wszystko bez ręcznego ustawiania zmiennych na kliencie
+4. Dodaj ikony builda:
    - `build/icon.png`
    - `build/icon.ico`
-4. Certyfikat publiczny jest oczekiwany w `build/iJanekCert.cer`. Klucz prywatny `build/iJanekPriv.key` nigdy nie powinien trafić do repo.
-5. Uruchom:
+5. Certyfikat publiczny jest oczekiwany w `build/iJanekCert.cer`. Klucz prywatny `build/iJanekPriv.key` nigdy nie powinien trafić do repo.
+6. Uruchom:
 
 ```bash
 npm install
 npm run dev
 ```
 
+## Build z macOS (release)
+
+Uruchamiaj z katalogu `i-JANEK`:
+
+```bash
+# tylko macOS .app
+npm run build:macos:app
+
+# tylko Windows installer .exe (cross-build z macOS)
+npm run build:win:exe:from-macos
+
+# oba artefakty (macOS .app + Windows .exe)
+npm run build:release:from-macos
+```
+
+Wymagania pod build Windows `.exe` na macOS:
+- `wine` / `wine64`
+- `mono`
+
+Ikona builda:
+- Skrypty automatycznie przygotowują ikonę z `./icons/icon.png`.
+- Generowane pliki: `build/icon.png`, `build/icon.ico`, `build/icon.icns`.
+
 ## Kluczowe założenia
 
 - Masterem jest wyłącznie `igor.janicki27@gmail.com`.
 - Nowe urządzenie jest zawsze oznaczone jako `pending`, dopóki Master nie zatwierdzi go w Firestore.
-- Przy braku `VITE_FIREBASE_DATABASE_URL` projekt pozostaje w trybie demo (`VITE_ENABLE_MOCK_BACKEND=true`), żeby nie zgadywać endpointu Realtime Database.
+- Brak wymaganych zmiennych `VITE_FIREBASE_*` blokuje start aplikacji (tryb produkcyjny, bez fallbacku demo).
 - Domyślne katalogi backupu dla Windows to `%USERPROFILE%\\Desktop`, `%USERPROFILE%\\Documents` i `%USERPROFILE%\\Pictures`.
 - Auto-update jest przygotowany pod publiczne repo `igorjanicki27-coder/I-janicki.pl`.
+- RustDesk jest zarządzany polityką: przy starcie wymuszany jest `--config`, ustawiane jest silne hasło unattended i nakładana jest blokada ACL na pliki konfiguracyjne.
+- Instalator automatycznie generuje trwałe `RUSTDESK_IDENTITY`, ustawia losowe hasło unattended i blokuje ręczną edycję konfiguracji (ACL + read-only).
 - Funkcje Windows-only są chronione fallbackami, więc projekt kompiluje się także na macOS, ale pełna diagnostyka i instalator wymagają Windowsa.

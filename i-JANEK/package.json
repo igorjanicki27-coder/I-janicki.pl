@@ -10,8 +10,11 @@
     "dev": "electron-vite dev",
     "build": "vue-tsc --noEmit && electron-vite build && electron-builder",
     "build:dir": "vue-tsc --noEmit && electron-vite build && electron-builder --dir",
-    "preview": "electron-vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "build:prepare-icons": "./scripts/prepare-icons.sh",
+    "build:macos:app": "./scripts/build-macos-app.sh",
+    "build:win:exe:from-macos": "./scripts/build-windows-exe-from-macos.sh",
+    "build:release:from-macos": "./scripts/build-release-macos.sh"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

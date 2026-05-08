@@ -90,6 +90,7 @@ service cloud.firestore {
           'inventoryCapturedAt',
           'inventoryReportUrl',
           'backupSnapshot',
+          'backupSyncProgress',
           'backupPolicy',
           'consent',
           'consentAcceptedAt',
@@ -146,6 +147,7 @@ service cloud.firestore {
       allow read: if isMaster() || isDeviceOwner();
       allow create: if isMaster() || isCreatingOwnDevice();
       allow update: if isMaster() || ownerCanUpdateDevice();
+      allow delete: if isMaster() || isDeviceOwner();
     }
 
     match /events/{eventId} {

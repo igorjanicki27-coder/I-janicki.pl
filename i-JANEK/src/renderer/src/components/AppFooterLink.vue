@@ -1,6 +1,6 @@
 <template>
   <a
-    class="block text-center text-xs leading-6 tracking-[0.16em] text-[var(--text-dim)] transition hover:text-white"
+    class="block text-center text-[10px] leading-4 tracking-[0.12em] text-[var(--text-dim)]/65 transition hover:text-[var(--text)]/95"
     href="https://i-janicki.pl"
     rel="noreferrer noopener"
     target="_blank"

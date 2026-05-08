@@ -7,8 +7,8 @@ import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
 import { encryptVaultSecret } from './services/vault-service'
-import { getRustDeskState, launchRustDesk } from './services/rustdesk-service'
-import { listBackupFiles, restoreBackup, syncBackup } from './services/backup-service'
+import { enforceRustDeskPolicy, getRustDeskState, launchRustDesk, rotateRustDeskPassword } from './services/rustdesk-service'
+import { listBackupFiles, removeBackupPathFromCloud, restoreBackup, syncBackup } from './services/backup-service'
 import { localStore } from './store'
 
 let mainWindow: BrowserWindow | null = null
@@ -16,6 +16,7 @@ let tray: Tray | null = null
 let forceQuit = false
 let updaterEventsBound = false
 const restartReminderHandles = new Set<NodeJS.Timeout>()
+let rustDeskPolicyInterval: NodeJS.Timeout | null = null
 const { autoUpdater } = electronUpdater
 
 function getIconPath() {
@@ -194,6 +195,23 @@ async function promptRestart(title: string, body: string, remindAfterMinutes = 3
   return { status: 'dismissed' as const, message: 'Użytkownik zamknął komunikat bez wyboru restartu.' }
 }
 
+async function promptRemoteConnection(title: string, message: string) {
+  const response = await dialog.showMessageBox(mainWindow ?? undefined, {
+    type: 'question',
+    title,
+    message: title,
+    detail: message,
+    buttons: ['✅ Akceptuj', '❌ Odrzuć'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  })
+
+  return {
+    accepted: response.response === 0
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('system:get-context', async () => getSystemContext())
   ipcMain.handle('system:set-auto-launch', async (_event, enabled: boolean) => {
@@ -217,21 +235,48 @@ function registerIpc() {
   ipcMain.handle('system:set-master-aes-key', async (_event, key: string) => {
     localStore.set('masterAesKey', key.trim())
   })
+  ipcMain.handle('system:set-registered-device-id', async (_event, deviceId: string | null) => {
+    const normalized = deviceId?.trim() || null
+    localStore.set('registeredDeviceId', normalized)
+    await enforceRustDeskPolicy()
+  })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
+  ipcMain.handle('system:select-folder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      properties: ['openDirectory', 'createDirectory', 'dontAddToRecent']
+    })
+    if (result.canceled || !result.filePaths.length) return null
+    return result.filePaths[0] ?? null
+  })
   ipcMain.handle('system:prompt-restart', async (_event, title: string, body: string, remindAfterMinutes?: number) =>
     promptRestart(title, body, remindAfterMinutes)
   )
+  ipcMain.handle('system:prompt-remote-connection', async (_event, title: string, body: string) =>
+    promptRemoteConnection(title, body)
+  )
   ipcMain.handle('telemetry:collect', async () => collectTelemetry())
   ipcMain.handle('telemetry:inventory', async () => collectInventory())
-  ipcMain.handle('terminal:execute', async (_event, shell: CommandShell, command: string) => executeTerminalCommand(shell, command))
+  ipcMain.handle('terminal:execute', async (_event, shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
+    executeTerminalCommand(shell, command, deviceId, requestedBy)
+  )
   ipcMain.handle('vault:encrypt', async (_event, plainText: string) => encryptVaultSecret(plainText, localStore.get('masterAesKey')))
-  ipcMain.handle('rustdesk:get-state', async () => getRustDeskState())
-  ipcMain.handle('rustdesk:launch', async () => launchRustDesk())
-  ipcMain.handle('backup:sync', async (_event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
-    syncBackup(policy, accessToken, deviceId, hostname)
+  ipcMain.handle('rustdesk:get-state', async (_event, deviceId?: string) => getRustDeskState(deviceId))
+  ipcMain.handle('rustdesk:launch', async (_event, deviceId?: string) => launchRustDesk(deviceId))
+  ipcMain.handle('rustdesk:rotate-password', async (_event, reason?: 'manual' | 'daily' | 'post_connection') =>
+    rotateRustDeskPassword(reason ?? 'manual')
+  )
+  ipcMain.handle('backup:sync', async (event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
+    syncBackup(policy, accessToken, deviceId, hostname, (progress) => {
+      event.sender.send('backup:sync-progress', progress)
+    })
   )
   ipcMain.handle('backup:list-files', async (_event, policy: BackupPolicy, accessToken: string, hostname: string) =>
     listBackupFiles(policy, accessToken, hostname)
+  )
+  ipcMain.handle(
+    'backup:remove-path-from-cloud',
+    async (_event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string, watchedPath: string) =>
+      removeBackupPathFromCloud(policy, accessToken, deviceId, hostname, watchedPath)
   )
   ipcMain.handle('backup:restore', async (_event, policy: BackupPolicy, accessToken: string, hostname: string) =>
     restoreBackup(policy, accessToken, hostname)
@@ -247,6 +292,11 @@ app.whenReady().then(() => {
   registerIpc()
   createTray()
   createWindow()
+  void checkForUpdates(true)
+  void enforceRustDeskPolicy()
+  rustDeskPolicyInterval = setInterval(() => {
+    void enforceRustDeskPolicy(undefined, { forceRotate: false, rotationReason: 'daily' })
+  }, 60 * 60 * 1000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -256,6 +306,10 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   forceQuit = true
+  if (rustDeskPolicyInterval) {
+    clearInterval(rustDeskPolicyInterval)
+    rustDeskPolicyInterval = null
+  }
 })
 
 app.on('window-all-closed', () => {

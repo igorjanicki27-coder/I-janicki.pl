@@ -53,13 +53,36 @@ function normalizeGpuTelemetry(graphics: Awaited<ReturnType<typeof si.graphics>>
 async function resolveWindowsTimeSignals() {
   const bootTime = Date.now() - os.uptime() * 1000
 
-  const shutdown = await runWindowsScript(
-    "(Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074} -MaxEvents 1 | Select-Object -ExpandProperty TimeCreated).ToString('o')"
-  )
+  const script = `
+$events = [PSCustomObject]@{
+  cleanShutdown = (Get-WinEvent -FilterHashtable @{LogName='System'; Id=6006} -MaxEvents 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | ForEach-Object { $_.ToString('o') })
+  startup = (Get-WinEvent -FilterHashtable @{LogName='System'; Id=6005} -MaxEvents 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | ForEach-Object { $_.ToString('o') })
+  userRequested = (Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074} -MaxEvents 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | ForEach-Object { $_.ToString('o') })
+  unexpected = (Get-WinEvent -FilterHashtable @{LogName='System'; Id=6008} -MaxEvents 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | ForEach-Object { $_.ToString('o') })
+  kernelPower = (Get-WinEvent -FilterHashtable @{LogName='System'; Id=41} -MaxEvents 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | ForEach-Object { $_.ToString('o') })
+}
+$events | ConvertTo-Json -Depth 3
+`
+  const signals = await runWindowsScript(script)
+
+  let lastShutdownAt: number | null = null
+  if (signals.stdout) {
+    try {
+      const parsed = JSON.parse(signals.stdout) as Record<string, string | null | undefined>
+      const candidates = [parsed.cleanShutdown, parsed.userRequested, parsed.unexpected, parsed.kernelPower]
+        .map((entry) => (entry ? Date.parse(entry) : NaN))
+        .filter((entry) => Number.isFinite(entry)) as number[]
+      if (candidates.length) {
+        lastShutdownAt = Math.max(...candidates)
+      }
+    } catch {
+      lastShutdownAt = null
+    }
+  }
 
   return {
     lastRestartAt: Number.isFinite(bootTime) ? Math.floor(bootTime) : null,
-    lastShutdownAt: shutdown.stdout ? Date.parse(shutdown.stdout) || null : null
+    lastShutdownAt
   }
 }
 

@@ -24,6 +24,7 @@ export interface MetricThresholds {
 export interface RemoteMasterSettings {
   thresholds: MetricThresholds
   telemetryMode: TelemetryMode
+  companyOptions: string[]
 }
 
 export interface AppUser {
@@ -47,6 +48,7 @@ export interface DeviceIdentity {
 export interface DeviceRecord extends DeviceIdentity {
   ownerUid: string
   ownerEmail: string
+  companyName?: string
   deviceAlias?: string
   aliasCustomizedAt?: number | null
   approvalStatus: ApprovalStatus
@@ -59,6 +61,12 @@ export interface DeviceRecord extends DeviceIdentity {
   telemetry?: DeviceTelemetry
   backupPolicy?: BackupPolicy
   backupSnapshot?: BackupSnapshot
+  backupSyncProgress?: {
+    totalFiles: number
+    processedFiles: number
+    uploadedFiles: number
+    updatedAt: number
+  }
   inventoryCapturedAt?: number
   inventoryReportUrl?: string
   approvedBy?: string
@@ -218,7 +226,13 @@ export interface RustDeskState {
   installed: boolean
   lastLaunchAt?: number
   sessionHint?: string
+  accessCode?: string
+  accessIdentity?: string
+  passwordLastRotatedAt?: number
   publicKeyConfigured?: boolean
+  policyReady?: boolean
+  configEnforced?: boolean
+  configLocked?: boolean
 }
 
 export interface SystemContext extends DeviceIdentity {

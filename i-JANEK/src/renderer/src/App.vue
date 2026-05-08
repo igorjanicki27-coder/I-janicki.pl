@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Settings } from 'lucide-vue-next'
+import { computed, onMounted, ref, watch } from 'vue'
+import { AlertTriangle, ChevronDown, Settings } from 'lucide-vue-next'
 import MasterLayout from '@/layouts/MasterLayout.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
@@ -8,20 +8,71 @@ import { useAppStore } from '@/stores/app'
 
 const store = useAppStore()
 const settingsOpen = ref(false)
+const consentAccepted = ref(true)
+const MIN_DEVICE_ALIAS_LENGTH = 3
+const consentValidationMessage = ref('')
 
 const needsConsent = computed(() => store.user?.role === 'slave' && !store.consent)
+const isApprovalBlocked = computed(() => store.isApprovalBlocked)
+const aliasTooShort = computed(() => {
+  const currentLength = store.pendingDeviceAlias.trim().length
+  return currentLength > 0 && currentLength < MIN_DEVICE_ALIAS_LENGTH
+})
 const headerOnlineCount = computed(() => store.devices.filter((device) => Date.now() - device.lastSeenAt < 5 * 60 * 1000).length)
 const headerCompanyCount = computed(() => new Set(store.devices.map((device) => device.ownerUid)).size)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
+const slaveHeaderDeviceName = computed(
+  () => store.selectedDevice?.deviceAlias || store.selectedDevice?.hostname || store.selfDevice?.deviceAlias || store.selfDevice?.hostname || 'Urządzenie'
+)
+const slaveHeaderAlertsCount = computed(() => {
+  const selectedDeviceId = store.selectedDevice?.deviceId
+  if (!selectedDeviceId) return 0
+  return store.alerts.filter((alert) => alert.deviceId === selectedDeviceId && alert.severity !== 'info').length
+})
+
+function openSlaveAlertModal() {
+  window.dispatchEvent(new CustomEvent('i-janek:open-slave-alert-modal'))
+}
+
+async function handleAcceptConsent() {
+  const companyName = store.pendingCompanyName.trim()
+  const aliasLength = store.pendingDeviceAlias.trim().length
+
+  if (aliasLength < MIN_DEVICE_ALIAS_LENGTH) {
+    consentValidationMessage.value = 'Nazwa komputera musi mieć co najmniej 3 znaki.'
+    return
+  }
+
+  if (!companyName) {
+    consentValidationMessage.value = 'Wybierz firmę przed akceptacją regulaminu.'
+    return
+  }
+
+  if (!consentAccepted.value) {
+    consentValidationMessage.value = 'Zaznacz zgodę na politykę prywatności i diagnostykę.'
+    return
+  }
+
+  consentValidationMessage.value = ''
+  await store.acceptConsent()
+}
 
 onMounted(() => {
   void store.bootstrap()
 })
+
+watch(
+  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted],
+  () => {
+    if (!consentValidationMessage.value) return
+    consentValidationMessage.value = ''
+  }
+)
 </script>
 
 <template>
   <div class="flex h-screen overflow-hidden flex-col">
-    <header v-if="store.user" class="px-5 pt-5">
+    <header v-if="store.user && !needsConsent && !isApprovalBlocked" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
         class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
@@ -63,12 +114,25 @@ onMounted(() => {
           </button>
         </div>
       </div>
-      <div v-else class="grid min-h-[68px] grid-cols-[1fr_auto_1fr] items-center rounded-[28px] px-5 py-4">
-        <div />
-        <div class="display-font text-center text-lg tracking-[0.34em] text-transparent bg-clip-text bg-[linear-gradient(135deg,#baeaff,#7f40ff_50%,#ff00d4)]">
+      <div v-else class="relative grid min-h-[68px] grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[28px] px-5 py-4">
+        <div class="min-w-0 truncate pr-3 text-sm font-semibold tracking-[0.12em] text-white/85">
+          {{ slaveHeaderDeviceName }}
+        </div>
+        <div
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 display-font text-center text-lg tracking-[0.34em] text-transparent bg-clip-text bg-[linear-gradient(135deg,#baeaff,#7f40ff_50%,#ff00d4)]"
+        >
           i-JANEK
         </div>
-        <div class="justify-self-end flex items-center gap-2">
+        <button
+          v-if="slaveHeaderAlertsCount > 0"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-rose-400/35 bg-rose-500/12 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-rose-100 transition hover:border-rose-300/45"
+          type="button"
+          @click="openSlaveAlertModal()"
+        >
+          <AlertTriangle class="h-3.5 w-3.5" />
+          {{ slaveHeaderAlertsCount }}
+        </button>
+        <div class="justify-self-end flex items-center gap-2 pl-1">
           <button
             class="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--text-dim)] transition hover:text-white"
             type="button"
@@ -82,7 +146,7 @@ onMounted(() => {
 
     <main
       class="relative flex-1 min-h-0 px-5 pb-5 pt-5"
-      :class="store.user && !needsConsent && !store.needsDeviceAlias ? 'overflow-hidden' : 'overflow-auto'"
+      :class="store.user && !store.needsDeviceAlias ? 'overflow-hidden' : 'overflow-auto'"
     >
       <div
         v-if="store.offline"
@@ -99,13 +163,6 @@ onMounted(() => {
       </div>
 
       <section v-else-if="!store.user" class="relative mx-auto flex min-h-[calc(100vh-44px)] w-full max-w-5xl flex-col">
-        <div class="absolute right-0 top-0 flex flex-col items-end gap-3">
-          <div class="flex gap-3">
-            <button class="ghost-button" type="button" @click="store.signInDemo('master')">Demo Master</button>
-            <button class="ghost-button" type="button" @click="store.signInDemo('slave')">Demo Slave</button>
-          </div>
-        </div>
-
         <div class="flex flex-1 items-center justify-center px-8 py-12 text-center lg:px-14 lg:py-16">
           <div class="max-w-2xl">
             <div class="display-font text-4xl tracking-[0.32em] text-transparent bg-clip-text bg-[linear-gradient(135deg,#baeaff,#7f40ff_50%,#ff00d4)] lg:text-5xl">
@@ -161,56 +218,88 @@ onMounted(() => {
         </a>
       </section>
 
-      <section v-else-if="needsConsent" class="mx-auto flex h-full max-w-3xl items-center justify-center">
-        <div class="glass-panel w-full rounded-[36px] p-8 lg:p-10">
+      <section v-else-if="needsConsent" class="mx-auto flex h-full max-w-4xl items-center justify-center">
+        <div class="glass-panel w-full rounded-[36px] p-6 lg:p-7">
           <div class="mono text-xs uppercase tracking-[0.3em] text-fuchsia-300">RODO / Consent</div>
-          <h2 class="mt-3 text-3xl font-semibold text-white">Zgoda na opiekę informatyczną i-JANEK</h2>
-          <div class="mt-4 space-y-4 text-base leading-8 text-[var(--text-dim)]">
+          <h2 class="mt-2 text-2xl font-semibold text-white">Zgoda na opiekę informatyczną i-JANEK</h2>
+          <div class="mt-3 space-y-3 text-sm leading-6 text-[var(--text-dim)]">
             <p>Klikając „Akceptuję”, wyrażasz zgodę na:</p>
-            <ul class="space-y-2 text-sm leading-7">
-              <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
+            <ul class="space-y-1.5">
               <li>Uruchamianie zdalnych skryptów naprawczych w celu optymalizacji systemu.</li>
               <li>Synchronizację wybranych folderów z Twoim kontem Google Drive w celach backupu.</li>
-              <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-Janicki.pl.</li>
+              <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
+              <li>Pełny dostęp administratora do komputera, w tym zawartych w nim plików, haseł i danych osobowych.</li>
+              <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-JANICKI.pl.</li>
+              <li>Przetwarzanie danych, zgodnie z Polityką Prywatności i cookies, a także RODO, które znajdziesz na stronie i-JANICKI.pl.</li>
             </ul>
-            <p>
-              Twoje dane są szyfrowane AES-256 i przesyłane bezpiecznym kanałem. Aby wycofać zgodę, należy odinstalować
-              aplikację.
-            </p>
-            <p>Każde nowe urządzenie pozostaje zablokowane do czasu ręcznej akceptacji przez Mastera.</p>
           </div>
-          <label class="mt-8 flex items-start gap-3 rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm leading-7 text-[var(--text-dim)]">
-            <input checked type="checkbox" class="mt-1 h-4 w-4 accent-fuchsia-500" />
-            <span>Akceptuję politykę prywatności i wyrażam zgodę na diagnostykę, zdalny serwis i backup zgodnie z powyższą informacją.</span>
+          <div class="mt-5 grid gap-2 rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div class="grid grid-cols-2 gap-3 text-sm text-[var(--text-dim)]">
+              <span>Firma</span>
+              <span>Nazwa komputera</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="relative">
+                <select v-model="store.pendingCompanyName" class="soft-input !py-2 !pr-10 appearance-none">
+                  <option v-for="company in store.masterSettings.companyOptions" :key="company" :value="company">{{ company }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dim)]" />
+              </div>
+              <input
+                v-model="store.pendingDeviceAlias"
+                class="soft-input !py-2"
+                placeholder="np. Studio-PC / Laptop-Biuro"
+                maxlength="48"
+              />
+              <p v-if="aliasTooShort" class="mt-2 text-xs text-amber-300">
+                Nazwa komputera musi mieć co najmniej 3 znaki.
+              </p>
+            </div>
+          </div>
+          <label class="mt-3 flex items-center gap-3 rounded-[24px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
+            <input v-model="consentAccepted" type="checkbox" class="h-4 w-4 shrink-0 accent-fuchsia-500" />
+            <span class="whitespace-nowrap text-[13px]">Akceptuję politykę prywatności i wyrażam zgodę na diagnostykę, zdalny serwis i backup zgodnie z powyższą informacją.</span>
           </label>
-          <button class="glass-button mt-6" type="button" @click="store.acceptConsent()">Przejdź dalej i zarejestruj urządzenie</button>
+          <p v-if="consentValidationMessage" class="mt-3 text-center text-sm text-amber-300">
+            {{ consentValidationMessage }}
+          </p>
+          <div class="mt-6 flex justify-center">
+            <button
+              class="glass-button flex items-center justify-center text-center"
+              type="button"
+              @click="handleAcceptConsent()"
+            >
+              Akceptuję i przechodzę dalej
+            </button>
+          </div>
         </div>
       </section>
 
-      <section v-else-if="store.needsDeviceAlias" class="mx-auto flex h-full max-w-2xl items-center justify-center">
-        <div class="glass-panel w-full rounded-[34px] p-8 lg:p-10">
-          <div class="mono text-xs uppercase tracking-[0.28em] text-fuchsia-300">Pierwsze logowanie</div>
-          <h2 class="mt-3 text-3xl font-semibold text-white">Nadaj nazwę urządzenia</h2>
-          <p class="mt-3 text-sm leading-7 text-[var(--text-dim)]">
-            Wpisz nazwę, po której rozpoznasz ten komputer w panelu Mastera. Nazwę możesz później zmienić w ustawieniach.
+      <section v-else-if="isApprovalBlocked" class="mx-auto flex h-full max-w-4xl items-center justify-center">
+        <div class="glass-panel w-full rounded-[36px] border border-amber-300/30 bg-black/35 p-6 lg:p-7">
+          <div class="mono text-xs uppercase tracking-[0.3em] text-amber-200">Dostęp Zablokowany</div>
+          <h2 class="mt-2 text-2xl font-semibold text-white">
+            {{ store.approvalGateStatus === 'pending' ? 'Urządzenie czeka na akceptację Mastera' : 'Urządzenie wymaga ponownej rejestracji' }}
+          </h2>
+          <p class="mt-3 text-sm leading-6 text-[var(--text-dim)]">
+            Aplikacja jest tymczasowo zablokowana do czasu zatwierdzenia urządzenia. Status jest odświeżany automatycznie.
           </p>
-          <div class="mt-5 rounded-[20px] border border-white/10 bg-white/5 px-4 py-3 text-sm text-[var(--text-dim)]">
-            Hostname: <span class="mono text-white">{{ store.selfDevice?.hostname }}</span>
+          <div class="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-dim)]">
+            <div class="flex items-center justify-between">
+              <span>Status</span>
+              <span class="mono text-white">{{ store.approvalGateStatus ?? 'brak' }}</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between">
+              <span>Urządzenie</span>
+              <span class="mono text-white">{{ store.selfDevice?.deviceId ?? store.systemContext?.deviceId ?? 'brak' }}</span>
+            </div>
           </div>
-          <div class="mt-4 flex gap-2">
-            <input
-              v-model="store.pendingDeviceAlias"
-              class="soft-input"
-              placeholder="np. Laptop Biuro / PC Dom"
-              maxlength="48"
-            />
-            <button
-              class="glass-button !px-5"
-              type="button"
-              :disabled="store.pendingDeviceAlias.trim().length < 3"
-              @click="store.saveDeviceAlias()"
-            >
-              Zapisz
+          <div class="mt-6 flex flex-wrap gap-3">
+            <button class="glass-button" type="button" @click="store.deregisterAndSignOut()">
+              Wyrejestruj i wyloguj
+            </button>
+            <button class="ghost-button" type="button" @click="store.signOut()">
+              Tylko wyloguj
             </button>
           </div>
         </div>
@@ -219,6 +308,6 @@ onMounted(() => {
       <MasterLayout v-else-if="store.isMaster" />
       <SlaveLayout v-else />
     </main>
-    <SettingsDrawer v-if="store.user" :open="settingsOpen" @close="settingsOpen = false" />
+    <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked" :open="settingsOpen" @close="settingsOpen = false" />
   </div>
 </template>

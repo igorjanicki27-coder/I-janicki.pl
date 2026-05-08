@@ -20,6 +20,20 @@ async function listFiles(rootPath: string): Promise<string[]> {
   return nested.flat()
 }
 
+function clearDeviceManifest(deviceId: string) {
+  const manifest = localStore.get('backupManifest')
+  const entry = manifest[deviceId]
+  if (!entry) return
+
+  localStore.set('backupManifest', {
+    ...manifest,
+    [deviceId]: {
+      ...entry,
+      fileStates: {}
+    }
+  })
+}
+
 function expandWindowsEnv(inputPath: string) {
   return inputPath.replace(/%([^%]+)%/g, (_match, variableName) => process.env[variableName] ?? `%${variableName}%`)
 }
@@ -121,7 +135,13 @@ async function resolveDeviceFolderId(policy: BackupPolicy, drive: ReturnType<typ
   return deviceFolderId ?? null
 }
 
-export async function syncBackup(policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string): Promise<BackupSnapshot> {
+export async function syncBackup(
+  policy: BackupPolicy,
+  accessToken: string,
+  deviceId: string,
+  hostname: string,
+  onProgress?: (payload: { deviceId: string; totalFiles: number; processedFiles: number; uploadedFiles: number }) => void
+): Promise<BackupSnapshot> {
   const manifest = localStore.get('backupManifest')
   const deviceManifest = manifest[deviceId]?.fileStates ?? {}
   const skippedReasons: BackupSnapshot['skippedReasons'] = []
@@ -129,6 +149,7 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
 
   const rootFolderId = await ensureFolder(drive, policy.driveFolderName)
   const deviceFolderId = await ensureFolder(drive, hostname, rootFolderId)
+  const remoteFiles = await listDeviceFolderFiles(drive, deviceFolderId)
 
   await drive.permissions.create({
     fileId: rootFolderId,
@@ -143,10 +164,12 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
   let totalBytes = 0
   let totalFiles = 0
   let uploadedFiles = 0
+  let currentRemoteUsageBytes = remoteFiles.reduce((sum, file) => sum + Number(file.size ?? 0), 0)
   const nextManifest: Record<string, number> = {}
   const maxQuotaBytes = policy.maxQuotaGb * 1024 * 1024 * 1024
   const maxFileSizeBytes = policy.maxFileSizeMb * 1024 * 1024
   const syncThreshold = policy.syncUnderMb * 1024 * 1024
+  const fileQueue: Array<{ filePath: string; resolvedWatchedPath: string }> = []
 
   for (const watchedPath of policy.watchedPaths) {
     const resolvedWatchedPath = expandWindowsEnv(watchedPath)
@@ -154,46 +177,72 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
 
     const files = await listFiles(resolvedWatchedPath)
     for (const filePath of files) {
-      const stats = await fsp.stat(filePath)
-      if (!stats.isFile()) continue
-
-      totalFiles += 1
-      totalBytes += stats.size
-      nextManifest[filePath] = stats.mtimeMs
-
-      if (stats.size > maxFileSizeBytes) {
-        skippedReasons.push({ path: filePath, reason: 'File exceeds maxFileSizeMb policy.' })
-        continue
-      }
-
-      if (stats.size > syncThreshold) {
-        skippedReasons.push({ path: filePath, reason: 'File exceeds continuous sync threshold.' })
-        continue
-      }
-
-      if (totalBytes > maxQuotaBytes) {
-        skippedReasons.push({ path: filePath, reason: 'Device quota exceeded.' })
-        continue
-      }
-
-      if (deviceManifest[filePath] && deviceManifest[filePath] >= stats.mtimeMs) {
-        continue
-      }
-
-      const relativeName = path.relative(resolvedWatchedPath, filePath).replace(/\\/g, '/')
-      await drive.files.create({
-        requestBody: {
-          name: relativeName,
-          parents: [deviceFolderId]
-        },
-        media: {
-          mimeType: mime.lookup(filePath) || 'application/octet-stream',
-          body: fs.createReadStream(filePath)
-        }
-      })
-
-      uploadedFiles += 1
+      fileQueue.push({ filePath, resolvedWatchedPath })
     }
+  }
+  const totalFilesToProcess = fileQueue.length
+  let processedFiles = 0
+  onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+
+  for (const entry of fileQueue) {
+    const stats = await fsp.stat(entry.filePath)
+    if (!stats.isFile()) {
+      processedFiles += 1
+      onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+      continue
+    }
+
+    totalFiles += 1
+    totalBytes += stats.size
+    nextManifest[entry.filePath] = stats.mtimeMs
+
+    if (stats.size > maxFileSizeBytes) {
+      skippedReasons.push({ path: entry.filePath, reason: 'File exceeds maxFileSizeMb policy.' })
+      processedFiles += 1
+      onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+      continue
+    }
+
+    if (stats.size > syncThreshold) {
+      skippedReasons.push({ path: entry.filePath, reason: 'File exceeds continuous sync threshold.' })
+      processedFiles += 1
+      onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+      continue
+    }
+
+    if (currentRemoteUsageBytes + stats.size > maxQuotaBytes) {
+      skippedReasons.push({ path: entry.filePath, reason: 'Device quota exceeded.' })
+      processedFiles += 1
+      onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+      continue
+    }
+
+    if (deviceManifest[entry.filePath] && deviceManifest[entry.filePath] >= stats.mtimeMs) {
+      processedFiles += 1
+      onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+      continue
+    }
+
+    const relativeName = path.relative(entry.resolvedWatchedPath, entry.filePath).replace(/\\/g, '/')
+    await drive.files.create({
+      requestBody: {
+        name: relativeName,
+        parents: [deviceFolderId]
+      },
+      media: {
+        mimeType: mime.lookup(entry.filePath) || 'application/octet-stream',
+        body: fs.createReadStream(entry.filePath)
+      }
+    })
+
+    uploadedFiles += 1
+    currentRemoteUsageBytes += stats.size
+    processedFiles += 1
+    onProgress?.({ deviceId, totalFiles: totalFilesToProcess, processedFiles, uploadedFiles })
+  }
+
+  if (!fileQueue.length) {
+    onProgress?.({ deviceId, totalFiles: 0, processedFiles: 0, uploadedFiles: 0 })
   }
 
   const snapshot: BackupSnapshot = {
@@ -214,6 +263,58 @@ export async function syncBackup(policy: BackupPolicy, accessToken: string, devi
   })
 
   return snapshot
+}
+
+export async function removeBackupPathFromCloud(
+  policy: BackupPolicy,
+  accessToken: string,
+  deviceId: string,
+  hostname: string,
+  watchedPath: string
+): Promise<{ deletedFiles: number }> {
+  const drive = createDriveClient(accessToken)
+  const deviceFolderId = await resolveDeviceFolderId(policy, drive, hostname)
+  if (!deviceFolderId) return { deletedFiles: 0 }
+
+  const resolvedWatchedPath = expandWindowsEnv(watchedPath)
+  const relativeNames = new Set<string>()
+
+  if (fs.existsSync(resolvedWatchedPath)) {
+    const files = await listFiles(resolvedWatchedPath)
+    for (const filePath of files) {
+      const relativeName = path.relative(resolvedWatchedPath, filePath).replace(/\\/g, '/')
+      if (relativeName && relativeName !== '.') {
+        relativeNames.add(relativeName)
+      }
+    }
+  }
+
+  const manifest = localStore.get('backupManifest')
+  const manifestFiles = manifest[deviceId]?.fileStates ?? {}
+  const normalizedPrefix = `${path.resolve(resolvedWatchedPath)}${path.sep}`
+  for (const filePath of Object.keys(manifestFiles)) {
+    const normalizedFilePath = path.resolve(filePath)
+    if (!normalizedFilePath.startsWith(normalizedPrefix)) continue
+    const relativeName = path.relative(path.resolve(resolvedWatchedPath), normalizedFilePath).replace(/\\/g, '/')
+    if (relativeName && relativeName !== '.') {
+      relativeNames.add(relativeName)
+    }
+  }
+
+  if (!relativeNames.size) {
+    return { deletedFiles: 0 }
+  }
+
+  const remoteFiles = await listDeviceFolderFiles(drive, deviceFolderId)
+  let deletedFiles = 0
+  for (const file of remoteFiles) {
+    if (!file.id || !relativeNames.has(file.name)) continue
+    await drive.files.delete({ fileId: file.id }).catch(() => undefined)
+    deletedFiles += 1
+  }
+
+  clearDeviceManifest(deviceId)
+  return { deletedFiles }
 }
 
 export async function listBackupFiles(policy: BackupPolicy, accessToken: string, hostname: string): Promise<BackupRemoteFile[]> {

@@ -10,8 +10,10 @@ import {
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   limit,
   onSnapshot,
@@ -48,9 +50,17 @@ export interface BackendClient {
   isMock: boolean
   subscribeAuth: (callback: (user: AppUser | null) => void) => Unsubscribe
   signInWithGoogle: () => Promise<AppUser>
-  signInDemo: (role: 'master' | 'slave') => Promise<AppUser>
   signOut: () => Promise<void>
+  isDeviceIdAvailable: (deviceId: string) => Promise<boolean>
   ensureDeviceRecord: (user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) => Promise<DeviceRecord>
+  migrateDeviceRecord: (
+    user: AppUser,
+    sourceDevice: DeviceRecord,
+    nextIdentity: DeviceIdentity,
+    nextDeviceAlias: string,
+    nextCompanyName: string
+  ) => Promise<DeviceRecord>
+  deleteDeviceRecord: (deviceId: string) => Promise<void>
   subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[]) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
   subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
@@ -59,19 +69,28 @@ export interface BackendClient {
   saveRemoteMasterSettings: (settings: RemoteMasterSettings) => Promise<void>
   updateApprovalStatus: (deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) => Promise<void>
   updateDeviceAlias: (deviceId: string, deviceAlias: string) => Promise<void>
+  updateDeviceCompanyName: (deviceId: string, companyName: string) => Promise<void>
   publishTelemetry: (device: DeviceRecord, telemetry: DeviceTelemetry) => Promise<void>
   publishInventory: (device: DeviceRecord, inventory: InventoryReport) => Promise<void>
   publishBackupSnapshot: (device: DeviceRecord, snapshot: BackupSnapshot) => Promise<void>
+  publishBackupProgress: (
+    device: DeviceRecord,
+    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
+  ) => Promise<void>
   upsertBackupPolicy: (deviceId: string, policy: BackupPolicy) => Promise<void>
   updateConsent: (deviceId: string, consent: ConsentRecord | null) => Promise<void>
+  updateRustDeskState: (deviceId: string, state: DeviceRecord['rustdesk']) => Promise<void>
   requestDeviceUpdate: (deviceId: string, requestedBy: string) => Promise<string>
   acknowledgeDeviceUpdate: (deviceId: string, requestId: string, result: string) => Promise<void>
   requestRemoteAction: (deviceId: string, request: RemoteActionRequest) => Promise<string>
   acknowledgeRemoteAction: (deviceId: string, requestId: string, result: string) => Promise<void>
   queueCommand: (device: DeviceRecord, payload: Pick<TerminalCommand, 'shell' | 'command' | 'requestedBy'>) => Promise<void>
   subscribePendingCommands: (device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) => Unsubscribe
+  subscribeCommandHistory: (device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) => Unsubscribe
   completeCommand: (device: DeviceRecord, command: TerminalCommand) => Promise<void>
   pushAlert: (device: DeviceRecord, alert: AlertEvent) => Promise<void>
+  removeAlert: (alertId: string) => Promise<void>
+  removeActiveAlerts: (deviceId: string, types: AlertEvent['type'][]) => Promise<void>
   setPresence: (device: DeviceRecord, role: AppUser['role'], online: boolean) => Promise<void>
 }
 
@@ -93,8 +112,8 @@ function toAppUser(user: User, accessToken?: string): AppUser {
 function defaultBackupPolicy(_hostname: string): BackupPolicy {
   return {
     enabled: true,
-    maxFileSizeMb: 200,
-    maxQuotaGb: 5,
+    maxFileSizeMb: 100,
+    maxQuotaGb: 10,
     syncUnderMb: Number(import.meta.env.VITE_DEFAULT_SYNC_MB || DEFAULT_SYNC_FILE_MB),
     watchedPaths: ['%USERPROFILE%\\Desktop', '%USERPROFILE%\\Documents'],
     driveFolderName: 'i-JANEK_Backup',
@@ -161,12 +180,13 @@ class FirebaseBackend implements BackendClient {
     }
   }
 
-  async signInDemo() {
-    throw new Error('Demo sign-in is unavailable in Firebase mode.')
-  }
-
   async signOut() {
     await firebaseSignOut(firebaseServices!.auth)
+  }
+
+  async isDeviceIdAvailable(deviceId: string) {
+    const snapshot = await getDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
+    return !snapshot.exists()
   }
 
   async ensureDeviceRecord(user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) {
@@ -189,6 +209,7 @@ class FirebaseBackend implements BackendClient {
       deviceAlias: existing?.deviceAlias ?? context.hostname,
       aliasCustomizedAt: existing?.aliasCustomizedAt ?? null,
       backupPolicy: existing?.backupPolicy ?? defaultBackupPolicy(context.hostname),
+      companyName: existing?.companyName ?? '',
       rustdesk: existing?.rustdesk ?? { installed: false },
       updateRequest: existing?.updateRequest ?? null,
       lastHandledUpdateRequestId: existing?.lastHandledUpdateRequestId ?? null,
@@ -197,6 +218,48 @@ class FirebaseBackend implements BackendClient {
 
     await setDoc(deviceRef, nextRecord, { merge: true })
     return nextRecord
+  }
+
+  async migrateDeviceRecord(
+    user: AppUser,
+    sourceDevice: DeviceRecord,
+    nextIdentity: DeviceIdentity,
+    nextDeviceAlias: string,
+    nextCompanyName: string
+  ) {
+    if (sourceDevice.deviceId === nextIdentity.deviceId) {
+      await this.updateDeviceAlias(sourceDevice.deviceId, nextDeviceAlias)
+      await this.updateDeviceCompanyName(sourceDevice.deviceId, nextCompanyName)
+      const updatedSnapshot = await getDoc(doc(firebaseServices!.firestore, 'devices', sourceDevice.deviceId))
+      return (updatedSnapshot.data() as DeviceRecord) ?? { ...sourceDevice, ...nextIdentity }
+    }
+
+    const targetRef = doc(firebaseServices!.firestore, 'devices', nextIdentity.deviceId)
+    const targetSnapshot = await getDoc(targetRef)
+    if (targetSnapshot.exists()) {
+      throw new Error('Urządzenie o takim ID już istnieje. Zmień nazwę urządzenia.')
+    }
+
+    const sourceRef = doc(firebaseServices!.firestore, 'devices', sourceDevice.deviceId)
+    const payload: DeviceRecord = {
+      ...sourceDevice,
+      ...nextIdentity,
+      ownerUid: user.uid,
+      ownerEmail: user.email,
+      approvalStatus: 'pending',
+      approvedBy: null,
+      deviceAlias: nextDeviceAlias,
+      companyName: nextCompanyName,
+      updatedAt: Date.now(),
+      lastSeenAt: Date.now()
+    }
+    await setDoc(targetRef, payload, { merge: false })
+    await deleteDoc(sourceRef)
+    return payload
+  }
+
+  async deleteDeviceRecord(deviceId: string) {
+    await deleteDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
   }
 
   subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[]) => void) {
@@ -265,17 +328,32 @@ class FirebaseBackend implements BackendClient {
   }
 
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+    const payload: Record<string, unknown> = {
       approvalStatus,
       updatedAt: Date.now(),
-      approvedBy: actorEmail
-    })
+      approvedBy: approvalStatus === 'pending' ? null : actorEmail
+    }
+
+    if (approvalStatus === 'rejected') {
+      payload.consent = null
+      payload.consentAcceptedAt = null
+      payload.monitoringEnabled = false
+    }
+
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), payload)
   }
 
   async updateDeviceAlias(deviceId: string, deviceAlias: string) {
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
       deviceAlias: deviceAlias.trim(),
       aliasCustomizedAt: Date.now(),
+      updatedAt: Date.now()
+    })
+  }
+
+  async updateDeviceCompanyName(deviceId: string, companyName: string) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      companyName: companyName.trim(),
       updatedAt: Date.now()
     })
   }
@@ -311,6 +389,16 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
+  async publishBackupProgress(
+    device: DeviceRecord,
+    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
+  ) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', device.deviceId), {
+      backupSyncProgress: progress,
+      updatedAt: Date.now()
+    })
+  }
+
   async upsertBackupPolicy(deviceId: string, policy: BackupPolicy) {
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
       backupPolicy: policy,
@@ -323,6 +411,13 @@ class FirebaseBackend implements BackendClient {
       consent,
       consentAcceptedAt: consent?.acceptedAt ?? null,
       monitoringEnabled: Boolean(consent?.diagnosticsConsent),
+      updatedAt: Date.now()
+    })
+  }
+
+  async updateRustDeskState(deviceId: string, state: DeviceRecord['rustdesk']) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      rustdesk: state ?? { installed: false },
       updatedAt: Date.now()
     })
   }
@@ -395,6 +490,23 @@ class FirebaseBackend implements BackendClient {
     return () => off(commandsRef, 'value', listener)
   }
 
+  subscribeCommandHistory(device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) {
+    if (!firebaseServices!.database) {
+      callback([])
+      return () => {}
+    }
+    const commandsRef = ref(firebaseServices!.database, `commands/${device.ownerUid}/${device.deviceId}`)
+    const listener = onValue(dbQuery(commandsRef), (snapshot) => {
+      const value = snapshot.val() ?? {}
+      const commands = Object.values(value)
+        .map((entry) => entry as TerminalCommand)
+        .sort((a, b) => (b.finishedAt ?? b.requestedAt) - (a.finishedAt ?? a.requestedAt))
+        .slice(0, 50)
+      callback(commands)
+    })
+    return () => off(commandsRef, 'value', listener)
+  }
+
   async completeCommand(device: DeviceRecord, command: TerminalCommand) {
     if (!firebaseServices!.database) return
     await set(ref(firebaseServices!.database, `commands/${device.ownerUid}/${device.deviceId}/${command.id}`), command)
@@ -406,6 +518,23 @@ class FirebaseBackend implements BackendClient {
       id: undefined,
       ownerUid: device.ownerUid
     })
+  }
+
+  async removeAlert(alertId: string) {
+    await deleteDoc(doc(firebaseServices!.firestore, 'events', alertId))
+  }
+
+  async removeActiveAlerts(deviceId: string, types: AlertEvent['type'][]) {
+    if (!types.length) return
+    const snapshot = await getDocs(query(collection(firebaseServices!.firestore, 'events'), where('deviceId', '==', deviceId)))
+    const tasks: Array<Promise<void>> = []
+    for (const entry of snapshot.docs) {
+      const payload = entry.data() as AlertEvent
+      if (payload.severity !== 'critical') continue
+      if (!types.includes(payload.type)) continue
+      tasks.push(deleteDoc(entry.ref))
+    }
+    await Promise.all(tasks)
   }
 
   async setPresence(device: DeviceRecord, role: AppUser['role'], online: boolean) {
@@ -467,6 +596,7 @@ class MockBackend implements BackendClient {
       backupPolicy: defaultBackupPolicy('STUDIO-PC'),
       rustdesk: { installed: true, sessionHint: 'Demo session #481516' },
       deviceAlias: 'STUDIO-PC',
+      companyName: 'i-JANEK Demo',
       aliasCustomizedAt: Date.now() - 86_300_000,
       updateRequest: null,
       lastHandledUpdateRequestId: null,
@@ -522,6 +652,7 @@ class MockBackend implements BackendClient {
       },
       rustdesk: { installed: true, sessionHint: 'Demo session #A02' },
       deviceAlias: 'Laptop Serwis',
+      companyName: 'i-JANEK Demo',
       aliasCustomizedAt: Date.now() - 40_000_000,
       updateRequest: null,
       lastHandledUpdateRequestId: null,
@@ -577,6 +708,7 @@ class MockBackend implements BackendClient {
       },
       rustdesk: { installed: false },
       deviceAlias: 'Biuro-PC',
+      companyName: 'Firma Klienta',
       aliasCustomizedAt: Date.now() - 118_000_000,
       updateRequest: null,
       lastHandledUpdateRequestId: null,
@@ -595,6 +727,24 @@ class MockBackend implements BackendClient {
       message: 'Interwał alertowy przełączony na 5 minut.',
       severity: 'critical',
       createdAt: Date.now() - 300_000
+    },
+    {
+      id: 'mock-alert-2',
+      deviceId: 'STUDIO-PC-MOCK001',
+      type: 'usage',
+      title: 'Wysokie zużycie RAM',
+      message: 'Użycie pamięci przekroczyło próg krytyczny.',
+      severity: 'critical',
+      createdAt: Date.now() - 220_000
+    },
+    {
+      id: 'mock-alert-3',
+      deviceId: 'STUDIO-PC-MOCK001',
+      type: 'disk',
+      title: 'Dysk blisko zapełnienia',
+      message: 'Wolna przestrzeń na dysku C: spadła poniżej poziomu bezpieczeństwa.',
+      severity: 'warning',
+      createdAt: Date.now() - 140_000
     }
   ]
   private chats = new Map<string, CompanyChatMessage[]>([
@@ -635,6 +785,7 @@ class MockBackend implements BackendClient {
   ])
   private remoteMasterSettings: RemoteMasterSettings = {
     telemetryMode: 'standard',
+    companyOptions: ['i-JANEK Demo', 'Firma Klienta', 'Biuro Janicki'],
     thresholds: {
       cpuUsage: { warning: 60, critical: 85 },
       gpuUsage: { warning: 65, critical: 90 },
@@ -674,6 +825,10 @@ class MockBackend implements BackendClient {
     this.authListeners.forEach((listener) => listener(null))
   }
 
+  async isDeviceIdAvailable(deviceId: string) {
+    return !this.devices.some((device) => device.deviceId === deviceId)
+  }
+
   async ensureDeviceRecord(user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) {
     if (user.role === 'master') {
       return this.devices[0]
@@ -692,6 +847,7 @@ class MockBackend implements BackendClient {
       consentAcceptedAt: consent?.acceptedAt,
       consent: consent ?? null,
       deviceAlias: context.hostname,
+      companyName: '',
       aliasCustomizedAt: null,
       backupPolicy: defaultBackupPolicy(context.hostname),
       rustdesk: { installed: false },
@@ -706,6 +862,43 @@ class MockBackend implements BackendClient {
     this.devices.unshift(device)
     this.emitDevices()
     return device
+  }
+
+  async migrateDeviceRecord(
+    user: AppUser,
+    sourceDevice: DeviceRecord,
+    nextIdentity: DeviceIdentity,
+    nextDeviceAlias: string,
+    nextCompanyName: string
+  ) {
+    if (sourceDevice.deviceId !== nextIdentity.deviceId && this.devices.some((device) => device.deviceId === nextIdentity.deviceId)) {
+      throw new Error('Urządzenie o takim ID już istnieje. Zmień nazwę urządzenia.')
+    }
+
+    const payload: DeviceRecord = {
+      ...sourceDevice,
+      ...nextIdentity,
+      ownerUid: user.uid,
+      ownerEmail: user.email,
+      approvalStatus: 'pending',
+      approvedBy: null,
+      deviceAlias: nextDeviceAlias,
+      companyName: nextCompanyName,
+      updatedAt: Date.now(),
+      lastSeenAt: Date.now()
+    }
+
+    this.devices = this.devices
+      .filter((device) => device.deviceId !== sourceDevice.deviceId)
+      .concat(payload)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+    this.emitDevices()
+    return payload
+  }
+
+  async deleteDeviceRecord(deviceId: string) {
+    this.devices = this.devices.filter((device) => device.deviceId !== deviceId)
+    this.emitDevices()
   }
 
   subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[]) => void) {
@@ -751,7 +944,17 @@ class MockBackend implements BackendClient {
   }
 
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus) {
-    this.devices = this.devices.map((device) => (device.deviceId === deviceId ? { ...device, approvalStatus, updatedAt: Date.now() } : device))
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId
+        ? {
+            ...device,
+            approvalStatus,
+            consent: approvalStatus === 'rejected' ? null : device.consent,
+            consentAcceptedAt: approvalStatus === 'rejected' ? undefined : device.consentAcceptedAt,
+            updatedAt: Date.now()
+          }
+        : device
+    )
     this.emitDevices()
   }
 
@@ -764,6 +967,15 @@ class MockBackend implements BackendClient {
     this.emitDevices()
   }
 
+  async updateDeviceCompanyName(deviceId: string, companyName: string) {
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId
+        ? { ...device, companyName: companyName.trim(), updatedAt: Date.now() }
+        : device
+    )
+    this.emitDevices()
+  }
+
   async publishTelemetry(device: DeviceRecord, telemetry: DeviceTelemetry) {
     this.devices = this.devices.map((entry) =>
       entry.deviceId === device.deviceId ? { ...entry, telemetry, lastSeenAt: Date.now(), updatedAt: Date.now() } : entry
@@ -771,11 +983,32 @@ class MockBackend implements BackendClient {
     this.emitDevices()
   }
 
-  async publishInventory() {}
+  async publishInventory(device: DeviceRecord, inventory: InventoryReport) {
+    this.devices = this.devices.map((entry) =>
+      entry.deviceId === device.deviceId
+        ? {
+            ...entry,
+            inventoryCapturedAt: inventory.capturedAt,
+            updatedAt: Date.now()
+          }
+        : entry
+    )
+    this.emitDevices()
+  }
 
   async publishBackupSnapshot(device: DeviceRecord, snapshot: BackupSnapshot) {
     this.devices = this.devices.map((entry) =>
       entry.deviceId === device.deviceId ? { ...entry, backupSnapshot: snapshot, updatedAt: Date.now() } : entry
+    ) as DeviceRecord[]
+    this.emitDevices()
+  }
+
+  async publishBackupProgress(
+    device: DeviceRecord,
+    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
+  ) {
+    this.devices = this.devices.map((entry) =>
+      entry.deviceId === device.deviceId ? { ...entry, backupSyncProgress: progress, updatedAt: Date.now() } : entry
     ) as DeviceRecord[]
     this.emitDevices()
   }
@@ -791,6 +1024,11 @@ class MockBackend implements BackendClient {
         ? { ...device, consent, consentAcceptedAt: consent?.acceptedAt, updatedAt: Date.now() }
         : device
     )
+    this.emitDevices()
+  }
+
+  async updateRustDeskState(deviceId: string, state: DeviceRecord['rustdesk']) {
+    this.devices = this.devices.map((device) => (device.deviceId === deviceId ? { ...device, rustdesk: state } : device))
     this.emitDevices()
   }
 
@@ -874,6 +1112,12 @@ class MockBackend implements BackendClient {
     return () => listeners.delete(callback)
   }
 
+  subscribeCommandHistory(device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) {
+    const key = device.deviceId
+    callback([...(this.commandQueue.get(key) ?? [])].sort((a, b) => (b.finishedAt ?? b.requestedAt) - (a.finishedAt ?? a.requestedAt)))
+    return () => {}
+  }
+
   async completeCommand(device: DeviceRecord, command: TerminalCommand) {
     const queue = this.commandQueue.get(device.deviceId) ?? []
     const next = queue.map((entry) => (entry.id === command.id ? command : entry))
@@ -886,19 +1130,42 @@ class MockBackend implements BackendClient {
     this.alertListeners.forEach((listener) => listener(this.alerts))
   }
 
-  async setPresence() {}
+  async removeAlert(alertId: string) {
+    this.alerts = this.alerts.filter((entry) => entry.id !== alertId)
+    this.alertListeners.forEach((listener) => listener(this.alerts))
+  }
+
+  async removeActiveAlerts(deviceId: string, types: AlertEvent['type'][]) {
+    if (!types.length) return
+    this.alerts = this.alerts.filter((entry) => !(entry.deviceId === deviceId && entry.severity === 'critical' && types.includes(entry.type)))
+    this.alertListeners.forEach((listener) => listener(this.alerts))
+  }
+
+  async setPresence(device: DeviceRecord, _role: AppUser['role'], online: boolean) {
+    this.devices = this.devices.map((entry) =>
+      entry.deviceId === device.deviceId
+        ? {
+            ...entry,
+            offline: !online,
+            lastSeenAt: online ? Date.now() : entry.lastSeenAt,
+            updatedAt: Date.now()
+          }
+        : entry
+    )
+    this.emitDevices()
+  }
 
   private emitDevices() {
     this.deviceListeners.forEach((listener) => listener(this.devices))
   }
 }
 
-export function createBackendClient(forceMock = false): BackendClient {
-  if (!forceMock && hasFirebaseCoreConfig && import.meta.env.VITE_ENABLE_MOCK_BACKEND !== 'true') {
-    if (!hasRealtimeDatabaseConfig) {
-      console.warn('[i-JANEK] Realtime Database URL missing. Running Firebase without RTDB-backed live channels.')
-    }
-    return new FirebaseBackend()
+export function createBackendClient(): BackendClient {
+  if (!hasFirebaseCoreConfig) {
+    throw new Error('Brak kompletnej konfiguracji Firebase. Uzupełnij zmienne VITE_FIREBASE_* w środowisku.')
   }
-  return new MockBackend()
+  if (!hasRealtimeDatabaseConfig) {
+    console.warn('[i-JANEK] Realtime Database URL missing. Running Firebase without RTDB-backed live channels.')
+  }
+  return new FirebaseBackend()
 }

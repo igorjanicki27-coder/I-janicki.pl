@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import {
-  AlertTriangle,
-  CloudUpload,
-  Cpu,
-  HardDrive,
-  MemoryStick,
-  MessageSquareText,
-  ShieldCheck,
-  Thermometer,
-  Workflow
-} from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { CloudUpload, Cpu, HardDrive, MemoryStick, MessageSquareText, ShieldCheck, Workflow } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
-import StatusPill from '@/components/StatusPill.vue'
 import { buildConversationTimeline } from '@/services/chat'
 import { useAppStore } from '@/stores/app'
-import type { CompanyChatMessage, MetricThreshold } from '@shared/contracts'
+import type { AlertEvent, CompanyChatMessage, MetricThreshold } from '@shared/contracts'
 
 const SLAVE_CHAT_READS_KEY = 'i-janek-slave-chat-reads'
 
 const store = useAppStore()
 const chatReadAt = ref(0)
+const alertsModalOpen = ref(false)
+const chatViewport = ref<HTMLElement | null>(null)
+let markReadTimer: number | null = null
 
 const device = computed(() => store.selectedDevice)
 const deviceAlerts = computed(() =>
-  device.value ? store.alerts.filter((alert) => alert.deviceId === device.value?.deviceId && alert.severity !== 'info') : []
+  device.value
+    ? [...store.alerts]
+        .filter((alert) => alert.deviceId === device.value?.deviceId && alert.severity !== 'info')
+        .sort((left, right) => right.createdAt - left.createdAt)
+    : []
 )
 const hasActiveAlerts = computed(() => deviceAlerts.value.length > 0)
+const maxDiskUsage = computed(() => {
+  const values = device.value?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? []
+  return values.length ? Math.max(...values) : null
+})
 const backupAgeHours = computed(() => {
   if (!device.value?.backupSnapshot?.scannedAt) return null
   return (Date.now() - device.value.backupSnapshot.scannedAt) / (60 * 60 * 1000)
@@ -61,14 +61,24 @@ watch(
       chatReadAt.value = 0
       return
     }
+
     try {
       const stored = localStorage.getItem(`${SLAVE_CHAT_READS_KEY}:${ownerUid}`)
       chatReadAt.value = stored ? Number(stored) || 0 : 0
     } catch {
       chatReadAt.value = 0
     }
+
+    queueMarkMessagesRead(250)
   },
   { immediate: true }
+)
+
+watch(
+  () => store.selectedConversationMessages.length,
+  () => {
+    queueMarkMessagesRead()
+  }
 )
 
 function metricClasses(value: number | null | undefined, threshold: MetricThreshold) {
@@ -84,6 +94,45 @@ function metricClasses(value: number | null | undefined, threshold: MetricThresh
   return 'border-emerald-400/30 bg-emerald-500/12 text-emerald-100'
 }
 
+function metricState(value: number | null | undefined, threshold: MetricThreshold) {
+  if (value === null || value === undefined || Number.isNaN(value)) return 0
+  if (value >= threshold.critical) return 2
+  if (value >= threshold.warning) return 1
+  return 0
+}
+
+function metricClassesFromState(state: number) {
+  if (state >= 2) return 'border-rose-400/35 bg-rose-500/12 text-rose-100'
+  if (state >= 1) return 'border-amber-400/35 bg-amber-500/12 text-amber-100'
+  return 'border-emerald-400/30 bg-emerald-500/12 text-emerald-100'
+}
+
+function formatMetricValue(value: number | null | undefined, suffix: string) {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—'
+  return `${value}${suffix}`
+}
+
+const cpuTileClass = computed(() => {
+  const usageState = metricState(device.value?.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage)
+  const tempState = metricState(device.value?.telemetry?.cpuTemperatureC, store.masterSettings.thresholds.cpuTemp)
+  return metricClassesFromState(Math.max(usageState, tempState))
+})
+
+const gpuTileClass = computed(() => {
+  const usageState = metricState(device.value?.telemetry?.gpu?.usagePercent, store.masterSettings.thresholds.gpuUsage)
+  const tempState = metricState(device.value?.telemetry?.gpu?.temperatureC, store.masterSettings.thresholds.gpuTemp)
+  return metricClassesFromState(Math.max(usageState, tempState))
+})
+
+function alertTypeLabel(alert: AlertEvent) {
+  if (alert.type === 'temperature') return 'Temperatura'
+  if (alert.type === 'usage') return 'Zużycie'
+  if (alert.type === 'backup') return 'Backup'
+  if (alert.type === 'approval') return 'Autoryzacja'
+  if (alert.type === 'disk') return 'Dysk'
+  return 'System'
+}
+
 function formatDateTime(timestamp?: number | null) {
   if (!timestamp) return 'brak danych'
   return new Date(timestamp).toLocaleString('pl-PL', {
@@ -95,120 +144,139 @@ function formatDateTime(timestamp?: number | null) {
   })
 }
 
+function formatRelativeHours(value: number | null) {
+  if (value === null || Number.isNaN(value)) return 'brak danych'
+  if (value < 1) return 'mniej niż 1h temu'
+  return `${value.toFixed(1)}h temu`
+}
+
 function formatQuota(value: number | null) {
   if (value === null || value === undefined || Number.isNaN(value)) return 'brak danych'
   return `${value.toFixed(1)} GB wolne`
+}
+
+function senderLabel(message: CompanyChatMessage) {
+  if (message.senderRole === 'master') return 'Igor Janicki (Administrator)'
+  return message.senderEmail
 }
 
 function isUnreadMessage(message: CompanyChatMessage) {
   return unreadMessageIds.value.has(message.id)
 }
 
-function markMessagesRead() {
+function openAlertsModal() {
+  if (!deviceAlerts.value.length) return
+  alertsModalOpen.value = true
+}
+
+function closeAlertModal() {
+  alertsModalOpen.value = false
+}
+
+async function removeAlert(alertId: string) {
+  await store.removeAlertById(alertId)
+  if (!deviceAlerts.value.length) {
+    closeAlertModal()
+  }
+}
+
+function persistReadAt(timestamp: number) {
   const ownerUid = store.selectedConversationOwnerUid
   if (!ownerUid) return
-  const now = Date.now()
-  chatReadAt.value = now
-  localStorage.setItem(`${SLAVE_CHAT_READS_KEY}:${ownerUid}`, String(now))
+
+  chatReadAt.value = timestamp
+  try {
+    localStorage.setItem(`${SLAVE_CHAT_READS_KEY}:${ownerUid}`, String(timestamp))
+  } catch {
+    // Ignore storage issues in renderer.
+  }
+}
+
+function markMessagesRead() {
+  if (!unreadMessagesCount.value) return
+  persistReadAt(Date.now())
+}
+
+function queueMarkMessagesRead(delay = 850) {
+  if (!unreadMessagesCount.value) return
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+
+  if (markReadTimer) window.clearTimeout(markReadTimer)
+  markReadTimer = window.setTimeout(() => {
+    markReadTimer = null
+    if (!chatViewport.value) return
+    const rect = chatViewport.value.getBoundingClientRect()
+    if (rect.height <= 0 || rect.bottom <= 0 || rect.top >= window.innerHeight) return
+    markMessagesRead()
+  }, delay)
+}
+
+function handleWindowFocus() {
+  queueMarkMessagesRead(200)
+}
+
+function handleOpenSlaveAlertModal() {
+  openAlertsModal()
 }
 
 async function sendChatMessage() {
   await store.sendChatMessage(device.value?.ownerUid)
-  markMessagesRead()
+  queueMarkMessagesRead(120)
 }
+
+onMounted(() => {
+  window.addEventListener('focus', handleWindowFocus)
+  document.addEventListener('visibilitychange', handleWindowFocus)
+  window.addEventListener('i-janek:open-slave-alert-modal', handleOpenSlaveAlertModal)
+})
+
+onBeforeUnmount(() => {
+  if (markReadTimer) window.clearTimeout(markReadTimer)
+  window.removeEventListener('focus', handleWindowFocus)
+  document.removeEventListener('visibilitychange', handleWindowFocus)
+  window.removeEventListener('i-janek:open-slave-alert-modal', handleOpenSlaveAlertModal)
+})
 </script>
 
 <template>
-  <div class="grid h-full min-h-0 gap-4 grid-rows-[minmax(320px,1.05fr)_minmax(0,1fr)]">
-    <section class="glass-panel min-h-0 overflow-auto rounded-[32px] p-5">
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div class="mono text-xs uppercase tracking-[0.28em] text-fuchsia-300">Slave Dashboard</div>
-          <h2 class="mt-3 text-2xl font-semibold text-white">{{ device?.deviceAlias || device?.hostname || 'Urządzenie klienta' }}</h2>
-          <p class="mt-2 text-sm leading-7 text-[var(--text-dim)]">
-            Monitoring pracuje na progach ustawionych w aplikacji Mastera.
-          </p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <StatusPill
-            :label="device?.approvalStatus ?? 'pending'"
-            :tone="device?.approvalStatus === 'approved' ? 'success' : device?.approvalStatus === 'rejected' ? 'critical' : 'warning'"
-          />
-          <button class="glass-button" type="button" @click="store.syncBackupNow()">
-            <CloudUpload class="mr-2 h-4 w-4" />
-            Utwórz backup
-          </button>
-          <div
-            class="inline-flex h-11 items-center gap-2 rounded-2xl border px-4"
-            :class="hasActiveAlerts ? 'border-rose-400/35 bg-rose-500/12 text-rose-100' : 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'"
-          >
-            <AlertTriangle class="h-4 w-4" />
-            <span class="mono text-xs uppercase tracking-[0.18em]">
-              {{ hasActiveAlerts ? `${deviceAlerts.length} alert` : 'brak alertów' }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="device?.approvalStatus !== 'approved'" class="mt-4 rounded-[22px] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        To urządzenie czeka na ręczną akceptację Mastera. Część funkcji pozostaje tymczasowo zablokowana.
-      </div>
-
-      <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(device?.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage)">
-          <div class="flex items-center gap-2 text-sm"><Cpu class="h-4 w-4" /> CPU</div>
-          <div class="mt-3 text-3xl font-semibold">
-            {{ device?.telemetry?.cpuUsagePercent ?? '—' }}<span v-if="device?.telemetry?.cpuUsagePercent !== null && device?.telemetry?.cpuUsagePercent !== undefined">%</span>
+  <div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <section class="glass-panel shrink-0 rounded-[24px] p-3">
+      <div class="grid grid-cols-4 gap-1.5">
+        <div class="rounded-[14px] border px-2.5 py-2" :class="cpuTileClass">
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><Cpu class="h-3 w-3" /> CPU</div>
+          <div class="mt-1.5 text-[19px] font-semibold leading-none">
+            {{ formatMetricValue(device?.telemetry?.cpuUsagePercent, '%') }} | {{ formatMetricValue(device?.telemetry?.cpuTemperatureC, '°C') }}
           </div>
         </div>
 
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(device?.telemetry?.gpu?.usagePercent, store.masterSettings.thresholds.gpuUsage)">
-          <div class="flex items-center gap-2 text-sm"><Workflow class="h-4 w-4" /> GPU</div>
-          <div class="mt-3 text-3xl font-semibold">
-            {{ device?.telemetry?.gpu?.usagePercent ?? '—' }}<span v-if="device?.telemetry?.gpu?.usagePercent !== null && device?.telemetry?.gpu?.usagePercent !== undefined">%</span>
+        <div class="rounded-[14px] border px-2.5 py-2" :class="gpuTileClass">
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><Workflow class="h-3 w-3" /> GPU</div>
+          <div class="mt-1.5 text-[19px] font-semibold leading-none">
+            {{ formatMetricValue(device?.telemetry?.gpu?.usagePercent, '%') }} | {{ formatMetricValue(device?.telemetry?.gpu?.temperatureC, '°C') }}
           </div>
         </div>
 
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(device?.telemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage)">
-          <div class="flex items-center gap-2 text-sm"><MemoryStick class="h-4 w-4" /> RAM</div>
-          <div class="mt-3 text-3xl font-semibold">
+        <div class="rounded-[14px] border px-2.5 py-2" :class="metricClasses(device?.telemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage)">
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><MemoryStick class="h-3 w-3" /> RAM</div>
+          <div class="mt-1.5 text-[22px] font-semibold leading-none">
             {{ device?.telemetry?.memoryUsedPercent ?? '—' }}<span v-if="device?.telemetry?.memoryUsedPercent !== null && device?.telemetry?.memoryUsedPercent !== undefined">%</span>
           </div>
         </div>
 
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(Math.max(...(device?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? [0])), store.masterSettings.thresholds.diskUsage)">
-          <div class="flex items-center gap-2 text-sm"><HardDrive class="h-4 w-4" /> Dysk</div>
-          <div class="mt-3 text-3xl font-semibold">
-            {{ device?.telemetry?.disks?.length ? Math.max(...(device.telemetry.disks.map((entry) => entry.usedPercent) ?? [0])) : '—' }}
-            <span v-if="device?.telemetry?.disks?.length">%</span>
+        <div class="rounded-[14px] border px-2.5 py-2" :class="metricClasses(maxDiskUsage, store.masterSettings.thresholds.diskUsage)">
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><HardDrive class="h-3 w-3" /> Dysk</div>
+          <div class="mt-1.5 text-[22px] font-semibold leading-none">
+            {{ maxDiskUsage ?? '—' }}<span v-if="maxDiskUsage !== null">%</span>
           </div>
         </div>
 
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(device?.telemetry?.cpuTemperatureC, store.masterSettings.thresholds.cpuTemp)">
-          <div class="flex items-center gap-2 text-sm"><Thermometer class="h-4 w-4" /> CPU temperatura</div>
-          <div class="mt-3 text-3xl font-semibold">
-            {{ device?.telemetry?.cpuTemperatureC ?? '—' }}<span v-if="device?.telemetry?.cpuTemperatureC !== null && device?.telemetry?.cpuTemperatureC !== undefined">°C</span>
+        <div class="col-span-2 rounded-[14px] border px-2.5 py-1.5" :class="metricClasses(backupUsagePercent, store.masterSettings.thresholds.diskUsage)">
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><ShieldCheck class="h-3 w-3" /> Chmura</div>
+          <div class="mt-1 flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold text-white">{{ formatQuota(backupFreeGb) }}</span>
+            <span class="text-[10px] text-[var(--text-dim)]">{{ backupUsagePercent === null ? 'brak danych' : `Wykorzystanie: ${backupUsagePercent.toFixed(1)}%` }}</span>
           </div>
-        </div>
-
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(device?.telemetry?.gpu?.temperatureC, store.masterSettings.thresholds.gpuTemp)">
-          <div class="flex items-center gap-2 text-sm"><Thermometer class="h-4 w-4" /> GPU temperatura</div>
-          <div class="mt-3 text-3xl font-semibold">
-            {{ device?.telemetry?.gpu?.temperatureC ?? '—' }}<span v-if="device?.telemetry?.gpu?.temperatureC !== null && device?.telemetry?.gpu?.temperatureC !== undefined">°C</span>
-          </div>
-        </div>
-
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(backupAgeHours, store.masterSettings.thresholds.backupAgeHours)">
-          <div class="flex items-center gap-2 text-sm"><CloudUpload class="h-4 w-4" /> Backup</div>
-          <div class="mt-3 text-sm font-semibold text-white">{{ formatDateTime(device?.backupSnapshot?.scannedAt) }}</div>
-          <div class="mt-2 text-xs text-[var(--text-dim)]">Ostatnia synchronizacja backupu</div>
-        </div>
-
-        <div class="rounded-[22px] border px-4 py-4" :class="metricClasses(backupUsagePercent, store.masterSettings.thresholds.diskUsage)">
-          <div class="flex items-center gap-2 text-sm"><ShieldCheck class="h-4 w-4" /> Chmura</div>
-          <div class="mt-3 text-sm font-semibold text-white">{{ formatQuota(backupFreeGb) }}</div>
-          <div class="mt-3 h-2.5 rounded-full bg-black/25">
+          <div class="mt-1 h-1.5 rounded-full bg-black/25">
             <div
               class="h-full rounded-full transition-all"
               :class="
@@ -221,30 +289,49 @@ async function sendChatMessage() {
               :style="{ width: `${backupUsagePercent ?? 0}%` }"
             />
           </div>
-          <div class="mt-2 text-xs text-[var(--text-dim)]">
-            Wykorzystanie limitu backupu: {{ backupUsagePercent ? backupUsagePercent.toFixed(1) : '0.0' }}%
+        </div>
+
+        <div class="col-span-2 rounded-[14px] border px-2.5 py-1.5" :class="metricClasses(backupAgeHours, store.masterSettings.thresholds.backupAgeHours)">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><CloudUpload class="h-3 w-3" /> Backup</div>
+            <button class="ghost-button !rounded-md !px-2 !py-1 !text-[10px]" type="button" @click="store.syncBackupNow()">
+              Utwórz
+            </button>
+          </div>
+          <div class="mt-1 flex items-center justify-between gap-2">
+            <div class="truncate text-xs font-semibold text-white">{{ formatDateTime(device?.backupSnapshot?.scannedAt) }}</div>
+            <div class="shrink-0 text-[10px] text-[var(--text-dim)]">{{ formatRelativeHours(backupAgeHours) }}</div>
           </div>
         </div>
       </div>
+
     </section>
 
-    <section class="glass-panel flex min-h-0 flex-col overflow-hidden rounded-[32px] p-5">
-      <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+    <section class="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] p-4">
+      <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
         <div class="flex items-center gap-2 text-sm font-medium text-white">
           <MessageSquareText class="h-4 w-4 text-fuchsia-300" />
-          Wiadomości z Masterem
+          Rozpocznij rozmowę z administratorem
         </div>
-        <div class="flex items-center gap-2">
-          <StatusPill :label="messageNotificationsMuted ? 'mute' : 'on'" />
-          <button v-if="unreadMessagesCount" class="ghost-button !rounded-xl !px-3 !py-2 !text-xs" type="button" @click="markMessagesRead()">
-            Oznacz przeczytane ({{ unreadMessagesCount }})
-          </button>
+        <div class="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          <span v-if="messageNotificationsMuted" class="rounded-full border border-white/10 px-2 py-1">mute</span>
+          <span
+            v-if="unreadMessagesCount"
+            class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-1 text-cyan-100"
+          >
+            {{ unreadMessagesCount }} nowa
+          </span>
         </div>
       </div>
 
-      <div class="mt-4 flex-1 space-y-3 overflow-auto pr-1">
+      <div
+        ref="chatViewport"
+        class="mt-3 flex-1 space-y-2 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        @mouseenter="queueMarkMessagesRead(180)"
+        @scroll="queueMarkMessagesRead(120)"
+      >
         <template v-for="entry in conversationTimeline" :key="entry.id">
-          <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--text-dim)]">
+          <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]">
             <div class="h-px flex-1 bg-white/10" />
             <span class="mono">{{ entry.label }}</span>
             <div class="h-px flex-1 bg-white/10" />
@@ -252,7 +339,7 @@ async function sendChatMessage() {
 
           <div
             v-else
-            class="max-w-[84%] rounded-[22px] border px-4 py-3 text-sm leading-7"
+            class="max-w-[78%] rounded-[18px] border px-3 py-2.5 text-sm leading-6"
             :class="
               entry.message.senderRole === 'slave'
                 ? 'ml-auto border-fuchsia-400/20 bg-fuchsia-500/10 text-white'
@@ -261,9 +348,12 @@ async function sendChatMessage() {
                   : 'border-white/10 bg-white/5 text-white'
             "
           >
-            <div class="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
-              <span class="mono">{{ entry.message.senderEmail }}</span>
-              <span v-if="isUnreadMessage(entry.message)" class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-0.5 text-[10px] text-cyan-100">
+            <div class="mb-1 flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
+              <span class="mono truncate">{{ senderLabel(entry.message) }}</span>
+              <span
+                v-if="isUnreadMessage(entry.message)"
+                class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-0.5 text-[9px] text-cyan-100"
+              >
                 Nowa
               </span>
             </div>
@@ -271,17 +361,60 @@ async function sendChatMessage() {
           </div>
         </template>
 
-        <div v-if="!conversationTimeline.length" class="rounded-[22px] border border-white/10 px-4 py-4 text-sm text-[var(--text-dim)]">
+        <div v-if="!conversationTimeline.length" class="rounded-[18px] border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
           Brak wiadomości w tej rozmowie.
         </div>
       </div>
 
-      <div class="mt-4 flex gap-3">
-        <input v-model="store.pendingChatMessage" class="soft-input" placeholder="Napisz do Mastera..." @focus="markMessagesRead()" />
-        <button class="glass-button" type="button" @click="sendChatMessage">Wyślij</button>
+      <div class="mt-3 flex gap-2">
+        <input
+          v-model="store.pendingChatMessage"
+          class="soft-input !py-2.5"
+          placeholder="Napisz wiadomość"
+          @focus="queueMarkMessagesRead(120)"
+        />
+        <button class="glass-button !rounded-xl !px-4 !py-2.5 !text-sm" type="button" @click="sendChatMessage">Wyślij</button>
       </div>
     </section>
 
-    <AppFooterLink class="pb-1 pt-1" />
+    <AppFooterLink class="shrink-0 pb-0 pt-0.5" />
+
+    <div
+      v-if="alertsModalOpen && hasActiveAlerts"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-4"
+      @click.self="closeAlertModal()"
+    >
+      <div class="glass-panel w-full max-w-xl rounded-[24px] border border-rose-400/35 p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="mono text-[11px] uppercase tracking-[0.14em] text-rose-200">Alerty</div>
+            <h3 class="mt-1 text-base font-semibold text-white">Aktywne zgłoszenia ({{ deviceAlerts.length }})</h3>
+          </div>
+          <button class="ghost-button !rounded-lg !px-2 !py-1 !text-xs" type="button" @click="closeAlertModal()">Zamknij</button>
+        </div>
+
+        <div class="mt-3 max-h-[65vh] space-y-3 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <article
+            v-for="alert in deviceAlerts"
+            :key="alert.id"
+            class="rounded-xl border border-white/10 bg-black/10 px-3 py-3"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="mono text-[11px] uppercase tracking-[0.14em] text-rose-200">{{ alertTypeLabel(alert) }}</div>
+                <h4 class="mt-1 text-sm font-semibold text-white">{{ alert.title }}</h4>
+              </div>
+              <button class="ghost-button !rounded-lg !px-2 !py-1 !text-[11px]" type="button" @click="removeAlert(alert.id)">
+                Usuń
+              </button>
+            </div>
+            <p class="mt-2 text-sm text-white">{{ alert.message }}</p>
+            <div class="mt-2 text-xs text-[var(--text-dim)]">
+              Data i godzina: <span class="mono text-white">{{ formatDateTime(alert.createdAt) }}</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
