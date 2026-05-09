@@ -34,6 +34,7 @@ import type {
   BackupSnapshot,
   CompanyChatMessage,
   ConsentRecord,
+  ClientProfile,
   DeviceIdentity,
   DeviceRecord,
   DeviceTelemetry,
@@ -52,6 +53,7 @@ export interface BackendClient {
   subscribeAuth: (callback: (user: AppUser | null) => void) => Unsubscribe
   signInWithGoogle: () => Promise<AppUser>
   signOut: () => Promise<void>
+  ensureUserProfile: (user: AppUser) => Promise<ClientProfile>
   isDeviceIdAvailable: (deviceId: string) => Promise<boolean>
   ensureDeviceRecord: (user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) => Promise<DeviceRecord>
   migrateDeviceRecord: (
@@ -214,7 +216,7 @@ class FirebaseBackend implements BackendClient {
 
       if (isElectron && (fallbackCodes.has(code) || code === 'auth/unauthorized-domain')) {
         throw new Error(
-          'Desktopowe logowanie Google nie jest jeszcze skonfigurowane. Ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w aplikacji i spróbuj ponownie.'
+          'Desktopowe logowanie Google nie jest jeszcze skonfigurowane. Dodaj plik resources/google-oauth-desktop.local.json albo ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w aplikacji i spróbuj ponownie.'
         )
       }
 
@@ -225,6 +227,27 @@ class FirebaseBackend implements BackendClient {
   async signOut() {
     this.clearProviderAccessToken()
     await firebaseSignOut(firebaseServices!.auth)
+  }
+
+  async ensureUserProfile(user: AppUser) {
+    const firestore = getFirestore(firebaseServices!.app)
+    const profileRef = doc(firestore, 'clients', user.uid)
+    const snapshot = await getDoc(profileRef)
+    const existing = snapshot.exists() ? (snapshot.data() as ClientProfile) : undefined
+    const now = Date.now()
+    const profile: ClientProfile = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL ?? null,
+      role: user.role,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      lastLoginAt: now
+    }
+
+    await setDoc(profileRef, profile, { merge: true })
+    return profile
   }
 
   async isDeviceIdAvailable(deviceId: string) {
@@ -598,6 +621,7 @@ class MockBackend implements BackendClient {
   private masterSettingsListeners = new Set<(settings: Partial<RemoteMasterSettings> | null) => void>()
   private chatListeners = new Map<string, Set<(messages: CompanyChatMessage[]) => void>>()
   private commandListeners = new Map<string, Set<(commands: TerminalCommand[]) => void>>()
+  private clientProfiles = new Map<string, ClientProfile>()
   private currentUser: AppUser | null = null
   private devices: DeviceRecord[] = [
     {
@@ -831,6 +855,33 @@ class MockBackend implements BackendClient {
   async signOut() {
     this.currentUser = null
     this.authListeners.forEach((listener) => listener(null))
+  }
+
+  async ensureUserProfile(user: AppUser) {
+    const now = Date.now()
+    const profile = this.clientProfiles.get(user.uid) ?? {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL ?? null,
+      role: user.role,
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: now
+    }
+
+    const nextProfile: ClientProfile = {
+      ...profile,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL ?? null,
+      role: user.role,
+      updatedAt: now,
+      lastLoginAt: now
+    }
+
+    this.clientProfiles.set(user.uid, nextProfile)
+    return nextProfile
   }
 
   async isDeviceIdAvailable(deviceId: string) {

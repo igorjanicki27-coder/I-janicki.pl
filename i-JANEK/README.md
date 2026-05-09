@@ -15,9 +15,11 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 1. Skopiuj `.env.example` do `.env`.
 2. Uzupełnij konfigurację Firebase, desktopowego Google OAuth oraz lokalny `I_JANEK_AES_VAULT_KEY`. Nie commituj tych sekretów do repo.
    - Firebase Auth nadal wymaga włączenia providera Google.
-   - Dla aplikacji Electron utwórz w Google Cloud osobny OAuth Client typu `Desktop app` i wpisz:
-     - `GOOGLE_DESKTOP_CLIENT_ID`
-     - `GOOGLE_DESKTOP_CLIENT_SECRET`
+   - Dla aplikacji Electron utwórz w Google Cloud OAuth Client typu `Desktop app`.
+   - Masz dwie darmowe opcje konfiguracji:
+     - w `.env` wpisz `GOOGLE_DESKTOP_CLIENT_ID` i `GOOGLE_DESKTOP_CLIENT_SECRET`
+     - albo wstaw pobrany JSON jako `resources/google-oauth-desktop.local.json` i zostaw `GOOGLE_DESKTOP_CREDENTIALS_PATH=resources/google-oauth-desktop.local.json`
+   - Plik `resources/google-oauth-desktop.local.json` jest ignorowany przez git i działa zarówno w dev, jak i po buildzie.
 3. (RustDesk) Ustaw globalnie na Windows:
    - `RUSTDESK_CONFIG_STRING` (konfiguracja serwera eksportowana z RustDesk)
    - `RUSTDESK_LOCK_CONFIG=1` (wymuszenie blokady ręcznej edycji konfiguracji)

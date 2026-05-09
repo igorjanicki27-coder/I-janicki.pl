@@ -1,7 +1,9 @@
+import fs from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { randomUUID } from 'node:crypto'
-import { shell } from 'electron'
+import path from 'node:path'
+import { app, shell } from 'electron'
 import { google } from 'googleapis'
 import type { GoogleOAuthTokens } from '@shared/contracts'
 
@@ -13,6 +15,7 @@ const GOOGLE_DESKTOP_SCOPES = [
 ]
 
 const AUTH_TIMEOUT_MS = 3 * 60 * 1000
+const GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE = 'resources/google-oauth-desktop.local.json'
 
 function getEnvValue(...keys: string[]) {
   for (const key of keys) {
@@ -23,14 +26,100 @@ function getEnvValue(...keys: string[]) {
   return ''
 }
 
+function getResourceCandidates() {
+  const candidates = [
+    getEnvValue('GOOGLE_DESKTOP_CREDENTIALS_PATH'),
+    path.resolve(app.getAppPath(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE)
+  ]
+
+  if (typeof process.resourcesPath === 'string' && process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
+  }
+
+  candidates.push(path.resolve(process.cwd(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
+
+  return [...new Set(candidates.filter(Boolean))]
+}
+
+function extractCredentials(source: unknown) {
+  if (!source || typeof source !== 'object') {
+    return null
+  }
+
+  const container = source as Record<string, unknown>
+  const payload =
+    (container.installed && typeof container.installed === 'object' ? (container.installed as Record<string, unknown>) : null) ??
+    (container.web && typeof container.web === 'object' ? (container.web as Record<string, unknown>) : null) ??
+    container
+
+  const clientId = typeof payload.client_id === 'string' ? payload.client_id.trim() : ''
+  const clientSecret = typeof payload.client_secret === 'string' ? payload.client_secret.trim() : ''
+  const redirectUris = Array.isArray(payload.redirect_uris)
+    ? payload.redirect_uris.filter((uri): uri is string => typeof uri === 'string' && uri.trim().length > 0)
+    : []
+
+  if (!clientId || !clientSecret) {
+    return null
+  }
+
+  const redirectHost = (() => {
+    const explicitHost = getEnvValue('GOOGLE_DESKTOP_REDIRECT_HOST')
+    if (explicitHost) return explicitHost
+
+    for (const redirectUri of redirectUris) {
+      try {
+        const parsed = new URL(redirectUri)
+        if (parsed.hostname) return parsed.hostname
+      } catch {
+        continue
+      }
+    }
+
+    return 'localhost'
+  })()
+
+  return { clientId, clientSecret, redirectHost }
+}
+
+function readGoogleDesktopAuthConfigFromFile(credentialsPath: string) {
+  const raw = fs.readFileSync(credentialsPath, 'utf8')
+  const parsed = JSON.parse(raw)
+  const credentials = extractCredentials(parsed)
+
+  if (!credentials) {
+    throw new Error(
+      `Plik Google OAuth ma nieprawidłowy format: ${credentialsPath}. Oczekiwano obiektu z sekcją "installed" lub "web".`
+    )
+  }
+
+  return credentials
+}
+
 function getGoogleDesktopAuthConfig() {
+  const explicitCredentialsPath = getEnvValue('GOOGLE_DESKTOP_CREDENTIALS_PATH')
+  if (explicitCredentialsPath) {
+    const resolvedCredentialsPath = path.resolve(explicitCredentialsPath)
+    if (!fs.existsSync(resolvedCredentialsPath)) {
+      throw new Error(
+        `Nie znaleziono pliku Google OAuth pod GOOGLE_DESKTOP_CREDENTIALS_PATH=${resolvedCredentialsPath}.`
+      )
+    }
+
+    return readGoogleDesktopAuthConfigFromFile(resolvedCredentialsPath)
+  }
+
+  for (const candidate of getResourceCandidates()) {
+    if (!fs.existsSync(candidate)) continue
+    return readGoogleDesktopAuthConfigFromFile(candidate)
+  }
+
   const clientId = getEnvValue('GOOGLE_DESKTOP_CLIENT_ID')
   const clientSecret = getEnvValue('GOOGLE_DESKTOP_CLIENT_SECRET')
   const redirectHost = getEnvValue('GOOGLE_DESKTOP_REDIRECT_HOST') || 'localhost'
 
   if (!clientId || !clientSecret) {
     throw new Error(
-      'Brakuje konfiguracji desktopowego Google OAuth. Ustaw GOOGLE_DESKTOP_CLIENT_ID oraz GOOGLE_DESKTOP_CLIENT_SECRET w pliku .env.'
+      `Brakuje konfiguracji desktopowego Google OAuth. Dodaj plik ${GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE} albo ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w pliku .env.`
     )
   }
 

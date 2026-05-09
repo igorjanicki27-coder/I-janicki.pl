@@ -150,6 +150,32 @@ service cloud.firestore {
       allow delete: if isMaster() || isDeviceOwner();
     }
 
+    match /clients/{clientId} {
+      allow read: if isMaster() || isOwner(clientId);
+      allow create, update: if isMaster()
+        || (
+          isOwner(clientId)
+          && request.resource.data.keys().hasOnly([
+            'uid',
+            'email',
+            'displayName',
+            'photoURL',
+            'role',
+            'createdAt',
+            'updatedAt',
+            'lastLoginAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.displayName is string
+          && request.resource.data.role in ['master', 'slave']
+          && request.resource.data.createdAt is int
+          && request.resource.data.updatedAt is int
+          && request.resource.data.lastLoginAt is int
+        );
+      allow delete: if isMaster() || isOwner(clientId);
+    }
+
     match /events/{eventId} {
       allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       allow create: if isMaster() || isCreatingOwnEvent();

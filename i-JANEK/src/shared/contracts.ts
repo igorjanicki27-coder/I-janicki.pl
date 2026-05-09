@@ -36,6 +36,17 @@ export interface AppUser {
   accessToken?: string
 }
 
+export interface ClientProfile {
+  uid: string
+  email: string
+  displayName: string
+  photoURL?: string | null
+  role: UserRole
+  createdAt: number
+  updatedAt: number
+  lastLoginAt: number
+}
+
 export interface GoogleOAuthTokens {
   idToken: string
   accessToken: string

@@ -1159,6 +1159,9 @@ html[data-theme="light"] .review-field textarea { background: rgba(0,0,0,0.04); 
 .foot-mail { text-decoration: none; color: var(--text-dim); transition: color 0.2s; }
 .foot-mail:hover { color: var(--accent-4); }
 
+.foot-docs { text-decoration: none; color: var(--text-dim); transition: color 0.2s; }
+.foot-docs:hover { color: var(--accent-4); }
+
 /* Przycisk cookie w stopce */
 .cookie-foot-btn {
   background: none; border: none; font-size: 14px; opacity: 0.25;

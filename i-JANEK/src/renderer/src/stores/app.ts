@@ -519,20 +519,24 @@ export const useAppStore = defineStore('app', () => {
     clearRootSubscriptions()
 
     const authUnsubscribe = backend.value!.subscribeAuth(async (nextUser) => {
-      user.value = nextUser
-      if (!nextUser) {
-        teardownSession()
-        devices.value = []
-        alerts.value = []
-        companyChats.value = {}
-        localRustDeskState.value = null
-        selectedConversationOwnerUid.value = ''
-        pendingDeviceAlias.value = ''
-        pendingCompanyName.value = ''
-        return
-      }
+      try {
+        user.value = nextUser
+        if (!nextUser) {
+          teardownSession()
+          devices.value = []
+          alerts.value = []
+          companyChats.value = {}
+          localRustDeskState.value = null
+          selectedConversationOwnerUid.value = ''
+          pendingDeviceAlias.value = ''
+          pendingCompanyName.value = ''
+          return
+        }
 
-      await handleSignedIn(nextUser)
+        await handleSignedIn(nextUser)
+      } catch (error) {
+        lastError.value = error instanceof Error ? error.message : 'Nie udało się zsynchronizować sesji po logowaniu.'
+      }
     })
     rootCleanup.add(authUnsubscribe)
   }
@@ -648,6 +652,8 @@ export const useAppStore = defineStore('app', () => {
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
 
+    await backend.value!.ensureUserProfile(nextUser)
+
     const masterSettingsCleanup = backend.value!.subscribeRemoteMasterSettings((remoteSettings) => {
       applyRemoteMasterSettings(remoteSettings)
     })
@@ -728,13 +734,11 @@ export const useAppStore = defineStore('app', () => {
     sessionCleanup.add(alertsCleanup)
 
     if (nextUser.role === 'slave' && systemContext.value) {
-      if (consent.value) {
-        const ensured = await backend.value!.ensureDeviceRecord(nextUser, systemContext.value, consent.value)
-        selectedDeviceId.value = ensured.deviceId
-        selectedConversationOwnerUid.value = ensured.ownerUid
-        if (!pendingCompanyName.value) {
-          pendingCompanyName.value = ensured.companyName?.trim() || masterSettings.value.companyOptions[0] || ''
-        }
+      const ensured = await backend.value!.ensureDeviceRecord(nextUser, systemContext.value, consent.value ?? undefined)
+      selectedDeviceId.value = ensured.deviceId
+      selectedConversationOwnerUid.value = ensured.ownerUid
+      if (!pendingCompanyName.value) {
+        pendingCompanyName.value = ensured.companyName?.trim() || masterSettings.value.companyOptions[0] || ''
       }
     }
   }
@@ -819,13 +823,39 @@ export const useAppStore = defineStore('app', () => {
     await window.janek.system.setConsent(cloneForIpc(consent.value))
 
     if (user.value?.role === 'slave' && systemContext.value) {
-      const isAvailable = await backend.value!.isDeviceIdAvailable(requestedDeviceId)
-      if (!isAvailable) {
-        await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
+      const requestedIdentity = toDeviceIdentity(systemContext.value, requestedDeviceId)
+      const currentDevice = selfDevice.value
+
+      if (currentDevice && currentDevice.deviceId !== requestedDeviceId) {
+        const isAvailable = await backend.value!.isDeviceIdAvailable(requestedDeviceId)
+        if (!isAvailable) {
+          await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
+          return
+        }
+
+        const migrated = await backend.value!.migrateDeviceRecord(user.value, currentDevice, requestedIdentity, aliasName, companyName)
+        await backend.value?.updateApprovalStatus(migrated.deviceId, 'pending', user.value.email)
+        await window.janek.system.setRegisteredDeviceId(migrated.deviceId)
+        systemContext.value = { ...systemContext.value, deviceId: migrated.deviceId }
+        pendingDeviceAlias.value = aliasName
+        pendingCompanyName.value = companyName
+        selectedDeviceId.value = migrated.deviceId
+        selectedConversationOwnerUid.value = migrated.ownerUid
+        devices.value = devices.value
+          .filter((device) => device.deviceId !== currentDevice.deviceId && device.deviceId !== migrated.deviceId)
+          .concat({ ...migrated, approvalStatus: 'pending', approvedBy: null, updatedAt: Date.now() })
+          .sort((a, b) => b.updatedAt - a.updatedAt)
         return
       }
 
-      const requestedIdentity = toDeviceIdentity(systemContext.value, requestedDeviceId)
+      if (!currentDevice) {
+        const isAvailable = await backend.value!.isDeviceIdAvailable(requestedDeviceId)
+        if (!isAvailable) {
+          await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
+          return
+        }
+      }
+
       const ensured = await backend.value!.ensureDeviceRecord(user.value, requestedIdentity, consent.value)
       await backend.value?.updateDeviceAlias(requestedDeviceId, aliasName)
       await backend.value?.updateDeviceCompanyName(requestedDeviceId, companyName)
