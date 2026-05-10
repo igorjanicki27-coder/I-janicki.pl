@@ -134,12 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Załaduj Firebase do analytics DOPIERO po initial render (w tle)
-  if (typeof requestIdleCallback !== 'undefined') {
-    requestIdleCallback(() => window.maybeTrackHomeVisit?.(), { timeout: 5000 });
-  } else {
-    setTimeout(() => window.maybeTrackHomeVisit?.(), 2000);
-  }
+  // Nie wysyłaj home_visit event - oszczędza 102KB Firebase SDK na initial load
+  // Firebase załaduje się dopiero gdy user wyśle inny event (tutorial_complete, review, itp)
 });
 
 // ─────────────────────────────────────────────────────────────────
