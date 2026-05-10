@@ -208,13 +208,11 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
   border: none;
   display: grid; place-items: center;
   transition: all 0.3s var(--ease);
-  cursor: pointer; padding: 0;
+  cursor: pointer;
   font-size: 0;
-  position: relative;
-}
-/* Powiększa obszar dotyku do 44×44px bez zmiany wyglądu (WCAG 2.5.5) */
-.tut-dot::after {
-  content: ''; position: absolute; inset: -18px;
+  /* Obszar dotyku: 44×44px, ale wizualnie 8×8px (padding rozszerzony) */
+  padding: 18px;
+  box-sizing: content-box;
 }
 .tut-dot.is-done {
   background: var(--accent-4);
