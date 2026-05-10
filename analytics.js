@@ -17,8 +17,34 @@
   const sessionStartedAt = Date.now();
   let sessionDurationSent = false;
   let firebaseApp = null;
+  let firebaseSDKPromise = null;
 
-  function ensureFirebaseApp() {
+  // Dynamicznie załaduj Firebase SDK (102KB) dopiero gdy będzie potrzebny
+  function loadFirebaseSDK() {
+    if (firebaseSDKPromise) return firebaseSDKPromise;
+    if (window.firebase && typeof window.firebase.initializeApp === 'function') {
+      return Promise.resolve();
+    }
+
+    firebaseSDKPromise = Promise.all([
+      new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      }),
+      new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      })
+    ]);
+    return firebaseSDKPromise;
+  }
+
+  async function ensureFirebaseApp() {
+    await loadFirebaseSDK();
     if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
       throw new Error('Firebase SDK is not available.');
     }
@@ -64,8 +90,9 @@
 
   async function writeAnalyticsEvent(type, extraFields) {
     if (!hasAnalyticsConsent()) return false;
-    const app = ensureFirebaseApp();
-    const firestore = window.firebase.firestore(app);
+    try {
+      const app = await ensureFirebaseApp();
+      const firestore = window.firebase.firestore(app);
     const payload = {
       type,
       path: window.location.pathname || '/',
@@ -82,6 +109,10 @@
     await firestore.collection('analytics_events').add(payload);
 
     return true;
+    } catch (err) {
+      console.warn('Analytics event write failed:', err);
+      return false;
+    }
   }
 
   async function oncePerSession(storageKey, writer) {
@@ -185,13 +216,12 @@
   window.maybeTrackSessionDuration = maybeTrackSessionDuration;
 
   if (hasAnalyticsConsent()) {
-    try {
-      ensureFirebaseApp();
-      loadGA();
-      maybeTrackHomeVisit();
-    } catch (err) {
+    // Załaduj Firebase SDK asynchronicznie w tle (nie blokuje initial load)
+    ensureFirebaseApp().catch(err => {
       console.warn('Analytics initialization error:', err);
-    }
+    });
+    loadGA();
+    maybeTrackHomeVisit();
   }
 
   window.addEventListener('visibilitychange', () => {

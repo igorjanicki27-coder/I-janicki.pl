@@ -52,10 +52,10 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" />
   </noscript>
 
-  <!-- Firebase + analytics — defer: pobierają się równolegle, nie blokują renderowania -->
-  <script defer src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <!-- Analytics — zaladuje się defer (mały plik, potrzebny od razu) -->
   <script defer src="analytics.js"></script>
+  <!-- Firebase Firestore — załaduje się DOPIERO na żądanie (Reviews) by przyspieszyć start -->
+  <!-- Wczytane dynamicznie w script.js gdy user kliknie na Reviews -->
 
   <!-- Structured Data — WebSite -->
   <script type="application/ld+json">
