@@ -204,13 +204,13 @@
     const durationSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000));
     sessionDurationSent = true;
 
-    writeAnalyticsEvent('session_duration', {
-      page: 'home',
-      source: 'session_end',
-      durationSeconds,
-    }).catch((err) => {
-      console.warn('Analytics duration fallback error:', err);
-    });
+    // Use GA only, don't load Firebase for session tracking
+    loadGA();
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'session_duration', {
+        durationSeconds,
+      });
+    }
 
     return true;
   }
