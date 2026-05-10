@@ -123,12 +123,20 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursor();
   registerSW();
   handleApproveReview();
-  window.maybeTrackHomeVisit?.();
 
   if (tutDone) {
     showReturning();
   } else {
     startTutorial();
+  }
+
+  // Załaduj Firebase do analytics DOPIERO po initial render (w tle)
+  // To nie blokuje FCP/LCP ponieważ Firebase SDK się załaduje po tym jak strona jest już widoczna
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(() => window.maybeTrackHomeVisit?.(), { timeout: 5000 });
+  } else {
+    // Fallback dla starszych przeglądarek
+    setTimeout(() => window.maybeTrackHomeVisit?.(), 2000);
   }
 });
 
