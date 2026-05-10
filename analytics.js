@@ -236,12 +236,10 @@
   window.maybeTrackSessionDuration = maybeTrackSessionDuration;
 
   if (hasAnalyticsConsent()) {
-    // Załaduj Firebase SDK asynchronicznie w tle (nie blokuje initial load)
-    ensureFirebaseApp().catch(err => {
-      console.warn('Analytics initialization error:', err);
-    });
+    // Załaduj GA (lekki) ale NOT Firebase (102KB)
+    // Firebase załaduje się dopiero na writeAnalyticsEvent (user interaction)
     loadGA();
-    maybeTrackHomeVisit();
+    // maybeTrackHomeVisit() usunięte - Firebase zaloguje się dopiero na demand
   }
 
   window.addEventListener('visibilitychange', () => {
