@@ -145,6 +145,26 @@
   function maybeTrackHomeVisit() {
     if (!hasAnalyticsConsent() || !isHomePath()) return Promise.resolve(false);
 
+    // Na mobile - nie wysyłaj home_visit eager, czekaj na user interaction
+    // To oszczędza Firebase SDK ładowania na initial load
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile) {
+      // Wyślij event dopiero gdy user zacznie interakcjonować
+      const trackOnInteraction = () => {
+        oncePerSession(HOME_VISIT_KEY, () =>
+          writeAnalyticsEvent('page_visit', {
+            page: 'home',
+            source: 'user_interaction',
+          })
+        );
+        document.removeEventListener('click', trackOnInteraction);
+        document.removeEventListener('scroll', trackOnInteraction);
+      };
+      document.addEventListener('click', trackOnInteraction, { once: true });
+      document.addEventListener('scroll', trackOnInteraction, { once: true, passive: true });
+      return Promise.resolve(false);
+    }
+
     return oncePerSession(HOME_VISIT_KEY, () =>
       writeAnalyticsEvent('page_visit', {
         page: 'home',
