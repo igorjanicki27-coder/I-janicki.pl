@@ -20,6 +20,30 @@ let updaterEventsBound = false
 const restartReminderHandles = new Set<NodeJS.Timeout>()
 let rustDeskPolicyInterval: NodeJS.Timeout | null = null
 const { autoUpdater } = electronUpdater
+const singleInstanceLock = app.requestSingleInstanceLock()
+const startInTray = process.argv.includes('--tray')
+
+function focusMainWindow() {
+  if (!mainWindow) return
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show()
+  }
+
+  mainWindow.focus()
+}
+
+if (!singleInstanceLock) {
+  app.exit(0)
+}
+
+app.on('second-instance', () => {
+  focusMainWindow()
+})
 
 function getIconPath() {
   return app.isPackaged ? path.join(process.resourcesPath, 'resources', 'icon.png') : path.join(app.getAppPath(), 'build', 'icon.png')
@@ -86,6 +110,12 @@ function createWindow() {
   } else {
     void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.once('ready-to-show', () => {
+    if (!startInTray) {
+      focusMainWindow()
+    }
+  })
 }
 
 function createTray() {
@@ -302,6 +332,10 @@ function registerIpc() {
 }
 
 app.whenReady().then(() => {
+  if (!singleInstanceLock) {
+    return
+  }
+
   app.setLoginItemSettings({
     openAtLogin: Boolean(localStore.get('autoLaunch')),
     path: process.execPath,
@@ -318,7 +352,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    mainWindow?.show()
+    focusMainWindow()
   })
 })
 

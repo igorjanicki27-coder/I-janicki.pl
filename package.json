@@ -1,0 +1,19 @@
+{
+  "name": "i-janicki-pl",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "postcss styles.css -o styles.min.css",
+    "build:js": "terser script.js -o script.min.js -c -m"
+  },
+  "devDependencies": {
+    "cssnano": "^7.0.0",
+    "postcss": "^8.5.13",
+    "postcss-cli": "^11.0.0",
+    "terser": "^5.39.0"
+  },
+  "dependencies": {
+    "@fullhuman/postcss-purgecss": "^8.0.0"
+  }
+}

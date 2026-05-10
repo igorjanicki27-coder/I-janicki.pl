@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { app, shell } from 'electron'
 import { google } from 'googleapis'
+import { CodeChallengeMethod } from 'google-auth-library'
 import type { GoogleOAuthTokens } from '@shared/contracts'
 
 const GOOGLE_DESKTOP_SCOPES = [
@@ -16,6 +17,7 @@ const GOOGLE_DESKTOP_SCOPES = [
 
 const AUTH_TIMEOUT_MS = 3 * 60 * 1000
 const GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE = 'resources/google-oauth-desktop.local.json'
+const GOOGLE_DESKTOP_CREDENTIALS_FILENAME = 'google-oauth-desktop.local.json'
 
 function getEnvValue(...keys: string[]) {
   for (const key of keys) {
@@ -29,16 +31,23 @@ function getEnvValue(...keys: string[]) {
 function getResourceCandidates() {
   const candidates = [
     getEnvValue('GOOGLE_DESKTOP_CREDENTIALS_PATH'),
-    path.resolve(app.getAppPath(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE)
+    path.join(app.getPath('userData'), GOOGLE_DESKTOP_CREDENTIALS_FILENAME),
+    path.join(app.getPath('appData'), 'i-janek', GOOGLE_DESKTOP_CREDENTIALS_FILENAME),
+    path.join(app.getPath('appData'), 'i-JANEK', GOOGLE_DESKTOP_CREDENTIALS_FILENAME)
   ]
 
-  if (typeof process.resourcesPath === 'string' && process.resourcesPath) {
-    candidates.push(path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
+  if (!app.isPackaged) {
+    candidates.push(path.resolve(app.getAppPath(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
+    candidates.push(path.resolve(process.cwd(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
   }
 
-  candidates.push(path.resolve(process.cwd(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
-
   return [...new Set(candidates.filter(Boolean))]
+}
+
+function describeSearchedPaths() {
+  return getResourceCandidates()
+    .map((candidate) => `- ${candidate}`)
+    .join('\n')
 }
 
 function extractCredentials(source: unknown) {
@@ -119,7 +128,12 @@ function getGoogleDesktopAuthConfig() {
 
   if (!clientId || !clientSecret) {
     throw new Error(
-      `Brakuje konfiguracji desktopowego Google OAuth. Dodaj plik ${GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE} albo ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w pliku .env.`
+      [
+        'Brakuje konfiguracji desktopowego Google OAuth.',
+        `Instalator powinien skopiować plik do ${path.join(app.getPath('userData'), GOOGLE_DESKTOP_CREDENTIALS_FILENAME)}.`,
+        'Aplikacja sprawdza kolejno te lokalizacje:',
+        describeSearchedPaths()
+      ].join('\n')
     )
   }
 
@@ -284,7 +298,7 @@ export async function signInWithGoogleDesktop(): Promise<GoogleOAuthTokens> {
             include_granted_scopes: true,
             prompt: 'consent select_account',
             state: expectedState,
-            code_challenge_method: 'S256',
+            code_challenge_method: CodeChallengeMethod.S256,
             code_challenge: verifier.codeChallenge
           })
 

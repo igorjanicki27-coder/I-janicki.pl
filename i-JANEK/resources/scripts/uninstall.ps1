@@ -28,6 +28,15 @@ foreach ($path in $cleanupPaths) {
   }
 }
 
+foreach ($oauthTarget in @(
+  (Join-Path $env:APPDATA "i-janek\google-oauth-desktop.local.json"),
+  (Join-Path $env:APPDATA "i-JANEK\google-oauth-desktop.local.json")
+)) {
+  if (Test-Path $oauthTarget) {
+    Remove-Item -Path $oauthTarget -Force -ErrorAction SilentlyContinue
+  }
+}
+
 $rustDeskTargets = @(
   (Join-Path $env:APPDATA "RustDesk\config\RustDesk.toml"),
   (Join-Path $env:APPDATA "RustDesk\config\RustDesk2.toml"),

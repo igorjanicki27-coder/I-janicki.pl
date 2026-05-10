@@ -18,8 +18,9 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
    - Dla aplikacji Electron utwórz w Google Cloud OAuth Client typu `Desktop app`.
    - Masz dwie darmowe opcje konfiguracji:
      - w `.env` wpisz `GOOGLE_DESKTOP_CLIENT_ID` i `GOOGLE_DESKTOP_CLIENT_SECRET`
-     - albo wstaw pobrany JSON jako `resources/google-oauth-desktop.local.json` i zostaw `GOOGLE_DESKTOP_CREDENTIALS_PATH=resources/google-oauth-desktop.local.json`
-   - Plik `resources/google-oauth-desktop.local.json` jest ignorowany przez git i działa zarówno w dev, jak i po buildzie.
+     - albo dostarczony przez instalator plik JSON, który trafia do `%APPDATA%\i-JANEK\google-oauth-desktop.local.json`
+   - Instalator kopiuje JSON automatycznie do profilu użytkownika, więc nie trzeba go dogrywać ręcznie.
+   - Przy ręcznym uruchomieniu aplikacja pokazuje główne okno od razu; tryb `--tray` jest zarezerwowany dla autostartu.
 3. (RustDesk) Ustaw globalnie na Windows:
    - `RUSTDESK_CONFIG_STRING` (konfiguracja serwera eksportowana z RustDesk)
    - `RUSTDESK_LOCK_CONFIG=1` (wymuszenie blokady ręcznej edycji konfiguracji)

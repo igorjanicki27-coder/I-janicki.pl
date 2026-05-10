@@ -146,7 +146,7 @@ html[data-theme="light"] .bg-scan { opacity: 0.2; }
 }
 html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
 
-.brand { display: inline-flex; align-items: center; gap: 16px; text-decoration: none; justify-content: center; flex-wrap: wrap; }
+.brand { display: inline-flex; align-items: center; gap: 16px; text-decoration: none; justify-content: center; flex-wrap: wrap; min-height: 44px; }
 .brand img { height: 34px; display: block; filter: drop-shadow(0 0 12px rgba(127,64,255,0.4)); }
 .brand-name {
   font-family: 'Orbitron', sans-serif; font-size: 15px; font-weight: 700;
@@ -210,6 +210,11 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
   transition: all 0.3s var(--ease);
   cursor: pointer; padding: 0;
   font-size: 0;
+  position: relative;
+}
+/* Powiększa obszar dotyku do 44×44px bez zmiany wyglądu (WCAG 2.5.5) */
+.tut-dot::after {
+  content: ''; position: absolute; inset: -18px;
 }
 .tut-dot.is-done {
   background: var(--accent-4);

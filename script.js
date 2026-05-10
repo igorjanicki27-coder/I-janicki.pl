@@ -603,17 +603,27 @@ function initEyeTracking() {
   document.addEventListener('mousemove', trackEyes, { passive: true });
 }
 
+let _eyeRafId  = null;
+let _eyeLastE  = null;
+
 function trackEyes(e) {
-  const svg = dom.botSvg;
-  if (!svg) return;
-  try {
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const sp = pt.matrixTransform(svg.getScreenCTM().inverse());
-    moveEye(dom.pupilL, dom.shineL,  88, 100, sp.x, sp.y, 5);
-    moveEye(dom.pupilR, dom.shineR, 132, 100, sp.x, sp.y, 5);
-  } catch (_) { /* SVG not yet painted */ }
+  _eyeLastE = e;
+  if (_eyeRafId) return;
+  // Throttlowanie do 1 odczytu getScreenCTM() na klatkę — eliminuje nadmiarowe layouty
+  _eyeRafId = requestAnimationFrame(() => {
+    _eyeRafId = null;
+    const svg = dom.botSvg;
+    const ev  = _eyeLastE;
+    if (!svg || !ev) return;
+    try {
+      const pt = svg.createSVGPoint();
+      pt.x = ev.clientX;
+      pt.y = ev.clientY;
+      const sp = pt.matrixTransform(svg.getScreenCTM().inverse());
+      moveEye(dom.pupilL, dom.shineL,  88, 100, sp.x, sp.y, 5);
+      moveEye(dom.pupilR, dom.shineR, 132, 100, sp.x, sp.y, 5);
+    } catch (_) { /* SVG not yet painted */ }
+  });
 }
 
 // cx/cy = eye centre in SVG space; maxR = max pupil offset in SVG units
@@ -790,9 +800,13 @@ function goStep(idx) {
   tutStep = targetIdx;
   const step = steps[tutStep];
 
-  const stage = document.getElementById('stage');
-  if (stage) stage.scrollTop = 0;
-  window.scrollTo({ top: 0 });
+  // Odroczone do następnej klatki — eliminuje wymuszone przeformatowanie
+  // (zapis scrollTop przy oczekujących zmianach stylu powoduje flush layoutu)
+  requestAnimationFrame(() => {
+    const stage = document.getElementById('stage');
+    if (stage) stage.scrollTop = 0;
+    window.scrollTo({ top: 0 });
+  });
 
   // Mark current step as visited
   visitedSteps.add(tutStep);

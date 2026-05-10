@@ -4,9 +4,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 $appName = "i-JANEK"
+$userDataDirs = @(
+  (Join-Path $env:APPDATA "i-janek"),
+  (Join-Path $env:APPDATA "i-JANEK")
+)
+$oauthSource = Join-Path $PSScriptRoot "..\google-oauth-desktop.local.json"
 
 if (Test-Path $CertPath) {
   Import-Certificate -FilePath $CertPath -CertStoreLocation "Cert:\\LocalMachine\\Root" | Out-Null
+}
+
+foreach ($userDataDir in $userDataDirs) {
+  $null = New-Item -ItemType Directory -Path $userDataDir -Force
+  if (Test-Path $oauthSource) {
+    Copy-Item -Path $oauthSource -Destination (Join-Path $userDataDir "google-oauth-desktop.local.json") -Force
+  }
 }
 
 $runKey = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"

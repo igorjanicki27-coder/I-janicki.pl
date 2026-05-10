@@ -24,6 +24,12 @@ fi
 echo "[1/3] Typecheck"
 npm run typecheck
 
+if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
+  echo "[ERROR] Brakuje resources/google-oauth-desktop.local.json. Instalator nie będzie miał wbudowanej konfiguracji Google OAuth."
+  echo "        Dodaj plik do resources/ przed buildem."
+  exit 1
+fi
+
 echo "[2/4] Prepare icons"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
