@@ -3,7 +3,6 @@ import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Order, OrderItem, OrderStatus, UnitMode, StandardUnit } from '../types';
-import { format } from 'date-fns';
 import { Copy, Trash2, Plus, Download } from 'lucide-react';
 import { downloadOrderPDF } from '../lib/pdf';
 
@@ -84,15 +83,21 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             <h3 className="text-base sm:text-xl font-bold break-words leading-tight">{order.name}</h3>
           </div>
           
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block">Status</label>
+          <div className="sm:hidden grid grid-cols-2 gap-2 mb-3">
             <button
               type="button"
               onClick={() => setShowStatusControls((prev) => !prev)}
-              className="sm:hidden px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/70 text-xs font-bold"
+              className="h-12 px-3 rounded-lg border border-white/10 bg-white/5 text-white/70 text-xs font-bold"
             >
-              {showStatusControls ? 'Ukryj zmianę' : 'Zmień status'}
+              {showStatusControls ? 'Ukryj status' : 'Zmień status'}
             </button>
+            <button onClick={downloadPDF} className="h-12 flex items-center justify-center gap-2 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-bold text-xs bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+              <Download className="w-4 h-4" /> Pobierz PDF
+            </button>
+          </div>
+
+          <div className="hidden sm:flex items-center justify-between mb-3">
+            <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block">Status</label>
           </div>
           <div className={`${showStatusControls ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2`}>
             <button onClick={() => updateOrder(orderId, { status: 'otwarte' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'otwarte' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>OTWARTE</button>
@@ -103,7 +108,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
           </div>
         </div>
 
-        <div className="space-y-3 mt-auto pt-6">
+        <div className="hidden sm:block space-y-3 mt-auto pt-6">
           <div className="bg-white/5 p-4 rounded-xl border border-white/5 mb-3">
              <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Pozycje</div>
              <div className="font-mono text-xl">{order.items.length.toString().padStart(2, '0')}</div>
@@ -116,14 +121,6 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
 
       {/* Main Editor Pane */}
       <div className="flex-1 flex flex-col relative w-full overflow-hidden min-h-0">
-        
-        {/* Header summary inside main pane */}
-        <div className="p-3 sm:p-6 border-b border-white/5 bg-black/10 shrink-0">
-           <div className="text-white/40 text-[11px] font-medium tracking-wide">
-             ID: #{order.id.slice(0, 8)} • Zaktualizowano: {format(order.updatedAt, 'dd.MM.yyyy HH:mm')}
-           </div>
-        </div>
-
         <div className="flex-1 modal-scroll-y overflow-y-auto p-3 sm:p-6 space-y-3 pb-4 min-h-0">
           <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-2 sm:mb-4">Pozycje Zlecenia</label>
           {order.items.map((item, index) => (
@@ -236,11 +233,39 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
         
         {/* Action Area */}
         <div className="shrink-0 p-3 sm:p-4 border-t border-white/5 bg-[#0f0f0f]/90 backdrop-blur-md">
-          <div className="mb-3 sm:mb-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+          <div className="sm:hidden mb-3 grid grid-cols-2 gap-2">
+            <div className="h-12 rounded-xl border border-white/10 bg-white/5 px-3 flex items-center justify-between">
+              <span className="text-[10px] uppercase text-white/40 font-bold tracking-widest">Pozycje</span>
+              <span className="font-mono font-bold text-white text-lg">{order.items.length.toString().padStart(2, '0')}</span>
+            </div>
+            <div className="h-12 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 flex items-center justify-between">
+              <span className="text-[10px] uppercase text-emerald-500/60 font-bold tracking-widest">Razem</span>
+              <span className="font-mono font-bold text-emerald-400 text-lg">{order.total.toLocaleString('pl-PL')} zł</span>
+            </div>
+          </div>
+
+          <div className="hidden sm:block mb-3 sm:mb-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
             <div className="text-[10px] uppercase text-emerald-500/60 font-bold tracking-widest mb-1">Wartość całkowita</div>
             <div className="font-mono font-bold text-emerald-400 text-2xl sm:text-3xl">{order.total.toLocaleString('pl-PL')} zł</div>
           </div>
-          <div className="flex flex-col sm:flex-row justify-between gap-4 w-full">
+
+          <div className="sm:hidden grid grid-cols-2 gap-2 w-full">
+            {!isReadOnly ? (
+              <button 
+                onClick={addItem}
+                className="h-12 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-500 px-3 flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-emerald-900/20"
+              >
+                <Plus className="w-4 h-4" /> Dodaj
+              </button>
+            ) : (
+              <div />
+            )}
+            <button onClick={onClose} className={`h-12 rounded-xl bg-white text-black text-sm font-bold shadow-lg shadow-white/10 hover:bg-white/90 transition-transform active:scale-95 ${isReadOnly ? 'col-span-2' : ''}`}>
+              Zamknij / Zapisz
+            </button>
+          </div>
+
+          <div className="hidden sm:flex flex-col sm:flex-row justify-between gap-4 w-full">
             {!isReadOnly ? (
               <button 
                 onClick={addItem}
@@ -251,7 +276,6 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             ) : (
               <div />
             )}
-            
             <div className="flex gap-3 justify-end items-center">
               <button onClick={onClose} className="px-8 py-3 rounded-xl bg-white text-black text-sm font-bold shadow-lg shadow-white/10 hover:bg-white/90 transition-transform active:scale-95 whitespace-nowrap">
                 Zamknij / Zapisz
