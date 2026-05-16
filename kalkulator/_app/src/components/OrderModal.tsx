@@ -13,6 +13,7 @@ interface OrderModalProps {
   orders: Order[];
   updateOrder: (id: string, updates: Partial<Order>) => void;
   updateOrderItems: (id: string, items: OrderItem[]) => void;
+  onDeleteOrder: (id: string) => Promise<void> | void;
 }
 
 const unitGroups: Record<string, StandardUnit[]> = {
@@ -23,7 +24,7 @@ const unitGroups: Record<string, StandardUnit[]> = {
   'Czas': ['ms', 's', 'min', 'h', 'd', 'rb/h']
 };
 
-export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, updateOrderItems }: OrderModalProps) {
+export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, updateOrderItems, onDeleteOrder }: OrderModalProps) {
   const order = orders.find(o => o.id === orderId);
   if (!order) return null;
   const [showStatusControls, setShowStatusControls] = useState(false);
@@ -69,6 +70,12 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
     downloadOrderPDF(order);
   };
 
+  const handleDeleteOrder = async () => {
+    const shouldDelete = window.confirm(`Czy na pewno chcesz usunąć zlecenie "${order.name}"?`);
+    if (!shouldDelete) return;
+    await onDeleteOrder(orderId);
+  };
+
   return (
     <Modal 
       isOpen={isOpen} 
@@ -104,7 +111,10 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             <button onClick={() => updateOrder(orderId, { status: 'zakończone' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'zakończone' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>ZAKOŃCZONE</button>
             <button onClick={() => updateOrder(orderId, { status: 'opłacone' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'opłacone' ? 'bg-purple-500/10 border border-purple-500/20 text-purple-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>OPŁACONE</button>
             <button onClick={() => updateOrder(orderId, { status: 'wstrzymano' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'wstrzymano' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>WSTRZYMAJ</button>
-            <button onClick={() => updateOrder(orderId, { status: 'anulowano' })} className={`py-2 rounded-lg text-xs font-bold col-span-2 ${order.status === 'anulowano' ? 'bg-red-500/10 border border-red-500/20 text-red-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 text-red-500/50'}`}>ANULOWANE</button>
+            <button onClick={() => updateOrder(orderId, { status: 'anulowano' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'anulowano' ? 'bg-red-500/10 border border-red-500/20 text-red-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 text-red-500/50'}`}>ANULOWANE</button>
+            <button onClick={handleDeleteOrder} className="py-2 rounded-lg text-xs font-bold border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 inline-flex items-center justify-center gap-1.5">
+              <Trash2 className="w-3 h-3" /> USUŃ
+            </button>
           </div>
         </div>
 

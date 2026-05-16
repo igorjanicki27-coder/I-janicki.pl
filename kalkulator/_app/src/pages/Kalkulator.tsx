@@ -19,7 +19,7 @@ const statusColors: Record<OrderStatus, string> = {
 };
 
 export default function Kalkulator() {
-  const { orders, addOrder, updateOrder, updateOrderItems, isLoading, error } = useOrders();
+  const { orders, addOrder, updateOrder, updateOrderItems, deleteOrder, isLoading, error } = useOrders();
   const [activeModal, setActiveModal] = useState<'add' | 'search' | 'finance' | 'order' | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   
@@ -55,6 +55,14 @@ export default function Kalkulator() {
   const handleOpenOrder = (id: string) => {
     setSelectedOrderId(id);
     setActiveModal('order');
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    await deleteOrder(id);
+    if (selectedOrderId === id) {
+      setActiveModal(null);
+      setSelectedOrderId(null);
+    }
   };
 
   return (
@@ -207,6 +215,7 @@ export default function Kalkulator() {
           orders={orders}
           updateOrder={updateOrder}
           updateOrderItems={updateOrderItems}
+          onDeleteOrder={handleDeleteOrder}
         />
       )}
     </div>
