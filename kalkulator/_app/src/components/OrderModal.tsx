@@ -79,10 +79,10 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       isOpen={isOpen} 
       onClose={onClose} 
       className="max-w-[1000px] w-full border border-white/10 shadow-2xl flex flex-col p-0 bg-[#0f0f0f]"
-      contentClassName="p-0 overflow-hidden flex flex-col sm:flex-row h-[90vh] sm:h-auto max-h-[90vh]"
+      contentClassName="p-0 overflow-hidden flex flex-col sm:flex-row h-[90dvh] sm:h-auto max-h-[90dvh] min-h-0"
     >
       {/* Sidebar Summary */}
-      <div className="w-full sm:w-[280px] shrink-0 border-b sm:border-b-0 sm:border-r border-white/5 p-6 space-y-6 bg-black/20 flex flex-col overflow-y-auto">
+      <div className="w-full sm:w-[280px] shrink-0 border-b sm:border-b-0 sm:border-r border-white/5 p-6 space-y-6 bg-black/20 flex flex-col modal-scroll-y overflow-y-auto min-h-0">
         <div>
           <div className="flex items-center gap-3 mb-6">
             <h3 className="text-xl font-bold break-words leading-tight">{order.name}</h3>
@@ -110,7 +110,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       </div>
 
       {/* Main Editor Pane */}
-      <div className="flex-1 flex flex-col relative w-full overflow-hidden">
+      <div className="flex-1 flex flex-col relative w-full overflow-hidden min-h-0">
         
         {/* Header summary inside main pane */}
         <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/10 shrink-0">
@@ -123,7 +123,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-3 pb-24">
+        <div className="flex-1 modal-scroll-y overflow-y-auto p-6 space-y-3 pb-24 min-h-0">
           <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-4">Pozycje Zlecenia</label>
           {order.items.map((item, index) => (
             <div key={item.id} className="relative group bg-white/5 border border-white/5 rounded-2xl p-4 sm:p-5 transition-colors hover:bg-white/[0.07] flex flex-col gap-4">

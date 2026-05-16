@@ -49,3 +49,9 @@ body {
 .pin-reveal-logo {
   animation: pinRevealLogo 2s ease both;
 }
+
+.modal-scroll-y {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}

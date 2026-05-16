@@ -43,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children, className, contentClas
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className={cn(
-              "relative w-full max-h-[90vh] bg-[#0f0f0f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col",
+              "relative w-full max-h-[90vh] bg-[#0f0f0f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0",
               className || "max-w-md"
             )}
             onClick={(e) => e.stopPropagation()}
@@ -59,7 +59,7 @@ export function Modal({ isOpen, onClose, title, children, className, contentClas
                 </button>
               </div>
             )}
-            <div className={cn("overflow-y-auto overscroll-contain", contentClassName || "p-5 sm:p-6")}>
+            <div className={cn("modal-scroll-y overflow-y-auto overscroll-contain min-h-0", contentClassName || "p-5 sm:p-6")}>
               {children}
             </div>
           </motion.div>
