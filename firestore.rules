@@ -143,6 +143,10 @@ service cloud.firestore {
         && request.resource.data.approved == true;
     }
 
+    match /calculator_orders/{orderId} {
+      allow read, write: if true;
+    }
+
     match /devices/{deviceId} {
       allow read: if isMaster() || isDeviceOwner();
       allow create: if isMaster() || isCreatingOwnDevice();

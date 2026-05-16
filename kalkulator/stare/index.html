@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="description" content="Kalkulator zleceń i-JANICKI. PIN, lista zleceń, pozycje, statusy i podsumowania w Firebase." />
+  <title>Kalkulator zleceń | i-JANICKI</title>
+  <link rel="icon" type="image/png" href="./logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700;800&display=swap" />
+  </noscript>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-overlay"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Powrót na stronę główną">
+      <img src="./logo.png" alt="i-JANICKI" />
+      <span class="brand-copy">
+        <strong>i-JANICKI</strong>
+        <span>Kalkulator zleceń</span>
+      </span>
+    </a>
+  </header>
+
+  <main class="page">
+    <section class="gate-view" id="gateView">
+      <div class="gate-card">
+        <div class="gate-copy">
+          <p class="eyebrow">Dostęp chroniony PIN-em</p>
+          <h1>Kalkulator zleceń</h1>
+          <p class="lead">Wpisz 4 cyfry, a strona sama otworzy panel. Po 5 błędach wejście blokuje się na 2 minuty.</p>
+        </div>
+
+        <div class="pin-box" id="pinBox" aria-label="PIN">
+          <input
+            id="pinInput"
+            class="pin-input"
+            type="tel"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="4"
+            aria-label="Kod PIN"
+          />
+          <div class="pin-cells" aria-hidden="true">
+            <span class="pin-cell"></span>
+            <span class="pin-cell"></span>
+            <span class="pin-cell"></span>
+            <span class="pin-cell"></span>
+          </div>
+        </div>
+
+        <div class="gate-status">
+          <span id="pinHint">Wpisz kod, żeby wejść.</span>
+          <span id="lockTimer"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard-view" id="dashboardView" hidden>
+      <div class="workspace">
+        <aside class="panel list-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Spis zleceń</p>
+              <h2>Wszystkie zlecenia</h2>
+            </div>
+            <button class="ghost-btn" id="refreshBtn" type="button">Odśwież</button>
+          </div>
+
+          <div class="list-panel-intro">
+            <p class="list-panel-title">Główny widok</p>
+            <p>To jest teraz centralny widok strony. Kliknięcie kafla otwiera osobne okno z pełną edycją zlecenia.</p>
+          </div>
+
+          <div class="list-meta">
+            <span id="ordersCount">0 zleceń</span>
+            <span id="filteredCount"></span>
+          </div>
+
+          <div class="order-list" id="ordersList" aria-live="polite"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="fab-stack" aria-label="Szybkie akcje">
+    <button class="fab" id="moneyFab" type="button" aria-label="Podsumowanie pieniędzy" title="Podsumowanie pieniędzy">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 9.5c0-1.93 2.24-3.5 5-3.5s5 1.57 5 3.5-2.24 3.5-5 3.5-5 1.57-5 3.5 2.24 3.5 5 3.5 5-1.57 5-3.5" />
+        <path d="M12 4.5v15" />
+      </svg>
+    </button>
+    <button class="fab" id="searchFab" type="button" aria-label="Wyszukaj i filtruj" title="Wyszukaj i filtruj">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="m16 16 4.5 4.5" />
+      </svg>
+    </button>
+    <button class="fab is-add" id="addOrderFab" type="button" aria-label="Dodaj zlecenie" title="Dodaj zlecenie">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="modal" id="addOrderModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="addOrderTitle">
+    <div class="modal-backdrop" data-close="add-order"></div>
+    <div class="modal-card modal-card-narrow">
+      <div class="modal-head">
+        <div>
+          <p class="panel-kicker">Dodawanie zlecenia</p>
+          <h2 id="addOrderTitle">Nowe zlecenie</h2>
+        </div>
+        <button class="icon-btn" type="button" data-close="add-order" aria-label="Zamknij">✕</button>
+      </div>
+
+      <form class="create-order create-order-modal" id="createOrderForm">
+        <label class="field">
+          <span>Nazwa zlecenia</span>
+          <input id="newOrderName" type="text" placeholder="Np. Montaż instalacji elektrycznej" maxlength="120" required />
+        </label>
+        <div class="modal-actions">
+          <button class="primary-btn" type="submit">Dodaj zlecenie</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="orderModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
+    <div class="modal-backdrop" data-close="order"></div>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-head">
+        <div>
+          <p class="panel-kicker">Zlecenie</p>
+          <h2 id="orderModalTitle">Podgląd i edycja</h2>
+        </div>
+        <button class="icon-btn" type="button" data-close="order" aria-label="Zamknij">✕</button>
+      </div>
+      <div id="detailPane"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="searchModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchTitle">
+    <div class="modal-backdrop" data-close="search"></div>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-head">
+        <div>
+          <p class="panel-kicker">Wyszukiwarka</p>
+          <h2 id="searchTitle">Szukaj, sortuj i filtruj</h2>
+        </div>
+        <button class="icon-btn" type="button" data-close="search" aria-label="Zamknij">✕</button>
+      </div>
+
+      <div class="search-grid">
+        <label class="field">
+          <span>Wyszukaj po nazwie lub cenie</span>
+          <input id="searchInput" type="search" placeholder="Szukaj zlecenia, usługi albo kwoty..." />
+        </label>
+
+        <label class="field">
+          <span>Sortowanie</span>
+          <select id="sortSelect">
+            <option value="newest">Najnowsze</option>
+            <option value="oldest">Najstarsze</option>
+            <option value="name-asc">Nazwa A-Z</option>
+            <option value="name-desc">Nazwa Z-A</option>
+            <option value="total-desc">Kwota malejąco</option>
+            <option value="total-asc">Kwota rosnąco</option>
+            <option value="updated-desc">Ostatnia zmiana</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="status-filter-wrap">
+        <span class="filter-label">Statusy</span>
+        <div class="status-filter-list" id="statusFilters"></div>
+      </div>
+
+      <div class="modal-summary" id="searchSummary"></div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="moneyModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="moneyTitle">
+    <div class="modal-backdrop" data-close="money"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <p class="panel-kicker">Suma pieniędzy</p>
+          <h2 id="moneyTitle">Podsumowanie zleceń</h2>
+        </div>
+        <button class="icon-btn" type="button" data-close="money" aria-label="Zamknij">✕</button>
+      </div>
+      <div class="money-grid" id="moneySummary"></div>
+    </div>
+  </div>
+
+  <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./config.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>

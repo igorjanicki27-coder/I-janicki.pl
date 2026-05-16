@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm run build:css && npm run build:js",
+    "build": "npm run build:kalkulator && npm run build:css && npm run build:js",
+    "build:kalkulator": "node scripts/build-kalkulator-config.mjs",
     "build:css": "postcss styles.css -o styles.min.css",
     "build:js": "terser script.js -o script.min.js -c -m"
   },
