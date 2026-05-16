@@ -87,12 +87,12 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             <button
               type="button"
               onClick={() => setShowStatusControls((prev) => !prev)}
-              className="h-12 px-3 rounded-lg border border-white/10 bg-white/5 text-white/70 text-xs font-bold"
+              className="h-6 px-3 rounded-lg border border-white/10 bg-white/5 text-white/70 text-[11px] font-bold"
             >
               {showStatusControls ? 'Ukryj status' : 'Zmień status'}
             </button>
-            <button onClick={downloadPDF} className="h-12 flex items-center justify-center gap-2 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-bold text-xs bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-              <Download className="w-4 h-4" /> Pobierz PDF
+            <button onClick={downloadPDF} className="h-6 flex items-center justify-center gap-1.5 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-bold text-[11px] bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+              <Download className="w-3 h-3" /> Pobierz PDF
             </button>
           </div>
 
@@ -234,11 +234,11 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
         {/* Action Area */}
         <div className="shrink-0 p-3 sm:p-4 border-t border-white/5 bg-[#0f0f0f]/90 backdrop-blur-md">
           <div className="sm:hidden mb-3 grid grid-cols-2 gap-2">
-            <div className="h-12 rounded-xl border border-white/10 bg-white/5 px-3 flex items-center justify-between">
+            <div className="h-6 rounded-xl border border-white/10 bg-white/5 px-3 flex items-center justify-between">
               <span className="text-[10px] uppercase text-white/40 font-bold tracking-widest">Pozycje</span>
               <span className="font-mono font-bold text-white text-lg">{order.items.length.toString().padStart(2, '0')}</span>
             </div>
-            <div className="h-12 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 flex items-center justify-between">
+            <div className="h-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 flex items-center justify-between">
               <span className="text-[10px] uppercase text-emerald-500/60 font-bold tracking-widest">Razem</span>
               <span className="font-mono font-bold text-emerald-400 text-lg">{order.total.toLocaleString('pl-PL')} zł</span>
             </div>
@@ -253,14 +253,14 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             {!isReadOnly ? (
               <button 
                 onClick={addItem}
-                className="h-12 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-500 px-3 flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-emerald-900/20"
+                className="h-6 bg-emerald-600 text-white font-bold rounded-xl text-[11px] hover:bg-emerald-500 px-3 flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-lg shadow-emerald-900/20"
               >
-                <Plus className="w-4 h-4" /> Dodaj
+                <Plus className="w-3 h-3" /> Dodaj
               </button>
             ) : (
               <div />
             )}
-            <button onClick={onClose} className={`h-12 rounded-xl bg-white text-black text-sm font-bold shadow-lg shadow-white/10 hover:bg-white/90 transition-transform active:scale-95 ${isReadOnly ? 'col-span-2' : ''}`}>
+            <button onClick={onClose} className={`h-6 rounded-xl bg-white text-black text-[11px] font-bold shadow-lg shadow-white/10 hover:bg-white/90 transition-transform active:scale-95 ${isReadOnly ? 'col-span-2' : ''}`}>
               Zamknij / Zapisz
             </button>
           </div>
