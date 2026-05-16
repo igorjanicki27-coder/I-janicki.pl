@@ -79,13 +79,13 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       isOpen={isOpen} 
       onClose={onClose} 
       className="max-w-[1000px] w-full border border-white/10 shadow-2xl flex flex-col p-0 bg-[#0f0f0f]"
-      contentClassName="p-0 overflow-hidden flex flex-col sm:flex-row h-[90dvh] sm:h-auto max-h-[90dvh] min-h-0"
+      contentClassName="p-0 overflow-hidden flex flex-col sm:flex-row h-[94dvh] sm:h-auto max-h-[94dvh] sm:max-h-[90vh] min-h-0"
     >
       {/* Sidebar Summary */}
-      <div className="w-full sm:w-[280px] shrink-0 border-b sm:border-b-0 sm:border-r border-white/5 p-6 space-y-6 bg-black/20 flex flex-col modal-scroll-y overflow-y-auto min-h-0">
+      <div className="w-full sm:w-[280px] shrink-0 max-h-[34dvh] sm:max-h-none border-b sm:border-b-0 sm:border-r border-white/5 p-3 sm:p-6 space-y-3 sm:space-y-6 bg-black/20 flex flex-col modal-scroll-y overflow-y-auto min-h-0">
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <h3 className="text-xl font-bold break-words leading-tight">{order.name}</h3>
+          <div className="flex items-center gap-3 mb-3 sm:mb-6">
+            <h3 className="text-base sm:text-xl font-bold break-words leading-tight">{order.name}</h3>
           </div>
           
           <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-3">Zmień Status</label>
@@ -113,20 +113,20 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       <div className="flex-1 flex flex-col relative w-full overflow-hidden min-h-0">
         
         {/* Header summary inside main pane */}
-        <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/10 shrink-0">
+        <div className="p-3 sm:p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-black/10 shrink-0">
            <div className="text-white/40 text-[11px] font-medium tracking-wide">
              ID: #{order.id.slice(0, 8)} • Zaktualizowano: {format(order.updatedAt, 'dd.MM.yyyy HH:mm')}
            </div>
            <div className="text-left sm:text-right shrink-0">
-             <div className="text-3xl font-mono font-bold text-emerald-400">{order.total.toLocaleString('pl-PL')} zł</div>
+             <div className="text-xl sm:text-3xl font-mono font-bold text-emerald-400">{order.total.toLocaleString('pl-PL')} zł</div>
              <div className="text-[10px] text-emerald-500/50 uppercase tracking-widest mt-1">Wartość Całkowita brutto</div>
            </div>
         </div>
 
-        <div className="flex-1 modal-scroll-y overflow-y-auto p-6 space-y-3 pb-24 min-h-0">
-          <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-4">Pozycje Zlecenia</label>
+        <div className="flex-1 modal-scroll-y overflow-y-auto p-3 sm:p-6 space-y-3 pb-4 min-h-0">
+          <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-2 sm:mb-4">Pozycje Zlecenia</label>
           {order.items.map((item, index) => (
-            <div key={item.id} className="relative group bg-white/5 border border-white/5 rounded-2xl p-4 sm:p-5 transition-colors hover:bg-white/[0.07] flex flex-col gap-4">
+            <div key={item.id} className="relative group bg-white/5 border border-white/5 rounded-2xl p-3 sm:p-5 transition-colors hover:bg-white/[0.07] flex flex-col gap-3 sm:gap-4">
               {/* Item Actions */}
               <div className="absolute top-2 right-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
                  {!isReadOnly && (
@@ -142,25 +142,25 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
               </div>
 
               {/* Line 1: Service Name & Sum */}
-              <div className="flex gap-4 items-end">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-end">
                 <div className="flex-1">
                    <Input 
                      label="Usługa / Materiał" 
                      value={item.serviceName}
                      onChange={(e) => handleItemChange(index, { serviceName: e.target.value })}
                      disabled={isReadOnly}
-                     className="bg-black/20 text-lg font-medium"
+                     className="bg-black/20 text-base sm:text-lg font-medium"
                    />
                 </div>
-                <div className="w-[120px] sm:w-[140px] shrink-0 text-right">
+                <div className="w-full sm:w-[140px] shrink-0 text-left sm:text-right">
                    <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Suma (zł)</div>
-                   <div className="font-mono font-bold text-emerald-400 text-xl leading-tight h-[42px] flex items-center justify-end border-b border-emerald-500/20">{item.total.toLocaleString('pl-PL')}</div>
+                   <div className="font-mono font-bold text-emerald-400 text-lg sm:text-xl leading-tight h-[36px] sm:h-[42px] flex items-center justify-start sm:justify-end border-b border-emerald-500/20">{item.total.toLocaleString('pl-PL')}</div>
                 </div>
               </div>
 
               {/* Line 2: Unit, Price, Quantity */}
-              <div className="flex gap-2 sm:gap-4 items-end">
-                <div className={item.unitMode === 'custom' ? "w-[75px] sm:w-[100px] shrink-0" : "w-[90px] sm:w-[120px] shrink-0"}>
+              <div className="grid grid-cols-1 sm:flex gap-2 sm:gap-4 items-end">
+                <div className={item.unitMode === 'custom' ? "w-full sm:w-[100px] shrink-0" : "w-full sm:w-[120px] shrink-0"}>
                    <Select 
                      label="J.M."
                      value={item.unitMode === 'custom' ? 'custom' : item.unit}
@@ -184,7 +184,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                 </div>
                 
                 {item.unitMode === 'custom' && (
-                  <div className="w-[75px] sm:w-[100px] shrink-0">
+                  <div className="w-full sm:w-[100px] shrink-0">
                      <Input 
                        label="Własna" 
                        value={item.unit}
@@ -233,7 +233,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
         </div>
         
         {/* Action Area */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5 bg-[#0f0f0f]/80 backdrop-blur-md">
+        <div className="shrink-0 p-3 sm:p-4 border-t border-white/5 bg-[#0f0f0f]/90 backdrop-blur-md">
           <div className="flex flex-col sm:flex-row justify-between gap-4 w-full">
             {!isReadOnly ? (
               <button 

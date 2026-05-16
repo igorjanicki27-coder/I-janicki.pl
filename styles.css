@@ -1586,3 +1586,12 @@ html[data-theme="light"] .doc-panel { background: #fff; }
     transition-duration: 0.1s !important;
   }
 }
+
+/* Header unification: keep only i-JANICKI text in topbar */
+.tutorial-progress {
+  display: none !important;
+}
+
+.brand-name {
+  display: inline-block !important;
+}

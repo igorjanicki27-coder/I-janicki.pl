@@ -30,7 +30,7 @@ export function Modal({ isOpen, onClose, title, children, className, contentClas
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pb-20 sm:pb-6">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -38,31 +38,33 @@ export function Modal({ isOpen, onClose, title, children, className, contentClas
             onClick={onClose}
             className="absolute inset-0 bg-black/85 backdrop-blur-[8px]"
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={cn(
-              "relative w-full max-h-[90vh] bg-[#0f0f0f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0",
-              className || "max-w-md"
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {title && (
-              <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/5 shrink-0">
-                <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 -mr-2 text-white/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20 rounded-xl transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+          <div className="relative min-h-full flex items-center justify-center p-2 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={cn(
+                "relative w-full max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] bg-[#0f0f0f] border border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0",
+                className || "max-w-md"
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {title && (
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/5 shrink-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">{title}</h2>
+                  <button
+                    onClick={onClose}
+                    className="p-2 -mr-2 text-white/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20 rounded-xl transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+              <div className={cn("modal-scroll-y overflow-y-auto overscroll-contain min-h-0", contentClassName || "p-5 sm:p-6")}>
+                {children}
               </div>
-            )}
-            <div className={cn("modal-scroll-y overflow-y-auto overscroll-contain min-h-0", contentClassName || "p-5 sm:p-6")}>
-              {children}
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>,
