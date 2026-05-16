@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-import { Button } from './ui/Button';
 import { Order, OrderItem, OrderStatus, UnitMode, StandardUnit } from '../types';
 import { format } from 'date-fns';
 import { Copy, Trash2, Plus, Download } from 'lucide-react';
@@ -28,12 +27,9 @@ const unitGroups: Record<string, StandardUnit[]> = {
 export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, updateOrderItems }: OrderModalProps) {
   const order = orders.find(o => o.id === orderId);
   if (!order) return null;
+  const [showStatusControls, setShowStatusControls] = useState(false);
 
   const isReadOnly = order.status === 'zakończone' || order.status === 'opłacone' || order.status === 'anulowano';
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateOrder(orderId, { status: e.target.value as OrderStatus });
-  };
 
   const handleItemChange = (index: number, updates: Partial<OrderItem>) => {
     const newItems = [...order.items];
@@ -88,8 +84,17 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
             <h3 className="text-base sm:text-xl font-bold break-words leading-tight">{order.name}</h3>
           </div>
           
-          <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-3">Zmień Status</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block">Status</label>
+            <button
+              type="button"
+              onClick={() => setShowStatusControls((prev) => !prev)}
+              className="sm:hidden px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/70 text-xs font-bold"
+            >
+              {showStatusControls ? 'Ukryj zmianę' : 'Zmień status'}
+            </button>
+          </div>
+          <div className={`${showStatusControls ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2`}>
             <button onClick={() => updateOrder(orderId, { status: 'otwarte' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'otwarte' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>OTWARTE</button>
             <button onClick={() => updateOrder(orderId, { status: 'zakończone' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'zakończone' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>ZAKOŃCZONE</button>
             <button onClick={() => updateOrder(orderId, { status: 'opłacone' })} className={`py-2 rounded-lg text-xs font-bold ${order.status === 'opłacone' ? 'bg-purple-500/10 border border-purple-500/20 text-purple-500' : 'bg-white/5 border border-white/5 text-white/40 hover:bg-white/10'}`}>OPŁACONE</button>
@@ -113,13 +118,9 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       <div className="flex-1 flex flex-col relative w-full overflow-hidden min-h-0">
         
         {/* Header summary inside main pane */}
-        <div className="p-3 sm:p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-black/10 shrink-0">
+        <div className="p-3 sm:p-6 border-b border-white/5 bg-black/10 shrink-0">
            <div className="text-white/40 text-[11px] font-medium tracking-wide">
              ID: #{order.id.slice(0, 8)} • Zaktualizowano: {format(order.updatedAt, 'dd.MM.yyyy HH:mm')}
-           </div>
-           <div className="text-left sm:text-right shrink-0">
-             <div className="text-xl sm:text-3xl font-mono font-bold text-emerald-400">{order.total.toLocaleString('pl-PL')} zł</div>
-             <div className="text-[10px] text-emerald-500/50 uppercase tracking-widest mt-1">Wartość Całkowita brutto</div>
            </div>
         </div>
 
@@ -141,8 +142,8 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                  )}
               </div>
 
-              {/* Line 1: Service Name & Sum */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-end">
+              {/* Line 1: Service Name */}
+              <div className="flex flex-col gap-3 sm:gap-4 items-start sm:items-end">
                 <div className="flex-1">
                    <Input 
                      label="Usługa / Materiał" 
@@ -151,10 +152,6 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                      disabled={isReadOnly}
                      className="bg-black/20 text-base sm:text-lg font-medium"
                    />
-                </div>
-                <div className="w-full sm:w-[140px] shrink-0 text-left sm:text-right">
-                   <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Suma (zł)</div>
-                   <div className="font-mono font-bold text-emerald-400 text-lg sm:text-xl leading-tight h-[36px] sm:h-[42px] flex items-center justify-start sm:justify-end border-b border-emerald-500/20">{item.total.toLocaleString('pl-PL')}</div>
                 </div>
               </div>
 
@@ -222,6 +219,11 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                    />
                 </div>
               </div>
+
+              <div className="pt-2 border-t border-white/10 flex items-end justify-between">
+                <div className="text-[10px] uppercase text-white/40 font-bold tracking-widest">Suma pozycji</div>
+                <div className="font-mono font-bold text-emerald-400 text-lg sm:text-xl">{item.total.toLocaleString('pl-PL')} zł</div>
+              </div>
             </div>
           ))}
 
@@ -234,6 +236,10 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
         
         {/* Action Area */}
         <div className="shrink-0 p-3 sm:p-4 border-t border-white/5 bg-[#0f0f0f]/90 backdrop-blur-md">
+          <div className="mb-3 sm:mb-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+            <div className="text-[10px] uppercase text-emerald-500/60 font-bold tracking-widest mb-1">Wartość całkowita</div>
+            <div className="font-mono font-bold text-emerald-400 text-2xl sm:text-3xl">{order.total.toLocaleString('pl-PL')} zł</div>
+          </div>
           <div className="flex flex-col sm:flex-row justify-between gap-4 w-full">
             {!isReadOnly ? (
               <button 
