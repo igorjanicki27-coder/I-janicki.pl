@@ -5,6 +5,14 @@ import logoDataUrl from '../assets/logo-pdf.png?inline';
 
 export const downloadOrderPDF = (order: Order) => {
   const doc = new jsPDF();
+
+  const drawBackground = () => {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.addImage(logoDataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+  };
+
+  drawBackground();
   
   // Header
   doc.addImage(logoDataUrl, 'PNG', 172, 10, 24, 24);
@@ -31,6 +39,9 @@ export const downloadOrderPDF = (order: Order) => {
     startY: 34,
     head: [tableColumn],
     body: tableRows,
+    willDrawPage: () => {
+      drawBackground();
+    },
     theme: 'grid',
     headStyles: { fillColor: [0, 0, 0] },
     styles: { font: 'helvetica' },
