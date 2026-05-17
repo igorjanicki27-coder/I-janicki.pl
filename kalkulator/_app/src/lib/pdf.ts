@@ -6,16 +6,13 @@ import logoDataUrl from '../assets/logo-pdf.png?inline';
 export const downloadOrderPDF = (order: Order) => {
   const doc = new jsPDF();
 
-  const drawBackground = () => {
+  const drawCornerLogo = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    doc.addImage(logoDataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+    doc.addImage(logoDataUrl, 'PNG', pageWidth - 34, 10, 24, 24);
   };
-
-  drawBackground();
-  
+ 
   // Header
-  doc.addImage(logoDataUrl, 'PNG', 172, 10, 24, 24);
+  drawCornerLogo();
 
   doc.setFontSize(20);
   doc.text(`Zlecenie: ${order.name}`, 14, 22);
@@ -40,7 +37,7 @@ export const downloadOrderPDF = (order: Order) => {
     head: [tableColumn],
     body: tableRows,
     willDrawPage: () => {
-      drawBackground();
+      drawCornerLogo();
     },
     theme: 'grid',
     headStyles: { fillColor: [0, 0, 0] },
