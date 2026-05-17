@@ -32,7 +32,7 @@ export const downloadOrderPDF = (order: Order) => {
     head: [tableColumn],
     body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: [16, 185, 129] }, // emerald-500 theme
+    headStyles: { fillColor: [0, 0, 0] },
     styles: { font: 'helvetica' },
     foot: [
       ['', '', '', '', 'Wartosc Calkowita:', order.total.toLocaleString('pl-PL') + ' zl']
