@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Order } from '../types';
-import logoDataUrl from '../assets/logo.png?inline';
+import logoDataUrl from '../assets/logo-pdf.png?inline';
 
 export const downloadOrderPDF = (order: Order) => {
   const doc = new jsPDF();
