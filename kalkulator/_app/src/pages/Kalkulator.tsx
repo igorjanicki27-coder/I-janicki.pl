@@ -67,7 +67,6 @@ export default function Kalkulator() {
 
   return (
     <div className="flex flex-col h-screen w-full relative overflow-hidden bg-[#050505] text-white font-sans selection:bg-emerald-500/30">
-      <div className="brand-bg-layer" />
       {/* Header */}
       <header className="relative z-10 h-16 shrink-0 border-b border-white/5 px-4 sm:px-8 flex items-center justify-between bg-black/40 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -89,7 +88,7 @@ export default function Kalkulator() {
       </header>
 
       {/* Main List */}
-      <main className="relative z-10 flex-1 p-4 sm:p-8 overflow-hidden">
+      <main className="relative z-10 flex-1 p-4 sm:p-8 overflow-hidden bg-[#050505]">
         <div className="max-w-4xl mx-auto h-full flex flex-col gap-6">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h2 className="text-2xl font-bold">Lista Zleceń</h2>
