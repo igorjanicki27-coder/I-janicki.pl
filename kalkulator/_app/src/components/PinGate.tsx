@@ -101,7 +101,7 @@ export function PinGate({ onUnlock }: PinGateProps) {
 
   return (
     <div className="min-h-screen w-full overflow-hidden bg-[#050505] text-white selection:bg-emerald-500/30">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(20,20,20,0.9)_0%,_rgba(5,5,5,1)_55%)]" />
+      <div className="brand-bg-layer" />
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
         <div
           className="w-full max-w-sm rounded-[28px] bg-[linear-gradient(145deg,rgba(21,25,40,0.78),rgba(9,11,18,0.95))] shadow-[0_20px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(127,64,255,0.18)] backdrop-blur-xl px-6 py-8 sm:px-8 sm:py-10 flex items-center"

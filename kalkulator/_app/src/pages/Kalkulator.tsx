@@ -8,7 +8,7 @@ import { AddOrderModal } from '../components/AddOrderModal';
 import { OrderModal } from '../components/OrderModal';
 import { FinanceModal } from '../components/FinanceModal';
 import { SearchModal } from '../components/SearchModal';
-import logoUrl from '../assets/logo.png';
+import logoUrl from '../assets/logo-login.png';
 
 const statusColors: Record<OrderStatus, string> = {
   otwarte: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',
@@ -67,13 +67,14 @@ export default function Kalkulator() {
 
   return (
     <div className="flex flex-col h-screen w-full relative overflow-hidden bg-[#050505] text-white font-sans selection:bg-emerald-500/30">
+      <div className="brand-bg-layer" />
       {/* Header */}
-      <header className="h-16 shrink-0 border-b border-white/5 px-4 sm:px-8 flex items-center justify-between bg-black/40 backdrop-blur-md z-10">
+      <header className="relative z-10 h-16 shrink-0 border-b border-white/5 px-4 sm:px-8 flex items-center justify-between bg-black/40 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <img
             src={logoUrl}
             alt="Logo i-JANICKI"
-            className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+            className="h-9 w-9 rounded-xl object-contain ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
           />
           <div className="leading-tight">
             <div className="text-[10px] uppercase tracking-[0.32em] text-white/35">i-JANICKI</div>
@@ -88,7 +89,7 @@ export default function Kalkulator() {
       </header>
 
       {/* Main List */}
-      <main className="flex-1 p-4 sm:p-8 overflow-hidden bg-[radial-gradient(circle_at_top_right,_#111_0%,_#050505_100%)]">
+      <main className="relative z-10 flex-1 p-4 sm:p-8 overflow-hidden">
         <div className="max-w-4xl mx-auto h-full flex flex-col gap-6">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h2 className="text-2xl font-bold">Lista Zleceń</h2>
