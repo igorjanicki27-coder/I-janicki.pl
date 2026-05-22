@@ -6,12 +6,12 @@
     <title>Autokomis Nowa Era | Skup i sprzedaż samochodów</title>
     <meta
       name="description"
-      content="Nowoczesny autokomis: skup, sprzedaż, finansowanie i zamiana aut używanych."
+      content="Nowoczesny autokomis: skup, sprzedaż i zamiana aut używanych bez zbędnych formalności."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/main.css" />
@@ -35,41 +35,52 @@
           <a href="#kontakt">Kontakt</a>
         </nav>
 
-        <a class="nav-cta" href="./wyszukiwarka.html">Przeglądaj auta</a>
+        <a class="nav-cta" href="./wyszukiwarka.html">Szukaj auta</a>
       </div>
     </header>
 
     <main>
       <section class="hero section-reveal">
         <div class="container hero-layout">
-          <div class="hero-copy">
-            <p class="eyebrow">Nowoczesny autokomis dla kierowców, którzy cenią spokój.</p>
-            <h1>Kupuj pewnie. Sprzedawaj mądrze.</h1>
+          <div class="hero-copy glass">
+            <p class="eyebrow">Autokomis z charakterem</p>
+            <h1>Pewne auta. Konkretny proces. Zero ściemy.</h1>
             <p>
-              Praktyczne podejście do aut używanych: przejrzyste oferty, szybkie finansowanie,
-              uczciwy skup i konkretna obsługa bez marketingowego hałasu.
+              To nie jest kolejny komis z przypadkowymi ogłoszeniami. Działamy jak nowoczesny
+              marketplace: selekcja aut, jasne zasady, szybka decyzja i pełna transparentność.
             </p>
             <div class="hero-actions">
-              <a class="btn btn-primary" href="./wyszukiwarka.html">Otwórz wyszukiwarkę</a>
+              <a class="btn btn-primary" href="./wyszukiwarka.html">Przejdź do wyszukiwarki</a>
               <a class="btn btn-secondary" href="#skup">Wyceń swoje auto</a>
             </div>
             <ul class="hero-points">
-              <li>Zweryfikowana historia pojazdu</li>
-              <li>Finansowanie i leasing na miejscu</li>
-              <li>Zamiana auta 1:1 bez stresu</li>
+              <li>Zweryfikowana historia i stan techniczny</li>
+              <li>Skup i zamiana bez przeciągania decyzji</li>
+              <li>Obsługa od pierwszego kontaktu do wydania auta</li>
             </ul>
           </div>
 
           <div class="hero-media">
-            <img
-              src="https://images.unsplash.com/photo-1617531653520-4893f7b71e5d?auto=format&fit=crop&w=1600&q=80"
-              alt="Nowoczesny sedan w jasnym showroomie"
-            />
-            <div class="hero-badge glass">
-              <span>Nowość</span>
-              <strong>Mini marketplace + osobna wyszukiwarka</strong>
+            <img src="./assets/hero-premium.png" alt="Nowoczesny sedan premium" />
+            <div class="hero-float glass">
+              <span>Nowa jakość komisu</span>
+              <strong>Mini marketplace + osobna wyszukiwarka ofert</strong>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="mosaic section-reveal">
+        <div class="container mosaic-grid">
+          <img src="./assets/hero-board.png" alt="Kolaż auta i detali" />
+          <article class="mosaic-copy glass">
+            <p class="section-label">Dlaczego to działa</p>
+            <h2>Strona zaprojektowana pod realny zakup auta</h2>
+            <p>
+              Najpierw szybki przegląd najlepszych aut, potem osobna podstrona wyszukiwania z filtrami,
+              która prowadzi klienta do konkretnej decyzji zamiast chaosu.
+            </p>
+          </article>
         </div>
       </section>
 
@@ -78,35 +89,36 @@
           <div class="section-head">
             <div>
               <p class="section-label">Mini marketplace</p>
-              <h2>Polecane oferty tygodnia</h2>
+              <h2>Oferta tygodnia</h2>
             </div>
-            <a class="text-link" href="./wyszukiwarka.html">Przejdź do pełnej wyszukiwarki</a>
+            <a class="text-link" href="./wyszukiwarka.html">Pełna wyszukiwarka ofert</a>
           </div>
-
           <div class="market-grid" id="featured-grid"></div>
         </div>
       </section>
 
       <section id="skup" class="section section-reveal">
-        <div class="container split-panel">
-          <article class="split-card glass">
-            <p class="section-label">Skup aut</p>
-            <h3>Sprzedaj auto w 24h</h3>
-            <p>
-              Wysyłasz podstawowe dane, my wyceniamy i oddzwaniamy z konkretną ofertą.
-              Bez zbędnych wizyt i bez przeciągania decyzji.
-            </p>
-            <a class="btn btn-primary" href="#kontakt">Rozpocznij wycenę</a>
-          </article>
-          <article class="split-card glass">
-            <p class="section-label">Finansowanie</p>
-            <h3>Kredyt, leasing, zamiana</h3>
-            <p>
-              Dobieramy formę finansowania do Twojego budżetu i stylu jazdy.
-              Jedna rozmowa, kilka opcji i szybka decyzja.
-            </p>
-            <a class="btn btn-secondary" href="./wyszukiwarka.html">Zobacz auta pod finansowanie</a>
-          </article>
+        <div class="container steps-shell glass">
+          <div class="section-head compact">
+            <div>
+              <p class="section-label">Skup aut</p>
+              <h2>Prosty proces w 3 krokach</h2>
+            </div>
+          </div>
+          <div class="steps-grid">
+            <article>
+              <h3>1. Zgłoszenie auta</h3>
+              <p>Wysyłasz model, rocznik i przebieg. Bez formularza na 30 pól.</p>
+            </article>
+            <article>
+              <h3>2. Szybka wycena</h3>
+              <p>Dostajesz realną ofertę, a nie sztuczne widełki bez pokrycia.</p>
+            </article>
+            <article>
+              <h3>3. Finalizacja</h3>
+              <p>Umawiamy odbiór lub wizytę i zamykamy temat nawet tego samego dnia.</p>
+            </article>
+          </div>
         </div>
       </section>
     </main>
@@ -115,7 +127,7 @@
       <div class="container footer-grid">
         <div>
           <h4>Autokomis Nowa Era</h4>
-          <p>Skup | Sprzedaż | Zamiana | Finansowanie</p>
+          <p>Skup | Sprzedaż | Zamiana</p>
         </div>
         <div>
           <p>+48 789 123 456</p>

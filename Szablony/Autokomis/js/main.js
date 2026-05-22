@@ -7,7 +7,7 @@ function formatPrice(value) {
 function offerCardTemplate(car) {
   return `
     <article class="market-card">
-      <img src="${car.image}" alt="${car.title}" loading="lazy" />
+      <img src="${car.image}" alt="${car.title}" loading="lazy" style="object-position:${car.position || 'center'}" />
       <div class="market-body">
         <h3>${car.title}</h3>
         <ul>
@@ -39,7 +39,7 @@ const observer = new IntersectionObserver(
       }
     });
   },
-  { threshold: 0.16, rootMargin: '0px 0px -8% 0px' }
+  { threshold: 0.12, rootMargin: '0px 0px -10% 0px' }
 );
 
 reveals.forEach((node) => observer.observe(node));

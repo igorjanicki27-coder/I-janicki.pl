@@ -1,7 +1,5 @@
 const reveals = document.querySelectorAll('.section-reveal');
 const railLinks = document.querySelectorAll('.rail-link');
-const stage = document.getElementById('hero-stage');
-const carWrap = document.querySelector('.car-wrap');
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
@@ -33,7 +31,7 @@ const sectionObserver = new IntersectionObserver(
     });
   },
   {
-    threshold: 0.5,
+    threshold: 0.52,
   }
 );
 
@@ -43,26 +41,3 @@ const sectionObserver = new IntersectionObserver(
     sectionObserver.observe(section);
   }
 });
-
-if (
-  stage &&
-  carWrap &&
-  window.matchMedia('(prefers-reduced-motion: no-preference)').matches
-) {
-  const moveCar = (x, y) => {
-    const driftX = (x - 0.5) * 14;
-    const driftY = (y - 0.5) * 9;
-    carWrap.style.transform = `translate(calc(-38% + ${driftX * 0.25}px), calc(-50% + ${driftY * 0.25}px))`;
-  };
-
-  stage.addEventListener('pointermove', (event) => {
-    const rect = stage.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-    moveCar(x, y);
-  });
-
-  stage.addEventListener('pointerleave', () => {
-    carWrap.style.transform = 'translate(-38%, -50%)';
-  });
-}

@@ -31,7 +31,7 @@ function renderCards(data) {
     .map(
       (car) => `
       <article class="market-card">
-        <img src="${car.image}" alt="${car.title}" loading="lazy" />
+        <img src="${car.image}" alt="${car.title}" loading="lazy" style="object-position:${car.position || 'center'}" />
         <div class="market-body">
           <h3>${car.title}</h3>
           <ul>
@@ -103,6 +103,7 @@ function readQueryPreset() {
 
 [brandSelect, fuelSelect, gearboxSelect, yearMinInput, priceMaxInput, queryInput, sortSelect].forEach((node) => {
   node?.addEventListener('input', applyFilters);
+  node?.addEventListener('change', applyFilters);
 });
 
 clearBtn?.addEventListener('click', () => {
@@ -119,3 +120,17 @@ clearBtn?.addEventListener('click', () => {
 hydrateBrands();
 readQueryPreset();
 applyFilters();
+
+const reveals = document.querySelectorAll('.section-reveal');
+const observer = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  },
+  { threshold: 0.12, rootMargin: '0px 0px -10% 0px' }
+);
+reveals.forEach((node) => observer.observe(node));

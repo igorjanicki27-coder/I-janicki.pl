@@ -255,7 +255,7 @@
     }
 
     .intro-shell {
-      width: min(1080px, 96vw);
+      width: min(1080px, 100%);
       border: 1px solid rgba(64, 201, 255, 0.35);
       border-radius: 18px;
       overflow: hidden;
@@ -294,6 +294,9 @@
       color: rgba(230, 232, 255, 0.75);
       letter-spacing: 1.3px;
       text-transform: uppercase;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-align: right;
     }
 
     .intro-screen {
@@ -417,6 +420,11 @@
         overflow-x: hidden !important;
       }
 
+      /* Safari mobile: mniej skoków layoutu podczas chowania/pokazywania paska */
+      html {
+        scroll-behavior: auto;
+      }
+
       /* Na mobile nie pokazujemy custom kursora */
       .cursor-dot,
       .cursor-ring {
@@ -465,6 +473,13 @@
 
       .bot {
         width: min(132px, 38vw);
+      }
+
+      /* Wyłączenie sticky robota na mobile (częste źródło "przeskoków") */
+      .stage:has(#tutorialNav:not([hidden])) .bot,
+      .stage:not(.is-presenting):has(#tutorialNav:not([hidden])) .bot {
+        position: relative !important;
+        top: auto !important;
       }
 
       .panel {
@@ -582,8 +597,14 @@
       }
 
       .cookie-foot-btn {
-        right: 10px;
-        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        position: static !important;
+        right: auto;
+        bottom: auto;
+        margin-left: 4px;
+        padding: 0;
+        opacity: 0.55;
+        transform: none !important;
+        font-size: 12px;
       }
     }
 
@@ -724,17 +745,36 @@
 
     @media (max-width: 640px) {
       .intro-overlay {
-        padding: 12px;
+        padding:
+          calc(env(safe-area-inset-top, 0px) + 8px)
+          8px
+          calc(env(safe-area-inset-bottom, 0px) + 8px);
+      }
+
+      .intro-shell {
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
+      }
+
+      .intro-topbar {
+        padding: 8px 10px;
+        gap: 6px;
+      }
+
+      .intro-title {
+        font-size: 9px;
+        letter-spacing: 0.6px;
       }
 
       .intro-screen {
-        min-height: min(72vh, 560px);
-        max-height: 76vh;
-        padding: 12px 12px 10px;
+        min-height: 0;
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 64px);
+        padding: 10px 10px 8px;
       }
 
       .intro-lines {
-        max-height: calc(76vh - 58px);
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 94px);
         font-size: clamp(8.5px, 2.3vw, 11px);
         line-height: 1.34;
       }
