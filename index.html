@@ -221,8 +221,528 @@
     ]
   }
   </script>
+
+  <style>
+    body.intro-active {
+      overflow: hidden;
+    }
+
+    body.intro-active > :not(#introOverlay) {
+      pointer-events: none !important;
+      user-select: none;
+    }
+
+    .intro-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(127, 64, 255, 0.35), transparent 35%),
+        radial-gradient(circle at 80% 90%, rgba(64, 201, 255, 0.2), transparent 40%),
+        linear-gradient(180deg, #03040a 0%, #05060c 100%);
+      opacity: 1;
+      transition: opacity 0.5s ease, transform 0.5s ease, filter 0.5s ease;
+    }
+
+    .intro-overlay.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.03);
+      filter: blur(3px);
+    }
+
+    .intro-shell {
+      width: min(1080px, 96vw);
+      border: 1px solid rgba(64, 201, 255, 0.35);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(127, 64, 255, 0.4), 0 20px 80px rgba(0, 0, 0, 0.75);
+      background: rgba(10, 13, 24, 0.84);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .intro-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(64, 201, 255, 0.28);
+      background: rgba(7, 9, 16, 0.95);
+    }
+
+    .intro-dots {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .intro-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7f40ff, #40c9ff);
+      box-shadow: 0 0 10px rgba(64, 201, 255, 0.55);
+    }
+
+    .intro-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(230, 232, 255, 0.75);
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .intro-screen {
+      position: relative;
+      min-height: clamp(300px, 56vh, 620px);
+      max-height: 70vh;
+      padding: 16px 16px 12px;
+      background: linear-gradient(180deg, rgba(7, 10, 18, 0.85), rgba(2, 3, 8, 0.95));
+      overflow: hidden;
+    }
+
+    .intro-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.03) 0 1px,
+        transparent 1px 3px
+      );
+      pointer-events: none;
+      opacity: 0.18;
+    }
+
+    .intro-lines {
+      position: relative;
+      z-index: 1;
+      min-height: 100%;
+      max-height: calc(70vh - 66px);
+      overflow: auto;
+      color: #9fe8ff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(9px, 1.05vw, 12px);
+      line-height: 1.38;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      text-shadow: 0 0 12px rgba(64, 201, 255, 0.2);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(127, 64, 255, 0.55) transparent;
+    }
+
+    .intro-lines::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+
+    .intro-lines::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .intro-lines::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(127, 64, 255, 0.8), rgba(64, 201, 255, 0.8));
+      border-radius: 4px;
+    }
+
+    .intro-k {
+      color: #c38dff;
+      font-weight: 700;
+    }
+
+    .intro-fn {
+      color: #6fe6ff;
+    }
+
+    .intro-str {
+      color: #ffd08a;
+    }
+
+    .intro-com {
+      color: #6f7da9;
+      font-style: italic;
+    }
+
+    .intro-num {
+      color: #ff9fcf;
+    }
+
+    .intro-op {
+      color: #8ad8ff;
+    }
+
+    .intro-sym {
+      color: #52ffe0;
+      font-weight: 700;
+    }
+
+    .intro-cursor {
+      display: inline-block;
+      width: 9px;
+      height: 1.08em;
+      margin-left: 3px;
+      background: #40c9ff;
+      vertical-align: text-bottom;
+      box-shadow: 0 0 12px rgba(64, 201, 255, 0.8);
+      animation: intro-caret 0.85s steps(1) infinite;
+    }
+
+    .intro-ready {
+      position: absolute;
+      right: 16px;
+      bottom: 12px;
+      z-index: 2;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #8bd3ff;
+      letter-spacing: 0.8px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .intro-ready.is-visible {
+      opacity: 0.85;
+      transform: translateY(0);
+    }
+
+    /* =================== Global Mobile Layout Patch =================== */
+    @media (max-width: 768px) {
+      html,
+      body {
+        overflow-x: hidden !important;
+      }
+
+      .topbar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        gap: 8px;
+      }
+
+      .brand {
+        min-height: 36px;
+        gap: 10px;
+      }
+
+      .brand-name {
+        font-size: 14px;
+        letter-spacing: 2px;
+      }
+
+      .stage {
+        margin-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+        max-height: calc(100dvh - (56px + env(safe-area-inset-top, 0px))) !important;
+        padding: 8px 10px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+        gap: 10px !important;
+        overflow-x: clip !important;
+      }
+
+      .stage-bot {
+        width: 100%;
+        max-width: min(560px, calc(100vw - 22px));
+        gap: 10px;
+        overflow-x: clip;
+        min-width: 0;
+      }
+
+      .bot {
+        width: min(132px, 38vw);
+      }
+
+      .panel {
+        width: min(100%, calc(100vw - 22px));
+        max-width: min(560px, calc(100vw - 22px));
+        min-width: 0;
+        padding: clamp(12px, 3vw, 16px);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      /* Pseudo-border panelu potrafi generować 1-2px overflow na mobile */
+      .panel::before {
+        display: none;
+      }
+
+      .panel-title {
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .panel-content,
+      .tut-message p {
+        font-size: 13px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+
+      .greeting-prefs {
+        margin-top: 12px !important;
+        margin-bottom: 14px !important;
+      }
+
+      .pref-column {
+        padding: 8px 2px !important;
+        gap: 10px;
+      }
+
+      .pref-label {
+        font-size: 12px;
+      }
+
+      .pref-btns {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .choice-btn {
+        width: 100%;
+        min-width: 0;
+        padding: 9px 6px;
+        font-size: clamp(11px, 3.8vw, 13px);
+      }
+
+      .tutorial-nav {
+        position: sticky;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+        z-index: 12;
+        width: min(100%, calc(100vw - 22px));
+        max-width: min(560px, calc(100vw - 22px));
+        border-radius: 12px;
+        padding: 8px;
+        background: rgba(5, 6, 12, 0.72);
+        border: 1px solid var(--border-soft);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        overflow: hidden;
+      }
+
+      .tut-main-row,
+      .tutorial-nav.has-back .tut-main-row {
+        width: 100%;
+        gap: 8px;
+      }
+
+      .tut-main-row > *,
+      .tutorial-nav.has-back .tut-main-row > * {
+        min-width: 0;
+      }
+
+      .tut-btn {
+        min-height: 44px;
+      }
+
+      .foot {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        text-align: center;
+        padding: 16px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+        font-size: 10px;
+        overflow-wrap: anywhere;
+      }
+
+      .foot-mail,
+      .foot-docs {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .cookie-foot-btn {
+        right: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+
+    @media (max-width: 420px) {
+      .stage {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+      }
+
+      .panel {
+        border-radius: 12px;
+      }
+
+      .panel-logo {
+        font-size: 14px;
+        letter-spacing: 2px;
+      }
+
+      .tut-btn {
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      .pref-btns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* =================== Mobile Hard Responsive v2 =================== */
+    @media (max-width: 820px) {
+      .stage,
+      .stage-bot,
+      .panel,
+      .tutorial-nav,
+      .stage-content,
+      .foot,
+      .topbar {
+        max-inline-size: 100%;
+      }
+
+      .stage * {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .stage {
+        padding-inline: 8px !important;
+      }
+
+      .stage-bot,
+      .panel,
+      .tutorial-nav,
+      .stage-content {
+        inline-size: calc(100vw - 16px) !important;
+        max-inline-size: calc(100vw - 16px) !important;
+        margin-inline: auto;
+      }
+
+      .panel-header {
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .panel-logo {
+        font-size: clamp(12px, 4.4vw, 14px);
+        letter-spacing: clamp(1px, 0.7vw, 2px);
+      }
+
+      .panel-title {
+        font-size: clamp(12px, 3.8vw, 14px);
+      }
+
+      .panel-content,
+      .tut-message p {
+        font-size: clamp(12px, 3.7vw, 14px);
+        line-height: 1.52;
+      }
+
+      .greeting-prefs {
+        margin-top: 10px !important;
+        margin-bottom: 10px !important;
+      }
+
+      .pref-btns {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-btn {
+        padding: 10px 8px;
+        font-size: clamp(12px, 4vw, 14px);
+      }
+
+      .tut-main-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+
+      .tutorial-nav.has-back .tut-main-row > * {
+        width: 100% !important;
+      }
+
+      .tut-btn {
+        width: 100% !important;
+        min-height: 46px;
+        font-size: clamp(12px, 3.9vw, 14px);
+      }
+
+      .tut-next {
+        min-width: 0 !important;
+        max-width: none !important;
+      }
+
+      .tut-skip {
+        width: 100%;
+      }
+
+      .bot {
+        width: min(120px, 33vw);
+      }
+
+      .foot {
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+      }
+
+      .foot-sep {
+        display: none;
+      }
+    }
+
+    @keyframes intro-caret {
+      0%, 48% { opacity: 1; }
+      49%, 100% { opacity: 0; }
+    }
+
+    @media (max-width: 640px) {
+      .intro-overlay {
+        padding: 12px;
+      }
+
+      .intro-screen {
+        min-height: min(72vh, 560px);
+        max-height: 76vh;
+        padding: 12px 12px 10px;
+      }
+
+      .intro-lines {
+        max-height: calc(76vh - 58px);
+        font-size: clamp(8.5px, 2.3vw, 11px);
+        line-height: 1.34;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .intro-cursor {
+        animation: none;
+      }
+
+      .intro-ready,
+      .intro-overlay {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-label="Wprowadzenie do strony">
+    <div class="intro-shell">
+      <div class="intro-topbar" aria-hidden="true">
+        <span class="intro-dots">
+          <span class="intro-dot"></span>
+          <span class="intro-dot"></span>
+          <span class="intro-dot"></span>
+        </span>
+        <span class="intro-title">i-janicki.pl / init-professional-mode.sh</span>
+      </div>
+      <div class="intro-screen">
+        <pre class="intro-lines" id="introLines"></pre>
+        <p class="intro-ready" id="introReady" aria-live="polite">Uruchamianie widoku głównego...</p>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════ TŁO ═══════════════ -->
   <div class="bg" aria-hidden="true">
@@ -355,8 +875,6 @@
     <a href="mailto:igor.janicki27@gmail.com" class="foot-mail">igor.janicki27@gmail.com</a>
     <span class="foot-sep">·</span>
     <a href="./dokumenty" class="foot-docs">Dokumenty</a>
-    <span class="foot-sep">·</span>
-    <a href="./kalkulator/" class="foot-calc">Kalkulator</a>
     <button class="cookie-foot-btn" id="cookieFootBtn" title="Ustawienia plików cookie" aria-label="Zmień ustawienia cookies" data-i18n-title="cookie-settings-title" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
 
@@ -663,6 +1181,152 @@
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
   <script defer src="script.min.js?v=5"></script>
+  <script>
+    (function () {
+      var INTRO_DURATION_MS = 3000;
+      var INTRO_HOLD_MS = 1800;
+      var introLines = [
+        "$ boot --target=i-janicki.pl --profile=production --theme=neon",
+        ">> loading creative-engine............................OK",
+        ">> syncing visual-rhythm..............................OK",
+        ">> hardening accessibility-layer......................OK",
+        ">> preheating performance cache.......................OK",
+        ">> signing deploy packet..............................OK",
+        "",
+        "const runtime = {",
+        "  app: \"i-janicki.pl\",",
+        "  mode: \"professional\",",
+        "  region: \"eu-central\",",
+        "  build: 2026.05,",
+        "  features: {",
+        "    hero: true,",
+        "    seo: true,",
+        "    analytics: \"consent-aware\",",
+        "    contact: \"verified\"",
+        "  }",
+        "};",
+        "",
+        "async function launchExperience(config) {",
+        "  const pipeline = [",
+        "    \"design-system\",",
+        "    \"animation-engine\",",
+        "    \"content-render\",",
+        "    \"network-guard\"",
+        "  ];",
+        "",
+        "  for (const step of pipeline) {",
+        "    await runStage(step, config);",
+        "    log(\"stage:\" + step + \" => ready\");",
+        "  }",
+        "",
+        "  const qualityScore = calculateQuality({",
+        "    performance: 98,",
+        "    accessibility: 100,",
+        "    consistency: 99",
+        "  });",
+        "",
+        "  if (qualityScore >= 97) {",
+        "    return revealInterface(\"client-ready\");",
+        "  }",
+        "",
+        "  throw new Error(\"Build does not meet premium threshold\");",
+        "};",
+        "",
+        "launchExperience(runtime);",
+        "// Professional presentation protocol: ENABLED"
+      ].join("\n");
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function colorizeCode(rawText) {
+        var text = escapeHtml(rawText);
+        var stash = [];
+        var tokenBase = 0xE000;
+
+        function protect(re, className) {
+          text = text.replace(re, function (match) {
+            var token = String.fromCharCode(tokenBase + stash.length);
+            stash.push('<span class="' + className + '">' + match + "</span>");
+            return token;
+          });
+        }
+
+        protect(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "intro-com");
+        protect(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, "intro-str");
+        protect(/\b(const|let|var|function|return|if|else|for|while|await|async|try|catch|throw|new|true|false|null)\b/g, "intro-k");
+        protect(/\b([A-Za-z_$][\w$]*)(?=\s*\()/g, "intro-fn");
+        protect(/\b(\d+(?:\.\d+)?)\b/g, "intro-num");
+        protect(/([{}()[\].,:;=+\-<>])/g, "intro-op");
+        protect(/(^|\n)(\s*)(\$|>>)/g, "intro-sym");
+
+        text = text.replace(/[\uE000-\uF8FF]/g, function (tokenChar) {
+          var index = tokenChar.charCodeAt(0) - tokenBase;
+          return stash[index] || tokenChar;
+        });
+
+        return text;
+      }
+
+      function revealRealSite(overlay) {
+        document.body.classList.remove("intro-active");
+        overlay.classList.add("is-hidden");
+        setTimeout(function () {
+          overlay.remove();
+        }, 430);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var overlay = document.getElementById("introOverlay");
+        var output = document.getElementById("introLines");
+        var readyInfo = document.getElementById("introReady");
+        if (!overlay || !output) return;
+
+        document.body.classList.add("intro-active");
+
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var duration = reduceMotion ? 200 : INTRO_DURATION_MS;
+        var start = performance.now();
+        var isFinished = false;
+
+        function finishTyping() {
+          if (isFinished) return;
+          isFinished = true;
+          output.innerHTML = colorizeCode(introLines);
+          output.insertAdjacentHTML("beforeend", '<span class="intro-cursor" aria-hidden="true"></span>');
+          output.scrollTop = output.scrollHeight;
+          if (readyInfo) {
+            readyInfo.classList.add("is-visible");
+          }
+
+          setTimeout(function () {
+            revealRealSite(overlay);
+          }, reduceMotion ? 60 : INTRO_HOLD_MS);
+        }
+
+        function tick(now) {
+          var elapsed = now - start;
+          var ratio = Math.min(elapsed / duration, 1);
+          var visibleChars = Math.floor(introLines.length * ratio);
+          output.innerHTML = colorizeCode(introLines.slice(0, visibleChars));
+          output.insertAdjacentHTML("beforeend", '<span class="intro-cursor" aria-hidden="true"></span>');
+          output.scrollTop = output.scrollHeight;
+
+          if (ratio < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            finishTyping();
+          }
+        }
+
+        requestAnimationFrame(tick);
+      });
+    })();
+  </script>
   <script>
     (function() {
       var NORMAL = 'M94 128 Q110 136 126 128';
