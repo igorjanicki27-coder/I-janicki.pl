@@ -3,235 +3,129 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Autokomis Premium | Skup i sprzedaż samochodów</title>
+    <title>Autokomis Nowa Era | Skup i sprzedaż samochodów</title>
     <meta
       name="description"
-      content="Ekskluzywny autokomis: skup, sprzedaż, zamiana i finansowanie samochodów używanych."
+      content="Nowoczesny autokomis: skup, sprzedaż, finansowanie i zamiana aut używanych."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./css/main.css" />
   </head>
   <body>
-    <header class="site-header" id="top">
-      <div class="container nav-wrap">
-        <a class="brand" href="#top" aria-label="Autokomis Premium">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <strong>AUTOKOMIS</strong>
-            <small>PREMIUM</small>
+    <header class="site-header">
+      <div class="container nav-shell glass">
+        <a class="logo" href="./index.html" aria-label="Autokomis Nowa Era">
+          <span class="logo-mark">A</span>
+          <span>
+            <strong>Autokomis</strong>
+            <small>Nowa Era</small>
           </span>
         </a>
 
-        <nav class="desktop-nav" aria-label="Główne menu">
-          <a href="#oferty">Oferta aut</a>
-          <a href="#search">Wyszukiwarka</a>
-          <a href="#services">Usługi</a>
+        <nav class="site-nav" aria-label="Główna nawigacja">
+          <a href="./index.html" class="active">Start</a>
+          <a href="#oferty">Mini marketplace</a>
+          <a href="./wyszukiwarka.html">Wyszukiwarka</a>
+          <a href="#skup">Skup aut</a>
           <a href="#kontakt">Kontakt</a>
         </nav>
 
-        <a class="cta-ghost" href="#wycena">Bezpłatna wycena</a>
+        <a class="nav-cta" href="./wyszukiwarka.html">Przeglądaj auta</a>
       </div>
     </header>
 
     <main>
       <section class="hero section-reveal">
-        <div class="hero-bg"></div>
-        <div class="container hero-grid">
-          <div class="hero-content">
-            <p class="hero-kicker">Pewne auta. Uczciwe warunki.</p>
-            <h1>Auta, którym możesz zaufać.</h1>
+        <div class="container hero-layout">
+          <div class="hero-copy">
+            <p class="eyebrow">Nowoczesny autokomis dla kierowców, którzy cenią spokój.</p>
+            <h1>Kupuj pewnie. Sprzedawaj mądrze.</h1>
             <p>
-              Skup i sprzedaż samochodów używanych w standardzie premium. Szybka
-              wycena, finansowanie i zamiana auta bez zbędnych formalności.
+              Praktyczne podejście do aut używanych: przejrzyste oferty, szybkie finansowanie,
+              uczciwy skup i konkretna obsługa bez marketingowego hałasu.
             </p>
             <div class="hero-actions">
-              <a class="btn btn-primary" href="#oferty">Zobacz ofertę</a>
-              <a class="btn btn-secondary" href="#wycena">Wyceń auto</a>
+              <a class="btn btn-primary" href="./wyszukiwarka.html">Otwórz wyszukiwarkę</a>
+              <a class="btn btn-secondary" href="#skup">Wyceń swoje auto</a>
+            </div>
+            <ul class="hero-points">
+              <li>Zweryfikowana historia pojazdu</li>
+              <li>Finansowanie i leasing na miejscu</li>
+              <li>Zamiana auta 1:1 bez stresu</li>
+            </ul>
+          </div>
+
+          <div class="hero-media">
+            <img
+              src="https://images.unsplash.com/photo-1617531653520-4893f7b71e5d?auto=format&fit=crop&w=1600&q=80"
+              alt="Nowoczesny sedan w jasnym showroomie"
+            />
+            <div class="hero-badge glass">
+              <span>Nowość</span>
+              <strong>Mini marketplace + osobna wyszukiwarka</strong>
             </div>
           </div>
-
-          <div class="hero-aside glass">
-            <article>
-              <h3>Pewne pochodzenie</h3>
-              <p>Każde auto sprawdzone i przygotowane do sprzedaży.</p>
-            </article>
-            <article>
-              <h3>Finansowanie</h3>
-              <p>Kredyt, leasing i ubezpieczenia w jednym miejscu.</p>
-            </article>
-            <article>
-              <h3>Szybka transakcja</h3>
-              <p>Minimum formalności, maksimum wygody i transparentności.</p>
-            </article>
-          </div>
         </div>
       </section>
 
-      <section id="search" class="search section-reveal">
-        <div class="container search-wrap glass">
-          <h2>Znajdź auto dla siebie</h2>
-          <form class="search-grid" action="#" method="get">
-            <label>
-              Marka
-              <select>
-                <option>Dowolna</option>
-                <option>Peugeot</option>
-                <option>Citroen</option>
-                <option>Ford</option>
-                <option>Fiat</option>
-                <option>Audi</option>
-                <option>Volkswagen</option>
-                <option>Seat</option>
-                <option>BMW</option>
-              </select>
-            </label>
-            <label>
-              Rocznik od
-              <select>
-                <option>Od</option>
-                <option>2014</option>
-                <option>2016</option>
-                <option>2018</option>
-                <option>2020</option>
-                <option>2022</option>
-              </select>
-            </label>
-            <label>
-              Cena do
-              <select>
-                <option>Do</option>
-                <option>40 000 zł</option>
-                <option>60 000 zł</option>
-                <option>80 000 zł</option>
-                <option>100 000 zł</option>
-                <option>150 000 zł</option>
-              </select>
-            </label>
-            <button class="btn btn-primary" type="button">Wyszukaj</button>
-          </form>
-        </div>
-      </section>
-
-      <section id="oferty" class="offers section-reveal">
+      <section id="oferty" class="section section-reveal">
         <div class="container">
           <div class="section-head">
-            <h2>Polecane oferty</h2>
-            <a href="#">Zobacz wszystkie auta</a>
+            <div>
+              <p class="section-label">Mini marketplace</p>
+              <h2>Polecane oferty tygodnia</h2>
+            </div>
+            <a class="text-link" href="./wyszukiwarka.html">Przejdź do pełnej wyszukiwarki</a>
           </div>
 
-          <div class="offer-grid">
-            <article class="offer-card">
-              <img src="https://images.pexels.com/photos/25857424/pexels-photo-25857424.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Nowoczesny sedan w salonie" loading="lazy" />
-              <div class="offer-body">
-                <h3>Peugeot 508 GT</h3>
-                <ul>
-                  <li>2021</li>
-                  <li>67 000 km</li>
-                  <li>Benzyna</li>
-                  <li>Automat</li>
-                </ul>
-                <div class="offer-foot">
-                  <strong>109 900 zł</strong>
-                  <a href="#">Szczegóły</a>
-                </div>
-              </div>
-            </article>
-
-            <article class="offer-card">
-              <img src="https://images.pexels.com/photos/34061266/pexels-photo-34061266.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Szary sedan premium" loading="lazy" />
-              <div class="offer-body">
-                <h3>Citroen C5 X</h3>
-                <ul>
-                  <li>2022</li>
-                  <li>41 200 km</li>
-                  <li>Hybrid</li>
-                  <li>Automat</li>
-                </ul>
-                <div class="offer-foot">
-                  <strong>124 500 zł</strong>
-                  <a href="#">Szczegóły</a>
-                </div>
-              </div>
-            </article>
-
-            <article class="offer-card">
-              <img src="https://images.pexels.com/photos/28928971/pexels-photo-28928971.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Rząd aut na placu" loading="lazy" />
-              <div class="offer-body">
-                <h3>Ford Mondeo ST-Line</h3>
-                <ul>
-                  <li>2020</li>
-                  <li>89 000 km</li>
-                  <li>Diesel</li>
-                  <li>Manual</li>
-                </ul>
-                <div class="offer-foot">
-                  <strong>87 300 zł</strong>
-                  <a href="#">Szczegóły</a>
-                </div>
-              </div>
-            </article>
-          </div>
+          <div class="market-grid" id="featured-grid"></div>
         </div>
       </section>
 
-      <section id="services" class="services section-reveal">
-        <div class="container service-grid">
-          <article>
-            <h3>Skup aut</h3>
+      <section id="skup" class="section section-reveal">
+        <div class="container split-panel">
+          <article class="split-card glass">
+            <p class="section-label">Skup aut</p>
+            <h3>Sprzedaj auto w 24h</h3>
             <p>
-              Gotówka od ręki, wycena online i finalizacja nawet tego samego
-              dnia.
-            </p>
-          </article>
-          <article>
-            <h3>Finansowanie</h3>
-            <p>
-              Kredyt i leasing dopasowany do budżetu. Wsparcie doradcy od A do Z.
-            </p>
-          </article>
-          <article>
-            <h3>Zamiana samochodów</h3>
-            <p>
-              Oddaj swoje auto w rozliczeniu i wybierz nowy model bez ryzyka.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section id="wycena" class="valuation section-reveal">
-        <div class="container valuation-wrap">
-          <div>
-            <h2>Chcesz szybko sprzedać auto?</h2>
-            <p>
-              Darmowa wycena online w 2 minuty. Odezwiemy się i zaproponujemy
-              najlepszą ofertę dopasowaną do rynku.
+              Wysyłasz podstawowe dane, my wyceniamy i oddzwaniamy z konkretną ofertą.
+              Bez zbędnych wizyt i bez przeciągania decyzji.
             </p>
             <a class="btn btn-primary" href="#kontakt">Rozpocznij wycenę</a>
-          </div>
-          <img src="https://images.pexels.com/photos/7144261/pexels-photo-7144261.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Podpisywanie dokumentów przy zakupie auta" loading="lazy" />
+          </article>
+          <article class="split-card glass">
+            <p class="section-label">Finansowanie</p>
+            <h3>Kredyt, leasing, zamiana</h3>
+            <p>
+              Dobieramy formę finansowania do Twojego budżetu i stylu jazdy.
+              Jedna rozmowa, kilka opcji i szybka decyzja.
+            </p>
+            <a class="btn btn-secondary" href="./wyszukiwarka.html">Zobacz auta pod finansowanie</a>
+          </article>
         </div>
       </section>
     </main>
 
     <footer id="kontakt" class="site-footer">
-      <div class="container footer-wrap">
+      <div class="container footer-grid">
         <div>
-          <h3>Autokomis Premium</h3>
+          <h4>Autokomis Nowa Era</h4>
           <p>Skup | Sprzedaż | Zamiana | Finansowanie</p>
         </div>
         <div>
           <p>+48 789 123 456</p>
-          <p>kontakt@autokomispremium.pl</p>
-          <p>ul. Salonowa 12, 00-001 Warszawa</p>
+          <p>kontakt@autokomisnowaera.pl</p>
+          <p>Warszawa, ul. Motoryzacyjna 12</p>
         </div>
       </div>
     </footer>
 
-    <script src="./script.js"></script>
+    <script src="./js/inventory.js"></script>
+    <script src="./js/main.js"></script>
   </body>
 </html>

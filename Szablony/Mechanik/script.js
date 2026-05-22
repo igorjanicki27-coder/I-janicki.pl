@@ -1,6 +1,7 @@
 const reveals = document.querySelectorAll('.section-reveal');
 const railLinks = document.querySelectorAll('.rail-link');
 const stage = document.getElementById('hero-stage');
+const carWrap = document.querySelector('.car-wrap');
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
@@ -12,8 +13,8 @@ const revealObserver = new IntersectionObserver(
     });
   },
   {
-    rootMargin: '0px 0px -8% 0px',
-    threshold: 0.14,
+    rootMargin: '0px 0px -10% 0px',
+    threshold: 0.16,
   }
 );
 
@@ -26,9 +27,8 @@ const sectionObserver = new IntersectionObserver(
         return;
       }
 
-      const id = entry.target.id;
       railLinks.forEach((link) => {
-        link.classList.toggle('is-active', link.dataset.target === id);
+        link.classList.toggle('is-active', link.dataset.target === entry.target.id);
       });
     });
   },
@@ -44,28 +44,25 @@ const sectionObserver = new IntersectionObserver(
   }
 });
 
-if (stage && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+if (
+  stage &&
+  carWrap &&
+  window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+) {
+  const moveCar = (x, y) => {
+    const driftX = (x - 0.5) * 14;
+    const driftY = (y - 0.5) * 9;
+    carWrap.style.transform = `translate(calc(-38% + ${driftX * 0.25}px), calc(-50% + ${driftY * 0.25}px))`;
+  };
+
   stage.addEventListener('pointermove', (event) => {
     const rect = stage.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width;
     const y = (event.clientY - rect.top) / rect.height;
-
-    const moveX = (x - 0.5) * 12;
-    const moveY = (y - 0.5) * 8;
-
-    stage.style.setProperty('--stage-x', `${moveX}px`);
-    stage.style.setProperty('--stage-y', `${moveY}px`);
-
-    const image = stage.querySelector('img');
-    if (image) {
-      image.style.transform = `translate(${moveX * 0.35}px, ${moveY * 0.35}px) scale(1.06)`;
-    }
+    moveCar(x, y);
   });
 
   stage.addEventListener('pointerleave', () => {
-    const image = stage.querySelector('img');
-    if (image) {
-      image.style.transform = 'translate(0px, 0px) scale(1.06)';
-    }
+    carWrap.style.transform = 'translate(-38%, -50%)';
   });
 }

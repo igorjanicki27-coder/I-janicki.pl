@@ -6,23 +6,22 @@
     <title>Atelier Auto | Premium Serwis Samochodowy</title>
     <meta
       name="description"
-      content="Nowoczesny, technologiczny serwis samochodowy: diagnostyka, hamulce, zawieszenie, serwis olejowy, klimatyzacja, geometria i przeglądy."
+      content="Nowoczesny serwis samochodowy: diagnostyka komputerowa, hamulce, zawieszenie, serwis olejowy, klimatyzacja, geometria i przeglądy."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <aside class="side-rail" aria-label="Nawigacja boczna">
-      <a class="rail-brand" href="#start" aria-label="Atelier Auto - start">
+      <a href="#start" class="rail-brand" aria-label="Atelier Auto">
         <span class="brand-mark">AA</span>
-        <span class="brand-text">Atelier<br />Auto</span>
+        <span class="brand-name">Atelier<br />Auto</span>
       </a>
-
       <nav class="rail-nav">
         <a href="#start" class="rail-link is-active" data-target="start">Start</a>
         <a href="#uslugi" class="rail-link" data-target="uslugi">Usługi</a>
@@ -35,13 +34,11 @@
       <header class="topbar" id="start">
         <div class="topbar-inner">
           <p class="topbar-note">Nowoczesny serwis samochodowy</p>
-
-          <nav class="top-links" aria-label="Nawigacja główna">
+          <nav class="top-links" aria-label="Główna nawigacja">
             <a href="#uslugi">Usługi</a>
             <a href="#standard">Standard</a>
             <a href="#kontakt">Kontakt</a>
           </nav>
-
           <div class="top-actions">
             <a class="phone-chip" href="tel:+48732500600">+48 732 500 600</a>
             <a class="btn btn-primary" href="#kontakt">Umów wizytę</a>
@@ -51,33 +48,66 @@
 
       <main>
         <section class="hero section-reveal">
-          <div class="hero-head">
+          <div class="hero-intro">
             <h1>Serwis, który widzi więcej.</h1>
             <p>
-              Diagnostyka i naprawy prowadzone precyzyjnie, spokojnie,
-              technologicznie.
+              Minimalistyczny, technologiczny standard obsługi samochodu.
+              Konkretnie, spokojnie i bez zbędnych formalności.
             </p>
             <div class="hero-actions">
               <a class="btn btn-primary" href="#kontakt">Umów termin</a>
-              <a class="btn btn-ghost" href="#uslugi">Zobacz usługi</a>
+              <a class="btn btn-ghost" href="#uslugi">Zobacz zakres usług</a>
             </div>
           </div>
 
           <div class="hero-stage glass" id="hero-stage">
-            <img
-              src="./assets/hero-reference.png"
-              alt="Nowoczesny samochód w jasnym showroomie"
-            />
+            <svg class="technical-lines" viewBox="0 0 1200 720" aria-hidden="true">
+              <path d="M 612 340 C 786 230, 918 176, 1098 132" />
+              <path d="M 694 472 C 860 506, 980 560, 1120 646" />
+              <path d="M 564 398 C 430 398, 296 404, 164 424" />
+            </svg>
+
+            <div class="car-wrap">
+              <svg class="car-illustration" viewBox="0 0 1020 470" aria-label="Stylizowany samochód premium">
+                <defs>
+                  <linearGradient id="carBody" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#3f4652" />
+                    <stop offset="52%" stop-color="#6f7682" />
+                    <stop offset="100%" stop-color="#343b47" />
+                  </linearGradient>
+                  <linearGradient id="carRoof" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#4f5664" />
+                    <stop offset="100%" stop-color="#3c434f" />
+                  </linearGradient>
+                  <radialGradient id="wheelCore" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#e7ebf0" />
+                    <stop offset="100%" stop-color="#9fa8b6" />
+                  </radialGradient>
+                </defs>
+                <ellipse class="car-shadow" cx="530" cy="410" rx="370" ry="52" />
+                <rect class="car-body" x="166" y="196" width="706" height="188" rx="90" fill="url(#carBody)" />
+                <rect class="car-roof" x="362" y="132" width="332" height="118" rx="62" fill="url(#carRoof)" transform="rotate(-4 530 190)" />
+                <rect class="car-window" x="408" y="154" width="220" height="74" rx="36" transform="rotate(-4 530 190)" />
+                <rect class="car-light-front" x="188" y="238" width="126" height="34" rx="17" />
+                <rect class="car-light-back" x="790" y="250" width="72" height="26" rx="13" />
+                <circle class="wheel" cx="318" cy="365" r="84" />
+                <circle class="wheel" cx="742" cy="365" r="90" />
+                <circle class="wheel-core" cx="318" cy="365" r="39" fill="url(#wheelCore)" />
+                <circle class="wheel-core" cx="742" cy="365" r="42" fill="url(#wheelCore)" />
+                <circle class="wheel-bolt" cx="318" cy="365" r="8" />
+                <circle class="wheel-bolt" cx="742" cy="365" r="9" />
+              </svg>
+            </div>
 
             <div class="hero-dot dot-engine"></div>
-            <div class="hero-dot dot-brakes"></div>
+            <div class="hero-dot dot-brake"></div>
             <div class="hero-dot dot-suspension"></div>
 
             <article class="hero-node node-engine">
               <h3>Diagnostyka</h3>
               <p>ECU / elektronika / czujniki</p>
             </article>
-            <article class="hero-node node-brakes">
+            <article class="hero-node node-brake">
               <h3>Hamulce</h3>
               <p>Tarcze, klocki, płyn</p>
             </article>
@@ -85,29 +115,7 @@
               <h3>Zawieszenie</h3>
               <p>Amortyzacja i geometria</p>
             </article>
-
-            <svg
-              class="hero-lines"
-              viewBox="0 0 1200 640"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <path d="M 640 258 C 790 190, 892 166, 1060 110" />
-              <path d="M 786 410 C 922 454, 998 484, 1118 536" />
-              <path d="M 557 316 C 470 310, 376 314, 246 320" />
-            </svg>
           </div>
-        </section>
-
-        <section class="service-bridge section-reveal" aria-label="Zakres obsługi">
-          <p>Systemy, które obsługujemy:</p>
-          <ul>
-            <li>Elektronika pokładowa</li>
-            <li>Układ hamulcowy</li>
-            <li>Zawieszenie i geometria</li>
-            <li>Silnik i układ smarowania</li>
-            <li>Klimatyzacja</li>
-          </ul>
         </section>
 
         <section id="uslugi" class="services section-reveal">
@@ -117,87 +125,59 @@
           </div>
 
           <div class="services-grid">
-            <article class="service-card" data-system="diagnostyka">
-              <img
-                src="./assets/diagnostic-laptop.png"
-                alt="Diagnostyka komputerowa auta"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-diag"><span>01</span></div>
               <div class="service-content">
                 <h3>Diagnostyka komputerowa</h3>
-                <p>Dokładny odczyt błędów i analiza danych na żywo.</p>
+                <p>Precyzyjny odczyt błędów i analiza parametrów auta na żywo.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="hamulce">
-              <img
-                src="./assets/workshop-grid.png"
-                alt="Układ hamulcowy i tarcze"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-brakes"><span>02</span></div>
               <div class="service-content">
                 <h3>Hamulce</h3>
                 <p>Kontrola skuteczności, wymiana elementów i test drogowy.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="zawieszenie">
-              <img
-                src="./assets/workshop-grid.png"
-                alt="Elementy zawieszenia samochodu"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-susp"><span>03</span></div>
               <div class="service-content">
                 <h3>Zawieszenie</h3>
-                <p>Diagnoza luzów, amortyzacji i pracy układu jezdnego.</p>
+                <p>Diagnoza luzów, amortyzatorów i pełna kontrola układu jezdnego.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="olej">
-              <img
-                src="./assets/workshop-grid.png"
-                alt="Serwis olejowy"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-oil"><span>04</span></div>
               <div class="service-content">
                 <h3>Serwis olejowy</h3>
                 <p>Wymiana oleju i filtrów zgodnie ze specyfikacją pojazdu.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="klimatyzacja">
-              <img
-                src="./assets/tablet-diagnostics.png"
-                alt="Diagnostyka klimatyzacji"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-ac"><span>05</span></div>
               <div class="service-content">
                 <h3>Klimatyzacja</h3>
-                <p>Serwis układu A/C: szczelność, odgrzybianie i wydajność.</p>
+                <p>Kontrola szczelności i wydajności oraz przygotowanie układu A/C.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="geometria">
-              <img
-                src="./assets/service-collage.png"
-                alt="Ustawianie geometrii kół"
-                loading="lazy"
-              />
+            <article class="service-card">
+              <div class="service-visual visual-geo"><span>06</span></div>
               <div class="service-content">
                 <h3>Geometria</h3>
-                <p>Precyzyjne ustawienie osi dla stabilności i mniejszego zużycia.</p>
+                <p>Precyzyjne ustawienie osi dla bezpieczeństwa i równomiernego zużycia.</p>
               </div>
             </article>
 
-            <article class="service-card" data-system="przeglady">
-              <img
-                src="./assets/service-techs.png"
-                alt="Przeglądy samochodów"
-                loading="lazy"
-              />
+            <article class="service-card service-card-wide">
+              <div class="service-visual visual-check"><span>07</span></div>
               <div class="service-content">
                 <h3>Przeglądy</h3>
-                <p>Kontrola okresowa z checklistą i jasną rekomendacją.</p>
+                <p>Kontrola okresowa z czytelną checklistą i konkretną rekomendacją.</p>
               </div>
             </article>
           </div>
@@ -207,23 +187,22 @@
           <div class="standard-copy">
             <h2>Standard obsługi</h2>
             <p>
-              Transparentny kosztorys, zdjęcia z prac i spokojne omówienie
-              wyników. Bez nadmiaru formalności.
+              Transparentny kosztorys, raport z diagnozy i spokojne omówienie
+              decyzji. Bez naciągania i bez niedomówień.
             </p>
           </div>
-
           <div class="standard-points">
             <article>
               <strong>01</strong>
-              <p>Diagnoza i zakres prac zaakceptowany przed naprawą.</p>
+              <p>Najpierw diagnoza i plan, potem realizacja.</p>
             </article>
             <article>
               <strong>02</strong>
-              <p>Realizacja w terminie i kontakt, jeśli pojawi się zmiana.</p>
+              <p>Stały kontakt i decyzje podejmowane razem z Tobą.</p>
             </article>
             <article>
               <strong>03</strong>
-              <p>Przekazanie auta z raportem i rekomendacją dalszego serwisu.</p>
+              <p>Auto oddawane z raportem i jasną historią prac.</p>
             </article>
           </div>
         </section>
@@ -231,12 +210,10 @@
         <section id="kontakt" class="contact section-reveal">
           <div class="contact-card glass">
             <h2>Umów wizytę</h2>
-            <p>Wybierz dogodny termin, a oddzwonimy z potwierdzeniem.</p>
+            <p>Wybierz termin. Oddzwonimy i potwierdzimy zakres prac.</p>
             <div class="contact-actions">
               <a class="btn btn-primary" href="tel:+48732500600">Zadzwoń</a>
-              <a class="btn btn-ghost" href="mailto:kontakt@atelierauto.pl"
-                >Napisz e-mail</a
-              >
+              <a class="btn btn-ghost" href="mailto:kontakt@atelierauto.pl">Napisz e-mail</a>
             </div>
           </div>
         </section>
