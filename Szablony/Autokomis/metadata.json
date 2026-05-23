@@ -1,0 +1,6 @@
+{
+  "name": "Autoza",
+  "description": "Ekskluzywny salon i komis samochodowy Autoza – nowoczesna platforma z interaktywną prezentacją pojazdów, interaktywnymi wskaźnikami oraz zintegrowanym panelem administratorskim.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,305 @@
+{
+  "t": "2026-05-22T19:24:11.290Z",
+  "f": [
+    {
+      "p": ".DS_Store",
+      "m": "2026-05-22T18:18:14.202Z",
+      "z": 6148,
+      "k": 0,
+      "s": "\u0000\u0000\u0000\u0001Bud1\u0000\u0000\u0010\u0000\u0000\u0000\b\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000%\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0003\u0000s\u0000r\u0000cvSrnlong\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0010\u0000rnlong\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+    },
+    {
+      "p": "README.md",
+      "m": "2026-05-22T18:15:47.266Z",
+      "z": 542,
+      "k": 0,
+      "s": "<div align=\"center\"> <img width=\"1200\" height=\"475\" alt=\"GHBanner\" src=\"https://ai.google.dev/static/site-assets/images/share-ais-513315318.png\" /> </div>"
+    },
+    {
+      "p": "index.html",
+      "m": "2026-05-22T18:15:47.266Z",
+      "z": 311,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"en\">   <head>"
+    },
+    {
+      "p": "metadata.json",
+      "m": "2026-05-22T18:15:47.266Z",
+      "z": 328,
+      "k": 0,
+      "s": "{   \"name\": \"Autoza\",   \"description\": \"Ekskluzywny salon i komis samochodowy Autoza – nowoczesna platforma z interaktywną prezentacją pojazdów, interaktywnymi wskaźnikami oraz zintegrowanym panelem a"
+    },
+    {
+      "p": "package-lock.json",
+      "m": "2026-05-22T18:20:23.975Z",
+      "z": 148424,
+      "k": 0
+    },
+    {
+      "p": "package.json",
+      "m": "2026-05-22T18:15:47.266Z",
+      "z": 845,
+      "k": 0,
+      "s": "{   \"name\": \"react-example\",   \"private\": true,"
+    },
+    {
+      "p": "src/App.tsx",
+      "m": "2026-05-22T19:20:24.565Z",
+      "z": 5926,
+      "k": 0,
+      "s": "import { useState, useEffect } from 'react'; import {    Vehicle, ",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/AdminPanel.tsx",
+      "m": "2026-05-22T19:19:31.699Z",
+      "z": 31092,
+      "k": 0,
+      "s": "import { Plus, Trash2, X, RotateCcw, Copy, Sparkles, AlertCircle } from 'lucide-react'; import React, { useState, useEffect, FormEvent } from 'react'; import { Vehicle } from '../types';",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/CTA.tsx",
+      "m": "2026-05-22T19:24:08.857Z",
+      "z": 275,
+      "k": 0,
+      "s": "import { Shield } from 'lucide-react'; import React from 'react'; interface CTAProps {",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/Collection.tsx",
+      "m": "2026-05-22T19:21:48.733Z",
+      "z": 21607,
+      "k": 0,
+      "s": "import { ArrowUpRight, ShieldCheck } from 'lucide-react'; import React, { useState, useMemo, useRef } from 'react'; import { Vehicle } from '../types';",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/ContactModal.tsx",
+      "m": "2026-05-22T19:22:47.008Z",
+      "z": 7874,
+      "k": 0,
+      "s": "import React, { useState, FormEvent } from 'react'; import { Send, X } from 'lucide-react'; import { motion, AnimatePresence } from 'motion/react';",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/Hero.tsx",
+      "m": "2026-05-22T19:21:03.233Z",
+      "z": 11950,
+      "k": 0,
+      "s": "import { ChevronRight, Gauge, Shield, Award } from 'lucide-react'; import React, { useEffect } from 'react'; import { Vehicle } from '../types';",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/Navbar.tsx",
+      "m": "2026-05-22T19:20:46.008Z",
+      "z": 3721,
+      "k": 0,
+      "s": "import { Menu, Search, X } from 'lucide-react'; import React, { useState } from 'react'; interface NavbarProps {",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/components/Testimonials.tsx",
+      "m": "2026-05-22T19:16:27.951Z",
+      "z": 14012,
+      "k": 0,
+      "s": "import { Star, BookOpen, X } from 'lucide-react'; import React, { useState, useEffect } from 'react'; import { Review, Story } from '../types';",
+      "e": [
+        "default"
+      ]
+    },
+    {
+      "p": "src/index.css",
+      "m": "2026-05-22T19:24:08.713Z",
+      "z": 2723,
+      "k": 0,
+      "s": "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap'); @import \"tailwindcss\";"
+    },
+    {
+      "p": "src/main.tsx",
+      "m": "2026-05-22T18:54:53.882Z",
+      "z": 231,
+      "k": 0,
+      "s": "import {StrictMode} from 'react'; import {createRoot} from 'react-dom/client'; import App from './App.tsx';"
+    },
+    {
+      "p": "src/types.ts",
+      "m": "2026-05-22T18:54:53.883Z",
+      "z": 8995,
+      "k": 0,
+      "s": "export interface Vehicle {   id: string;   brand: string;",
+      "e": [
+        "Vehicle",
+        "Review",
+        "Story",
+        "FilterState",
+        "INITIAL_VEHICLES",
+        "INITIAL_REVIEWS",
+        "INITIAL_STORIES"
+      ]
+    },
+    {
+      "p": "tsconfig.json",
+      "m": "2026-05-22T18:15:47.268Z",
+      "z": 508,
+      "k": 6,
+      "s": "{   \"compilerOptions\": {     \"target\": \"ES2022\","
+    },
+    {
+      "p": "vite.config.ts",
+      "m": "2026-05-22T18:15:47.268Z",
+      "z": 708,
+      "k": 6,
+      "s": "import tailwindcss from '@tailwindcss/vite'; import react from '@vitejs/plugin-react'; import path from 'path';",
+      "e": [
+        "default"
+      ]
+    }
+  ],
+  "r": {
+    "name": "Autokomis",
+    "type": "directory",
+    "children": [
+      {
+        "name": ".DS_Store",
+        "type": "file",
+        "path": ".DS_Store",
+        "s": "\u0000\u0000\u0000\u0001Bud1\u0000\u0000\u0010\u0000\u0000\u0000\b\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000%\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0003\u0000s\u0000r\u0000cvSrnlong\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\u0000\u0000\u0010\u0000rnlong\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+      },
+      {
+        "name": "README.md",
+        "type": "file",
+        "path": "README.md",
+        "s": "<div align=\"center\"> <img width=\"1200\" height=\"475\" alt=\"GHBanner\" src=\"https://ai.google.dev/static/site-assets/images/share-ais-513315318.png\" /> </div>"
+      },
+      {
+        "name": "index.html",
+        "type": "file",
+        "path": "index.html",
+        "s": "<!doctype html> <html lang=\"en\">   <head>"
+      },
+      {
+        "name": "metadata.json",
+        "type": "file",
+        "path": "metadata.json",
+        "s": "{   \"name\": \"Autoza\",   \"description\": \"Ekskluzywny salon i komis samochodowy Autoza – nowoczesna platforma z interaktywną prezentacją pojazdów, interaktywnymi wskaźnikami oraz zintegrowanym panelem a"
+      },
+      {
+        "name": "package-lock.json",
+        "type": "file",
+        "path": "package-lock.json"
+      },
+      {
+        "name": "package.json",
+        "type": "file",
+        "path": "package.json",
+        "s": "{   \"name\": \"react-example\",   \"private\": true,"
+      },
+      {
+        "name": "src",
+        "type": "directory",
+        "children": [
+          {
+            "name": "App.tsx",
+            "type": "file",
+            "path": "src/App.tsx",
+            "s": "import { useState, useEffect } from 'react'; import {    Vehicle, "
+          },
+          {
+            "name": "components",
+            "type": "directory",
+            "children": [
+              {
+                "name": "AdminPanel.tsx",
+                "type": "file",
+                "path": "src/components/AdminPanel.tsx",
+                "s": "import { Plus, Trash2, X, RotateCcw, Copy, Sparkles, AlertCircle } from 'lucide-react'; import React, { useState, useEffect, FormEvent } from 'react'; import { Vehicle } from '../types';"
+              },
+              {
+                "name": "CTA.tsx",
+                "type": "file",
+                "path": "src/components/CTA.tsx",
+                "s": "import { Shield } from 'lucide-react'; import React from 'react'; interface CTAProps {"
+              },
+              {
+                "name": "Collection.tsx",
+                "type": "file",
+                "path": "src/components/Collection.tsx",
+                "s": "import { ArrowUpRight, ShieldCheck } from 'lucide-react'; import React, { useState, useMemo, useRef } from 'react'; import { Vehicle } from '../types';"
+              },
+              {
+                "name": "ContactModal.tsx",
+                "type": "file",
+                "path": "src/components/ContactModal.tsx",
+                "s": "import React, { useState, FormEvent } from 'react'; import { Send, X } from 'lucide-react'; import { motion, AnimatePresence } from 'motion/react';"
+              },
+              {
+                "name": "Hero.tsx",
+                "type": "file",
+                "path": "src/components/Hero.tsx",
+                "s": "import { ChevronRight, Gauge, Shield, Award } from 'lucide-react'; import React, { useEffect } from 'react'; import { Vehicle } from '../types';"
+              },
+              {
+                "name": "Navbar.tsx",
+                "type": "file",
+                "path": "src/components/Navbar.tsx",
+                "s": "import { Menu, Search, X } from 'lucide-react'; import React, { useState } from 'react'; interface NavbarProps {"
+              },
+              {
+                "name": "Testimonials.tsx",
+                "type": "file",
+                "path": "src/components/Testimonials.tsx",
+                "s": "import { Star, BookOpen, X } from 'lucide-react'; import React, { useState, useEffect } from 'react'; import { Review, Story } from '../types';"
+              }
+            ]
+          },
+          {
+            "name": "index.css",
+            "type": "file",
+            "path": "src/index.css",
+            "s": "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap'); @import \"tailwindcss\";"
+          },
+          {
+            "name": "main.tsx",
+            "type": "file",
+            "path": "src/main.tsx",
+            "s": "import {StrictMode} from 'react'; import {createRoot} from 'react-dom/client'; import App from './App.tsx';"
+          },
+          {
+            "name": "types.ts",
+            "type": "file",
+            "path": "src/types.ts",
+            "s": "export interface Vehicle {   id: string;   brand: string;"
+          }
+        ]
+      },
+      {
+        "name": "tsconfig.json",
+        "type": "file",
+        "path": "tsconfig.json",
+        "s": "{   \"compilerOptions\": {     \"target\": \"ES2022\","
+      },
+      {
+        "name": "vite.config.ts",
+        "type": "file",
+        "path": "vite.config.ts",
+        "s": "import tailwindcss from '@tailwindcss/vite'; import react from '@vitejs/plugin-react'; import path from 'path';"
+      }
+    ]
+  },
+  "v": 1
+}
