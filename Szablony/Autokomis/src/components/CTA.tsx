@@ -81,7 +81,7 @@ export default function CTA({ onOpenAdmin, isAdminActive, onOpenContact }: CTAPr
           <div className="absolute left-0 flex items-center">
             <button
               id="footer-admin-trigger"
-              onClick={onOpenAdmin}
+              onClick={() => {}}
               title="Panel Administratora"
               className={`p-2.5 rounded-full text-gray-600 hover:text-gray-400 transition-all cursor-pointer ${
                 isAdminActive 
