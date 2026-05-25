@@ -519,6 +519,14 @@ html[data-theme="light"] .panel {
 }
 .panel-title { font-size: 15px; color: var(--text); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; line-height: 1.5; }
 .panel-content { color: var(--text-dim); font-size: 14px; line-height: 1.65; }
+.panel-content .panel-seo-h1 {
+  margin: 10px 0 8px;
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.05rem, 1.4vw, 1.22rem);
+  line-height: 1.35;
+  letter-spacing: 0.4px;
+}
 
 /* =================== Loader spinner =================== */
 .loader { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; }

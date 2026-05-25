@@ -2,6 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /i-JANEK/
 Disallow: /Szablony/
+Disallow: /dokumenty/
+Disallow: /kalkulator/
 Disallow: /kalkulator/_app/
 Disallow: /kalkulator/stare/
 

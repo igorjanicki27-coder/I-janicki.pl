@@ -9,12 +9,14 @@ const EXCLUDED_DIRS = new Set([
   'node_modules',
   '.github',
   '.claude',
+  'dokumenty',
   'i-JANEK',
   'Szablony',
   'assets',
   'icons',
   'scripts',
   'test-results',
+  'kalkulator',
   'kalkulator/_app',
   'kalkulator/stare'
 ]);
@@ -108,6 +110,8 @@ async function writeRobots() {
     'Allow: /',
     'Disallow: /i-JANEK/',
     'Disallow: /Szablony/',
+    'Disallow: /dokumenty/',
+    'Disallow: /kalkulator/',
     'Disallow: /kalkulator/_app/',
     'Disallow: /kalkulator/stare/',
     '',
