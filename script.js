@@ -164,7 +164,7 @@ const TRANSLATIONS = {
     'btn-reviews': 'Opinie',
     'btn-tutorial': 'Prezentacja',
     'greeting-title': 'i-JANEK',
-    'greeting-text': '<p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><h1 class="panel-seo-h1">Strony internetowe i aplikacje webowe na zamówienie</h1><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
+    'greeting-text': '<h1 class="panel-seo-h1">Strony internetowe i aplikacje webowe na zamówienie</h1><p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
     'greeting-ready': 'Gotowy? Kliknij <em>Dalej</em>! 🚀',
     'lang-label': '🌐 Język',
     'lang-pl': '🇵🇱 PL',
