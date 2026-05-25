@@ -6,7 +6,8 @@
     "build": "npm run build:kalkulator && npm run build:css && npm run build:js",
     "build:kalkulator": "node scripts/build-kalkulator-config.mjs",
     "build:css": "postcss styles.css -o styles.min.css",
-    "build:js": "terser script.js -o script.min.js -c -m"
+    "build:js": "terser script.js -o script.min.js -c -m",
+    "seo": "node scripts/generate-seo-files.mjs"
   },
   "devDependencies": {
     "cssnano": "^7.0.0",

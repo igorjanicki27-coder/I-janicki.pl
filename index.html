@@ -40,7 +40,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -232,7 +232,25 @@
       user-select: none;
     }
 
+    body.intro-active .topbar,
+    body.intro-active .stage,
+    body.intro-active .foot {
+      opacity: 0;
+      transform: translateY(22px);
+      filter: blur(10px);
+      transition: opacity 2s ease, transform 2s ease, filter 2s ease;
+    }
+
+    body.intro-active.intro-revealing .topbar,
+    body.intro-active.intro-revealing .stage,
+    body.intro-active.intro-revealing .foot {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+
     .intro-overlay {
+      display: none !important;
       position: fixed;
       inset: 0;
       z-index: 2000;
@@ -247,11 +265,180 @@
       transition: opacity 0.5s ease, transform 0.5s ease, filter 0.5s ease;
     }
 
+    .bg-intro-video,
+    .bg-intro-frozen {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .bg {
+      z-index: 0 !important;
+      pointer-events: none;
+    }
+
+    .stage,
+    .foot {
+      position: relative;
+      z-index: 2;
+    }
+
+    .bg-intro-video {
+      z-index: 0;
+      object-fit: cover;
+      object-position: center center;
+      transition: opacity 0.45s ease;
+    }
+
+    .bg-intro-frozen {
+      z-index: 1;
+      opacity: 0;
+      pointer-events: none;
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      transition: opacity 0.45s ease;
+    }
+
+    body.intro-media-active .bg-orb,
+    body.intro-media-active .bg-grid,
+    body.intro-media-active .bg-scan {
+      opacity: 0;
+      transition: opacity 0.45s ease;
+    }
+
+    body.intro-media-frozen .bg-intro-video {
+      opacity: 0;
+    }
+
+    body.intro-media-frozen .bg-intro-frozen {
+      opacity: 1;
+    }
+
+    .intro-overlay::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 4, 10, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.55s ease;
+    }
+
     .intro-overlay.is-hidden {
       opacity: 0;
       pointer-events: none;
       transform: scale(1.03);
       filter: blur(3px);
+    }
+
+    .intro-overlay.is-video-mode {
+      place-items: stretch;
+      padding: 0;
+      background: #05060c;
+      cursor: progress;
+    }
+
+    .intro-overlay.is-video-mode::after {
+      opacity: 0.08;
+    }
+
+    .intro-overlay.is-background {
+      z-index: 0;
+      pointer-events: none;
+      transform: none;
+      filter: none;
+      opacity: 1;
+      padding: 0;
+      place-items: stretch;
+      background: #05060c;
+    }
+
+    .intro-overlay.is-background::after {
+      opacity: 0.46;
+    }
+
+    .intro-video-layer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #05060c;
+    }
+
+    .intro-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      pointer-events: none;
+    }
+
+    .intro-frozen-frame {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0;
+      pointer-events: none;
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      transition: opacity 0.55s ease;
+    }
+
+    .intro-frozen-frame::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 4, 10, 0.33);
+    }
+
+    body.has-video-intro .intro-frozen-frame {
+      opacity: 1;
+    }
+
+    body.has-video-intro .bg-orb,
+    body.has-video-intro .bg-grid,
+    body.has-video-intro .bg-scan {
+      opacity: 0;
+      transition: opacity 0.55s ease;
+    }
+
+    .intro-skip-btn {
+      position: absolute;
+      right: 18px;
+      bottom: 16px;
+      border: 1px solid rgba(64, 201, 255, 0.5);
+      background: rgba(5, 8, 16, 0.66);
+      color: #e6f8ff;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .intro-skip-btn:hover {
+      border-color: rgba(127, 64, 255, 0.7);
+      background: rgba(18, 24, 39, 0.82);
+      transform: translateY(-1px);
+    }
+
+    .intro-video-status {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 2;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(207, 236, 255, 0.88);
+      letter-spacing: 0.6px;
+      text-shadow: 0 0 10px rgba(64, 201, 255, 0.35);
+      pointer-events: none;
     }
 
     .intro-shell {
@@ -263,6 +450,8 @@
       background: rgba(10, 13, 24, 0.84);
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
+      position: relative;
+      z-index: 1;
     }
 
     .intro-topbar {
@@ -597,13 +786,14 @@
       }
 
       .cookie-foot-btn {
-        position: static !important;
-        right: auto;
+        position: absolute !important;
+        right: 8px;
+        top: 50%;
         bottom: auto;
-        margin-left: 4px;
+        margin-left: 0;
         padding: 0;
-        opacity: 0.55;
-        transform: none !important;
+        opacity: 0.74;
+        transform: translateY(-50%) !important;
         font-size: 12px;
       }
     }
@@ -757,6 +947,19 @@
         max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
       }
 
+      .intro-skip-btn {
+        right: 10px;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+        padding: 6px 9px;
+        font-size: 9px;
+      }
+
+      .intro-video-status {
+        left: 10px;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+        font-size: 10px;
+      }
+
       .intro-topbar {
         padding: 8px 10px;
         gap: 6px;
@@ -794,7 +997,12 @@
 </head>
 <body>
   <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-label="Wprowadzenie do strony">
-    <div class="intro-shell">
+    <div class="intro-video-layer" id="introVideoLayer" hidden aria-hidden="true">
+      <video class="intro-video" id="introVideo" muted playsinline preload="none"></video>
+      <p class="intro-video-status" id="introVideoStatus" aria-live="polite">Ładowanie intro…</p>
+      <button type="button" class="intro-skip-btn" id="introSkipBtn" hidden>Pomiń</button>
+    </div>
+    <div class="intro-shell" id="introCodeShell">
       <div class="intro-topbar" aria-hidden="true">
         <span class="intro-dots">
           <span class="intro-dot"></span>
@@ -812,6 +1020,8 @@
 
   <!-- ═══════════════ TŁO ═══════════════ -->
   <div class="bg" aria-hidden="true">
+    <video class="bg-intro-video" id="bgIntroVideo" muted playsinline preload="metadata"></video>
+    <div class="bg-intro-frozen" id="bgIntroFrozen"></div>
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
@@ -1054,13 +1264,13 @@
       </div>
       <div class="svc">
         <div class="svc-ico">▣</div>
-        <h3 data-i18n="services-webapps-title">Aplikacje webowe</h3>
-        <p data-i18n="services-webapps-desc">Tworzę aplikacje webowe z użytkowymi interfejsami, integracjami API i panelami administracyjnymi.</p>
+        <h3 data-i18n="services-webapps-title">Aplikacje</h3>
+        <p data-i18n="services-webapps-desc">Tworzę aplikacje webowe i mobilne. Integruje je ze stronami lub innymi aplikacjami.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">▣</div>
-        <h3 data-i18n="services-mobile-title">Aplikacje mobilne</h3>
-        <p data-i18n="services-mobile-desc">Tworzę aplikacje mobilne, intergruje je ze stronami lub innymi aplikacjami.</p>
+        <h3 data-i18n="services-mobile-title">SEO</h3>
+        <p data-i18n="services-mobile-desc">Zajmuję się pozycjonowaniem stron, aby zmaksymalizować ilość odwiedzin.</p>
       </div>
       <div class="svc">
         <div class="svc-ico">⌬</div>
@@ -1249,147 +1459,115 @@
   <script defer src="script.min.js?v=5"></script>
   <script>
     (function () {
-      var INTRO_DURATION_MS = 3000;
-      var INTRO_HOLD_MS = 1800;
-      var introLines = [
-        "$ boot --target=i-janicki.pl --profile=production --theme=neon",
-        ">> loading creative-engine............................OK",
-        ">> syncing visual-rhythm..............................OK",
-        ">> hardening accessibility-layer......................OK",
-        ">> preheating performance cache.......................OK",
-        ">> signing deploy packet..............................OK",
-        "",
-        "const runtime = {",
-        "  app: \"i-janicki.pl\",",
-        "  mode: \"professional\",",
-        "  region: \"eu-central\",",
-        "  build: 2026.05,",
-        "  features: {",
-        "    hero: true,",
-        "    seo: true,",
-        "    analytics: \"consent-aware\",",
-        "    contact: \"verified\"",
-        "  }",
-        "};",
-        "",
-        "async function launchExperience(config) {",
-        "  const pipeline = [",
-        "    \"design-system\",",
-        "    \"animation-engine\",",
-        "    \"content-render\",",
-        "    \"network-guard\"",
-        "  ];",
-        "",
-        "  for (const step of pipeline) {",
-        "    await runStage(step, config);",
-        "    log(\"stage:\" + step + \" => ready\");",
-        "  }",
-        "",
-        "  const qualityScore = calculateQuality({",
-        "    performance: 98,",
-        "    accessibility: 100,",
-        "    consistency: 99",
-        "  });",
-        "",
-        "  if (qualityScore >= 97) {",
-        "    return revealInterface(\"client-ready\");",
-        "  }",
-        "",
-        "  throw new Error(\"Build does not meet premium threshold\");",
-        "};",
-        "",
-        "launchExperience(runtime);",
-        "// Professional presentation protocol: ENABLED"
-      ].join("\n");
+      var INTRO_REVEAL_START_MS = 1500;
+      var INTRO_INTERACTIVE_MS = 3500;
+      var INTRO_VIDEO_VERSION = "20260525-1910";
 
-      function escapeHtml(value) {
-        return String(value)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+      var INTRO_VIDEO_DESKTOP = {
+        webm: "assets/intro/tlo-16-9.webm?v=" + INTRO_VIDEO_VERSION,
+        fallback: "assets/intro/tlo-16-9-last.jpg?v=" + INTRO_VIDEO_VERSION
+      };
+      var INTRO_VIDEO_MOBILE = {
+        webm: "assets/intro/tlo-9-16.webm?v=" + INTRO_VIDEO_VERSION,
+        fallback: "assets/intro/tlo-9-16-last.jpg?v=" + INTRO_VIDEO_VERSION
+      };
+
+      function pickVideoSource() {
+        var isPortrait = window.matchMedia("(orientation: portrait)").matches;
+        var shortestEdge = Math.min(window.innerWidth || 0, window.innerHeight || 0);
+        var mobileViewport = isPortrait && shortestEdge > 0 && shortestEdge <= 900;
+        return mobileViewport ? INTRO_VIDEO_MOBILE : INTRO_VIDEO_DESKTOP;
       }
 
-      function colorizeCode(rawText) {
-        var text = escapeHtml(rawText);
-        var stash = [];
-        var tokenBase = 0xE000;
-
-        function protect(re, className) {
-          text = text.replace(re, function (match) {
-            var token = String.fromCharCode(tokenBase + stash.length);
-            stash.push('<span class="' + className + '">' + match + "</span>");
-            return token;
-          });
-        }
-
-        protect(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "intro-com");
-        protect(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, "intro-str");
-        protect(/\b(const|let|var|function|return|if|else|for|while|await|async|try|catch|throw|new|true|false|null)\b/g, "intro-k");
-        protect(/\b([A-Za-z_$][\w$]*)(?=\s*\()/g, "intro-fn");
-        protect(/\b(\d+(?:\.\d+)?)\b/g, "intro-num");
-        protect(/([{}()[\].,:;=+\-<>])/g, "intro-op");
-        protect(/(^|\n)(\s*)(\$|>>)/g, "intro-sym");
-
-        text = text.replace(/[\uE000-\uF8FF]/g, function (tokenChar) {
-          var index = tokenChar.charCodeAt(0) - tokenBase;
-          return stash[index] || tokenChar;
-        });
-
-        return text;
+      function canPlayVp9Webm(video) {
+        if (!video || typeof video.canPlayType !== "function") return false;
+        var support = video.canPlayType('video/webm; codecs="vp9"');
+        return !!support && support !== "no";
       }
 
-      function revealRealSite(overlay) {
+      function unlockPage() {
         document.body.classList.remove("intro-active");
-        overlay.classList.add("is-hidden");
-        setTimeout(function () {
-          overlay.remove();
-        }, 430);
+      }
+
+      function freezeLastFrame(video, frozenLayer) {
+        if (!video || !frozenLayer) return;
+        if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
+
+        try {
+          var canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) return;
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          frozenLayer.style.backgroundImage = 'url("' + canvas.toDataURL("image/jpeg", 0.95) + '")';
+          frozenLayer.style.opacity = "1";
+          video.style.opacity = "0";
+          document.body.classList.add("intro-media-frozen");
+          video.pause();
+        } catch (_err) {}
       }
 
       document.addEventListener("DOMContentLoaded", function () {
-        var overlay = document.getElementById("introOverlay");
-        var output = document.getElementById("introLines");
-        var readyInfo = document.getElementById("introReady");
-        if (!overlay || !output) return;
+        var legacyOverlay = document.getElementById("introOverlay");
+        if (legacyOverlay) legacyOverlay.remove();
 
-        document.body.classList.add("intro-active");
+        var video = document.getElementById("bgIntroVideo");
+        var frozenLayer = document.getElementById("bgIntroFrozen");
+        if (!video || !frozenLayer) return;
 
-        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        var duration = reduceMotion ? 200 : INTRO_DURATION_MS;
-        var start = performance.now();
-        var isFinished = false;
+        var selectedSourceSet = pickVideoSource();
 
-        function finishTyping() {
-          if (isFinished) return;
-          isFinished = true;
-          output.innerHTML = colorizeCode(introLines);
-          output.insertAdjacentHTML("beforeend", '<span class="intro-cursor" aria-hidden="true"></span>');
-          output.scrollTop = output.scrollHeight;
-          if (readyInfo) {
-            readyInfo.classList.add("is-visible");
-          }
-
-          setTimeout(function () {
-            revealRealSite(overlay);
-          }, reduceMotion ? 60 : INTRO_HOLD_MS);
+        function showStaticFallback() {
+          frozenLayer.style.backgroundImage = 'url("' + selectedSourceSet.fallback + '")';
+          frozenLayer.style.opacity = "1";
+          video.style.opacity = "0";
+          document.body.classList.add("intro-media-frozen");
+          try {
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+          } catch (_err) {}
         }
 
-        function tick(now) {
-          var elapsed = now - start;
-          var ratio = Math.min(elapsed / duration, 1);
-          var visibleChars = Math.floor(introLines.length * ratio);
-          output.innerHTML = colorizeCode(introLines.slice(0, visibleChars));
-          output.insertAdjacentHTML("beforeend", '<span class="intro-cursor" aria-hidden="true"></span>');
-          output.scrollTop = output.scrollHeight;
+        document.body.classList.add("intro-active", "intro-media-active");
+        showStaticFallback();
 
-          if (ratio < 1) {
-            requestAnimationFrame(tick);
-          } else {
-            finishTyping();
-          }
+        window.setTimeout(function () {
+          document.body.classList.add("intro-revealing");
+        }, INTRO_REVEAL_START_MS);
+        window.setTimeout(function () {
+          unlockPage();
+        }, INTRO_INTERACTIVE_MS);
+
+        if (!canPlayVp9Webm(video)) return;
+
+        video.src = selectedSourceSet.webm;
+        video.poster = selectedSourceSet.fallback;
+        video.preload = "auto";
+        video.load();
+
+        video.addEventListener("playing", function () {
+          video.style.opacity = "1";
+          frozenLayer.style.opacity = "0";
+          document.body.classList.remove("intro-media-frozen");
+        }, { once: true });
+
+        video.addEventListener("ended", function () {
+          freezeLastFrame(video, frozenLayer);
+        }, { once: true });
+
+        video.addEventListener("error", function () {
+          showStaticFallback();
+        });
+
+        var playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(function () {
+            showStaticFallback();
+          });
         }
-
-        requestAnimationFrame(tick);
       });
     })();
   </script>

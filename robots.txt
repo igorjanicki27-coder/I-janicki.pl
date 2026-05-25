@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /i-JANEK/
+Disallow: /Szablony/
+Disallow: /kalkulator/_app/
+Disallow: /kalkulator/stare/
 
 Sitemap: https://i-janicki.pl/sitemap.xml

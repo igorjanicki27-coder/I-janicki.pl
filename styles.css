@@ -484,15 +484,18 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
 /* =================== Panel robota =================== */
 .panel {
   width: min(720px, 92vw);
-  background: var(--panel-bg);
+  background: rgba(4, 8, 18, 0.74);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(127, 64, 255, 0.42);
   border-radius: 20px;
   padding: 18px 20px;
-  box-shadow: var(--shadow-neon);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5), var(--shadow-neon);
   animation: panel-in 0.9s var(--ease) 0.3s both;
   position: relative;
+}
+html[data-theme="light"] .panel {
+  background: rgba(241, 245, 255, 0.7);
 }
 .panel::before {
   content: "";
@@ -546,23 +549,32 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
 }
 .tut-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(127,64,255,0.4); }
 .tut-back {
-  background: transparent; color: var(--text-dim); border-color: var(--border-soft);
+  background: linear-gradient(180deg, rgba(22, 31, 52, 0.46) 0%, rgba(11, 17, 31, 0.42) 100%);
+  color: rgba(225, 233, 255, 0.9);
+  border-color: rgba(130, 148, 196, 0.34);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 20px rgba(4, 8, 17, 0.28);
   flex: 1; font-size: 18px; line-height: 1;
 }
-.tut-back:hover { color: var(--text); }
+.tut-back:hover {
+  color: #f0f5ff;
+  border-color: rgba(151, 173, 232, 0.5);
+  background: linear-gradient(180deg, rgba(31, 43, 71, 0.58) 0%, rgba(14, 21, 40, 0.5) 100%);
+}
 .tut-skip {
   font-size: 12px; opacity: 0.38; color: var(--muted); border-color: transparent;
   background: transparent; letter-spacing: 0.5px;
 }
 .tut-skip:hover { opacity: 0.6; }
 .tut-next {
-  background: linear-gradient(135deg, rgba(127,64,255,0.3), rgba(255,0,212,0.25));
+  background: linear-gradient(135deg, rgba(88, 44, 176, 0.4), rgba(179, 16, 148, 0.34));
   border-color: var(--accent-3); color: var(--text);
   flex: 1; min-width: 140px;
 }
 /* First step — no back button, next is wide and centered */
 .tutorial-nav:not(.has-back) .tut-next { max-width: 280px; }
-.tut-next:hover { background: linear-gradient(135deg,rgba(127,64,255,0.45),rgba(255,0,212,0.4)); box-shadow: 0 0 20px rgba(255,0,212,0.3); }
+.tut-next:hover { background: linear-gradient(135deg, rgba(98, 50, 190, 0.48), rgba(197, 22, 164, 0.42)); box-shadow: 0 0 20px rgba(255,0,212,0.26); }
 .tut-next.is-send { background: linear-gradient(135deg,rgba(64,201,255,0.3),rgba(127,64,255,0.35)); border-color: var(--accent-4); }
 
 /* Theme choice buttons (krok wyboru motywu) */
@@ -1118,62 +1130,94 @@ html[data-theme="light"] .review-field textarea { background: rgba(0,0,0,0.04); 
 /* =================== Stopka =================== */
 .foot {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 30px 16px 18px;
-  margin-top: 8px;
+  padding: 15px 44px 9px 16px;
+  margin-top: 4px;
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
   line-height: 1.3;
-  color: var(--muted); letter-spacing: 0.5px;
+  color: rgba(214, 223, 255, 0.72);
+  letter-spacing: 0.5px;
   position: relative; z-index: 5; flex-shrink: 0;
   grid-area: footer;
   isolation: isolate;
+  background: linear-gradient(180deg, rgba(18, 24, 42, 0.56) 0%, rgba(9, 13, 24, 0.62) 100%);
+  border-top: 1px solid rgba(145, 163, 214, 0.24);
+  backdrop-filter: blur(20px) saturate(145%);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 -10px 32px rgba(0, 0, 0, 0.26);
+}
+html[data-theme="light"] .foot {
+  background: linear-gradient(180deg, rgba(245, 248, 255, 0.72) 0%, rgba(231, 238, 251, 0.78) 100%);
+  border-top-color: rgba(107, 126, 177, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  color: rgba(52, 66, 96, 0.82);
 }
 
 .foot::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: clamp(20px, 6vw, 64px);
-  right: clamp(20px, 6vw, 64px);
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(127,64,255,0.32) 18%,
-    rgba(64,201,255,0.28) 50%,
-    rgba(255,0,212,0.28) 82%,
-    transparent 100%);
-  opacity: 0.75;
-  pointer-events: none;
+  display: none;
 }
 
 .foot::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% - 1px);
-  height: clamp(56px, 9vh, 92px);
-  background: linear-gradient(to bottom,
-    transparent 0%,
-    rgba(var(--footer-fade-rgb), 0.08) 48%,
-    rgba(var(--footer-fade-rgb), 0.28) 100%);
-  pointer-events: none;
+  display: none;
 }
 .foot-sep { opacity: 0.5; }
-.foot-mail { text-decoration: none; color: var(--text-dim); transition: color 0.2s; }
+.foot-mail { text-decoration: none; color: rgba(219, 229, 255, 0.82); transition: color 0.2s; }
 .foot-mail:hover { color: var(--accent-4); }
 
-.foot-docs { text-decoration: none; color: var(--text-dim); transition: color 0.2s; }
+.foot-docs { text-decoration: none; color: rgba(219, 229, 255, 0.82); transition: color 0.2s; }
 .foot-docs:hover { color: var(--accent-4); }
+html[data-theme="light"] .foot-mail,
+html[data-theme="light"] .foot-docs {
+  color: rgba(35, 48, 79, 0.82);
+}
 
 /* Przycisk cookie w stopce */
 .cookie-foot-btn {
-  background: none; border: none; font-size: 14px; opacity: 0.25;
-  cursor: pointer; padding: 2px 6px; border-radius: 6px;
-  transition: opacity 0.2s, transform 0.2s;
-  position: fixed; bottom: 12px; right: 14px;
-  z-index: 100;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 0;
+  align-self: center;
+  vertical-align: middle;
+  background: rgba(166, 194, 255, 0.14);
+  border: 1px solid rgba(151, 173, 232, 0.34);
+  border-radius: 999px;
+  backdrop-filter: blur(8px) saturate(125%);
+  -webkit-backdrop-filter: blur(8px) saturate(125%);
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.72;
+  cursor: pointer;
+  padding: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.2s, transform 0.2s, background 0.2s, border-color 0.2s;
 }
-.cookie-foot-btn:hover { opacity: 0.7; transform: scale(1.15); }
+.cookie-foot-btn:hover {
+  opacity: 0.95;
+  transform: translateY(-50%) scale(1.06);
+  background: rgba(180, 206, 255, 0.2);
+  border-color: rgba(182, 204, 255, 0.52);
+}
+
+/* Desktop/Laptop: stopka zawsze przypięta i w pełni widoczna */
+@media (min-width: 821px) {
+  body {
+    padding-bottom: 52px;
+  }
+
+  .foot {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin-top: 0;
+    z-index: 70 !important;
+  }
+}
 
 /* =================== Panel cookies =================== */
 .cookie-overlay {
