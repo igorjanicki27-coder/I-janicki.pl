@@ -1,0 +1,153 @@
+{
+  "t": "2026-05-26T12:00:10.798Z",
+  "f": [
+    {
+      "p": "admin.html",
+      "m": "2026-05-26T09:41:09.427Z",
+      "z": 6875,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\">   <head>"
+    },
+    {
+      "p": "admin.js",
+      "m": "2026-05-26T09:41:59.118Z",
+      "z": 12137,
+      "k": 0,
+      "s": "import {   ADMIN_PIN,   DEFAULT_MAX_ATTEMPTS,"
+    },
+    {
+      "p": "client.html",
+      "m": "2026-05-26T09:41:09.427Z",
+      "z": 2030,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\">   <head>"
+    },
+    {
+      "p": "client.js",
+      "m": "2026-05-26T09:42:16.687Z",
+      "z": 3939,
+      "k": 0,
+      "s": "import {   clearSession,   ensureAnonymousAuth,"
+    },
+    {
+      "p": "elmet.html",
+      "m": "2026-05-26T09:41:09.428Z",
+      "z": 2039,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\">   <head>"
+    },
+    {
+      "p": "firebase.js",
+      "m": "2026-05-25T21:24:59.079Z",
+      "z": 8669,
+      "k": 0,
+      "s": "import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'; import {   getAuth,",
+      "e": [
+        "ADMIN_PIN",
+        "DEFAULT_LOGIN_PIN_LENGTH",
+        "DEFAULT_MAX_ATTEMPTS",
+        "auth",
+        "db",
+        "listenExpenses",
+        "listenMonthlySummary",
+        "formatMoney",
+        "sanitizeSlug"
+      ]
+    },
+    {
+      "p": "index.html",
+      "m": "2026-05-26T10:28:24.605Z",
+      "z": 1900,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\">   <head>"
+    },
+    {
+      "p": "login.js",
+      "m": "2026-05-26T10:06:09.078Z",
+      "z": 5150,
+      "k": 0,
+      "s": "import {   ADMIN_PIN,   DEFAULT_LOGIN_PIN_LENGTH,"
+    },
+    {
+      "p": "sredzka-korona.html",
+      "m": "2026-05-26T09:41:09.428Z",
+      "z": 2068,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\">   <head>"
+    },
+    {
+      "p": "styles.css",
+      "m": "2026-05-26T10:26:29.356Z",
+      "z": 4533,
+      "k": 0,
+      "s": ":root {   --bg: #f6f7fb;   --surface: #ffffff;"
+    }
+  ],
+  "r": {
+    "name": "firmy",
+    "type": "directory",
+    "children": [
+      {
+        "name": "admin.html",
+        "type": "file",
+        "path": "admin.html",
+        "s": "<!doctype html> <html lang=\"pl\">   <head>"
+      },
+      {
+        "name": "admin.js",
+        "type": "file",
+        "path": "admin.js",
+        "s": "import {   ADMIN_PIN,   DEFAULT_MAX_ATTEMPTS,"
+      },
+      {
+        "name": "client.html",
+        "type": "file",
+        "path": "client.html",
+        "s": "<!doctype html> <html lang=\"pl\">   <head>"
+      },
+      {
+        "name": "client.js",
+        "type": "file",
+        "path": "client.js",
+        "s": "import {   clearSession,   ensureAnonymousAuth,"
+      },
+      {
+        "name": "elmet.html",
+        "type": "file",
+        "path": "elmet.html",
+        "s": "<!doctype html> <html lang=\"pl\">   <head>"
+      },
+      {
+        "name": "firebase.js",
+        "type": "file",
+        "path": "firebase.js",
+        "s": "import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'; import {   getAuth,"
+      },
+      {
+        "name": "index.html",
+        "type": "file",
+        "path": "index.html",
+        "s": "<!doctype html> <html lang=\"pl\">   <head>"
+      },
+      {
+        "name": "login.js",
+        "type": "file",
+        "path": "login.js",
+        "s": "import {   ADMIN_PIN,   DEFAULT_LOGIN_PIN_LENGTH,"
+      },
+      {
+        "name": "sredzka-korona.html",
+        "type": "file",
+        "path": "sredzka-korona.html",
+        "s": "<!doctype html> <html lang=\"pl\">   <head>"
+      },
+      {
+        "name": "styles.css",
+        "type": "file",
+        "path": "styles.css",
+        "s": ":root {   --bg: #f6f7fb;   --surface: #ffffff;"
+      }
+    ]
+  },
+  "v": 1
+}
