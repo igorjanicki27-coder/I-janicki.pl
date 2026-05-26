@@ -16,8 +16,7 @@ import {
   where,
   getDocs,
   serverTimestamp,
-  onSnapshot,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
@@ -286,23 +285,6 @@ export async function listExpenses(clientId, month) {
     .sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''), 'pl'));
 }
 
-export function listenExpenses(clientId, month, callback) {
-  const q = query(collection(db, 'firmy_clients', clientId, 'expenses'), where('month', '==', month));
-
-  return onSnapshot(q, (snap) => {
-    callback(
-      snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''), 'pl')),
-    );
-  });
-}
-
-export function listenMonthlySummary(clientId, month, callback) {
-  return onSnapshot(doc(db, 'firmy_clients', clientId, 'months', month), (snap) => {
-    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-  });
-}
 
 export function formatMoney(value) {
   const num = Number(value || 0);
