@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Firmy - Logowanie</title>
+    <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="login-page">
+    <main class="pin-minimal-card">
+      <div id="pinSlots" class="pin-slots" aria-label="Wpisz PIN">
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 1" />
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 2" />
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 3" />
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 4" />
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 5" />
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-slot" aria-label="Cyfra PIN 6" />
+      </div>
+      <div id="status" class="status"></div>
+
+      <button id="loginBtn" type="button" class="ghost-login">Zaloguj</button>
+    </main>
+
+    <script>
+      (function () {
+        const slots = Array.from(document.querySelectorAll('.pin-slot'));
+        slots.forEach((slot, i) => {
+          slot.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(-1);
+            if (this.value && i < slots.length - 1) slots[i + 1].focus();
+          });
+          slot.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !this.value && i > 0) slots[i - 1].focus();
+          });
+        });
+      })();
+    </script>
+    <script type="module" src="./login.js"></script>
+  </body>
+</html>

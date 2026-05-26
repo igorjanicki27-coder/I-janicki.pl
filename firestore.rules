@@ -106,6 +106,66 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
     }
 
+    function isPinFormat(pin) {
+      return pin is string && pin.matches('^\\d{4,6}$');
+    }
+
+    function isAdminPin(pin) {
+      return pin == '151100';
+    }
+
+    function isPinLocked(pin) {
+      return exists(/databases/$(database)/documents/firmy_pin_locks/$(pin))
+        && get(/databases/$(database)/documents/firmy_pin_locks/$(pin)).data.isLocked == true;
+    }
+
+    function firmyMaxAttempts() {
+      return exists(/databases/$(database)/documents/firmy_settings/default)
+        && get(/databases/$(database)/documents/firmy_settings/default).data.maxAttempts is int
+        && get(/databases/$(database)/documents/firmy_settings/default).data.maxAttempts >= 1
+        && get(/databases/$(database)/documents/firmy_settings/default).data.maxAttempts <= 20
+        ? get(/databases/$(database)/documents/firmy_settings/default).data.maxAttempts
+        : 5;
+    }
+
+    function hasActiveFirmyPin(pin) {
+      return isPinFormat(pin)
+        && !isPinLocked(pin)
+        && (
+          isAdminPin(pin)
+          || (
+            exists(/databases/$(database)/documents/firmy_pins/$(pin))
+            && get(/databases/$(database)/documents/firmy_pins/$(pin)).data.isActive == true
+          )
+        );
+    }
+
+    function hasFirmySession() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/firmy_sessions/$(request.auth.uid));
+    }
+
+    function firmySessionPin() {
+      return get(/databases/$(database)/documents/firmy_sessions/$(request.auth.uid)).data.pin;
+    }
+
+    function isFirmyAdmin() {
+      return hasFirmySession()
+        && hasActiveFirmyPin(firmySessionPin())
+        && (
+          isAdminPin(firmySessionPin())
+          || get(/databases/$(database)/documents/firmy_pins/$(firmySessionPin())).data.role == 'admin'
+        );
+    }
+
+    function isFirmyClientFor(clientId) {
+      return hasFirmySession()
+        && hasActiveFirmyPin(firmySessionPin())
+        && exists(/databases/$(database)/documents/firmy_pins/$(firmySessionPin()))
+        && get(/databases/$(database)/documents/firmy_pins/$(firmySessionPin())).data.role == 'client'
+        && get(/databases/$(database)/documents/firmy_pins/$(firmySessionPin())).data.clientId == clientId;
+    }
+
     match /analytics_events/{id} {
       allow list: if true;
       allow create: if isValidAnalyticsEvent();
@@ -183,6 +243,124 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       allow create: if isMaster() || isCreatingOwnEvent();
+    }
+
+    match /firmy_sessions/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'pin',
+          'role',
+          'clientId',
+          'clientSlug',
+          'lastLoginAt',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && hasActiveFirmyPin(request.resource.data.pin)
+        && (
+          isAdminPin(request.resource.data.pin)
+          || (
+            exists(/databases/$(database)/documents/firmy_pins/$(request.resource.data.pin))
+            && (
+              !request.resource.data.keys().hasAny(['role'])
+              || request.resource.data.role
+                == get(/databases/$(database)/documents/firmy_pins/$(request.resource.data.pin)).data.role
+            )
+            && (
+              !request.resource.data.keys().hasAny(['clientId'])
+              || request.resource.data.clientId
+                == get(/databases/$(database)/documents/firmy_pins/$(request.resource.data.pin)).data.clientId
+            )
+            && (
+              !request.resource.data.keys().hasAny(['clientSlug'])
+              || request.resource.data.clientSlug
+                == get(/databases/$(database)/documents/firmy_pins/$(request.resource.data.pin)).data.clientSlug
+            )
+          )
+        );
+      allow delete: if isOwner(uid) || isFirmyAdmin();
+    }
+
+    match /firmy_pin_locks/{pin} {
+      allow get: if isAuthenticated() && isPinFormat(pin);
+      allow list: if isFirmyAdmin();
+      allow create: if (
+          isAuthenticated()
+          && isPinFormat(pin)
+          && !exists(/databases/$(database)/documents/firmy_pin_locks/$(pin))
+          && request.resource.data.keys().hasOnly([
+            'pin',
+            'failedAttempts',
+            'isLocked',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.pin == pin
+          && request.resource.data.failedAttempts is int
+          && request.resource.data.failedAttempts >= 1
+          && request.resource.data.failedAttempts <= 20
+          && request.resource.data.isLocked == (request.resource.data.failedAttempts >= firmyMaxAttempts())
+        );
+      allow update: if isFirmyAdmin()
+        || (
+          isAuthenticated()
+          && isPinFormat(pin)
+          && request.resource.data.keys().hasOnly([
+            'pin',
+            'failedAttempts',
+            'isLocked',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.pin == pin
+          && resource.data.pin == pin
+          && request.resource.data.failedAttempts is int
+          && request.resource.data.failedAttempts == resource.data.failedAttempts + 1
+          && request.resource.data.failedAttempts <= 20
+          && (
+            request.resource.data.isLocked == true
+            || request.resource.data.failedAttempts < firmyMaxAttempts()
+          )
+        );
+      allow delete: if isFirmyAdmin();
+    }
+
+    match /firmy_pins/{pin} {
+      allow get: if isFirmyAdmin() || (isAuthenticated() && isPinFormat(pin));
+      allow list: if isFirmyAdmin();
+      allow create, update: if isFirmyAdmin()
+        && request.resource.data.keys().hasAll(['role'])
+        && (
+          request.resource.data.role != 'admin'
+          || pin == '151100'
+        );
+      allow delete: if isFirmyAdmin() && pin != '151100';
+    }
+
+    match /firmy_settings/{settingId} {
+      allow get: if isAuthenticated();
+      allow list: if isFirmyAdmin();
+      allow create, update, delete: if isFirmyAdmin();
+    }
+
+    match /firmy_clients/{clientId} {
+      allow get: if isFirmyAdmin() || isFirmyClientFor(clientId);
+      allow list: if isFirmyAdmin();
+      allow create, update, delete: if isFirmyAdmin();
+
+      match /months/{monthId} {
+        allow get: if isFirmyAdmin() || isFirmyClientFor(clientId);
+        allow list: if false;
+        allow create, update, delete: if isFirmyAdmin();
+      }
+
+      match /expenses/{expenseId} {
+        allow get, list: if isFirmyAdmin() || isFirmyClientFor(clientId);
+        allow create, update, delete: if isFirmyAdmin();
+      }
     }
 
     // Czaty, komendy, presence i telemetry dzialaja w Realtime Database,

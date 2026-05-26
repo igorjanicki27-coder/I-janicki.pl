@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Admina - Rozliczenia Firm</title>
+    <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container stack">
+      <section class="card stack">
+        <div class="toolbar">
+          <h1>Panel Admina</h1>
+          <button id="logoutBtn" class="secondary" type="button">Wyloguj</button>
+          <button id="seedBtn" class="secondary" type="button">Wgraj dane startowe</button>
+        </div>
+        <p>Zarządzanie PIN-ami, klientami i miesięcznymi rozliczeniami.</p>
+        <div id="status" class="status"></div>
+        <form id="settingsForm" class="grid-3">
+          <label>Długość PIN
+            <input id="pinLength" type="number" min="4" max="6" value="4" />
+          </label>
+          <label>Maks. prób przed blokadą
+            <input id="maxAttempts" type="number" min="1" max="20" value="5" />
+          </label>
+          <div>
+            <button type="submit">Zapisz ustawienia logowania</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="grid-2">
+        <article class="card stack">
+          <h2>Dodaj Klienta</h2>
+          <form id="clientForm" class="stack">
+            <label>Nazwa klienta
+              <input id="clientName" required />
+            </label>
+            <label>Slug (opcjonalnie)
+              <input id="clientSlug" placeholder="np. nowa-firma" />
+            </label>
+            <label>Domyślny budżet miesięczny
+              <input id="defaultBudget" type="number" min="0" step="0.01" />
+            </label>
+            <label>Domyślna opłata za pracę
+              <input id="defaultWorkFee" type="number" min="0" step="0.01" />
+            </label>
+            <button type="submit">Zapisz klienta</button>
+          </form>
+        </article>
+
+        <article class="card stack">
+          <h2>PIN-y Dostępu</h2>
+          <form id="pinForm" class="stack">
+            <label>PIN (4-6 cyfr)
+              <input id="pinCode" inputmode="numeric" maxlength="6" required />
+            </label>
+            <label>Rola
+              <select id="pinRole">
+                <option value="client">Klient</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </label>
+            <label>Klient
+              <select id="pinClientId"></select>
+            </label>
+            <button type="submit">Zapisz PIN</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="card stack">
+        <h2>Klienci</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Klient</th>
+                <th>Slug</th>
+                <th>Domyślny budżet</th>
+                <th>Domyślna opłata pracy</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <h2>PIN-y</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PIN</th>
+                <th>Rola</th>
+                <th>Przypisanie</th>
+                <th>Status</th>
+                <th>Blokada</th>
+                <th>Akcja</th>
+              </tr>
+            </thead>
+            <tbody id="pinsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <h2>Rozliczenie Miesięczne</h2>
+        <form id="monthForm" class="grid-3">
+          <label>Klient
+            <select id="expenseClientId"></select>
+          </label>
+          <label>Miesiąc
+            <input id="currentMonth" type="month" required />
+          </label>
+          <label>Status płatności
+            <select id="paymentStatus">
+              <option value="unpaid">Do zapłaty</option>
+              <option value="partial">Częściowo</option>
+              <option value="paid">Zapłacone</option>
+            </select>
+          </label>
+          <label>Budżet klienta
+            <input id="monthlyBudget" type="number" min="0" step="0.01" />
+          </label>
+          <label>Opłata za Twoją pracę
+            <input id="workFee" type="number" min="0" step="0.01" />
+          </label>
+          <label>Uwagi
+            <input id="monthNote" />
+          </label>
+          <div>
+            <button type="submit">Zapisz podsumowanie miesiąca</button>
+          </div>
+        </form>
+
+        <div class="grid-3">
+          <div class="kpi"><span>Wydatki z konta klienta</span><b id="kpiClientSpend">0 zł</b></div>
+          <div class="kpi"><span>Wydatki z Twojego konta</span><b id="kpiOwnerSpend">0 zł</b></div>
+          <div class="kpi"><span>Opłata za pracę</span><b id="kpiWorkFee">0 zł</b></div>
+          <div class="kpi"><span>Klient do zapłaty</span><b id="kpiToPay">0 zł</b></div>
+          <div class="kpi"><span>Pozostały budżet klienta</span><b id="kpiBudgetLeft">0 zł</b></div>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <h2>Dodaj Koszt</h2>
+        <form id="expenseForm" class="grid-3">
+          <label>Data
+            <input id="expenseDate" type="date" required />
+          </label>
+          <label>Opis
+            <input id="expenseLabel" required placeholder="np. Google Ads" />
+          </label>
+          <label>Kategoria
+            <input id="expenseCategory" placeholder="np. Ads / SEO / Backlinki" />
+          </label>
+          <label>Kto zapłacił
+            <select id="expensePayer">
+              <option value="client">Klient</option>
+              <option value="owner">Właściciel</option>
+            </select>
+          </label>
+          <label>Kwota
+            <input id="expenseAmount" type="number" min="0" step="0.01" required />
+          </label>
+          <label>Notatka
+            <input id="expenseNote" />
+          </label>
+          <div>
+            <button type="submit">Dodaj koszt</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card stack">
+        <h2>Pozycje kosztowe</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Opis</th>
+                <th>Kategoria</th>
+                <th>Płatnik</th>
+                <th>Kwota</th>
+                <th>Notatka</th>
+                <th>Akcja</th>
+              </tr>
+            </thead>
+            <tbody id="expensesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./admin.js"></script>
+  </body>
+</html>
