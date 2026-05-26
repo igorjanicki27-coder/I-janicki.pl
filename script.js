@@ -1340,6 +1340,19 @@ function cookieDecide(analytics) {
   localStorage.setItem(LS.COOKIE_DECISION,  analytics ? 'all' : 'essential');
   localStorage.setItem(LS.COOKIE_ANALYTICS, analytics ? 'true' : 'false');
   updateCookieAnalyticsStatus();
+
+  // Consent Mode v2 — poinformuj Google o decyzji użytkownika
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function gtag() {
+    window.dataLayer.push(arguments);
+  };
+  window.gtag('consent', 'update', {
+    'ad_user_data': analytics ? 'granted' : 'denied',
+    'ad_personalization': analytics ? 'granted' : 'denied',
+    'ad_storage': analytics ? 'granted' : 'denied',
+    'analytics_storage': analytics ? 'granted' : 'denied',
+  });
+
   if (analytics) {
     window.loadGA?.();
     window.maybeTrackHomeVisit?.();

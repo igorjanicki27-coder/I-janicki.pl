@@ -19,6 +19,35 @@
   let firebaseApp = null;
   let firebaseSDKPromise = null;
 
+  // ────────────────────────────────────────────────────────────────
+  // Consent Mode v2 — ustaw domyślną odmowę NATYCHMIAST (przed gtag.js)
+  // Zgodnie z instrukcją Google: gtag('consent', 'default') w <head>
+  // przed kodem banera z prośbą o zgodę
+  // ────────────────────────────────────────────────────────────────
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function gtag() {
+    window.dataLayer.push(arguments);
+  };
+
+  window.gtag('consent', 'default', {
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'ad_storage': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500,
+  });
+
+  // Jeśli zgoda była już udzielona wcześniej (z poprzedniej sesji),
+  // natychmiast zaktualizuj — zanim gtag.js się załaduje
+  if (hasAnalyticsConsent()) {
+    window.gtag('consent', 'update', {
+      'ad_user_data': 'granted',
+      'ad_personalization': 'granted',
+      'ad_storage': 'granted',
+      'analytics_storage': 'granted',
+    });
+  }
+
   // Dynamicznie załaduj Firebase SDK (102KB) dopiero gdy będzie potrzebny
   function loadFirebaseSDK() {
     if (firebaseSDKPromise) return firebaseSDKPromise;
@@ -73,10 +102,6 @@
     if (window._gaLoaded) return true;
 
     window._gaLoaded = true;
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = window.gtag || function gtag() {
-      window.dataLayer.push(arguments);
-    };
 
     const gaScript = document.createElement('script');
     gaScript.async = true;
@@ -239,7 +264,7 @@
     // Załaduj GA (lekki) ale NOT Firebase (102KB)
     // Firebase załaduje się dopiero na writeAnalyticsEvent (user interaction)
     loadGA();
-    // maybeTrackHomeVisit() usunięte - Firebase zaloguje się dopiero na demand
+    // maybeTrackHomeVisit() usunięte — Firebase zaloguje się dopiero na demand
   }
 
   window.addEventListener('visibilitychange', () => {
