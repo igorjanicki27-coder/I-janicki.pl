@@ -73,7 +73,12 @@ export function SearchModal({ isOpen, onClose, searchQuery, setSearchQuery, filt
                  )}
                >
                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {order.type === 'lista_reczna' && (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                          Lista
+                        </span>
+                      )}
                       <span className={cn("font-bold text-sm", order.status === 'zakończone' ? "text-white/60" : "text-white")}>
                         {order.name}
                       </span>

@@ -30,12 +30,17 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
   const [showStatusControls, setShowStatusControls] = useState(false);
 
   const isReadOnly = order.status === 'zakończone' || order.status === 'opłacone' || order.status === 'anulowano';
+  const isManualList = order.type === 'lista_reczna';
 
   const handleItemChange = (index: number, updates: Partial<OrderItem>) => {
     const newItems = [...order.items];
     const item = { ...newItems[index], ...updates };
     // recalculate total for item
-    item.total = Number((item.price * item.quantity).toFixed(2));
+    if (isManualList) {
+      item.total = Number(item.price.toFixed(2));
+    } else {
+      item.total = Number((item.price * item.quantity).toFixed(2));
+    }
     newItems[index] = item;
     updateOrderItems(orderId, newItems);
   };
@@ -45,7 +50,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       id: crypto.randomUUID(),
       serviceName: '',
       unitMode: 'standard',
-      unit: 'm2',
+      unit: isManualList ? 'szt' : 'm2',
       price: 0,
       quantity: 1,
       total: 0
@@ -71,7 +76,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
   };
 
   const handleDeleteOrder = async () => {
-    const shouldDelete = window.confirm(`Czy na pewno chcesz usunąć zlecenie "${order.name}"?`);
+    const shouldDelete = window.confirm(`Czy na pewno chcesz usunąć ${isManualList ? 'listę' : 'zlecenie'} "${order.name}"?`);
     if (!shouldDelete) return;
     await onDeleteOrder(orderId);
   };
@@ -132,7 +137,9 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       {/* Main Editor Pane */}
       <div className="flex-1 flex flex-col relative w-full overflow-hidden min-h-0">
         <div className="flex-1 modal-scroll-y overflow-y-auto p-3 sm:p-6 space-y-3 pb-4 min-h-0">
-          <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-2 sm:mb-4">Pozycje Zlecenia</label>
+          <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest block mb-2 sm:mb-4">
+            {isManualList ? 'Pozycje Listy' : 'Pozycje Zlecenia'}
+          </label>
           {order.items.map((item, index) => (
             <div key={item.id} className="relative group bg-white/5 border border-white/5 rounded-2xl p-3 sm:p-5 transition-colors hover:bg-white/[0.07] flex flex-col gap-3 sm:gap-4">
               {/* Item Actions */}
@@ -150,8 +157,8 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
               </div>
 
               {/* Line 1: Service Name */}
-              <div className="flex flex-col gap-3 sm:gap-4 items-start sm:items-end">
-                <div className="flex-1">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="w-full">
                    <Input 
                      label="Usługa / Materiał" 
                      value={item.serviceName}
@@ -163,7 +170,21 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
               </div>
 
               {/* Line 2: Unit, Price, Quantity */}
-              <div className="grid grid-cols-1 sm:flex gap-2 sm:gap-4 items-end">
+              {isManualList ? (
+                <div className="w-full">
+                   <Input 
+                     label="Cena (zł)" 
+                     type="number"
+                     min="0"
+                     step="any"
+                     value={item.price}
+                     onChange={(e) => handleItemChange(index, { price: parseFloat(e.target.value) || 0 })}
+                     disabled={isReadOnly}
+                     className="font-mono bg-black/20"
+                   />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:flex gap-2 sm:gap-4 items-end">
                 <div className={item.unitMode === 'custom' ? "w-full sm:w-[100px] shrink-0" : "w-full sm:w-[120px] shrink-0"}>
                    <Select 
                      label="J.M."
@@ -226,6 +247,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                    />
                 </div>
               </div>
+              )}
 
               <div className="pt-2 border-t border-white/10 flex items-end justify-between">
                 <div className="text-[10px] uppercase text-white/40 font-bold tracking-widest">Suma pozycji</div>
@@ -236,7 +258,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
 
           {order.items.length === 0 && (
             <div className="text-center p-8 bg-white/5 border border-white/5 rounded-xl mt-4">
-              <p className="text-white/30 text-sm font-medium">Brak pozycji w zleceniu.</p>
+              <p className="text-white/30 text-sm font-medium">{isManualList ? 'Brak pozycji na liście.' : 'Brak pozycji w zleceniu.'}</p>
             </div>
           )}
         </div>

@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Coins, FileText, ChevronRight } from 'lucide-react';
+import { Plus, Search, Coins, FileText, ChevronRight, ClipboardList, ClipboardPen, X } from 'lucide-react';
 import { useOrders } from '../store/useOrders';
 import { Order, OrderStatus } from '../types';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { AddOrderModal } from '../components/AddOrderModal';
+import { AddManualListModal } from '../components/AddManualListModal';
 import { OrderModal } from '../components/OrderModal';
 import { FinanceModal } from '../components/FinanceModal';
 import { SearchModal } from '../components/SearchModal';
@@ -20,8 +21,9 @@ const statusColors: Record<OrderStatus, string> = {
 
 export default function Kalkulator() {
   const { orders, addOrder, updateOrder, updateOrderItems, deleteOrder, isLoading, error } = useOrders();
-  const [activeModal, setActiveModal] = useState<'add' | 'search' | 'finance' | 'order' | null>(null);
+  const [activeModal, setActiveModal] = useState<'add' | 'addManual' | 'search' | 'finance' | 'order' | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showAddChoice, setShowAddChoice] = useState(false);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,9 +48,16 @@ export default function Kalkulator() {
   }, [orders, searchQuery, filterStatus]);
 
   const handleCreateOrder = async (name: string) => {
-    const newOrder = await addOrder(name);
+    const newOrder = await addOrder(name, 'zlecenie');
     setActiveModal(null);
     setSelectedOrderId(newOrder.id);
+    setActiveModal('order');
+  };
+
+  const handleCreateManualList = async (name: string) => {
+    const newList = await addOrder(name, 'lista_reczna');
+    setActiveModal(null);
+    setSelectedOrderId(newList.id);
     setActiveModal('order');
   };
 
@@ -108,12 +117,12 @@ export default function Kalkulator() {
             ) : filteredOrders.length === 0 ? (
               <div className="p-8 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.02]">
                 <FileText className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <p className="text-white/40">Brak zleceń do wyświetlenia.</p>
+                <p className="text-white/40">Brak zleceń lub list do wyświetlenia.</p>
                 <button 
-                  onClick={() => setActiveModal('add')}
+                  onClick={() => setShowAddChoice(true)}
                   className="mt-4 text-sm text-emerald-400 hover:text-emerald-300 font-bold"
                 >
-                  Dodaj nowe zlecenie
+                  Dodaj nowe zlecenie lub listę
                 </button>
               </div>
             ) : (
@@ -127,7 +136,12 @@ export default function Kalkulator() {
                   )}
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {order.type === 'lista_reczna' && (
+                        <span className="px-[8px] py-[3px] rounded-[6px] text-[10px] font-[600] uppercase tracking-[0.03em] bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                          Lista
+                        </span>
+                      )}
                       <span className={cn("font-bold text-lg", order.status === 'zakończone' ? "text-white/60" : "text-white")}>
                         {order.name}
                       </span>
@@ -176,11 +190,50 @@ export default function Kalkulator() {
         >
           <Search className="w-6 h-6" />
         </div>
-        <div 
-          onClick={() => setActiveModal('add')}
-          className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-500 shadow-[0_10px_25px_rgba(0,0,0,0.5)] cursor-pointer transition-transform hover:scale-105 active:scale-95"
-        >
-          <Plus className="w-7 h-7" strokeWidth={3} />
+        <div className="relative">
+          {/* Choice Panel */}
+          {showAddChoice && (
+            <>
+              <div 
+                className="fixed inset-0 z-30" 
+                onClick={() => setShowAddChoice(false)}
+              />
+              <div className="absolute bottom-0 right-0 mb-0 mr-0 z-40 flex flex-col gap-3 animate-in slide-in-from-bottom-4 fade-in duration-200">
+                <div className="flex flex-col gap-3 bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[240px]">
+                  <button
+                    onClick={() => { setShowAddChoice(false); setActiveModal('add'); }}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-600/30 transition-colors">
+                      <ClipboardPen className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">Nowe zlecenie</div>
+                      <div className="text-[11px] text-white/40 mt-0.5">Usługi, materiały, jednostki</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowAddChoice(false); setActiveModal('addManual'); }}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:bg-blue-600/30 transition-colors">
+                      <ClipboardList className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">Nowa lista ręczna</div>
+                      <div className="text-[11px] text-white/40 mt-0.5">Tylko nazwa i cena</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          <div 
+            onClick={() => setShowAddChoice(!showAddChoice)}
+            className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-emerald-600 text-white hover:bg-emerald-500 shadow-[0_10px_25px_rgba(0,0,0,0.5)] cursor-pointer transition-transform hover:scale-105 active:scale-95"
+          >
+            {showAddChoice ? <X className="w-6 h-6" strokeWidth={3} /> : <Plus className="w-7 h-7" strokeWidth={3} />}
+          </div>
         </div>
       </div>
 
@@ -188,6 +241,12 @@ export default function Kalkulator() {
         isOpen={activeModal === 'add'} 
         onClose={() => setActiveModal(null)} 
         onCreate={handleCreateOrder} 
+      />
+
+      <AddManualListModal 
+        isOpen={activeModal === 'addManual'} 
+        onClose={() => setActiveModal(null)} 
+        onCreate={handleCreateManualList} 
       />
       
       <SearchModal 

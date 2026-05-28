@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { calculatorOrdersCollection, firestore, isFirebaseReady } from '../lib/firebase';
-import { Order, OrderItem, OrderStatus, UnitMode, StandardUnit } from '../types';
+import { Order, OrderItem, OrderStatus, UnitMode, StandardUnit, OrderType } from '../types';
 
 const EMPTY_ORDERS: Order[] = [];
 
@@ -43,6 +43,10 @@ function normalizeItem(item: Partial<OrderItem> & { id?: unknown }): OrderItem {
   };
 }
 
+function normalizeOrderType(value: unknown): OrderType {
+  return value === 'lista_reczna' ? 'lista_reczna' : 'zlecenie';
+}
+
 function normalizeOrder(documentId: string, data: Record<string, unknown>): Order {
   const items = Array.isArray(data.items) ? data.items.map((item) => normalizeItem(item as Partial<OrderItem>)) : [];
   const createdAt = toNumber(data.createdAt, Date.now());
@@ -54,6 +58,7 @@ function normalizeOrder(documentId: string, data: Record<string, unknown>): Orde
   return {
     id: typeof data.id === 'string' && data.id ? data.id : documentId,
     name: typeof data.name === 'string' && data.name.trim() ? data.name : 'Bez nazwy',
+    type: normalizeOrderType(data.type),
     status: resolveStatus(data.status),
     createdAt,
     updatedAt: toNumber(data.updatedAt, createdAt),
@@ -66,6 +71,7 @@ function serializeOrder(order: Order) {
   return {
     id: order.id,
     name: order.name,
+    type: order.type,
     status: order.status,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
@@ -120,11 +126,12 @@ export function useOrders() {
     return () => unsubscribe();
   }, []);
 
-  const addOrder = async (name: string): Promise<Order> => {
+  const addOrder = async (name: string, type: OrderType = 'zlecenie'): Promise<Order> => {
     const now = Date.now();
     const newOrder: Order = {
       id: crypto.randomUUID(),
       name,
+      type,
       status: 'otwarte',
       createdAt: now,
       updatedAt: now,

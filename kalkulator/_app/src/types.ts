@@ -25,9 +25,12 @@ export interface OrderItem {
   total: number;
 }
 
+export type OrderType = 'zlecenie' | 'lista_reczna';
+
 export interface Order {
   id: string;
   name: string;
+  type: OrderType;
   status: OrderStatus;
   createdAt: number;
   updatedAt: number;
