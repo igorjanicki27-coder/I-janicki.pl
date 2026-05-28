@@ -2,15 +2,36 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Order } from '../types';
 import logoDataUrl from '../assets/logo-pdf.png?inline';
+import dejaVuSansBase64 from '../assets/fonts/DejaVuSans.base64';
+
+const FONT_NAME = 'DejaVuSans';
+
+/**
+ * Rejestruje czcionkę DejaVu Sans w instancji jsPDF.
+ * DejaVu Sans obsługuje polskie znaki diakrytyczne (ą, ć, ę, ł, ń, ó, ś, ź, ż).
+ */
+const registerFont = (doc: jsPDF) => {
+  try {
+    // Sprawdź czy czcionka jest już zarejestrowana (np. przy wielostronicowym PDF)
+    doc.getFont(FONT_NAME);
+  } catch {
+    doc.addFileToVFS('DejaVuSans.ttf', dejaVuSansBase64);
+    doc.addFont('DejaVuSans.ttf', FONT_NAME, 'normal');
+  }
+  doc.setFont(FONT_NAME);
+};
 
 export const downloadOrderPDF = (order: Order) => {
   const doc = new jsPDF();
+
+  // Rejestruj czcionkę z polskimi znakami
+  registerFont(doc);
 
   const drawCornerLogo = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.addImage(logoDataUrl, 'PNG', pageWidth - 34, 10, 24, 24);
   };
- 
+
   // Header
   drawCornerLogo();
 
@@ -20,8 +41,8 @@ export const downloadOrderPDF = (order: Order) => {
   doc.text(`Zlecenie: ${order.name}`, 14, 22);
 
   const tableColumn = isManualList
-    ? ["Lp.", "Nazwa", "Cena (zl)"]
-    : ["Lp.", "Usluga / Material", "Ilosc", "J.M.", "Cena jedn. (zl)", "Suma (zl)"];
+    ? ['Lp.', 'Nazwa', 'Cena (zł)']
+    : ['Lp.', 'Usługa / Materiał', 'Ilość', 'J.M.', 'Cena jedn. (zł)', 'Suma (zł)'];
   const tableRows: any[][] = [];
 
   order.items.forEach((item, index) => {
@@ -29,7 +50,7 @@ export const downloadOrderPDF = (order: Order) => {
       tableRows.push([
         index + 1,
         item.serviceName,
-        item.price.toLocaleString('pl-PL')
+        item.price.toLocaleString('pl-PL'),
       ]);
     } else {
       tableRows.push([
@@ -38,7 +59,7 @@ export const downloadOrderPDF = (order: Order) => {
         item.quantity.toString(),
         item.unitMode === 'custom' ? item.unit : item.unit,
         item.price.toLocaleString('pl-PL'),
-        item.total.toLocaleString('pl-PL')
+        item.total.toLocaleString('pl-PL'),
       ]);
     }
   });
@@ -49,10 +70,12 @@ export const downloadOrderPDF = (order: Order) => {
     body: tableRows,
     willDrawPage: () => {
       drawCornerLogo();
+      // Przywróć czcionkę po narysowaniu nowej strony
+      doc.setFont(FONT_NAME);
     },
     theme: 'grid',
-    headStyles: { fillColor: [0, 0, 0] },
-    styles: { font: 'helvetica' },
+    headStyles: { fillColor: [0, 0, 0], font: FONT_NAME },
+    styles: { font: FONT_NAME, overflow: 'linebreak' },
     columnStyles: isManualList
       ? {
           0: { cellWidth: 10 },
@@ -64,20 +87,20 @@ export const downloadOrderPDF = (order: Order) => {
           1: { cellWidth: 'auto' },
           2: { cellWidth: 15 },
           3: { cellWidth: 15 },
-          4: { cellWidth: 25 },
-          5: { cellWidth: 28 },
+          4: { cellWidth: 28 },
+          5: { cellWidth: 30 },
         },
     foot: isManualList
-      ? [
-          ['', 'Wartosc Calkowita:', order.total.toLocaleString('pl-PL') + ' zl']
-        ]
-      : [
-          ['', '', '', '', 'Wartosc Calkowita:', order.total.toLocaleString('pl-PL') + ' zl']
-        ],
-    footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }
+      ? [['', 'Wartość Całkowita:', order.total.toLocaleString('pl-PL') + ' zł']]
+      : [['', '', '', '', 'Wartość Całkowita:', order.total.toLocaleString('pl-PL') + ' zł']],
+    footStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      font: FONT_NAME,
+    },
   });
 
-  const prefix = 'Zlecenie';
-  const fileName = `${prefix}_${order.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+  const fileName = `Zlecenie_${order.name.replace(/[^a-z0-9ąćęłńóśźż]/gi, '_').toLowerCase()}.pdf`;
   doc.save(fileName);
 };
