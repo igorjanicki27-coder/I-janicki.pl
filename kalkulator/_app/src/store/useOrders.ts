@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -116,6 +117,7 @@ export function useOrders() {
   const [orders, setOrders] = useState<Order[]>(EMPTY_ORDERS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pendingWriteIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!firestore) {
@@ -128,7 +130,18 @@ export function useOrders() {
     const unsubscribe = onSnapshot(
       ordersQuery,
       (snapshot) => {
-        const nextOrders = snapshot.docs.map((document) => normalizeOrder(document.id, document.data() as Record<string, unknown>));
+        const nextOrders = snapshot.docs.map((document) => {
+          const rawData = document.data() as Record<string, unknown>;
+          const normalized = normalizeOrder(document.id, rawData);
+          console.log('[onSnapshot] Odczytano dokument:', { id: document.id, type: normalized.type, itemsCount: normalized.items.length, items: normalized.items.map(i => ({ id: i.id, total: i.total, price: i.price })) });
+          return normalized;
+        });
+        console.log('[onSnapshot] Wszystkie zamówienia:', nextOrders.length);
+        // Nie nadpisuj stanu jeśli trwa zapis dla któregoś z dokumentów
+        if (pendingWriteIds.current.size > 0) {
+          console.log('[onSnapshot] Pomijam aktualizację stanu - trwają zapisy:', [...pendingWriteIds.current]);
+          return;
+        }
         setOrders(nextOrders);
         setError(null);
         setIsLoading(false);
@@ -159,10 +172,13 @@ export function useOrders() {
     setOrders((current) => [newOrder, ...current]);
 
     if (firestore) {
+      const serialized = serializeOrder(newOrder);
+      console.log('[addOrder] Tworzenie nowego zamówienia w Firestore:', { id: newOrder.id, name: newOrder.name, type: newOrder.type, serialized });
       try {
-        await setDoc(doc(firestore, calculatorOrdersCollection, newOrder.id), serializeOrder(newOrder));
+        await setDoc(doc(firestore, calculatorOrdersCollection, newOrder.id), serialized);
+        console.log('[addOrder] Zapisano pomyślnie:', newOrder.id);
       } catch (writeError) {
-        console.error('Nie udało się zapisać nowego zlecenia', writeError);
+        console.error('[addOrder] BŁĄD zapisu:', writeError);
         setError('Nie udało się zapisać nowego zlecenia do Firestore.');
       }
     }
@@ -199,6 +215,8 @@ export function useOrders() {
     const total = Number(newItems.reduce((acc, item) => acc + item.total, 0).toFixed(2));
     let nextOrder: Order | null = null;
 
+    console.log('[updateOrderItems] Zapisywanie pozycji:', { id, itemsCount: newItems.length, items: newItems.map(i => ({ id: i.id, serviceName: i.serviceName, price: i.price, quantity: i.quantity, total: i.total })), orderTotal: total });
+
     setOrders((current) =>
       current.map((order) => {
         if (order.id !== id) return order;
@@ -213,12 +231,31 @@ export function useOrders() {
     );
 
     if (firestore && nextOrder) {
+      const serialized = serializeOrder(nextOrder);
+      console.log('[updateOrderItems] Dane do Firestore:', { id, serializedItems: serialized.items.map((i: { id: string; total: number; price: number; quantity: number }) => ({ id: i.id, total: i.total, price: i.price, quantity: i.quantity })), serializedTotal: serialized.total });
+      pendingWriteIds.current.add(id);
       try {
-        await setDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder), { merge: true });
+        await setDoc(doc(firestore, calculatorOrdersCollection, id), serialized, { merge: true });
+        console.log('[updateOrderItems] Zapisano pomyślnie do Firestore:', id);
+        // Weryfikacja - odczytaj dokument z Firestore
+        const verifySnap = await getDoc(doc(firestore, calculatorOrdersCollection, id));
+        if (verifySnap.exists()) {
+          const verifyData = verifySnap.data();
+          console.log('[updateOrderItems] Weryfikacja - dane w Firestore:', { 
+            itemsCount: Array.isArray(verifyData.items) ? verifyData.items.length : 'nie-array',
+            total: verifyData.total 
+          });
+        } else {
+          console.error('[updateOrderItems] Weryfikacja NIEUDANA - dokument nie istnieje!');
+        }
       } catch (writeError) {
-        console.error('Nie udało się zaktualizować pozycji zlecenia', writeError);
+        console.error('[updateOrderItems] BŁĄD zapisu do Firestore:', writeError);
         setError('Nie udało się zaktualizować pozycji w Firestore.');
+      } finally {
+        pendingWriteIds.current.delete(id);
       }
+    } else {
+      console.warn('[updateOrderItems] Pominięto zapis do Firestore - brak firestore lub nextOrder:', { hasFirestore: !!firestore, hasNextOrder: !!nextOrder });
     }
   };
 

@@ -11,10 +11,9 @@ const FONT_NAME = 'DejaVuSans';
  * DejaVu Sans obsługuje polskie znaki diakrytyczne (ą, ć, ę, ł, ń, ó, ś, ź, ż).
  */
 const registerFont = (doc: jsPDF) => {
-  try {
-    // Sprawdź czy czcionka jest już zarejestrowana (np. przy wielostronicowym PDF)
-    doc.getFont(FONT_NAME);
-  } catch {
+  // Sprawdź czy czcionka jest już zarejestrowana (np. przy wielostronicowym PDF)
+  const fontList = doc.getFontList();
+  if (!fontList[FONT_NAME.toLowerCase()]) {
     doc.addFileToVFS('DejaVuSans.ttf', dejaVuSansBase64);
     doc.addFont('DejaVuSans.ttf', FONT_NAME, 'normal');
   }

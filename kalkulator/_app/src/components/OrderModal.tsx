@@ -35,12 +35,14 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
   const handleItemChange = (index: number, updates: Partial<OrderItem>) => {
     const newItems = [...order.items];
     const item = { ...newItems[index], ...updates };
+    console.log('[OrderModal.handleItemChange] Przed przeliczeniem:', { index, isManualList, price: item.price, quantity: item.quantity, totalBefore: newItems[index].total, updates });
     // recalculate total for item
     if (isManualList) {
       item.total = Number(item.price.toFixed(2));
     } else {
       item.total = Number((item.price * item.quantity).toFixed(2));
     }
+    console.log('[OrderModal.handleItemChange] Po przeliczeniu:', { totalAfter: item.total, serviceName: item.serviceName });
     newItems[index] = item;
     updateOrderItems(orderId, newItems);
   };
@@ -88,6 +90,7 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
       total: 0,
       children: [],
     };
+    console.log('[OrderModal.addItem] Dodawanie nowej pozycji:', { isManualList, newItemId: newItem.id, existingItemsCount: order.items.length });
     updateOrderItems(orderId, [...order.items, newItem]);
   };
 
