@@ -1530,7 +1530,8 @@
         }
 
         document.body.classList.add("intro-active", "intro-media-active");
-        showStaticFallback();
+        video.style.opacity = "0";
+        frozenLayer.style.opacity = "0";
 
         window.setTimeout(function () {
           document.body.classList.add("intro-revealing");
@@ -1539,30 +1540,41 @@
           unlockPage();
         }, INTRO_INTERACTIVE_MS);
 
-        if (!canPlayVp9Webm(video)) return;
+        if (!canPlayVp9Webm(video)) {
+          showStaticFallback();
+          return;
+        }
 
         video.src = selectedSourceSet.webm;
-        video.poster = selectedSourceSet.fallback;
+        video.removeAttribute("poster");
         video.preload = "auto";
         video.load();
 
+        var startFallbackTimer = window.setTimeout(function () {
+          if (video.readyState < 2) showStaticFallback();
+        }, 2200);
+
         video.addEventListener("playing", function () {
+          window.clearTimeout(startFallbackTimer);
           video.style.opacity = "1";
           frozenLayer.style.opacity = "0";
           document.body.classList.remove("intro-media-frozen");
         }, { once: true });
 
         video.addEventListener("ended", function () {
+          window.clearTimeout(startFallbackTimer);
           freezeLastFrame(video, frozenLayer);
         }, { once: true });
 
         video.addEventListener("error", function () {
+          window.clearTimeout(startFallbackTimer);
           showStaticFallback();
         });
 
         var playPromise = video.play();
         if (playPromise && typeof playPromise.catch === "function") {
           playPromise.catch(function () {
+            window.clearTimeout(startFallbackTimer);
             showStaticFallback();
           });
         }
