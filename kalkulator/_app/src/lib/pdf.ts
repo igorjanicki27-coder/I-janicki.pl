@@ -52,6 +52,14 @@ export const downloadOrderPDF = (order: Order) => {
         item.serviceName,
         item.price.toLocaleString('pl-PL'),
       ]);
+      // Sub-items (podpozycje) - wcięte pod pozycją główną
+      item.children.forEach((child) => {
+        tableRows.push([
+          '',
+          { content: `  └ ${child.name}`, styles: { fontStyle: 'normal', textColor: [100, 100, 100], fontSize: 8 } },
+          '',
+        ]);
+      });
     } else {
       tableRows.push([
         index + 1,
@@ -61,6 +69,17 @@ export const downloadOrderPDF = (order: Order) => {
         item.price.toLocaleString('pl-PL'),
         item.total.toLocaleString('pl-PL'),
       ]);
+      // Sub-items (podpozycje) - wcięte pod pozycją główną
+      item.children.forEach((child) => {
+        tableRows.push([
+          '',
+          { content: `  └ ${child.name}`, styles: { fontStyle: 'normal', textColor: [100, 100, 100], fontSize: 8 } },
+          '',
+          '',
+          '',
+          '',
+        ]);
+      });
     }
   });
 

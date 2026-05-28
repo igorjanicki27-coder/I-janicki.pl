@@ -15,6 +15,11 @@ export type StandardUnit =
   | 'ms' | 's' | 'min' | 'h' | 'd'
   | 'rb/h';
 
+export interface SubItem {
+  id: string;
+  name: string;
+}
+
 export interface OrderItem {
   id: string;
   serviceName: string;
@@ -23,6 +28,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   total: number;
+  children: SubItem[];
 }
 
 export type OrderType = 'zlecenie' | 'lista_reczna';

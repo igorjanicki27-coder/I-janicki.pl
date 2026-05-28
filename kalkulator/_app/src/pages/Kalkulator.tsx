@@ -40,7 +40,7 @@ export default function Kalkulator() {
       result = result.filter(o => 
         o.name.toLowerCase().includes(query) || 
         o.total.toString().includes(query) ||
-        o.items.some(item => item.serviceName.toLowerCase().includes(query))
+        o.items.some(item => item.serviceName.toLowerCase().includes(query) || item.children.some(child => child.name.toLowerCase().includes(query)))
       );
     }
 

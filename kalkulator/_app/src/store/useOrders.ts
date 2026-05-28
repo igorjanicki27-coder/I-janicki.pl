@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { calculatorOrdersCollection, firestore, isFirebaseReady } from '../lib/firebase';
-import { Order, OrderItem, OrderStatus, UnitMode, StandardUnit, OrderType } from '../types';
+import { Order, OrderItem, SubItem, OrderStatus, UnitMode, StandardUnit, OrderType } from '../types';
 
 const EMPTY_ORDERS: Order[] = [];
 
@@ -29,9 +29,19 @@ function resolveUnitMode(value: unknown): UnitMode {
   return value === 'custom' ? 'custom' : 'standard';
 }
 
+function normalizeSubItem(sub: Partial<SubItem> & { id?: unknown }): SubItem {
+  return {
+    id: typeof sub.id === 'string' && sub.id ? sub.id : crypto.randomUUID(),
+    name: typeof sub.name === 'string' ? sub.name : '',
+  };
+}
+
 function normalizeItem(item: Partial<OrderItem> & { id?: unknown }): OrderItem {
   const price = toNumber(item.price, 0);
   const quantity = toNumber(item.quantity, 0);
+  const children = Array.isArray(item.children)
+    ? item.children.map((child) => normalizeSubItem(child as Partial<SubItem>))
+    : [];
   return {
     id: typeof item.id === 'string' && item.id ? item.id : crypto.randomUUID(),
     serviceName: typeof item.serviceName === 'string' ? item.serviceName : '',
@@ -40,6 +50,7 @@ function normalizeItem(item: Partial<OrderItem> & { id?: unknown }): OrderItem {
     price,
     quantity,
     total: toNumber(item.total, Number((price * quantity).toFixed(2))),
+    children,
   };
 }
 
@@ -84,6 +95,10 @@ function serializeOrder(order: Order) {
       price: Number(item.price),
       quantity: Number(item.quantity),
       total: Number((item.price * item.quantity).toFixed(2)),
+      children: item.children.map((child) => ({
+        id: child.id,
+        name: child.name,
+      })),
     })),
   };
 }
@@ -91,7 +106,10 @@ function serializeOrder(order: Order) {
 function cloneOrder(order: Order): Order {
   return {
     ...order,
-    items: order.items.map((item) => ({ ...item })),
+    items: order.items.map((item) => ({
+      ...item,
+      children: item.children.map((child) => ({ ...child })),
+    })),
   };
 }
 
