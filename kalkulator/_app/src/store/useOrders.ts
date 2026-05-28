@@ -118,6 +118,12 @@ export function useOrders() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pendingWriteIds = useRef<Set<string>>(new Set());
+  const ordersRef = useRef<Order[]>(EMPTY_ORDERS);
+
+  // Keep ref in sync whenever orders state changes (via onSnapshot or local setOrders)
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
   useEffect(() => {
     if (!firestore) {
@@ -137,11 +143,11 @@ export function useOrders() {
           return normalized;
         });
         console.log('[onSnapshot] Wszystkie zamówienia:', nextOrders.length);
-        // Nie nadpisuj stanu jeśli trwa zapis dla któregoś z dokumentów
         if (pendingWriteIds.current.size > 0) {
           console.log('[onSnapshot] Pomijam aktualizację stanu - trwają zapisy:', [...pendingWriteIds.current]);
           return;
         }
+        ordersRef.current = nextOrders;
         setOrders(nextOrders);
         setError(null);
         setIsLoading(false);
@@ -169,6 +175,7 @@ export function useOrders() {
       total: 0,
     };
 
+    ordersRef.current = [newOrder, ...ordersRef.current];
     setOrders((current) => [newOrder, ...current]);
 
     if (firestore) {
@@ -187,21 +194,21 @@ export function useOrders() {
   };
 
   const updateOrder = async (id: string, updates: Partial<Order>) => {
-    let nextOrder: Order | null = null;
+    const currentOrder = ordersRef.current.find(o => o.id === id);
+    if (!currentOrder) {
+      console.warn('[updateOrder] Nie znaleziono zamówienia:', id);
+      return;
+    }
+    const nextOrder: Order = {
+      ...currentOrder,
+      ...updates,
+      updatedAt: Date.now(),
+    };
 
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== id) return order;
-        nextOrder = {
-          ...order,
-          ...updates,
-          updatedAt: Date.now(),
-        };
-        return nextOrder;
-      })
-    );
+    ordersRef.current = ordersRef.current.map(o => o.id === id ? nextOrder : o);
+    setOrders((current) => current.map(o => o.id === id ? nextOrder : o));
 
-    if (firestore && nextOrder) {
+    if (firestore) {
       try {
         await setDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder), { merge: true });
       } catch (writeError) {
@@ -213,24 +220,36 @@ export function useOrders() {
 
   const updateOrderItems = async (id: string, newItems: OrderItem[]) => {
     const total = Number(newItems.reduce((acc, item) => acc + item.total, 0).toFixed(2));
-    let nextOrder: Order | null = null;
 
-    console.log('[updateOrderItems] Zapisywanie pozycji:', { id, itemsCount: newItems.length, items: newItems.map(i => ({ id: i.id, serviceName: i.serviceName, price: i.price, quantity: i.quantity, total: i.total })), orderTotal: total });
+    // Użyj ref (zawsze aktualny) zamiast callbacku setOrders który wykonuje się asynchronicznie
+    const currentOrder = ordersRef.current.find(o => o.id === id);
+    console.log('[updateOrderItems] Szukam zamówienia:', { 
+      id, 
+      found: !!currentOrder, 
+      availableIds: ordersRef.current.map(o => o.id),
+      itemsCount: newItems.length,
+      items: newItems.map(i => ({ id: i.id, serviceName: i.serviceName, price: i.price, quantity: i.quantity, total: i.total })),
+      orderTotal: total 
+    });
 
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== id) return order;
-        nextOrder = {
-          ...order,
-          items: newItems,
-          total,
-          updatedAt: Date.now(),
-        };
-        return nextOrder;
-      })
-    );
+    if (!currentOrder) {
+      console.error('[updateOrderItems] NIE ZNALEZIONO zamówienia! Pomijam zapis. ID:', id, 'Dostępne:', ordersRef.current.map(o => o.id));
+      return;
+    }
 
-    if (firestore && nextOrder) {
+    const nextOrder: Order = {
+      ...currentOrder,
+      items: newItems,
+      total,
+      updatedAt: Date.now(),
+    };
+
+    // Natychmiastowa aktualizacja ref
+    ordersRef.current = ordersRef.current.map(o => o.id === id ? nextOrder : o);
+    // Kolejkujemy React state update
+    setOrders((current) => current.map(o => o.id === id ? nextOrder : o));
+
+    if (firestore) {
       const serialized = serializeOrder(nextOrder);
       console.log('[updateOrderItems] Dane do Firestore:', { id, serializedItems: serialized.items.map((i: { id: string; total: number; price: number; quantity: number }) => ({ id: i.id, total: i.total, price: i.price, quantity: i.quantity })), serializedTotal: serialized.total });
       pendingWriteIds.current.add(id);
@@ -254,12 +273,11 @@ export function useOrders() {
       } finally {
         pendingWriteIds.current.delete(id);
       }
-    } else {
-      console.warn('[updateOrderItems] Pominięto zapis do Firestore - brak firestore lub nextOrder:', { hasFirestore: !!firestore, hasNextOrder: !!nextOrder });
     }
   };
 
   const deleteOrder = async (id: string) => {
+    ordersRef.current = ordersRef.current.filter(o => o.id !== id);
     setOrders((current) => current.filter((order) => order.id !== id));
 
     if (firestore) {

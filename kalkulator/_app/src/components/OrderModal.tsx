@@ -209,7 +209,57 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                 </div>
               </div>
 
-              {/* Line 2: Unit, Price, Quantity */}
+              {/* Sub-items (podpozycje) – pod nazwą usługi/materiału */}
+              <div className="border-t border-white/5 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase text-white/40 font-bold tracking-widest">
+                    Podpozycje {item.children.length > 0 && `(${item.children.length})`}
+                  </span>
+                  {!isReadOnly && (
+                    <button
+                      onClick={() => handleAddSubItem(index)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-emerald-500/70 hover:text-emerald-400 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Dodaj
+                    </button>
+                  )}
+                </div>
+                
+                {item.children.length > 0 ? (
+                  <div className="space-y-1.5 pl-2 border-l-2 border-white/5">
+                    {item.children.map((child, childIndex) => (
+                      <div key={child.id} className="flex items-center gap-2 group/sub">
+                        <div className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                        <input
+                          type="text"
+                          value={child.name}
+                          onChange={(e) => handleSubItemChange(index, childIndex, e.target.value)}
+                          disabled={isReadOnly}
+                          placeholder="Nazwa podpozycji..."
+                          className="flex-1 bg-transparent text-xs sm:text-sm text-white/80 placeholder:text-white/20 border-b border-transparent hover:border-white/10 focus:border-emerald-500/50 focus:outline-none py-1 px-1 transition-colors"
+                        />
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => handleRemoveSubItem(index, childIndex)}
+                            className="p-1 text-white/20 hover:text-red-400 opacity-0 group-hover/sub:opacity-100 transition-all shrink-0"
+                            title="Usuń podpozycję"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !isReadOnly && (
+                    <p className="text-[10px] text-white/15 italic pl-2 border-l-2 border-white/5 py-1">
+                      Brak podpozycji – kliknij „Dodaj”, aby utworzyć
+                    </p>
+                  )
+                )}
+              </div>
+
+              {/* Line 2: Cena / Jednostki (pod podpozycjami) */}
               {isManualList ? (
                 <div className="w-full">
                    <Input 
@@ -288,56 +338,6 @@ export function OrderModal({ isOpen, onClose, orderId, orders, updateOrder, upda
                 </div>
               </div>
               )}
-
-              {/* Sub-items (podpozycje) */}
-              <div className="border-t border-white/5 pt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase text-white/40 font-bold tracking-widest">
-                    Podpozycje {item.children.length > 0 && `(${item.children.length})`}
-                  </span>
-                  {!isReadOnly && (
-                    <button
-                      onClick={() => handleAddSubItem(index)}
-                      className="flex items-center gap-1 text-[10px] font-bold text-emerald-500/70 hover:text-emerald-400 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" /> Dodaj
-                    </button>
-                  )}
-                </div>
-                
-                {item.children.length > 0 ? (
-                  <div className="space-y-1.5 pl-2 border-l-2 border-white/5">
-                    {item.children.map((child, childIndex) => (
-                      <div key={child.id} className="flex items-center gap-2 group/sub">
-                        <div className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                        <input
-                          type="text"
-                          value={child.name}
-                          onChange={(e) => handleSubItemChange(index, childIndex, e.target.value)}
-                          disabled={isReadOnly}
-                          placeholder="Nazwa podpozycji..."
-                          className="flex-1 bg-transparent text-xs sm:text-sm text-white/80 placeholder:text-white/20 border-b border-transparent hover:border-white/10 focus:border-emerald-500/50 focus:outline-none py-1 px-1 transition-colors"
-                        />
-                        {!isReadOnly && (
-                          <button
-                            onClick={() => handleRemoveSubItem(index, childIndex)}
-                            className="p-1 text-white/20 hover:text-red-400 opacity-0 group-hover/sub:opacity-100 transition-all shrink-0"
-                            title="Usuń podpozycję"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  !isReadOnly && (
-                    <p className="text-[10px] text-white/15 italic pl-2 border-l-2 border-white/5 py-1">
-                      Brak podpozycji – kliknij „Dodaj”, aby utworzyć
-                    </p>
-                  )
-                )}
-              </div>
 
               <div className="pt-2 border-t border-white/10 flex items-end justify-between">
                 <div className="text-[10px] uppercase text-white/40 font-bold tracking-widest">Suma pozycji</div>
