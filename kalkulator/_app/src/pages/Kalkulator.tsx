@@ -99,10 +99,6 @@ export default function Kalkulator() {
       {/* Main List */}
       <main className="relative z-10 flex-1 p-4 sm:p-8 overflow-hidden bg-[#050505]">
         <div className="max-w-4xl mx-auto h-full flex flex-col gap-6">
-          <div className="flex items-center justify-between mb-2 shrink-0">
-            <h2 className="text-2xl font-bold">Lista Zleceń</h2>
-          </div>
-
           {error && (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {error}
@@ -137,12 +133,12 @@ export default function Kalkulator() {
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {order.type === 'lista_reczna' && (
-                        <span className="px-[8px] py-[3px] rounded-[6px] text-[10px] font-[600] uppercase tracking-[0.03em] bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                          Lista
-                        </span>
-                      )}
-                      <span className={cn("font-bold text-lg", order.status === 'zakończone' ? "text-white/60" : "text-white")}>
+                      <span className={cn(
+                        "font-bold text-lg",
+                        order.status === 'zakończone' ? "text-white/60" :
+                        order.type === 'lista_reczna' ? "text-blue-400" :
+                        "text-green-400"
+                      )}>
                         {order.name}
                       </span>
                       <span className={`px-[10px] py-[4px] rounded-[6px] text-[11px] font-[600] uppercase tracking-[0.03em] ${statusColors[order.status]}`}>

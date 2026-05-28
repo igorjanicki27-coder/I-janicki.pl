@@ -17,7 +17,7 @@ export const downloadOrderPDF = (order: Order) => {
   const isManualList = order.type === 'lista_reczna';
 
   doc.setFontSize(20);
-  doc.text(`${isManualList ? 'Lista' : 'Zlecenie'}: ${order.name}`, 14, 22);
+  doc.text(`Zlecenie: ${order.name}`, 14, 22);
 
   const tableColumn = isManualList
     ? ["Lp.", "Nazwa", "Cena (zl)"]
@@ -77,7 +77,7 @@ export const downloadOrderPDF = (order: Order) => {
     footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }
   });
 
-  const prefix = isManualList ? 'Lista' : 'Zlecenie';
+  const prefix = 'Zlecenie';
   const fileName = `${prefix}_${order.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
   doc.save(fileName);
 };
