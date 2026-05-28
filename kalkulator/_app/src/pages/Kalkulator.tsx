@@ -137,13 +137,11 @@ export default function Kalkulator() {
                         "font-bold text-lg",
                         order.status === 'zakończone' ? "text-white/60" :
                         order.type === 'lista_reczna' ? "text-blue-400" :
-                        "text-green-400"
+                        "text-orange-400"
                       )}>
                         {order.name}
                       </span>
-                      <span className={`px-[10px] py-[4px] rounded-[6px] text-[11px] font-[600] uppercase tracking-[0.03em] ${statusColors[order.status]}`}>
-                        {order.status}
-                      </span>
+
                     </div>
                     <div className="text-white/40 text-xs flex flex-col sm:flex-row sm:gap-4">
                       <span>{order.items.length} pozycji</span>
@@ -163,7 +161,9 @@ export default function Kalkulator() {
                     )}>
                       {order.total.toLocaleString('pl-PL')} zł
                     </div>
-                    <div className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Suma brutto</div>
+                    <span className={`px-[10px] py-[4px] rounded-[6px] text-[11px] font-[600] uppercase tracking-[0.03em] mt-1.5 inline-block ${statusColors[order.status]}`}>
+                      {order.status}
+                    </span>
                   </div>
                 </div>
               ))

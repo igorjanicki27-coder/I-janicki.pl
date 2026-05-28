@@ -7,7 +7,6 @@ import {
   orderBy,
   query,
   setDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import { calculatorOrdersCollection, firestore, isFirebaseReady } from '../lib/firebase';
 import { Order, OrderItem, SubItem, OrderStatus, UnitMode, StandardUnit, OrderType } from '../types';
@@ -94,7 +93,7 @@ function serializeOrder(order: Order) {
       unit: item.unit,
       price: Number(item.price),
       quantity: Number(item.quantity),
-      total: Number((item.price * item.quantity).toFixed(2)),
+      total: Number(item.total.toFixed(2)),
       children: item.children.map((child) => ({
         id: child.id,
         name: child.name,
@@ -188,7 +187,7 @@ export function useOrders() {
 
     if (firestore && nextOrder) {
       try {
-        await updateDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder));
+        await setDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder), { merge: true });
       } catch (writeError) {
         console.error('Nie udało się zaktualizować zlecenia', writeError);
         setError('Nie udało się zaktualizować zlecenia w Firestore.');
@@ -215,7 +214,7 @@ export function useOrders() {
 
     if (firestore && nextOrder) {
       try {
-        await updateDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder));
+        await setDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder), { merge: true });
       } catch (writeError) {
         console.error('Nie udało się zaktualizować pozycji zlecenia', writeError);
         setError('Nie udało się zaktualizować pozycji w Firestore.');

@@ -93,7 +93,7 @@ export const downloadOrderPDF = (order: Order) => {
       doc.setFont(FONT_NAME);
     },
     theme: 'grid',
-    headStyles: { fillColor: [0, 0, 0], font: FONT_NAME },
+    headStyles: { fillColor: [0, 0, 0], font: FONT_NAME, fontStyle: 'normal' },
     styles: { font: FONT_NAME, overflow: 'linebreak' },
     columnStyles: isManualList
       ? {
@@ -115,7 +115,7 @@ export const downloadOrderPDF = (order: Order) => {
     footStyles: {
       fillColor: [240, 240, 240],
       textColor: [0, 0, 0],
-      fontStyle: 'bold',
+      fontStyle: 'normal',
       font: FONT_NAME,
     },
   });
