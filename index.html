@@ -1161,6 +1161,35 @@
     </div>
   </div>
 
+  <!-- ═══════════════ MODAL ZGODY RODO (przed wysłaniem formularza) ═══════════════ -->
+  <div class="consent-overlay" id="consentOverlay" role="dialog" aria-modal="true"
+       aria-label="Zgoda na przetwarzanie danych" aria-hidden="true" hidden>
+    <div class="consent-backdrop" data-consent-close></div>
+    <div class="consent-panel">
+      <button class="consent-close" data-consent-close aria-label="Zamknij">✕</button>
+      <div class="consent-body">
+        <p>
+          Zapoznałem się z Polityką prywatności serwisu i-janicki.pl oraz wyrażam zgodę
+          na przetwarzanie udostępnionych przeze mnie danych osobowych na zasadach opisanych
+          w <a href="./dokumenty" target="_blank">Polityce prywatności</a>.
+          Oświadczam, że są mi znane cele przetwarzania danych oraz moje uprawnienia.
+          Niniejsza zgoda może być wycofana w dowolnym czasie poprzez kontakt mailowy:
+          <a href="mailto:igor.janicki27@gmail.com">igor.janicki27@gmail.com</a>,
+          bez wpływu na zgodność z prawem przetwarzania, którego dokonano na podstawie zgody
+          przed jej cofnięciem.
+        </p>
+        <p>
+          Więcej informacji dotyczących przetwarzania danych oraz obowiązek informacyjny:
+          <a href="./dokumenty" target="_blank">Dokumenty</a>.
+        </p>
+        <div class="consent-actions">
+          <button class="consent-btn consent-btn-accept" id="consentAccept">Akceptuj</button>
+          <button class="consent-btn consent-btn-cancel" id="consentCancel">Anuluj</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ PANEL COOKIES ═══════════════ -->
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
        aria-label="Ustawienia plików cookie" aria-hidden="true" hidden>

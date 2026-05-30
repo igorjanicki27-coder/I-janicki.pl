@@ -1,615 +1,780 @@
 const DOCUMENTS_CONTENT = {
-  "regulamin": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin serwisu</h2>
+  "regulamin": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin serwisu i-JANICKI</h2>
 
-<h3 id="num-pojecia-ogolne">I. Pojęcia ogólne</h3>
-<ul>
-  <li><strong>Regulamin</strong> – niniejszy regulamin</li>
-  <li><strong>Serwis</strong> – serwis internetowy "i-JANICKI", działający pod adresem https://i-janicki.pl</li>
-  <li><strong>Usługodawca</strong> – firma "Igor Janicki" z adresem siedziby: ul. Pułtuska 20/9, 53-116 Wrocław, NIP: 8993047085</li>
-  <li><strong>Usługobiorca</strong> – każda osoba fizyczna, uzyskująca dostęp do Serwisu i korzystająca z usług świadczonych za pośrednictwem Serwisu przez Usługodawcę.</li>
-  <li><strong>Komunikacja Drogą Elektroniczną</strong> – Komunikacja pomiędzy stronami za pośrednictwem poczty elektronicznej (e-mail) oraz formularzy kontaktowych dostępnych na stronie www.</li>
-</ul>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
 
-<h3 id="num-postanowienia-ogolne">II. Postanowienia ogólne</h3>
-<ul>
-  <li>Regulamin, określa zasady funkcjonowania i użytkowania Serwisu oraz określa zakres praw i obowiązków Usługobiorców i Usługodawcy związanych z użytkowaniem Serwisu.</li>
-  <li>Przedmiotem usług Usługodawcy jest udostępnienie nieodpłatnych narzędzi w postaci Serwisu, umożliwiających Usługobiorcom dostęp do treści w postaci wpisów, artykułów i materiałów audiowizualnych lub aplikacji internetowych i formularzy elektronicznych</li>
-  <li>Wszelkie ewentualne treści, artykuły i informacje zawierające cechy wskazówek lub porad publikowane na łamach Serwisu są jedynie ogólnym zbiorem informacji i nie są kierowane do poszczególnych Usługobiorców. Usługodawca nie ponosi odpowiedzialności za wykorzystanie ich przez Usługobiorców.</li>
-  <li>Usługobiorca bierze na siebie pełną odpowiedzialność za sposób wykorzystania materiałów udostępnianych w ramach Serwisu w tym za wykorzystanie ich zgodnie z obowiązującymi przepisami prawa.</li>
-  <li>Usługodawca nie udziela żadnej gwarancji co do przydatności materiałów umieszczonych w Serwisie.</li>
-  <li>Usługodawca nie ponosi odpowiedzialności z tytułu ewentualnych szkód poniesionych przez Usługobiorców Serwisu lub osoby trzecie w związku z korzystaniem z Serwisu. Wszelkie ryzyko związane z korzystaniem z Serwisu, a w szczególności z używaniem i wykorzystywaniem informacji umieszczonych w Serwisie, ponosi Usługobiorca korzystający z usług Serwisu.</li>
-</ul>
+<h3 id="num-definicje">§1. Definicje</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li><strong>Regulamin</strong> – niniejszy regulamin korzystania z serwisu internetowego.</li>
+  <li><strong>Serwis</strong> – serwis internetowy „i-JANICKI” działający pod adresem: https://i-janicki.pl.</li>
+  <li><strong>Usługodawca / Administrator</strong> – Igor Janicki, prowadzący działalność gospodarczą pod adresem: ul. Pułtuska 20/9, 53-116 Wrocław, NIP: 8993047085.</li>
+  <li><strong>Użytkownik / Usługobiorca</strong> – każda osoba korzystająca z Serwisu.</li>
+  <li><strong>Komunikacja elektroniczna</strong> – kontakt za pośrednictwem poczty elektronicznej, formularzy kontaktowych lub innych środków komunikacji elektronicznej udostępnionych w Serwisie.</li>
+</ol>
 
-<h3 id="num-warunki-uzywania-serwisu">III. Warunki używania Serwisu</h3>
-<ul>
-  <li>Używanie Serwisu przez każdego z Usługobiorców jest nieodpłatne i dobrowolne.</li>
-  <li>Usługobiorcy mają obowiązek zapoznania się z Regulaminem oraz pozostałymi dokumentami stanowiącymi jego integralną część i muszą zaakceptować w całości jego postanowienia w celu dalszego korzystania z Serwisu.</li>
-  <li>Usługobiorcy nie mogą wykorzystywać żadnych pozyskanych w Serwisie danych osobowych do celów marketingowych.</li>
-  <li>Wymagania techniczne korzystania z Serwisu:
-    <ul>
-      <li>urządzenie z wyświetlaczem umożliwiające wyświetlanie stron internetowych,</li>
-      <li>połączenie z internetem,</li>
-      <li>dowolna przeglądarka internetowa, która wyświetla strony internetowe zgodnie ze standardami i postanowieniami Konsorcjum W3C i obsługuje strony www udostępniane w języku HTML5,</li>
-      <li>włączoną obsługę skryptów JavaScript,</li>
-      <li>włączoną obsługę plików Cookie</li>
-    </ul>
-  </li>
-  <li>W celu zapewnienia bezpieczeństwa Usługodawcy, Usługobiorcy oraz innych Usługobiorców korzystających z Serwisu, wszyscy Usługobiorcy korzystający z Serwisu powinni stosować się do ogólnie przyjętych <a href="https://nety.pl/cyberbezpieczenstwo/zasady-ogolne-korzystania-z-sieci-internet/">zasad bezpieczeństwa w sieci</a>.</li>
-  <li>Zabrania się działań wykonywanych osobiście przez Usługobiorców lub przy użyciu oprogramowania:
-    <ul>
-      <li>bez zgody pisemnej, dekompilacji i analizy kodu źródłowego,</li>
-      <li>bez zgody pisemnej, powodujących nadmierne obciążenie serwera Serwisu,</li>
-      <li>bez zgody pisemnej, prób wykrycia luk w zabezpieczeniach Serwisu i konfiguracji serwera,</li>
-      <li>podejmowania prób wgrywania lub wszczykiwania na serwer i do bazy danych kodu, skryptów i oprogramowania mogących wyrządzić szkodę oprogramowaniu Serwisu, innym Usługobiorcom lub Usługodawcy,</li>
-      <li>podejmowania prób wgrywania lub wszczykiwania na serwer i do bazy danych kodu, skryptów i oprogramowania mogących śledzić lub wykradać dane Usługobiorców lub Usługodawcy,</li>
-      <li>podejmowania jakichkolwiek działań mających na celu uszkodzenie, zablokowanie działania Serwisu lub uniemożliwienie realizacji celu w jakim działa Serwis.</li>
-    </ul>
-  </li>
-  <li>W przypadku wykrycia zaistnienia lub potencjalnej możliwości zaistnienia incydentu Cyberbezpieczeństwa lub naruszenia RODO, Usługobiorcy w pierwszej kolejności powinni zgłosić ten fakt Usługodawcy w celu szybkiego usunięcia problemu / zagrożenia i zabezpieczenia interesów wszystkich Usługobiorców Serwisu.</li>
-</ul>
+<h3 id="num-postanowienia-ogolne">§2. Postanowienia ogólne</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Regulamin określa zasady korzystania z Serwisu oraz prawa i obowiązki Użytkowników i Usługodawcy.</li>
+  <li>Korzystanie z Serwisu jest dobrowolne i nieodpłatne, chyba że przy konkretnej usłudze wyraźnie wskazano inaczej.</li>
+  <li>Serwis służy prezentacji usług informatycznych, programistycznych, administracyjnych, projektowych oraz kontaktowi z Usługodawcą.</li>
+  <li>Treści publikowane w Serwisie mają charakter informacyjny, promocyjny lub edukacyjny i nie stanowią indywidualnej porady technicznej, prawnej, podatkowej ani biznesowej.</li>
+  <li>Informacje zamieszczone w Serwisie nie stanowią oferty w rozumieniu Kodeksu cywilnego, chyba że wyraźnie wskazano inaczej.</li>
+</ol>
 
-<h3 id="num-warunki-komunikacji-i-swiadczenia-pozostalych-uslug-w-serwisie">IV. Warunki komunikacji i świadczenia pozostałych usług w Serwisie</h3>
-<ul>
-  <li>Serwis udostępnia usługi i narzędzia umożliwiające Usługobiorcom interakcję z Serwisem w postaci:
-    <ul>
-      <li>Formularz kontaktowy</li>
-    </ul>
-  </li>
-  <li>Serwis udostępnia dane kontaktowe w postaci:
-    <ul>
-      <li>Adresu e-mail</li>
-    </ul>
-  </li>
-  <li>W przypadku kontaktu Usługobiorcy z Usługodawcą, dane osobowe Usługobiorców będą przetwarzane zgodnie z "<a href="https://i-janicki.pl/dokumenty">Polityką Prywatności</a>", stanowiącą integralną część Regulaminu.</li>
-</ul>
+<h3 id="num-warunki-techniczne">§3. Warunki techniczne korzystania z Serwisu</h3>
+<p>Do korzystania z Serwisu wymagane są:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>urządzenie z dostępem do Internetu,</li>
+  <li>aktualna przeglądarka internetowa,</li>
+  <li>włączona obsługa JavaScript,</li>
+  <li>włączona obsługa plików cookies w zakresie niezbędnym do prawidłowego działania Serwisu.</li>
+</ol>
+<p>Ograniczenie niektórych funkcji przeglądarki może spowodować nieprawidłowe działanie części Serwisu.</p>
 
-<h3 id="num-gromadzenie-danych-o-uslugobiorcach">V. Gromadzenie danych o Usługobiorcach</h3>
-<p>W celu prawidłowego świadczenia usług przez Serwis, zabezpieczenia prawnego interesu Usługodawcy oraz w celu zapewnienia zgodności działania Serwisu z obowiązującym prawem, Usługodawca za pośrednictwem Serwisu gromadzi i przetwarza niektóre dane o Użytkownikach.</p>
-<p>W celu prawidłowego świadczenia usług, Serwis wykorzystuje i zapisuje niektóre anonimowe informacje o Usługobiorcy w plikach cookies.</p>
-<p>Zakres, cele, sposób oraz zasady przetwarzania danych dostępne są w załącznikach do Regulaminu: "Obowiązek informacyjny RODO" oraz w "Polityce prywatności", stanowiących integralną część Regulaminu.</p>
-<ul>
-  <li>
-    <p><strong>Dane zbierane automatycznie:</strong></p>
-    <p>Do sprawnego działania Serwisu oraz do statystyk zbieramy automatycznie niektóre dane o Usługobiorcy. Do danych tych należą:</p>
-    <ul>
-      <li>Adres IP</li>
-      <li>Typ przeglądarki</li>
-      <li>Rozdzielczość ekranu</li>
-      <li>Przybliżona lokalizacja</li>
-      <li>Otwierane podstrony serwisu</li>
-      <li>Czas spędzony na odpowiedniej podstronie serwisu</li>
-      <li>Rodzaj systemu operacyjnego</li>
-      <li>Adres poprzedniej podstrony</li>
-      <li>Adres strony odsyłającej</li>
-      <li>Język przeglądarki</li>
-      <li>Prędkość łącza internetowego</li>
-      <li>Dostawca usług internetowych</li>
-    </ul>
-    <p>Powyższe dane uzyskiwane są poprzez skrypt Google Analytics i są anonimowe.</p>
-  </li>
-</ul>
+<h3 id="num-zasady-korzystania">§4. Zasady korzystania z Serwisu</h3>
+<p>Użytkownik zobowiązuje się do korzystania z Serwisu zgodnie z prawem, Regulaminem i dobrymi obyczajami.</p>
+<p>Zabronione jest w szczególności:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>podejmowanie prób nieautoryzowanego dostępu do Serwisu, serwera, kodu źródłowego lub zaplecza administracyjnego,</li>
+  <li>wprowadzanie złośliwego oprogramowania, skryptów, exploitów lub innych mechanizmów mogących zakłócić działanie Serwisu,</li>
+  <li>przeciążanie infrastruktury Serwisu,</li>
+  <li>skanowanie podatności, testy penetracyjne lub analiza zabezpieczeń bez uprzedniej pisemnej zgody Usługodawcy,</li>
+  <li>kopiowanie, rozpowszechnianie lub wykorzystywanie treści Serwisu bez zgody uprawnionego, z wyjątkiem dozwolonego użytku,</li>
+  <li>wykorzystywanie danych kontaktowych dostępnych w Serwisie do wysyłania niezamówionych informacji handlowych.</li>
+</ol>
 
-<h3 id="num-prawa-autorskie">VI. Prawa autorskie</h3>
-<ul>
-  <li>Właścicielem Serwisu oraz praw autorskich do serwisu jest Usługodawca.</li>
-  <li>Część danych zamieszczonych w Serwisie są chronione prawami autorskimi należącymi do firm, instytucji i osób trzecich, niepowiązanych w jakikolwiek sposób z Usługodawcą, i są wykorzystywane na podstawie uzyskanych licencji, lub opartych na licencji darmowej.</li>
-  <li>Na podstawie Ustawy z dnia 4 lutego 1994 o prawie autorskim zabrania się wykorzystywania, kopiowania, reprodukowania w jakiejkolwiek formie oraz przetrzymywania w systemach wyszukiwania z wyłączeniem wyszukiwarki Google, Bing, Yahoo, NetSprint, DuckDuckGo, Facebook oraz LinkedIn jakichkolwiek artykułów, opisów, zdjęć oraz wszelkich innych treści, materiałów graficznych, wideo lub audio znajdujących się w Serwisie bez pisemnej zgody lub zgody przekazanej za pomocą Komunikacji Drogą Elektroniczną ich prawnego właściciela.</li>
-  <li>Zgodnie z Ustawą z dnia 4 lutego 1994 o prawie autorskim ochronie nie podlegają proste informacje prasowe, rozumiane jako same informacje, bez komentarza i oceny ich autora. Autor rozumie to jako możliwość wykorzystywania informacji z zamieszczonych w serwisie tekstów, ale już nie kopiowania całości lub części artykułów o ile nie zostało to oznaczone w poszczególnym materiale udostępnionym w Serwisie.</li>
-</ul>
+<h3 id="num-formularze-komunikacja">§5. Formularze kontaktowe i komunikacja</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Serwis może udostępniać formularz kontaktowy lub dane kontaktowe Usługodawcy.</li>
+  <li>Wysłanie formularza nie oznacza zawarcia umowy ani przyjęcia zlecenia.</li>
+  <li>Usługodawca może odpowiedzieć na wiadomość, odmówić realizacji zapytania lub poprosić o dodatkowe informacje.</li>
+  <li>Użytkownik powinien podawać dane prawdziwe, aktualne i nienaruszające praw osób trzecich.</li>
+  <li>Dane osobowe przekazane w formularzu lub korespondencji są przetwarzane zgodnie z Polityką Prywatności.</li>
+</ol>
 
-<h3 id="num-zmiany-regulaminu">VII. Zmiany Regulaminu</h3>
-<ul>
-  <li>Wszelkie postanowienia Regulaminu mogą być w każdej chwili jednostronnie zmieniane przez Usługodawcę, bez podawania przyczyn.</li>
-  <li>Zmiany Regulaminu wchodzą w życie natychmiast po ich publikacji.</li>
-  <li>Traktuje się iż każdy Usługobiorca, kontynuujący korzystanie z Serwisu po zmianie Regulaminu akceptuje go w całości.</li>
-</ul>
+<h3 id="num-uslugi">§6. Usługi świadczone przez Usługodawcę</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Usługodawca może świadczyć usługi informatyczne, programistyczne, administracyjne, projektowe, konsultacyjne, utrzymaniowe lub wdrożeniowe.</li>
+  <li>Szczegółowy zakres, wynagrodzenie, terminy i warunki wykonania usług ustalane są indywidualnie z klientem.</li>
+  <li>Materiały, przykłady, opisy usług i informacje publikowane w Serwisie nie gwarantują osiągnięcia określonego rezultatu biznesowego, technicznego lub finansowego.</li>
+  <li>W przypadku współpracy B2B zastosowanie mogą mieć dodatkowe warunki, w szczególności Regulamin współpracy B2B lub odrębna umowa.</li>
+</ol>
 
-<h3 id="num-postanowienia-koncowe">VIII. Postanowienia końcowe</h3>
+<h3 id="num-odpowiedzialnosc">§7. Odpowiedzialność</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Usługodawca dokłada starań, aby Serwis działał prawidłowo i był dostępny dla Użytkowników.</li>
+  <li>Usługodawca nie gwarantuje nieprzerwanego i bezbłędnego działania Serwisu.</li>
+  <li>Usługodawca nie ponosi odpowiedzialności za przerwy w działaniu Serwisu wynikające z awarii, prac technicznych, działania dostawców zewnętrznych, siły wyższej, ataków cybernetycznych lub działań osób trzecich.</li>
+  <li>Użytkownik korzysta z informacji dostępnych w Serwisie na własną odpowiedzialność.</li>
+  <li>Żadne postanowienie Regulaminu nie wyłącza ani nie ogranicza odpowiedzialności, której zgodnie z bezwzględnie obowiązującymi przepisami prawa nie można wyłączyć.</li>
+</ol>
+
+<h3 id="num-prawa-autorskie">§8. Prawa autorskie</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Treści, układ, grafiki, zdjęcia, teksty, kod, logotypy oraz inne elementy Serwisu mogą być chronione prawem autorskim.</li>
+  <li>Prawa do Serwisu i jego elementów przysługują Usługodawcy lub podmiotom trzecim, od których pochodzą dane materiały.</li>
+  <li>Zabronione jest kopiowanie, rozpowszechnianie, modyfikowanie, publikowanie lub komercyjne wykorzystywanie elementów Serwisu bez zgody uprawnionego, chyba że przepisy prawa stanowią inaczej.</li>
+  <li>Dozwolone jest udostępnianie linków do publicznych podstron Serwisu.</li>
+</ol>
+
+<h3 id="num-dane-osobowe-cookies">§9. Dane osobowe i cookies</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Zasady przetwarzania danych osobowych i wykorzystywania plików cookies określa Polityka Prywatności dostępna w Serwisie.</li>
+  <li>Korzystanie z Serwisu może wiązać się z przetwarzaniem danych technicznych, takich jak adres IP, dane przeglądarki, informacje o urządzeniu oraz dane statystyczne.</li>
+</ol>
+
+<h3 id="num-linki-zewnetrzne">§10. Linki zewnętrzne</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Serwis może zawierać linki do stron, usług lub narzędzi zewnętrznych.</li>
+  <li>Usługodawca nie odpowiada za treści, bezpieczeństwo, dostępność ani polityki prywatności stron zewnętrznych.</li>
+</ol>
+
+<h3 id="num-zmiany-regulaminu">§11. Zmiany Regulaminu</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Usługodawca może zmienić Regulamin z ważnych przyczyn, w szczególności prawnych, technicznych, organizacyjnych lub związanych ze zmianą zakresu Serwisu.</li>
+  <li>Aktualna wersja Regulaminu jest publikowana w Serwisie.</li>
+  <li>Zmiany wchodzą w życie z dniem publikacji, chyba że wskazano inny termin.</li>
+</ol>
+
+<h3 id="num-kontakt">§12. Kontakt</h3>
+<p>W sprawach związanych z Serwisem należy kontaktować się:</p>
 <ul>
-  <li>Usługodawca dokona wszelkich starań by usługi Serwisu były oferowane w sposób ciągły. Nie ponosi on jednak żadnej odpowiedzialności za zakłócenia spowodowane siłą wyższą lub niedozwoloną ingerencją Usługobiorców, osób trzecich czy działalnością zewnętrznych automatycznych programów.</li>
-  <li>Usługodawca zastrzega sobie prawo do zmiany jakichkolwiek informacji umieszczonych w Serwisie w wybranym przez Usługodawcę terminie, bez konieczności uprzedniego powiadomienia Usługobiorców korzystających z usług Serwisu.</li>
-  <li>Usługodawca zastrzega sobie prawo do czasowego, całkowitego lub częściowego wyłączenia Serwisu w celu jego ulepszenia, dodawania usług lub przeprowadzania konserwacji, bez wcześniejszego uprzedzania o tym Usługobiorców.</li>
-  <li>Usługodawca zastrzega sobie prawo do wyłączenia Serwisu na stałe, bez wcześniejszego uprzedzania o tym Usługobiorców.</li>
-  <li>Usługodawca zastrzega sobie prawo do dokonania cesji w części lub w całości wszelkich swoich praw i obowiązków związanych z Serwisem, bez zgody i możliwości wyrażania jakichkolwiek sprzeciwów przez Usługobiorców.</li>
-  <li>Obowiązujące oraz poprzednie Regulaminy Serwisu znajdują się na tej podstronie pod aktualnym Regulaminem.</li>
-  <li>We wszelkich sprawach związanych z działalnością Serwisu należy kontaktować się z Usługodawcą korzystając z jednej z poniższych form kontaktu:
-    <ul>
-      <li>Używając formularza kontaktowego dostępnego w Serwisie</li>
-      <li>Wysyłając wiadomość na adres e-mail: igor.janicki27@gmail.com</li>
-    </ul>
-    <p>Kontakt przy użyciu wskazanych środków komunikacji wyłącznie w sprawach związanych z prowadzonym Serwisem.</p>
-  </li>
+  <li>Igor Janicki</li>
+  <li>ul. Pułtuska 20/9</li>
+  <li>53-116 Wrocław</li>
+  <li>NIP: 8993047085</li>
+  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>Strona: https://i-janicki.pl</li>
 </ul>`,
-  "polityka-prywatnosci": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka Prywatności</h2>
+  "polityka-prywatnosci": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka Prywatności i Plików Cookies</h2>
 
-<p>Poniższa Polityka Prywatności określa <strong>zasady zapisywania i uzyskiwania dostępu do danych na Urządzeniach Użytkowników</strong> korzystających z Serwisu do celów świadczenia usług drogą elektroniczną przez Administratora oraz <strong>zasady gromadzenia i przetwarzania danych osobowych Użytkowników</strong>, które zostały podane przez nich osobiście i dobrowolnie za pośrednictwem narzędzi dostępnych w Serwisie.</p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
 
-<p>Poniższa Polityka Prywatności jest integralną częścią <a href="https://i-janicki.pl/dokumenty">Regulaminu Serwisu</a>, który określa zasady, prawa i obowiązki Użytkowników korzystających z Serwisu.</p>
-
-<h3 id="%c2%a71-definicje">§1 Definicje</h3>
+<h3 id="num-administrator-danych">§1. Administrator danych</h3>
+<p>Administratorem danych osobowych jest:</p>
 <ul>
-  <li><p><strong>Serwis</strong> - serwis internetowy "i-JANICKI" działający pod adresem https://i-janicki.pl</p></li>
-  <li><p><strong>Serwis zewnętrzny</strong> - serwisy internetowe partnerów, usługodawców lub usługobiorców współpracujących z Administratorem</p></li>
-  <li><p><strong>Administrator Serwisu / Danych</strong> - Administratorem Serwisu oraz Administratorem Danych (dalej Administrator) jest firma "Igor Janicki", prowadząca działalność pod adresem: ul. Pułtuska 20/9, 53-116 Wrocław, o nadanym numerze identyfikacji podatkowej (NIP): 8993047085, świadcząca usługi drogą elektroniczną za pośrednictwem Serwisu</p></li>
-  <li><p><strong>Użytkownik</strong> - osoba fizyczna, dla której Administrator świadczy usługi drogą elektroniczną za pośrednictwem Serwisu.</p></li>
-  <li><p><strong>Urządzenie</strong> - elektroniczne urządzenie wraz z oprogramowaniem, za pośrednictwem którego Użytkownik uzyskuje dostęp do Serwisu</p></li>
-  <li><p><strong>Cookies (ciasteczka)</strong> - dane tekstowe gromadzone w formie plików zamieszczanych na Urządzeniu Użytkownika</p></li>
-  <li><p><strong>RODO</strong> - Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych i w sprawie swobodnego przepływu takich danych oraz uchylenia dyrektywy 95/46/WE (ogólne rozporządzenie o ochronie danych)</p></li>
-  <li><p><strong>Dane osobowe</strong> - oznaczają informacje o zidentyfikowanej lub możliwej do zidentyfikowania osobie fizycznej („osobie, której dane dotyczą"); możliwa do zidentyfikowania osoba fizyczna to osoba, którą można bezpośrednio lub pośrednio zidentyfikować, w szczególności na podstawie identyfikatora takiego jak imię i nazwisko, numer identyfikacyjny, dane o lokalizacji, identyfikator internetowy lub jeden bądź kilka szczególnych czynników określających fizyczną, fizjologiczną, genetyczną, psychiczną, ekonomiczną, kulturową lub społeczną tożsamość osoby fizycznej</p></li>
-  <li><p><strong>Przetwarzanie</strong> - oznacza operację lub zestaw operacji wykonywanych na danych osobowych lub zestawach danych osobowych w sposób zautomatyzowany lub niezautomatyzowany, taką jak zbieranie, utrwalanie, organizowanie, porządkowanie, przechowywanie, adaptowanie lub modyfikowanie, pobieranie, przeglądanie, wykorzystywanie, ujawnianie poprzez przesłanie, rozpowszechnianie lub innego rodzaju udostępnianie, dopasowywanie lub łączenie, ograniczanie, usuwanie lub niszczenie;</p></li>
-  <li><p><strong>Ograniczenie przetwarzania</strong> - oznacza oznaczenie przechowywanych danych osobowych w celu ograniczenia ich przyszłego przetwarzania</p></li>
-  <li><p><strong>Profilowanie</strong> - oznacza dowolną formę zautomatyzowanego przetwarzania danych osobowych, które polega na wykorzystaniu danych osobowych do oceny niektórych czynników osobowych osoby fizycznej, w szczególności do analizy lub prognozy aspektów dotyczących efektów pracy tej osoby fizycznej, jej sytuacji ekonomicznej, zdrowia, osobistych preferencji, zainteresowań, wiarygodności, zachowania, lokalizacji lub przemieszczania się</p></li>
-  <li><p><strong>Zgoda</strong> - zgoda osoby, której dane dotyczą oznacza dobrowolne, konkretne, świadome i jednoznaczne okazanie woli, którym osoba, której dane dotyczą, w formie oświadczenia lub wyraźnego działania potwierdzającego, przyzwala na przetwarzanie dotyczących jej danych osobowych</p></li>
-  <li><p><strong>Naruszenie ochrony danych osobowych</strong> - oznacza naruszenie bezpieczeństwa prowadzące do przypadkowego lub niezgodnego z prawem zniszczenia, utracenia, zmodyfikowania, nieuprawnionego ujawnienia lub nieuprawnionego dostępu do danych osobowych przesyłanych, przechowywanych lub w inny sposób przetwarzanych</p></li>
-  <li><p><strong>Pseudonimizacja</strong> - oznacza przetworzenie danych osobowych w taki sposób, by nie można ich było już przypisać konkretnej osobie, której dane dotyczą, bez użycia dodatkowych informacji, pod warunkiem że takie dodatkowe informacje są przechowywane osobno i są objęte środkami technicznymi i organizacyjnymi uniemożliwiającymi ich przypisanie zidentyfikowanej lub możliwej do zidentyfikowania osobie fizycznej</p></li>
-  <li><p><strong>Anonimizacja</strong> - Anonimizacja danych to nieodwracalny proces operacji na danych, który niszczy / nadpisuje "dane osobowe" uniemożliwiając identyfikację, lub powiązanie danego rekordu z konkretnym użytkownikiem lub osobą fizyczną.</p></li>
+  <li>Igor Janicki</li>
+  <li>ul. Pułtuska 20/9</li>
+  <li>53-116 Wrocław</li>
+  <li>NIP: 8993047085</li>
+  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>Strona: https://i-janicki.pl</li>
 </ul>
+<p>Administrator prowadzi serwis internetowy "i-JANICKI" dostępny pod adresem: https://i-janicki.pl.</p>
 
-<h3 id="%c2%a72-inspektor-ochrony-danych">§2 Inspektor Ochrony Danych</h3>
-<p>Na podstawie Art. 37 RODO, Administrator nie powołał Inspektora Ochrony Danych.</p>
-<p>W sprawach dotyczących przetwarzania danych, w tym danych osobowych, należy kontaktować się bezpośrednio z Administratorem.</p>
+<h3 id="num-kontakt-dane-osobowe">§2. Kontakt w sprawach danych osobowych</h3>
+<p>W sprawach dotyczących danych osobowych można kontaktować się z Administratorem:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>e-mailowo: igor.janicki27@gmail.com,</li>
+  <li>korespondencyjnie: ul. Pułtuska 20/9, 53-116 Wrocław.</li>
+</ol>
+<p>Administrator nie powołał Inspektora Ochrony Danych.</p>
 
-<h3 id="%c2%a73-rodzaje-plikow-cookies">§3 Rodzaje Plików Cookies</h3>
+<h3 id="num-zakres-danych">§3. Zakres przetwarzanych danych</h3>
+<p>Administrator może przetwarzać następujące dane:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>imię i nazwisko lub nazwę firmy,</li>
+  <li>adres e-mail,</li>
+  <li>numer telefonu, jeżeli został podany,</li>
+  <li>treść wiadomości przesłanej przez formularz lub e-mail,</li>
+  <li>dane potrzebne do przygotowania oferty lub realizacji usługi,</li>
+  <li>dane rozliczeniowe,</li>
+  <li>adres IP,</li>
+  <li>dane techniczne urządzenia, przeglądarki i systemu operacyjnego,</li>
+  <li>dane statystyczne dotyczące korzystania z Serwisu.</li>
+</ol>
+<p>Zakres przetwarzanych danych zależy od sposobu korzystania z Serwisu i rodzaju kontaktu z Administratorem.</p>
+
+<h3 id="num-cele-podstawy">§4. Cele i podstawy prawne przetwarzania</h3>
+<p>Dane osobowe są przetwarzane w następujących celach:</p>
+
+<h4>1. Obsługa kontaktu i zapytań</h4>
+<p>Cel: odpowiedź na wiadomość, przygotowanie informacji, kontakt zwrotny.<br>
+Podstawa prawna: art. 6 ust. 1 lit. f RODO.</p>
+
+<h4>2. Przygotowanie oferty lub podjęcie działań przed zawarciem umowy</h4>
+<p>Cel: analiza zapytania, wycena, ustalenie zakresu współpracy.<br>
+Podstawa prawna: art. 6 ust. 1 lit. b RODO.</p>
+
+<h4>3. Realizacja umowy lub zlecenia</h4>
+<p>Cel: wykonanie usług IT, programistycznych, administracyjnych, projektowych lub konsultacyjnych.<br>
+Podstawa prawna: art. 6 ust. 1 lit. b RODO.</p>
+
+<h4>4. Rozliczenia, księgowość i obowiązki podatkowe</h4>
+<p>Cel: wystawianie faktur, prowadzenie dokumentacji księgowej, realizacja obowiązków prawnych.<br>
+Podstawa prawna: art. 6 ust. 1 lit. c RODO.</p>
+
+<h4>5. Dochodzenie lub obrona przed roszczeniami</h4>
+<p>Cel: zabezpieczenie interesów prawnych Administratora.<br>
+Podstawa prawna: art. 6 ust. 1 lit. f RODO.</p>
+
+<h4>6. Analityka i statystyka Serwisu</h4>
+<p>Cel: analiza ruchu, poprawa działania strony, bezpieczeństwo i optymalizacja.<br>
+Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cookies/analitykę.</p>
+
+<h3 id="num-okres-przechowywania">§5. Okres przechowywania danych</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dane z korespondencji są przechowywane przez okres potrzebny do obsługi sprawy, a następnie przez okres przedawnienia ewentualnych roszczeń.</li>
+  <li>Dane związane z umowami i zleceniami są przechowywane przez czas trwania współpracy, a następnie przez okres przedawnienia roszczeń.</li>
+  <li>Dane księgowe i podatkowe są przechowywane przez okres wymagany przepisami prawa.</li>
+  <li>Dane przetwarzane na podstawie zgody są przechowywane do czasu jej wycofania, chyba że istnieje inna podstawa dalszego przetwarzania.</li>
+  <li>Dane anonimowe, które nie pozwalają na identyfikację osoby fizycznej, mogą być przechowywane bezterminowo.</li>
+</ol>
+
+<h3 id="num-odbiorcy-danych">§6. Odbiorcy danych</h3>
+<p>Dane mogą być przekazywane podmiotom wspierającym Administratora w prowadzeniu działalności i Serwisu, wyłącznie w zakresie niezbędnym do realizacji wskazanych celów.</p>
+<p>Odbiorcami danych mogą być:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>dostawcy hostingu, domen i infrastruktury technicznej,</li>
+  <li>dostawcy poczty elektronicznej,</li>
+  <li>dostawcy formularzy kontaktowych,</li>
+  <li>dostawcy usług analitycznych,</li>
+  <li>dostawcy narzędzi chmurowych i repozytoriów kodu,</li>
+  <li>podmioty świadczące obsługę księgową, prawną lub administracyjną,</li>
+  <li>podmioty uprawnione do otrzymania danych na podstawie przepisów prawa.</li>
+</ol>
+<p>W zależności od wykorzystywanej infrastruktury mogą to być w szczególności:</p>
 <ul>
-  <li><p><strong>Cookies wewnętrzne</strong> - pliki zamieszczane i odczytywane z Urządzenia Użytkownika przez system teleinformatyczny Serwisu</p></li>
-  <li><p><strong>Cookies zewnętrzne</strong> - pliki zamieszczane i odczytywane z Urządzenia Użytkownika przez systemy teleinformatyczne Serwisów zewnętrznych. Skrypty Serwisów zewnętrznych, które mogą umieszczać pliki Cookies na Urządzeniach Użytkownika zostały świadomie umieszczone w Serwisie poprzez skrypty i usługi udostępnione i zainstalowane w Serwisie</p></li>
-  <li><p><strong>Cookies sesyjne</strong> - pliki zamieszczane i odczytywane z Urządzenia Użytkownika przez Serwis <span id="sz1" style="display: none;">lub Serwisy zewnętrzne</span> podczas jednej sesji danego Urządzenia. Po zakończeniu sesji pliki są usuwane z Urządzenia Użytkownika.</p></li>
-  <li><p><strong>Cookies trwałe</strong> - pliki zamieszczane i odczytywane z Urządzenia Użytkownika przez Serwis <span id="sz2" style="display: none;">lub Serwisy zewnętrzne</span> do momentu ich ręcznego usunięcia. Pliki nie są usuwane automatycznie po zakończeniu sesji Urządzenia chyba że konfiguracja Urządzenia Użytkownika jest ustawiona na tryb usuwanie plików Cookie po zakończeniu sesji Urządzenia.</p></li>
+  <li>OVH sp. z o.o. – usługi domenowe, hostingowe lub serwerowe,</li>
+  <li>Google Ireland Limited – usługi poczty, analityki, chmury, map lub narzędzi biurowych,</li>
+  <li>GitHub, Inc. – repozytoria kodu, hosting lub narzędzia programistyczne,</li>
+  <li>Cloudflare, Inc. – bezpieczeństwo, optymalizacja i ochrona ruchu,</li>
+  <li>dostawcy formularzy kontaktowych, jeżeli są wykorzystywani na stronie.</li>
 </ul>
+<p>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</p>
 
-<h3 id="%c2%a74-bezpieczenstwo-skladowania-danych">§4 Bezpieczeństwo składowania danych</h3>
-<ul>
-  <li><p><strong>Mechanizmy składowania i odczytu plików Cookie</strong> - Mechanizmy składowania, odczytu i wymiany danych pomiędzy Plikami Cookies zapisywanymi na Urządzeniu Użytkownika a Serwisem są realizowane poprzez wbudowane mechanizmy przeglądarek internetowych i nie pozwalają na pobieranie innych danych z Urządzenia Użytkownika lub danych innych witryn internetowych, które odwiedzał Użytkownik, w tym danych osobowych ani informacji poufnych. Przeniesienie na Urządzenie Użytkownika wirusów, koni trojańskich oraz innych robaków jest także praktycznie niemożliwe.</p></li>
-  <li><p><strong>Cookie wewnętrzne</strong> - zastosowane przez Administratora pliki Cookie są bezpieczne dla Urządzeń Użytkowników i nie zawierają skryptów, treści lub informacji mogących zagrażać bezpieczeństwu danych osobowych lub bezpieczeństwu Urządzenia z którego korzysta Użytkownik.</p></li>
-  <li><p><strong>Cookie zewnętrzne</strong> - Administrator dokonuje wszelkich możliwych działań w celu weryfikacji i doboru partnerów serwisu w kontekście bezpieczeństwa Użytkowników. Administrator do współpracy dobiera znanych, dużych partnerów o globalnym zaufaniu społecznym. Nie posiada on jednak pełnej kontroli nad zawartością plików Cookie pochodzących od zewnętrznych partnerów. Za bezpieczeństwo plików Cookie, ich zawartość oraz zgodne z licencją wykorzystanie przez zainstalowane w serwisie Skrypty, pochodzących z Serwisów zewnętrznych, Administrator nie ponosi odpowiedzialności na tyle na ile pozwala na to prawo. Lista partnerów zamieszczona jest w dalszej części Polityki Prywatności.</p></li>
-  <li>
-    <p><strong>Kontrola plików Cookie</strong></p>
-    <ul>
-      <li><p>Użytkownik może w dowolnym momencie, samodzielnie zmienić ustawienia dotyczące zapisywania, usuwania oraz dostępu do danych zapisanych plików Cookies przez każdą witrynę internetową</p></li>
-      <li>
-        <p>Informacje o sposobie wyłączenia plików Cookie w najpopularniejszych przeglądarkach komputerowych dostępne są na stronie: <a rel="external" href="https://nety.pl/jak-wylaczyc-pliki-cookie/">jak wyłączyć cookie</a> lub u jednego ze wskazanych dostawców:</p>
-        <ul>
-          <li><a rel="nofollow external" href="https://support.google.com/accounts/answer/61416?co=GENIE.Platform%3DDesktop&hl=pl">Zarządzanie plikami cookies w przeglądarce <strong>Chrome</strong></a></li>
-          <li><a rel="nofollow external" href="https://help.opera.com/pl/latest/web-preferences/">Zarządzanie plikami cookies w przeglądarce <strong>Opera</strong></a></li>
-          <li><a rel="nofollow external" href="https://support.mozilla.org/pl/kb/blokowanie-ciasteczek">Zarządzanie plikami cookies w przeglądarce <strong>FireFox</strong></a></li>
-          <li><a rel="nofollow external" href="https://support.microsoft.com/pl-pl/help/4027947/microsoft-edge-delete-cookies">Zarządzanie plikami cookies w przeglądarce <strong>Edge</strong></a></li>
-          <li><a rel="nofollow external" href="https://support.apple.com/pl-pl/guide/safari/sfri11471/mac">Zarządzanie plikami cookies w przeglądarce <strong>Safari</strong></a></li>
-          <li><a rel="nofollow external" href="https://windows.microsoft.com/pl-pl/internet-explorer/delete-manage-cookies#ie=ie-11">Zarządzanie plikami cookies w przeglądarce <strong>Internet Explorer 11</strong></a></li>
-        </ul>
-      </li>
-      <li><p>Użytkownik może w dowolnym momencie usunąć wszelkie zapisane do tej pory pliki Cookie korzystając z narzędzi Urządzenia Użytkownika, za pośrednictwem którego Użytkownik korzysta z usług Serwisu.</p></li>
-    </ul>
-  </li>
-  <li><p><strong>Zagrożenia po stronie Użytkownika</strong> - Administrator stosuje wszelkie możliwe środki techniczne w celu zapewnienia bezpieczeństwa danych umieszczanych w plikach Cookie. Należy jednak zwrócić uwagę, że zapewnienie bezpieczeństwa tych danych zależy od obu stron w tym działalności Użytkownika. Administrator nie bierze odpowiedzialności za przechwycenie tych danych, podszycie się pod sesję Użytkownika lub ich usunięcie, na skutek świadomej lub nieświadomej działalność Użytkownika, wirusów, koni trojańskich i innego oprogramowania szpiegującego, którymi może jest lub było zainfekowane Urządzenie Użytkownika. Użytkownicy w celu zabezpieczenia się przed tymi zagrożeniami powinni stosować się do <a rel="external" href="https://nety.pl/cyberbezpieczenstwo/">zaleceń bezpiecznego korzystania z sieci</a>.</p></li>
-  <li><p><strong>Przechowywanie danych osobowych</strong> - Administrator zapewnia, że dokonuje wszelkich starań, by przetwarzane dane osobowe wprowadzone dobrowolnie przez Użytkowników były bezpieczne, dostęp do nich był ograniczony i realizowany zgodnie z ich przeznaczeniem i celami przetwarzania. Administrator zapewnia także, że dokonuje wszelkich starań w celu zabezpieczenia posiadanych danych przed ich utratą, poprzez stosowanie odpowiednich zabezpieczeń fizycznych jak i organizacyjnych.</p></li>
-</ul>
+<h3 id="num-przekazywanie-poza-eog">§7. Przekazywanie danych poza Europejski Obszar Gospodarczy</h3>
+<p>Niektórzy dostawcy usług technicznych mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym.</p>
+<p>W takim przypadku przekazywanie danych odbywa się z zastosowaniem mechanizmów przewidzianych przez RODO, w szczególności decyzji stwierdzających odpowiedni stopień ochrony, standardowych klauzul umownych lub innych wymaganych zabezpieczeń.</p>
 
-<h3 id="%c2%a75-cele-do-ktorych-wykorzystywane-sa-pliki-cookie">§5 Cele do których wykorzystywane są pliki Cookie</h3>
-<ul id="cele">
-  <li>Usprawnienie i ułatwienie dostępu do Serwisu</li>
-  <li>Personalizacja Serwisu dla Użytkowników</li>
-  <li>Umożliwienie Logowania do serwisu</li>
-  <li>Marketing, Remarketing w serwisach zewnętrznych</li>
-  <li>Usługi serwowania reklam</li>
-  <li>Usługi afiliacyjne</li>
-  <li>Prowadzenie statystyk (użytkowników, ilości odwiedzin, rodzajów urządzeń, łącze itp.)</li>
-  <li>Serwowanie usług multimedialnych</li>
-  <li>Świadczenie usług społecznościowych</li>
-</ul>
+<h3 id="num-prawa-osob">§8. Prawa osób, których dane dotyczą</h3>
+<p>Osobie, której dane dotyczą, przysługuje prawo do:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>dostępu do danych,</li>
+  <li>sprostowania danych,</li>
+  <li>usunięcia danych,</li>
+  <li>ograniczenia przetwarzania,</li>
+  <li>przenoszenia danych,</li>
+  <li>wniesienia sprzeciwu wobec przetwarzania,</li>
+  <li>wycofania zgody w dowolnym momencie,</li>
+  <li>wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.</li>
+</ol>
+<p>Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</p>
 
-<h3 id="%c2%a76-cele-przetwarzania-danych-osobowych">§6 Cele przetwarzania danych osobowych</h3>
-<p>Dane osobowe dobrowolnie podane przez Użytkowników są przetwarzane w jednym z następujących celów:</p>
-<ul>
-  <li>Realizacji usług elektronicznych:
-    <ul>
-      <li>Usługi rejestracji i utrzymania konta Użytkownika w Serwisie i funkcjonalności z nim związanych</li>
-    </ul>
-  </li>
-  <li>Komunikacji Administratora z Użytkownikami w sprawach związanych z Serwisem oraz ochrony danych</li>
-  <li>Zapewnienia prawnie uzasadnionego interesu Administratora</li>
-</ul>
-<p>Dane o Użytkownikach gromadzone anonimowo i automatycznie są przetwarzane w jednym z następujących celów:</p>
-<ul>
-  <li>Prowadzenie statystyk</li>
-  <li>Remarketing</li>
-  <li>Serwowanie reklam dostosowanych do preferencji Użytkowników</li>
-  <li>Obsługi programów afiliacyjnych</li>
-  <li>Zapewnienia prawnie uzasadnionego interesu Administratora</li>
-</ul>
+<h3 id="num-automatyczne-decyzje">§9. Zautomatyzowane podejmowanie decyzji</h3>
+<p>Dane osobowe nie są wykorzystywane do zautomatyzowanego podejmowania decyzji wywołujących skutki prawne wobec osoby, której dane dotyczą.</p>
 
-<h3 id="%c2%a77-pliki-cookies-serwisow-zewnetrznych">§7 Pliki Cookies Serwisów zewnętrznych</h3>
-<p id="zewinfo">Administrator w Serwisie wykorzystuje skrypty javascript i komponenty webowe partnerów, którzy mogą umieszczać własne pliki cookies na Urządzeniu Użytkownika. Pamiętaj, że w ustawieniach swojej przeglądarki możesz sam decydować o dozwolonych plikach cookies jakie mogą być używane przez poszczególne witryny internetowe. Poniżej znajduje się lista partnerów lub ich usług zaimplementowanych w Serwisie, mogących umieszczać pliki cookies:</p>
-<ul id="zewnetrzne">
-  <li><strong>Usługi multimedialne:</strong>
-    <ul>
-      <li><a rel="nofollow external" href="https://www.youtube.com/t/terms">YouTube</a></li>
-    </ul>
-  </li>
-  <li><strong>Usługi społecznościowe / łączone:</strong><br>(Rejestracja, Logowanie, udostępnianie treści, komunikacja, itp.)
-    <ul>
-      <li><a rel="nofollow external" href="https://policies.google.com/privacy?hl=pl">Google+</a></li>
-    </ul>
-  </li>
-  <li><strong>Prowadzenie statystyk:</strong>
-    <ul>
-      <li><a rel="nofollow external" href="https://policies.google.com/privacy?hl=pl">Google Analytics</a></li>
-    </ul>
-  </li>
-</ul>
-<p>Usługi świadczone przez podmioty trzecie są poza kontrolą Administratora. Podmioty te mogą w każdej chwili zmienić swoje warunki świadczenia usług, polityki prywatności, cel przetwarzania danych oraz sposów wykorzystywania plików cookie.</p>
+<h3 id="num-pliki-cookies">§10. Pliki cookies</h3>
+<p>Serwis korzysta z plików cookies oraz podobnych technologii.</p>
+<p>Cookies mogą być:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>niezbędne – wymagane do prawidłowego działania Serwisu,</li>
+  <li>analityczne – służące do pomiaru ruchu i statystyk,</li>
+  <li>funkcjonalne – zapamiętujące ustawienia użytkownika,</li>
+  <li>marketingowe – wykorzystywane wyłącznie wtedy, gdy są faktycznie wdrożone i użytkownik wyraził zgodę.</li>
+</ol>
+<p>Cookies niezbędne mogą być stosowane bez zgody użytkownika, jeżeli są konieczne do świadczenia usługi drogą elektroniczną lub zapewnienia działania Serwisu.</p>
+<p>Cookies opcjonalne są wykorzystywane wyłącznie po uzyskaniu zgody użytkownika, jeżeli taka zgoda jest wymagana.</p>
 
-<h3 id="%c2%a78-rodzaje-gromadzonych-danych">§8 Rodzaje gromadzonych danych</h3>
-<p>Serwis gromadzi dane o Użytkownikach. Cześć danych jest gromadzona automatycznie i anonimowo, a część danych to dane osobowe podane dobrowolnie przez Użytkowników w trakcie zapisywania się do poszczególnych usług oferowanych przez Serwis.</p>
-<p><strong>Anonimowe dane gromadzone automatycznie:</strong></p>
-<ul>
-  <li>Adres IP</li>
-  <li>Typ przeglądarki</li>
-  <li>Rozdzielczość ekranu</li>
-  <li>Przybliżona lokalizacja</li>
-  <li>Otwierane podstrony serwisu</li>
-  <li>Czas spędzony na odpowiedniej podstronie serwisu</li>
-  <li>Rodzaj systemu operacyjnego</li>
-  <li>Adres poprzedniej podstrony</li>
-  <li>Adres strony odsyłającej</li>
-  <li>Język przeglądarki</li>
-  <li>Prędkość łącza internetowego</li>
-  <li>Dostawca usług internetowych</li>
-  <li>Dane demograficzne (wiek, płeć)</li>
-</ul>
-<p><strong>Dane gromadzone podczas rejestracji:</strong></p>
-<ul>
-  <li>Imię / nazwisko / pseudonim</li>
-  <li>Adres e-mail</li>
-  <li>Adres IP (zbierane automatycznie)</li>
-</ul>
-<p><strong>Dane gromadzone podczas zapisu do usługi Newsletter</strong></p>
-<ul>
-  <li>Adres e-mail</li>
-  <li>Adres IP (zbierane automatycznie)</li>
-</ul>
-<p>Część danych (bez danych identyfikujących) może być przechowywana w plikach cookies. Cześć danych (bez danych identyfikujących) może być przekazywana do dostawcy usług statystycznych.</p>
+<h3 id="num-zarzadzanie-cookies">§11. Zarządzanie cookies</h3>
+<p>Użytkownik może zarządzać cookies:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>przez ustawienia przeglądarki internetowej,</li>
+  <li>przez usunięcie zapisanych cookies z urządzenia,</li>
+  <li>przez panel zgód cookies dostępny w Serwisie, jeżeli został wdrożony.</li>
+</ol>
+<p>Ograniczenie cookies może wpłynąć na działanie niektórych funkcji Serwisu.</p>
 
-<h3 id="%c2%a79-dostep-do-danych-osobowych-przez-podmioty-trzecie">§9 Dostęp do danych osobowych przez podmioty trzecie</h3>
-<p>Co do zasady jedynym odbiorcą danych osobowych podawanych przez Użytkowników jest Administrator. Dane gromadzone w ramach świadczonych usług nie są przekazywane ani odsprzedawane podmiotom trzecim.</p>
-<p>Dostęp do danych (najczęściej na podstawie Umowy powierzenia przetwarzania danych) mogą posiadać podmioty, odpowiedzialne za utrzymania infrastruktury i usług niezbędnych do prowadzenia serwisu tj.:</p>
-<ul>
-  <li>Firmy hostingowe, świadczące usługi hostingu lub usług pokrewnych dla Administratora</li>
-</ul>
-<p><strong>Powierzenie przetwarzania danych osobowych - Usługi Hostingu, VPS lub Serwerów Dedykowanych</strong></p>
-<p>Administrator w celu prowadzenia serwisu korzysta z usług zewnętrznego dostawcy hostingu, VPS lub Serwerów Dedykowanych - <strong><a rel="nofollow external" href="https://www.ovh.pl/ochrona-danych-osobowych/">OVH sp. z o.o.</a></strong>. Wszelkie dane gromadzone i przetwarzane w serwisie są przechowywane i przetwarzane w infrastrukturze usługodawcy zlokalizowanej w Polsce. Istnieje możliwość dostępu do danych wskutek prac serwisowych realizowanych przez personel usługodawcy. Dostęp do tych danych reguluje umowa zawarta pomiędzy Administratorem a Usługodawcą.</p>
+<h3 id="num-logi-bezpieczenstwo">§12. Logi serwera i bezpieczeństwo</h3>
+<p>Serwer może automatycznie zapisywać informacje techniczne dotyczące połączenia, takie jak adres IP, data i godzina zapytania, typ przeglądarki, adres żądanej podstrony oraz informacje o błędach.</p>
+<p>Dane te są wykorzystywane w celu zapewnienia bezpieczeństwa, diagnostyki błędów, ochrony przed nadużyciami oraz utrzymania prawidłowego działania Serwisu.</p>
 
-<h3 id="%c2%a710-sposob-przetwarzania-danych-osobowych">§10 Sposób przetwarzania danych osobowych</h3>
-<p><strong>Dane osobowe podane dobrowolnie przez Użytkowników:</strong></p>
-<ul>
-  <li>Dane osobowe nie będą przekazywane poza Unię Europejską, chyba że zostały opublikowane na skutek indywidualnego działania Użytkownika (np. wprowadzenie komentarza lub wpisu), co sprawi, że dane będą dostępne dla każdej osoby odwiedzającej serwis.</li>
-  <li>Dane osobowe nie będą wykorzystywane do zautomatyzowanego podejmowania decyzji (profilowania).</li>
-  <li>Dane osobowe nie będą odsprzedawane podmiotom trzecim.</li>
-</ul>
-<p><strong>Dane anonimowe (bez danych osobowych) gromadzone automatycznie:</strong></p>
-<ul>
-  <li>Dane anonimiwe (bez danych osobowych) będą przekazywane poza Unię Europejską.</li>
-  <li>Dane anonimiwe (bez danych osobowych) nie będą wykorzystywane do zautomatyzowanego podejmowania decyzji (profilowania).</li>
-  <li>Dane anonimiwe (bez danych osobowych) nie będą odsprzedawane podmiotom trzecim.</li>
-</ul>
+<h3 id="num-linki-zewnetrzne">§13. Linki zewnętrzne</h3>
+<p>Serwis może zawierać linki do stron zewnętrznych. Administrator nie odpowiada za treść, bezpieczeństwo ani polityki prywatności tych stron.</p>
 
-<h3 id="%c2%a711-podstawy-prawne-przetwarzania-danych-osobowych">§11 Podstawy prawne przetwarzania danych osobowych</h3>
-<p>Serwis gromadzi i przetwarza dane Użytkowników na podstawie:</p>
-<ul>
-  <li>Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych i w sprawie swobodnego przepływu takich danych oraz uchylenia dyrektywy 95/46/WE (ogólne rozporządzenie o ochronie danych)
-    <ul>
-      <li>art. 6 ust. 1 lit. a<br><small>osoba, której dane dotyczą wyraziła zgodę na przetwarzanie swoich danych osobowych w jednym lub większej liczbie określonych celów</small></li>
-      <li>art. 6 ust. 1 lit. b<br><small>przetwarzanie jest niezbędne do wykonania umowy, której stroną jest osoba, której dane dotyczą, lub do podjęcia działań na żądanie osoby, której dane dotyczą, przed zawarciem umowy</small></li>
-      <li>art. 6 ust. 1 lit. f<br><small>przetwarzanie jest niezbędne do celów wynikających z prawnie uzasadnionych interesów realizowanych przez administratora lub przez stronę trzecią</small></li>
-    </ul>
-  </li>
-  <li>Ustawa z dnia 10 maja 2018 r. o ochronie danych osobowych (Dz.U. 2018 poz. 1000)</li>
-  <li>Ustawa z dnia 16 lipca 2004 r. Prawo telekomunikacyjne (Dz.U. 2004 nr 171 poz. 1800)</li>
-  <li>Ustawa z dnia 4 lutego 1994 r. o prawie autorskim i prawach pokrewnych (Dz. U. 1994 Nr 24 poz. 83)</li>
-</ul>
-
-<h3 id="%c2%a712-okres-przetwarzania-danych-osobowych">§12 Okres przetwarzania danych osobowych</h3>
-<p><strong>Dane osobowe podane dobrowolnie przez Użytkowników:</strong></p>
-<p>Co do zasady wskazane dane osobowe są przechowywane wyłącznie przez okres świadczenia Usługi w ramach Serwisu przez Administratora. Są one usuwane lub anonimizowane w okresie do 30 dni od chwili zakończenia świadczenia usług (np. usunięcie zarejestrowanego konta użytkownika, wypisanie z listy Newsletter, itp.)</p>
-<p>Wyjątek stanowi sytuacja, która wymaga zabezpieczenia prawnie uzasadnionych celów dalszego przetwarzania tych danych przez Administratora. W takiej sytuacji Administrator będzie przechowywał wskazane dane, od czasu żądania ich usunięcia przez Użytkownika, nie dłużej niż przez okres 3 lat w przypadku naruszenia lub podejrzenia naruszenia zapisów regulaminu serwisu przez Użytkownika</p>
-<p><strong>Dane anonimowe (bez danych osobowych) gromadzone automatycznie:</strong></p>
-<p>Anonimowe dane statystyczne, niestanowiące danych osobowych, są przechowywane przez Administratora w celu prowadzenia statystyk serwisu przez czas nieoznaczony</p>
-
-<h3 id="%c2%a713-prawa-uzytkownikow-zwiazane-z-przetwarzaniem-danych-osobowych">§13 Prawa Użytkowników związane z przetwarzaniem danych osobowych</h3>
-<p>Serwis gromadzi i przetwarza dane Użytkowników na podstawie:</p>
-<ul>
-  <li><p><strong>Prawo dostępu do danych osobowych</strong><br>Użytkownikom przysługuje prawo uzyskania dostępu do swoich danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do sprostowania danych osobowych</strong><br>Użytkownikom przysługuje prawo żądania od Administratora niezwłocznego sprostowania danych osobowych, które są nieprawidłowe lub / oraz uzupełnienia niekompletnych danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do usunięcia danych osobowych</strong><br>Użytkownikom przysługuje prawo żądania od Administratora niezwłocznego usunięcia danych osobowych, realizowane na żądanie złożone do Administratora. W przypadku kont użytkowników, usunięcie danych polega na anonimizacji danych umożliwiających identyfikację Użytkownika. Administrator zastrzega sobie prawo wstrzymania realizacji żądania usunięcia danych w celu ochrony prawnie uzasadnionego interesu Administratora (np. w gdy Użytkownik dopuścił się naruszenia Regulaminu czy dane zostały pozyskane wskutek prowadzonej korespondencji).<br>W przypadku usługi Newsletter, Użytkownik ma możliwość samodzielnego usunięcia swoich danych osobowych korzystając z odnośnika umieszczonego w każdej przesyłanej wiadomości e-mail.</p></li>
-  <li><p><strong>Prawo do ograniczenia przetwarzania danych osobowych</strong><br>Użytkownikom przysługuje prawo ograniczenia przetwarzania danych osobowych w przypadkach wskazanych w art. 18 RODO, m.in. kwestionowania prawidłowość danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do przenoszenia danych osobowych</strong><br>Użytkownikom przysługuje prawo uzyskania od Administratora, danych osobowych dotyczących Użytkownika w ustrukturyzowanym, powszechnie używanym formacie nadającym się do odczytu maszynowego, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo wniesienia sprzeciwu wobec przetwarzania danych osobowych</strong><br>Użytkownikom przysługuje prawo wniesienia sprzeciwu wobec przetwarzania jego danych osobowych w przypadkach określonych w art. 21 RODO, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo wniesienia skargi</strong><br>Użytkownikom przysługuje prawo wniesienia skargi do organu nadzorczego zajmującego się ochroną danych osobowych.</p></li>
-</ul>
-
-<h3 id="%c2%a714-kontakt-do-administratora">§14 Kontakt do Administratora</h3>
-<p>Z Administratorem można skontaktować się w jeden z poniższych sposobów</p>
-<ul>
-  <li><p><strong>Adres pocztowy</strong> - Igor Janicki, ul. Pułtuska 20/9, 53-116 Wrocław</p></li>
-  <li><p><strong>Adres poczty elektronicznej</strong> - <a href="mailto:igor.janicki27@gmail.com">igor.janicki27@gmail.com</a></p></li>
-  <li><p><strong>Formularz kontaktowy</strong> - dostępny pod adresem: https://i-janicki.pl</p></li>
-</ul>
-
-<h3 id="%c2%a715-wymagania-serwisu">§15 Wymagania Serwisu</h3>
-<ul>
-  <li><p>Ograniczenie zapisu i dostępu do plików Cookie na Urządzeniu Użytkownika może spowodować nieprawidłowe działanie niektórych funkcji Serwisu.</p></li>
-  <li><p>Administrator nie ponosi żadnej odpowiedzialności za nieprawidłowo działające funkcje Serwisu w przypadku gdy Użytkownik ograniczy w jakikolwiek sposób możliwość zapisywania i odczytu plików Cookie.</p></li>
-</ul>
-
-<h3 id="%c2%a716-linki-zewnetrzne">§16 Linki zewnętrzne</h3>
-<p>W Serwisie - artykułach, postach, wpisach czy komentarzach Użytkowników mogą znajdować się odnośniki do witryn zewnętrznych, z którymi Właściciel serwisu nie współpracuje. Linki te oraz strony lub pliki pod nimi wskazane mogą być niebezpieczne dla Twojego Urządzenia lub stanowić zagrożenie bezpieczeństwa Twoich danych. Administrator nie ponosi odpowiedzialności za zawartość znajdującą się poza Serwisem.</p>
-
-<h3 id="%c2%a717-zmiany-w-polityce-prywatnosci">§17 Zmiany w Polityce Prywatności</h3>
-<ul>
-  <li><p>Administrator zastrzega sobie prawo do dowolnej zmiany niniejszej Polityki Prywatności bez konieczności informowania o tym Użytkowników w zakresie stosowania i wykorzystywania danych anonimowych lub stosowania plików Cookie.</p></li>
-  <li><p>Administrator zastrzega sobie prawo do dowolnej zmiany niniejszej Polityki Prywatności w zakresie przetwarzania Danych Osobowych, o czym poinformuje Użytkowników posiadających konta użytkownika lub zapisanych do usługi newsletter, za pośrednictwem poczty elektronicznej w terminie do 7 dni od zmiany zapisów. Dalsze korzystanie z usług oznacza zapoznanie się i akceptację wprowadzonych zmian Polityki Prywatności. W przypadku w którym Użytkownik nie będzie się zgadzał z wprowadzonymi zmianami, ma obowiązek usunąć swoje konto z Serwisu lub wypisać się z usługi Newsletter.</p></li>
-  <li><p>Wprowadzone zmiany w Polityce Prywatności będą publikowane na tej podstronie Serwisu.</p></li>
-  <li><p>Wprowadzone zmiany wchodzą w życie z chwilą ich publikacji.</p></li>
-</ul>`,
+<h3 id="num-zmiany-polityki">§14. Zmiany Polityki Prywatności</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Administrator może zmienić Politykę Prywatności w przypadku zmian prawnych, technologicznych, organizacyjnych lub zmian w zakresie wykorzystywanych usług.</li>
+  <li>Aktualna wersja dokumentu jest publikowana w Serwisie.</li>
+</ol>`,
   "polityka-rodo": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Obowiązek informacyjny RODO</h2>
 
-<p>Poniższa informacja stanowi zwięzły, zrozumiały i przejrzysty skrót informacji zamieszczonych w <a href="https://i-janicki.pl/dokumenty">Polityce Prywatności</a> odnośnie Administratora danych, celu i sposobu przetwarzania danych osobowych oraz Twoich praw w związku z tym przetwarzaniem, w formie wymaganej do spełnienia obowiązku informacyjnego RODO. Szczegóły dotyczące sposobu przetwarzania i podmiotów uczestniczących w tym procesie dostępne są we wskazanej polityce.</p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
 
 <h3 id="kto-jest-administratorem-danych">Kto jest administratorem danych?</h3>
-<p>Administratorem Danych Osobowych (dalej Administrator) jest firma "Igor Janicki", prowadząca działalność pod adresem: ul. Pułtuska 20/9, 53-116 Wrocław, o nadanym numerze identyfikacji podatkowej (NIP): 8993047085, świadcząca usługi drogą elektroniczną za pośrednictwem Serwisu</p>
-
-<h3 id="jak-mozna-skontaktowac-sie-z-administratorem-danych">Jak można skontaktować się z administratorem danych?</h3>
-<p>Z Administratorem można skontaktować się w jeden z poniższych sposobów</p>
+<p>Administratorem danych osobowych jest:</p>
 <ul>
-  <li><p><strong>Adres pocztowy</strong> - Igor Janicki, ul. Pułtuska 20/9, 53-116 Wrocław</p></li>
-  <li><p><strong>Adres poczty elektronicznej</strong> - <a href="mailto:igor.janicki27@gmail.com">igor.janicki27@gmail.com</a></p></li>
-  <li><p><strong>Formularz kontaktowy</strong> - dostępny pod adresem: https://i-janicki.pl/dokumenty</p></li>
+  <li>Igor Janicki</li>
+  <li>ul. Pułtuska 20/9, 53-116 Wrocław</li>
+  <li>NIP: 8993047085</li>
+  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>Strona: https://i-janicki.pl</li>
 </ul>
 
-<h3 id="czy-administrator-powolal-inspektora-danych-osobowych">Czy Administrator powołał Inspektora Danych Osobowych?</h3>
-<p>Na podstawie Art. 37 RODO, Administrator nie powołał Inspektora Ochrony Danych.</p>
-<p>W sprawach dotyczących przetwarzania danych, w tym danych osobowych, należy kontaktować się bezpośrednio z Administratorem.</p>
-
-<h3 id="skad-pozyskujemy-dane-osobowe-i-jakie-sa-ich-zrodla">Skąd pozyskujemy dane osobowe i jakie są ich źródła?</h3>
-<p>Dane pozyskiwane są z następujących źródeł:</p>
+<h3 id="jak-mozna-skontaktowac-sie-z-administratorem">Jak można skontaktować się z administratorem?</h3>
+<p>Kontakt jest możliwy:</p>
 <ul>
-  <li>od osób, których dane dotyczą</li>
-  <li>w przypadku rejestracji przy użyciu portali społecznościowych, za wyrażoną świadomą zgodą tych osób, z tych portali społecznościowych</li>
-  <li>z innych źródeł niż od osób, których dane dotyczą:<br>
-    - podczas tworzenia i obsługiwania stron internetowych i aplikacji dla innych podmiotów
+  <li>e-mailowo: igor.janicki27@gmail.com,</li>
+  <li>korespondencyjnie: ul. Pułtuska 20/9, 53-116 Wrocław.</li>
+</ul>
+<p>Administrator nie powołał Inspektora Ochrony Danych.</p>
+
+<h3 id="skad-pochodza-dane">Skąd pochodzą dane?</h3>
+<p>Dane mogą pochodzić:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>bezpośrednio od osoby, której dane dotyczą,</li>
+  <li>z formularza kontaktowego,</li>
+  <li>z korespondencji e-mail,</li>
+  <li>z rozmów i ustaleń związanych ze współpracą,</li>
+  <li>z danych przekazanych przez klienta w ramach realizacji usług IT,</li>
+  <li>z logów technicznych Serwisu.</li>
+</ol>
+
+<h3 id="zakres-danych">Jakie dane mogą być przetwarzane?</h3>
+<p>Administrator może przetwarzać:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>imię i nazwisko,</li>
+  <li>nazwę firmy,</li>
+  <li>adres e-mail,</li>
+  <li>numer telefonu,</li>
+  <li>NIP lub dane rozliczeniowe,</li>
+  <li>treść korespondencji,</li>
+  <li>informacje potrzebne do przygotowania oferty lub realizacji usługi,</li>
+  <li>dane techniczne, takie jak adres IP, informacje o urządzeniu, przeglądarce i logach serwera.</li>
+</ol>
+<p>Administrator nie wymaga podawania szczególnych kategorii danych osobowych, takich jak dane o zdrowiu, poglądach politycznych, religii lub orientacji seksualnej. Takich danych nie należy przekazywać, chyba że jest to absolutnie konieczne w konkretnej sprawie.</p>
+
+<h3 id="cele-przetwarzania">W jakich celach dane są przetwarzane?</h3>
+<p>Dane są przetwarzane w celu:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>obsługi zapytań i korespondencji,</li>
+  <li>przygotowania oferty,</li>
+  <li>zawarcia i wykonania umowy,</li>
+  <li>realizacji usług IT, programistycznych, administracyjnych lub projektowych,</li>
+  <li>obsługi rozliczeń,</li>
+  <li>spełnienia obowiązków prawnych,</li>
+  <li>zapewnienia bezpieczeństwa Serwisu,</li>
+  <li>dochodzenia lub obrony przed roszczeniami,</li>
+  <li>prowadzenia statystyk i analityki, jeżeli użytkownik wyraził wymaganą zgodę.</li>
+</ol>
+
+<h3 id="podstawy-prawne">Jakie są podstawy prawne przetwarzania?</h3>
+<p>Podstawami prawnymi przetwarzania są:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>art. 6 ust. 1 lit. b RODO – działania przed zawarciem umowy oraz wykonanie umowy,</li>
+  <li>art. 6 ust. 1 lit. c RODO – obowiązki prawne, w szczególności podatkowe i księgowe,</li>
+  <li>art. 6 ust. 1 lit. f RODO – prawnie uzasadniony interes Administratora, w tym kontakt, bezpieczeństwo, obsługa roszczeń i ochrona działalności,</li>
+  <li>art. 6 ust. 1 lit. a RODO – zgoda, jeżeli przetwarzanie odbywa się na jej podstawie.</li>
+</ol>
+
+<h3 id="okres-przetwarzania">Przez jaki czas dane są przetwarzane?</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dane kontaktowe są przechowywane przez czas potrzebny do obsługi sprawy, a następnie przez okres przedawnienia roszczeń.</li>
+  <li>Dane związane z umową są przechowywane przez czas trwania współpracy oraz przez okres przedawnienia roszczeń.</li>
+  <li>Dane księgowe są przechowywane przez okres wymagany przepisami prawa.</li>
+  <li>Dane przetwarzane na podstawie zgody są przechowywane do czasu jej wycofania.</li>
+  <li>Dane techniczne i logi mogą być przechowywane przez okres potrzebny do zapewnienia bezpieczeństwa i diagnostyki.</li>
+</ol>
+
+<h3 id="odbiorcy-danych">Kto może być odbiorcą danych?</h3>
+<p>Dane mogą być przekazywane:</p>
+<ul>
+  <li>dostawcom hostingu, domen, poczty i infrastruktury technicznej,</li>
+  <li>dostawcom narzędzi chmurowych i repozytoriów kodu,</li>
+  <li>dostawcom usług analitycznych,</li>
+  <li>dostawcom formularzy kontaktowych,</li>
+  <li>podmiotom obsługującym księgowość, prawo lub administrację,</li>
+  <li>organom publicznym, jeżeli wynika to z przepisów prawa.</li>
+</ul>
+<p>W zależności od użytych narzędzi odbiorcami mogą być m.in. OVH, Google, GitHub, Cloudflare lub inni dostawcy faktycznie wykorzystywani przez Administratora.</p>
+<p>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</p>
+
+<h3 id="przekazywanie-poza-eog">Czy dane są przekazywane poza EOG?</h3>
+<p>Niektórzy dostawcy usług technicznych mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym.</p>
+<p>W takim przypadku stosowane są mechanizmy zabezpieczające wymagane przez RODO, w szczególności standardowe klauzule umowne, decyzje o odpowiednim stopniu ochrony lub inne prawnie dopuszczalne zabezpieczenia.</p>
+
+<h3 id="profilowanie">Czy dane są profilowane?</h3>
+<p>Dane osobowe nie są wykorzystywane do zautomatyzowanego podejmowania decyzji wywołujących skutki prawne wobec osoby, której dane dotyczą.</p>
+
+<h3 id="prawa-osoby">Jakie prawa przysługują osobie, której dane dotyczą?</h3>
+<p>Osobie, której dane dotyczą, przysługuje prawo do:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>dostępu do danych,</li>
+  <li>sprostowania danych,</li>
+  <li>usunięcia danych,</li>
+  <li>ograniczenia przetwarzania,</li>
+  <li>przenoszenia danych,</li>
+  <li>wniesienia sprzeciwu,</li>
+  <li>wycofania zgody,</li>
+  <li>wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.</li>
+</ol>
+<p>W celu realizacji praw należy skontaktować się z Administratorem: igor.janicki27@gmail.com.</p>
+`,
+  "regulamin-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin współpracy B2B oraz powierzenia przetwarzania danych</h2>
+
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+
+<h3 id="b2b-strony-definicje">§1. Strony i definicje</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li><strong>Dostawca IT / Procesor</strong> – Igor Janicki, ul. Pułtuska 20/9, 53-116 Wrocław, NIP: 8993047085.</li>
+  <li><strong>Klient / Administrator danych</strong> – przedsiębiorca, organizacja lub inny podmiot zlecający Dostawcy IT wykonanie usług.</li>
+  <li><strong>Usługi</strong> – usługi informatyczne, programistyczne, administracyjne, projektowe, wdrożeniowe, utrzymaniowe, konsultacyjne lub serwisowe.</li>
+  <li><strong>Dane Klienta</strong> – dane, pliki, bazy danych, dostępy, konfiguracje, treści i inne materiały przekazane Dostawcy IT w związku z realizacją usług.</li>
+  <li><strong>Dane osobowe</strong> – dane osobowe w rozumieniu RODO.</li>
+  <li><strong>Regulamin</strong> – niniejszy dokument określający warunki współpracy B2B oraz zasady powierzenia przetwarzania danych osobowych.</li>
+</ol>
+
+<h3 id="b2b-zastosowanie">§2. Zastosowanie Regulaminu</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Regulamin ma zastosowanie do współpracy B2B pomiędzy Klientem a Dostawcą IT, jeżeli strony nie zawarły odrębnej umowy stanowiącej inaczej.</li>
+  <li>Zlecenie usług, przekazanie dostępów, akceptacja wyceny, rozpoczęcie prac lub kontynuowanie współpracy po otrzymaniu Regulaminu oznacza akceptację jego postanowień.</li>
+  <li>W razie sprzeczności pomiędzy Regulaminem a indywidualną umową zawartą z Klientem pierwszeństwo ma indywidualna umowa.</li>
+</ol>
+
+<h3 id="b2b-zakres-uslug">§3. Zakres usług</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>tworzenie i rozwój stron internetowych,</li>
+  <li>tworzenie i rozwój aplikacji,</li>
+  <li>konfigurację hostingu, domen, poczty, DNS i usług chmurowych,</li>
+  <li>administrację techniczną stron i aplikacji,</li>
+  <li>wdrożenia, poprawki, aktualizacje i optymalizacje,</li>
+  <li>integracje z usługami zewnętrznymi,</li>
+  <li>diagnostykę błędów i awarii,</li>
+  <li>konsultacje techniczne,</li>
+  <li>prace związane z bezpieczeństwem i utrzymaniem systemów.</li>
+</ol>
+<p>Szczegółowy zakres usług ustalany jest indywidualnie z Klientem.</p>
+
+<h3 id="b2b-obowiazki-klienta">§4. Obowiązki Klienta</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>przekazania prawdziwych i kompletnych informacji potrzebnych do realizacji usług,</li>
+  <li>posiadania praw do materiałów, danych, grafik, treści i dostępów przekazywanych Dostawcy IT,</li>
+  <li>wykonywania lub zapewnienia własnych kopii zapasowych danych, chyba że strony wyraźnie uzgodniły usługę backupu,</li>
+  <li>niezwłocznego informowania o błędach, awariach i incydentach,</li>
+  <li>terminowego regulowania wynagrodzenia,</li>
+  <li>samodzielnego zapewnienia zgodności swojej działalności z prawem, w tym z przepisami RODO, konsumenckimi, podatkowymi i branżowymi.</li>
+</ol>
+
+<h3 id="b2b-dostepy-admin">§5. Dostępy administracyjne</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Klient może przekazać Dostawcy IT dostępy administracyjne do hostingu, serwera, domeny, poczty, CMS, paneli, baz danych, repozytoriów, systemów płatności lub innych narzędzi.</li>
+  <li>Dostawca IT wykorzystuje dostępy wyłącznie w celu realizacji usług.</li>
+  <li>Klient powinien przekazywać dostępy w sposób bezpieczny i – tam gdzie to możliwe – tworzyć osobne konta dla Dostawcy IT.</li>
+  <li>Po zakończeniu współpracy Klient powinien zmienić hasła, odebrać uprawnienia lub usunąć konta dostępowe, chyba że strony ustalą inaczej.</li>
+</ol>
+
+<h3 id="b2b-oprogramowanie-zewnetrzne">§6. Oprogramowanie zewnętrzne i usługi firm trzecich</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dostawca IT może korzystać z oprogramowania, bibliotek, wtyczek, frameworków, API, systemów CMS, usług hostingowych, narzędzi chmurowych i innych usług podmiotów trzecich.</li>
+  <li>Dostawca IT nie odpowiada za awarie, błędy, podatności, zmiany cenników, ograniczenia, przerwy działania lub decyzje dostawców zewnętrznych, chyba że szkoda wynika z zawinionego działania Dostawcy IT.</li>
+  <li>Klient przyjmuje do wiadomości, że utrzymanie bezpieczeństwa i aktualności oprogramowania zewnętrznego może wymagać regularnych aktualizacji, monitoringu i osobnych prac serwisowych.</li>
+</ol>
+
+<h3 id="b2b-backupy">§7. Backupy i utrata danych</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dostawca IT może wykonywać techniczne kopie robocze na potrzeby realizacji zlecenia.</li>
+  <li>Robocze kopie techniczne nie stanowią gwarantowanej usługi backupu biznesowego, chyba że strony wyraźnie uzgodniły usługę backupu.</li>
+  <li>Klient odpowiada za posiadanie aktualnych kopii zapasowych swoich danych, plików, baz danych, poczty i systemów.</li>
+  <li>Dostawca IT nie gwarantuje możliwości odzyskania danych w przypadku awarii, ataku, błędu Klienta, usunięcia danych lub problemu po stronie dostawcy infrastruktury, chyba że strony zawarły odrębną umowę backupową.</li>
+</ol>
+
+<h3 id="b2b-ograniczenie-odpowiedzialnosci">§8. Ograniczenie odpowiedzialności</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dostawca IT ponosi odpowiedzialność wyłącznie za szkodę rzeczywistą wynikającą z zawinionego działania lub zaniechania Dostawcy IT.</li>
+  <li>Dostawca IT nie odpowiada za utracone korzyści, utratę przychodów, utratę reputacji, przerwy w działalności Klienta, szkody pośrednie ani skutki decyzji biznesowych Klienta.</li>
+  <li>Odpowiedzialność Dostawcy IT z tytułu danego zlecenia jest ograniczona do kwoty netto wynagrodzenia faktycznie otrzymanego za to konkretne zlecenie.</li>
+  <li>Ograniczenia odpowiedzialności nie mają zastosowania w zakresie, w jakim ich wyłączenie byłoby niedopuszczalne na podstawie bezwzględnie obowiązujących przepisów prawa, w szczególności w przypadku szkody wyrządzonej umyślnie.</li>
+  <li>Dostawca IT nie odpowiada za szkody wynikające z:
+    <ol style="list-style-type:lower-alpha;padding-left:1.2rem;margin-top:0.3rem">
+      <li>nieprawidłowych danych lub instrukcji Klienta,</li>
+      <li>ingerencji Klienta lub osób trzecich,</li>
+      <li>działania hostingu, CMS, wtyczek, API lub usług zewnętrznych,</li>
+      <li>braku aktualizacji po stronie Klienta,</li>
+      <li>ataków cybernetycznych,</li>
+      <li>braku backupu po stronie Klienta,</li>
+      <li>wykorzystania projektu niezgodnie z przeznaczeniem.</li>
+    </ol>
   </li>
+</ol>
+
+<h3 id="b2b-poufnosc">§9. Poufność</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dostawca IT zobowiązuje się zachować w poufności informacje techniczne, biznesowe, handlowe i organizacyjne Klienta uzyskane w związku ze współpracą.</li>
+  <li>Obowiązek poufności nie dotyczy informacji publicznie dostępnych, znanych Dostawcy IT przed rozpoczęciem współpracy lub ujawnionych na podstawie przepisów prawa.</li>
+  <li>Dostawca IT może ujawniać informacje podwykonawcom lub dostawcom usług wyłącznie w zakresie niezbędnym do realizacji usług.</li>
+</ol>
+
+<h3 id="b2b-powierzenie-rodo">§10. Powierzenie przetwarzania danych osobowych</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Jeżeli w ramach usług Dostawca IT uzyskuje dostęp do danych osobowych, Klient powierza Dostawcy IT ich przetwarzanie w zakresie niezbędnym do realizacji usług.</li>
+  <li>Klient pozostaje Administratorem danych i decyduje o celach oraz sposobach przetwarzania danych.</li>
+  <li>Dostawca IT działa jako podmiot przetwarzający w rozumieniu art. 28 RODO.</li>
+  <li>Powierzenie obejmuje dane osobowe znajdujące się w systemach, stronach, aplikacjach, bazach danych, formularzach, panelach administracyjnych, logach lub innych zasobach Klienta, do których Dostawca IT uzyska dostęp w celu wykonania usług.</li>
+</ol>
+
+<h3 id="b2b-przedmiot-cel">§11. Przedmiot, czas, charakter i cel przetwarzania</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Przedmiotem przetwarzania jest dostęp do danych osobowych w systemach Klienta w celu realizacji usług IT.</li>
+  <li>Czas trwania przetwarzania odpowiada okresowi współpracy oraz okresowi niezbędnemu do rozliczenia, zabezpieczenia roszczeń lub usunięcia/zwrotu danych po zakończeniu współpracy.</li>
+  <li>Charakter przetwarzania obejmuje w szczególności dostęp, podgląd, utrwalanie, kopiowanie techniczne, modyfikację, migrację, zabezpieczanie, usuwanie lub testowanie danych, jeżeli jest to konieczne do realizacji usług.</li>
+  <li>Celem przetwarzania jest wykonanie usług na rzecz Klienta, utrzymanie systemów, diagnostyka błędów, rozwój funkcji, zabezpieczenie środowiska i wsparcie techniczne.</li>
+</ol>
+
+<h3 id="b2b-kategorie-danych">§12. Kategorie danych i osób</h3>
+<p>Powierzenie może obejmować dane:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>klientów Klienta,</li>
+  <li>użytkowników stron i aplikacji Klienta,</li>
+  <li>pracowników i współpracowników Klienta,</li>
+  <li>kontrahentów Klienta,</li>
+  <li>osób kontaktujących się przez formularze,</li>
+  <li>osób widocznych w logach technicznych.</li>
+</ol>
+<p>Zakres danych może obejmować w szczególności:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>imię i nazwisko,</li>
+  <li>adres e-mail,</li>
+  <li>numer telefonu,</li>
+  <li>adres IP,</li>
+  <li>dane konta użytkownika,</li>
+  <li>dane zamówień lub zapytań,</li>
+  <li>dane rozliczeniowe,</li>
+  <li>treści wiadomości,</li>
+  <li>dane techniczne i logi systemowe.</li>
+</ol>
+<p>Klient nie powinien przekazywać Dostawcy IT szczególnych kategorii danych osobowych, chyba że jest to konieczne, zgodne z prawem i wyraźnie uzgodnione.</p>
+
+<h3 id="b2b-obowiazki-procesora">§13. Obowiązki Dostawcy IT jako procesora</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>przetwarzania danych wyłącznie na udokumentowane polecenie Klienta,</li>
+  <li>zachowania poufności,</li>
+  <li>stosowania odpowiednich środków technicznych i organizacyjnych,</li>
+  <li>dopuszczania do danych wyłącznie osób upoważnionych,</li>
+  <li>wspierania Klienta w realizacji obowiązków wynikających z RODO w zakresie możliwym i adekwatnym do świadczonych usług,</li>
+  <li>informowania Klienta o znanych Dostawcy IT incydentach bezpieczeństwa dotyczących powierzonych danych,</li>
+  <li>po zakończeniu współpracy usunięcia lub zwrotu danych zgodnie z decyzją Klienta, chyba że przepisy prawa wymagają dalszego przechowywania.</li>
+</ol>
+
+<h3 id="b2b-subprocesorzy">§14. Subprocesorzy</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Klient wyraża ogólną zgodę na korzystanie przez Dostawcę IT z dalszych podmiotów przetwarzających, jeżeli jest to niezbędne do realizacji usług.</li>
+  <li>Subprocesorami mogą być w szczególności dostawcy hostingu, usług chmurowych, repozytoriów kodu, poczty, zabezpieczeń, monitoringu i narzędzi administracyjnych.</li>
+  <li>Mogą to być m.in. OVH, Google, GitHub, Cloudflare oraz inni dostawcy faktycznie używani przy realizacji usług.</li>
+  <li>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</li>
+  <li>Dostawca IT zobowiązuje się korzystać z podmiotów zapewniających odpowiedni poziom bezpieczeństwa.</li>
+</ol>
+
+<h3 id="b2b-transfer-eog">§15. Transfer danych poza EOG</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Korzystanie z niektórych usług technicznych może wiązać się z przetwarzaniem danych poza Europejskim Obszarem Gospodarczym.</li>
+  <li>W takim przypadku transfer odbywa się z zastosowaniem mechanizmów przewidzianych przez RODO, w szczególności standardowych klauzul umownych, decyzji stwierdzających odpowiedni stopień ochrony lub innych wymaganych zabezpieczeń.</li>
+</ol>
+
+<h3 id="b2b-incydenty">§16. Incydenty bezpieczeństwa</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Dostawca IT informuje Klienta o znanym mu naruszeniu ochrony danych osobowych bez zbędnej zwłoki.</li>
+  <li>Klient jako Administrator danych odpowiada za ocenę incydentu, zgłoszenie naruszenia do UODO oraz zawiadomienie osób, których dane dotyczą, jeżeli wymagają tego przepisy.</li>
+  <li>Dostawca IT udziela Klientowi rozsądnego wsparcia technicznego w zakresie ustalenia przyczyn i skutków incydentu.</li>
+</ol>
+
+<h3 id="b2b-dane-testowe">§17. Dane testowe i środowiska robocze</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Co do zasady do testów należy wykorzystywać dane fikcyjne, zanonimizowane lub zminimalizowane.</li>
+  <li>Dane produkcyjne mogą zostać użyte w środowisku testowym wyłącznie wtedy, gdy jest to konieczne do odtworzenia błędu lub wykonania usługi.</li>
+  <li>Dostawca IT stosuje zasadę minimalizacji danych i ogranicza zakres danych testowych do niezbędnego minimum.</li>
+</ol>
+
+<h3 id="b2b-zakonczenie-wspolpracy">§18. Zakończenie współpracy</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Po zakończeniu współpracy Klient może zażądać zwrotu lub usunięcia powierzonych danych.</li>
+  <li>Dostawca IT może przechowywać dane niezbędne do rozliczeń, zabezpieczenia roszczeń, dokumentacji wykonanych usług lub spełnienia obowiązków prawnych.</li>
+  <li>Kod źródłowy, kopie robocze, repozytoria i materiały techniczne mogą być przechowywane w zakresie niezbędnym do dokumentacji wykonanych prac, ochrony praw Dostawcy IT lub późniejszego wsparcia, o ile nie narusza to praw Klienta ani przepisów o ochronie danych.</li>
+</ol>
+
+<h3 id="b2b-postanowienia-koncowe">§19. Postanowienia końcowe</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Regulamin może zostać zmieniony z ważnych przyczyn prawnych, technicznych lub organizacyjnych.</li>
+  <li>W sprawach nieuregulowanych stosuje się przepisy prawa polskiego.</li>
+  <li>Kontakt z Dostawcą IT: igor.janicki27@gmail.com.</li>
+</ol>`,
+  "polityka-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka współpracy i przetwarzania danych – wsparcie IT</h2>
+
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+
+<h3 id="num-cel-dokumentu">§1. Cel dokumentu</h3>
+<p>Ten dokument wyjaśnia rolę firmy Igor Janicki w obsłudze technicznej stron internetowych, aplikacji i systemów należących do klientów.</p>
+<p>Jeżeli użytkownik trafił na ten dokument ze strony innego podmiotu, oznacza to, że Igor Janicki może świadczyć na rzecz tego podmiotu usługi techniczne, programistyczne, administracyjne lub utrzymaniowe.</p>
+
+<h3 id="num-rola">§2. Rola Igor Janicki</h3>
+<p>Igor Janicki co do zasady działa jako podmiot technicznie obsługujący stronę, aplikację lub system klienta.</p>
+<p>W zależności od konkretnej współpracy może pełnić rolę:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>podmiotu przetwarzającego dane osobowe na zlecenie właściciela strony lub aplikacji,</li>
+  <li>dostawcy usług IT,</li>
+  <li>administratora technicznego,</li>
+  <li>wykonawcy lub podwykonawcy prac programistycznych.</li>
+</ol>
+<p>Administratorem danych osobowych użytkowników pozostaje zasadniczo właściciel strony, sklepu, aplikacji lub systemu, z którego użytkownik korzysta.</p>
+
+<h3 id="num-dostep-techniczny">§3. Dlaczego możemy mieć techniczny dostęp do danych?</h3>
+<p>W ramach obsługi technicznej możemy posiadać dostęp do paneli administracyjnych, baz danych, hostingu, logów, repozytoriów, konfiguracji lub innych elementów infrastruktury klienta.</p>
+<p>Dostęp ten służy wyłącznie realizacji usług technicznych, takich jak:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>naprawa błędów,</li>
+  <li>aktualizacje,</li>
+  <li>konfiguracja hostingu, domen, poczty lub DNS,</li>
+  <li>rozwój funkcji,</li>
+  <li>diagnostyka awarii,</li>
+  <li>zabezpieczanie systemu,</li>
+  <li>migracje danych,</li>
+  <li>przywracanie działania strony lub aplikacji,</li>
+  <li>wsparcie administratora danych w realizacji jego obowiązków.</li>
+</ol>
+<p>Nie wykorzystujemy danych użytkowników końcowych do własnych celów marketingowych ani nie sprzedajemy ich innym podmiotom.</p>
+
+<h3 id="num-zakres-danych">§4. Jakie dane mogą być technicznie widoczne?</h3>
+<p>Zakres danych zależy od systemu klienta. Mogą to być w szczególności:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>imię i nazwisko,</li>
+  <li>adres e-mail,</li>
+  <li>numer telefonu,</li>
+  <li>adres IP,</li>
+  <li>dane konta użytkownika,</li>
+  <li>dane formularzy,</li>
+  <li>dane zamówień,</li>
+  <li>logi techniczne,</li>
+  <li>historia zdarzeń w systemie,</li>
+  <li>inne dane wprowadzone przez użytkownika na stronie lub w aplikacji klienta.</li>
+</ol>
+<p>Dostęp do tych danych jest ograniczony do sytuacji, w których jest to potrzebne do wykonania usługi technicznej.</p>
+
+<h3 id="num-zabezpieczenia">§5. Zabezpieczenia</h3>
+<p>W ramach obsługi technicznej stosujemy środki organizacyjne i techniczne mające chronić dane, w szczególności:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>ograniczenie dostępu do danych do niezbędnego zakresu,</li>
+  <li>korzystanie z zabezpieczonych kont i narzędzi,</li>
+  <li>stosowanie uwierzytelniania dwuskładnikowego tam, gdzie jest dostępne,</li>
+  <li>ochronę urządzeń roboczych,</li>
+  <li>zachowanie poufności,</li>
+  <li>minimalizowanie użycia danych produkcyjnych w testach,</li>
+  <li>korzystanie z zaufanych dostawców infrastruktury IT.</li>
+</ol>
+
+<h3 id="num-dostawcy">§6. Dostawcy technologiczni</h3>
+<p>W zależności od projektu mogą być wykorzystywane narzędzia i infrastruktura dostawców zewnętrznych, takich jak:</p>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>OVH,</li>
+  <li>Google,</li>
+  <li>GitHub,</li>
+  <li>Cloudflare,</li>
+  <li>dostawcy hostingu,</li>
+  <li>dostawcy poczty,</li>
+  <li>dostawcy narzędzi analitycznych,</li>
+  <li>dostawcy formularzy kontaktowych.</li>
+</ol>
+<p>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</p>
+<p>Niektórzy dostawcy mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym. W takich przypadkach stosowane są mechanizmy zabezpieczające przewidziane przez RODO.</p>
+
+<h3 id="num-prawa-rodo">§7. Realizacja praw RODO</h3>
+<p>Jeżeli użytkownik chce skorzystać z praw wynikających z RODO, w szczególności prawa dostępu, sprostowania, usunięcia, ograniczenia przetwarzania lub sprzeciwu, powinien skontaktować się z właścicielem strony, sklepu, aplikacji lub systemu, w którym podał dane.</p>
+<p>Igor Janicki, jako podmiot techniczny, może wspierać właściciela systemu w realizacji takiego żądania, ale co do zasady nie decyduje samodzielnie o celach i sposobach przetwarzania danych użytkowników końcowych.</p>
+
+<h3 id="num-kontakt">§8. Kontakt</h3>
+<p>W sprawach dotyczących roli technicznej Igor Janicki można kontaktować się pod adresem:</p>
+<ul>
+  <li>Igor Janicki</li>
+  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>Strona: https://i-janicki.pl</li>
+  <li>Dokumenty: https://i-janicki.pl/dokumenty</li>
 </ul>
-
-<h3 id="jaki-jest-zakres-przetwarzanych-przez-nas-danych-osobowych">Jaki jest zakres przetwarzanych przez nas danych osobowych?</h3>
-<p>W serwisie przetwarzane są następujące zakresy danych:</p>
-<ul>
-  <li>dane osobowe zwykłe, podawane dobrowolnie przez osoby, których dane dotyczą<br>
-    <small>(Np. imię i nazwisko, login, adres e-mail, telefon, adres IP, itp.)</small>
-  </li>
-  <li>dane osobowe wrażliwe, podawane dobrowolnie przez osoby, których dane dotyczą</li>
-</ul>
-<p>Szczegółowy zakres przetwarzanych danych dostępny jest w <a href="https://i-janicki.pl/dokumenty">Polityce Prywatności</a>.</p>
-
-<h3 id="jakie-sa-cele-przetwarzania-przez-nas-danych">Jakie są cele przetwarzania przez nas danych?</h3>
-<p>Dane osobowe dobrowolnie podane przez Użytkowników są przetwarzane w jednym z następujących celów:</p>
-<ul>
-  <li>Realizacji usług elektronicznych:
-    <ul>
-      <li>Usługi rejestracji i utrzymania konta Użytkownika w Serwisie i funkcjonalności z nim związanych</li>
-      <li>Usługi Newslettera (w tym przesyłania za zgodą treści reklamowych)</li>
-      <li>Usługi komentowania / polubienia wpisów w Serwisie bez konieczności rejestrowania się</li>
-    </ul>
-  </li>
-  <li>Komunikacji Administratora z Użytkownikami w sprawach związanych z Serwisem oraz ochrony danych</li>
-  <li>Zapewnienia prawnie uzasadnionego interesu Administratora</li>
-</ul>
-
-<h3 id="jakie-sa-podstawy-prawne-przetwarzania-danych">Jakie są podstawy prawne przetwarzania danych?</h3>
-<p>Serwis gromadzi i przetwarza dane Użytkowników na podstawie:</p>
-<ul>
-  <li>Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych i w sprawie swobodnego przepływu takich danych oraz uchylenia dyrektywy 95/46/WE (ogólne rozporządzenie o ochronie danych)
-    <ul>
-      <li>art. 6 ust. 1 lit. a<br><small>osoba, której dane dotyczą wyraziła zgodę na przetwarzanie swoich danych osobowych w jednym lub większej liczbie określonych celów</small></li>
-      <li>art. 6 ust. 1 lit. b<br><small>przetwarzanie jest niezbędne do wykonania umowy, której stroną jest osoba, której dane dotyczą, lub do podjęcia działań na żądanie osoby, której dane dotyczą, przed zawarciem umowy</small></li>
-      <li>art. 6 ust. 1 lit. f<br><small>przetwarzanie jest niezbędne do celów wynikających z prawnie uzasadnionych interesów realizowanych przez administratora lub przez stronę trzecią</small></li>
-    </ul>
-  </li>
-  <li>Ustawa z dnia 10 maja 2018 r. o ochronie danych osobowych (Dz.U. 2018 poz. 1000)</li>
-  <li>Ustawa z dnia 16 lipca 2004 r. Prawo telekomunikacyjne (Dz.U. 2004 nr 171 poz. 1800)</li>
-  <li>Ustawa z dnia 4 lutego 1994 r. o prawie autorskim i prawach pokrewnych (Dz. U. 1994 Nr 24 poz. 83)</li>
-</ul>
-
-<h3 id="jaki-jest-prawnie-uzasadniony-interes-realizowany-przez-administratora">Jaki jest prawnie uzasadniony interes realizowany przez Administratora?</h3>
-<ul>
-  <li>W celu ewentualnego ustalenia, dochodzenia lub obrony przed roszczeniami – podstawą prawną przetwarzania jest nasz uzasadniony interes (art. 6 ust. 1 lit. f) RODO) polegający na ochronie naszych praw, w tym między innymi;</li>
-  <li>W celu oceny ryzyka potencjalnych klientów</li>
-  <li>W celu oceny planowanych kampanii marketingowych</li>
-  <li>W celu realizacji marketingu bezpośredniego</li>
-</ul>
-
-<h3 id="przez-jaki-okres-przetwarzamy-dane-osobowe">Przez jaki okres przetwarzamy dane osobowe?</h3>
-<p>Co do zasady, wskazane dane osobowe są przechowywane wyłącznie przez okres świadczenia usługi w ramach prowadzonego serwisu przez Administratora. Są one usuwane lub anonimizowane w okresie do <strong>30 dni od chwili zakończenia świadczenia usług</strong> (np. usunięcie zarejestrowanego konta użytkownika, wypisanie z listy Newsletter, itp.)</p>
-<p>W wyjątkowych sytuacjach, w celu zabezpieczenie prawnie uzasadnionego interesu realizowanego przez Administratora, okres ten może ulec wydłużeniu. W takiej sytuacji Administrator będzie przechowywał wskazane dane, od czasu żądania ich usunięcia przez Użytkownika, nie dłużej niż przez okres 3 lat w przypadku naruszenia lub podejrzenia naruszenia zapisów regulaminu serwisu przez osobę, której dane dotyczą.</p>
-
-<h3 id="kto-jest-odbiorca-danych-w-tym-danych-osobowych">Kto jest odbiorcą danych w tym danych osobowych?</h3>
-<p>Co do zasady jedynym odbiorcą danych jest Administrator.</p>
-<p>Przetwarzanie danych może jednak być powierzone innym podmiotom, realizującym usługi na rzecz Administratora w celu utrzymania działalności Serwisu.</p>
-<p>Do podmiotów takich można zaliczyć między innymi:</p>
-<ul>
-  <li>Firmy hostingowe, świadczące usługi hostingu lub usług pokrewnych dla Administratora</li>
-  <li>Firmy, za pośrednictwem których świadczona jest usługa Newslettera</li>
-  <li>Firmy serwisowe i wsparcia IT dokonujące konserwacji lub odpowiedzialne za utrzymanie infrastruktury IT</li>
-  <li>Firmy pośredniczące w płatnościach on-line za towaru lub usługi oferowane w ramach Serwisu (w przypadku dokonywania transakcji zakupu w Serwisie)</li>
-  <li>Firmy pośredniczące w płatnościach mobilnych za towaru lub usługi oferowane w ramach Serwisu (w przypadku dokonywania transakcji zakupu w Serwisie)</li>
-  <li>Firmy odpowiedzialne za prowadzenie księgowości Administratora (w przypadku dokonywania transakcji zakupu w Serwisie)</li>
-  <li>Firmy odpowiedzialne za dostarczanie produktów fizycznych do Użytkownika (usługi pocztowe / kurierskie w przypadku dokonywania transakcji zakupu w Serwisie)</li>
-</ul>
-
-<h3 id="czy-panstwa-dane-osobowe-beda-przekazywane-poza-unie-europejska">Czy Państwa dane osobowe będą przekazywane poza Unię Europejską?</h3>
-<p><strong>Dane osobowe są przekazywane poza Unię Europejską.</strong><br>
-Przekazanie danych pozo UE jest spowodowane korzystaniem z usług podmiotów zlokalizowanych poza granicami UE, lub w wyniku opublikowania na skutek indywidualnego działania Użytkownika (np. wprowadzenie komentarza lub wpisu), co sprawi, że dane będą dostępne dla każdej osoby odwiedzającej serwis.<br>
-W przypadku przekazania lub powierzenia przetwarzania danych osobowych poza granicami UE, dane te są przetwarzana na podstawie umowy zawartej pomiędzy Administratorem a Usługodawcą.</p>
-
-<h3 id="czy-dane-osobowe-beda-podstawa-zautomatyzowanego-podejmowania-decyzji">Czy dane osobowe będą podstawą zautomatyzowanego podejmowania decyzji?</h3>
-<p>Dane osobowe <strong>są wykorzystywane do zautomatyzowanego podejmowania decyzji</strong> (profilowania).<br>
-Profilowanie danych osobowych nie wywołuje skutków prawnych lub w podobny sposób istotnie nie wpływa na osobę, której dane podlegają automatycznemu podejmowaniu decyzji.</p>
-
-<h3 id="jakie-maja-panstwo-prawa-zwiazane-z-przetwarzaniem-danych-osobowych">Jakie mają Państwo prawa związane z przetwarzaniem danych osobowych?</h3>
-<ul>
-  <li><p><strong>Prawo dostępu do danych osobowych</strong><br>Użytkownikom przysługuje prawo uzyskania dostępu do swoich danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do sprostowania danych osobowych</strong><br>Użytkownikom przysługuje prawo żądania od Administratora niezwłocznego sprostowania danych osobowych, które są nieprawidłowe lub / oraz uzupełnienia niekompletnych danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do usunięcia danych osobowych</strong><br>Użytkownikom przysługuje prawo żądania od Administratora niezwłocznego usunięcia danych osobowych, realizowane na żądanie złożone do Administratora.<br><br>
-    W przypadku kont użytkowników, usunięcie danych polega na anonimizacji danych umożliwiających identyfikację Użytkownika.<br><br>
-    W przypadku usługi Newsletter, Użytkownik ma możliwość samodzielnego usunięcia swoich danych osobowych korzystając z odnośnika umieszczonego w każdej przesyłanej wiadomości e-mail.</p></li>
-  <li><p><strong>Prawo do ograniczenia przetwarzania danych osobowych</strong><br>Użytkownikom przysługuje prawo ograniczenia przetwarzania danych osobowych w przypadkach wskazanych w art. 18 RODO, m.in. kwestionowania prawidłowość danych osobowych, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo do przenoszenia danych osobowych</strong><br>Użytkownikom przysługuje prawo uzyskania od Administratora, danych osobowych dotyczących Użytkownika w ustrukturyzowanym, powszechnie używanym formacie nadającym się do odczytu maszynowego, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo wniesienia sprzeciwu wobec przetwarzania danych osobowych</strong><br>Użytkownikom przysługuje prawo wniesienia sprzeciwu wobec przetwarzania jego danych osobowych w przypadkach określonych w art. 21 RODO, realizowane na żądanie złożone do Administratora</p></li>
-  <li><p><strong>Prawo wniesienia skargi</strong><br>Użytkownikom przysługuje prawo wniesienia skargi do organu nadzorczego zajmującego się ochroną danych osobowych.</p></li>
-</ul>`,
-  "regulamin-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin Świadczenia Usług IT oraz Zasady Powierzenia Przetwarzania Danych</h2>
-
-<h3 id="b2b-postanowienia-ogolne">I. Postanowienia ogólne i Definicje</h3>
-<ul>
-  <li><strong>Regulamin</strong> – niniejszy dokument, określający zasady współpracy B2B oraz warunki powierzenia przetwarzania danych osobowych (zgodnie z art. 28 RODO).</li>
-  <li><strong>Dostawca IT / Procesor</strong> – firma "Igor Janicki" z siedzibą: ul. Pułtuska 20/9, 53-116 Wrocław, NIP: 8993047085.</li>
-  <li><strong>Klient / Administrator Danych</strong> – przedsiębiorca lub podmiot zlecający Dostawcy IT prace programistyczne, administracyjne lub utrzymaniowe.</li>
-</ul>
-<p>Zlecenie prac Dostawcy IT, niezależnie od formy (umowa pisemna, e-mail, komunikator), oraz przekazanie dostępów administracyjnych do serwera, jest równoznaczne z pełną i bezwarunkową akceptacją niniejszego Regulaminu.</p>
-
-<h3 id="b2b-zakres-uslug">II. Zakres Usług i Dostęp do Środowiska</h3>
-<ul>
-  <li>Dostawca IT świadczy usługi programistyczne, wdrożeniowe oraz stałą lub doraźną administrację serwisami internetowymi Klienta.</li>
-  <li>Do prawidłowej realizacji usług Dostawca IT otrzymuje pełny dostęp administracyjny do środowiska produkcyjnego, serwera (np. poprzez FTP/SSH) oraz baz danych Klienta.</li>
-  <li>Dostawca IT zastrzega sobie prawo do wykorzystywania rzeczywistych danych z baz produkcyjnych na środowiskach testowych (lokalnych lub zewnętrznych) w przypadkach, gdy jest to niezbędne do odtworzenia i naprawy błędów systemowych (bug fixing).</li>
-</ul>
-
-<h3 id="b2b-ograniczenie-odpowiedzialnosci">III. Ograniczenie Odpowiedzialności Dostawcy IT (Klauzule Egzoneracyjne)</h3>
-<p>Z uwagi na specyfikę branży informatycznej i cybernetycznej, odpowiedzialność Dostawcy IT podlega następującym ograniczeniom, w najszerszym zakresie dopuszczalnym przez prawo:</p>
-<ul>
-  <li><strong>Oprogramowanie firm trzecich:</strong> Dostawca IT nie ponosi żadnej odpowiedzialności za błędy, awarie, luki w zabezpieczeniach (podatności) ani wycieki danych spowodowane działaniem oprogramowania podmiotów trzecich, w tym systemów CMS (np. WordPress), wtyczek, motywów, skryptów zewnętrznych i integracji API.</li>
-  <li><strong>Ataki cybernetyczne:</strong> Dostawca IT nie ponosi odpowiedzialności za szkody powstałe w wyniku działań osób trzecich, w szczególności ataków hakerskich (np. DDoS, ransomware, SQL Injection, Brute Force), zainfekowania serwera złośliwym oprogramowaniem (malware) czy kradzieży danych z serwera Klienta.</li>
-  <li><strong>Brak odpowiedzialności za utracone korzyści (Lucrum Cessans):</strong> Dostawca IT nie odpowiada za jakiekolwiek straty finansowe Klienta, utracone zyski, przerwy w działaniu przedsiębiorstwa czy utratę reputacji wynikające z niedostępności serwisu, awarii technicznej lub błędu w oprogramowaniu. Całkowita odpowiedzialność odszkodowawcza Dostawcy IT (damnum emergens) ograniczona jest wyłącznie do kwoty netto wynagrodzenia otrzymanego za dane, konkretne zlecenie.</li>
-  <li><strong>Kopie Zapasowe (Backupy Biznesowe):</strong> Chociaż Dostawca IT może tworzyć własne kopie zapasowe na potrzeby prac wdrożeniowych (przechowywane na dyskach lokalnych lub w serwisie GitHub), <strong>nie stanowi to usługi gwarantowanego backupu biznesowego</strong>. Wyłączny obowiązek zabezpieczenia danych firmy oraz posiadania aktualnych kopii zapasowych spoczywa na Kliencie. Dostawca IT nie gwarantuje możliwości odzyskania utraconych danych w razie awarii serwera.</li>
-</ul>
-
-<h3 id="b2b-powierzenie-rodo">IV. Powierzenie Przetwarzania Danych Osobowych (RODO)</h3>
-<ul>
-  <li>Klient oświadcza, że jest prawnym Administratorem Danych Osobowych gromadzonych w jego systemach informatycznych i posiada udokumentowane podstawy prawne do ich przetwarzania, a w konsekwencji – do udostępnienia ich Dostawcy IT (Procesorowi).</li>
-  <li><strong>Podwykonawcy i Transfer poza EOG:</strong> Klient wyraża powszechną zgodę na korzystanie przez Dostawcę IT z niezbędnych narzędzi chmurowych i infrastruktury firm trzecich (tzw. subprocesorów), m.in.: OVH sp. z o.o., Cloudflare, usług środowiska Google (w tym Analytics, Firebase) oraz repozytoriów GitHub. Klient przyjmuje do wiadomości, że infrastruktura tych narzędzi może wiązać się z transferem zabezpieczonych danych poza Europejski Obszar Gospodarczy (EOG) na podstawie Standardowych Klauzul Umownych.</li>
-  <li><strong>Zgłaszanie naruszeń:</strong> W przypadku wykrycia incydentu bezpieczeństwa (np. włamania na stronę), obowiązkiem Dostawcy IT jest zabezpieczenie środowiska oraz niezwłoczne przekazanie Klientowi informacji o incydencie. <strong>Wyłączny obowiązek oceny prawnej incydentu, zgłoszenia go do UODO (w ciągu 72h) oraz powiadomienia użytkowników spoczywa na Kliencie (Administratorze).</strong></li>
-  <li><strong>Zwolnienie z odpowiedzialności (Regres):</strong> W przypadku skierowania przez użytkowników końcowych, instytucje państwowe (w tym organ nadzorczy RODO) lub inne podmioty jakichkolwiek roszczeń, lub nałożenia kar finansowych na Dostawcę IT, a wynikających z naruszeń, za które odpowiedzialność ponosi środowisko Klienta, braku dokumentacji u Klienta lub ataków na stronę Klienta, <strong>Klient zobowiązuje się do pełnego pokrycia tych kosztów</strong>, łącznie z kosztami obsługi prawnej Dostawcy IT.</li>
-</ul>
-
-<h3 id="b2b-postanowienia-koncowe">V. Postanowienia końcowe i Zakończenie Współpracy</h3>
-<ul>
-  <li>Na pisemne żądanie Klienta, zgłoszone po ostatecznym zakończeniu i rozliczeniu współpracy, Dostawca IT trwale usunie ze swoich środowisk roboczych oraz prywatnych archiwów wszelkie bazy danych i powierzone dane osobowe powiązane z Klientem, z zastrzeżeniem danych niezbędnych do wykazania rozliczeń podatkowych.</li>
-  <li>Brak wyraźnego żądania usunięcia danych uprawnia Dostawcę IT do przechowywania technicznych archiwów i kodów źródłowych (w tym repozytoriów GitHub) przez czas nieokreślony, w warunkach ścisłej poufności i bezpieczeństwa, na wypadek konieczności przywrócenia projektu w przyszłości.</li>
-</ul>`,
-  "polityka-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka Współpracy i Przetwarzania Danych (Wsparcie IT)</h2>
-
-<p><em>Dokument informacyjny dla użytkowników stron i sklepów internetowych objętych opieką technologiczną.</em></p>
-
-<h3 id="b2c-cel-dokumentu">I. Cel dokumentu i nasza rola</h3>
-<p>Jeżeli zostałeś przekierowany na ten dokument z innej strony internetowej lub e-sklepu, oznacza to, że firma <strong>"Igor Janicki"</strong> (NIP: 8993047085, z siedzibą we Wrocławiu) jest twórcą lub głównym administratorem technicznym serwisu, z którego korzystasz.</p>
-<p>Zgodnie z przepisami o ochronie danych (RODO), pełnimy rolę technicznego <strong>Podmiotu Przetwarzającego (Procesora)</strong>. Właścicielem Twoich danych i głównym decydentem (Administratorem Danych) pozostaje zawsze firma, w której dokonałeś zakupów lub zostawiłeś swoje dane w formularzu.</p>
-
-<h3 id="b2c-zakres-dostepu">II. Dlaczego i do jakich danych mamy dostęp?</h3>
-<p>Jako zespół odpowiadający za to, aby strona z której korzystasz działała bezawaryjnie, szybko i stabilnie, posiadamy najwyższe uprawnienia administracyjne do środowiska serwerowego naszego Klienta. Oznacza to, że mamy techniczny wgląd w bazy danych, w których mogą znajdować się Twoje informacje (np. imię, adres e-mail, logi IP, historia zamówień).</p>
-<p>Dostęp ten wykorzystywany jest <strong>wyłącznie do celów technicznych</strong>, takich jak:</p>
-<ul>
-  <li>Naprawa błędów w kodzie (tzw. bug fixing) i rozwiązywanie problemów informatycznych.</li>
-  <li>Bieżąca aktualizacja systemów bezpieczeństwa.</li>
-  <li>Testowanie nowych funkcji serwisu (w celu wyeliminowania luk technologicznych).</li>
-  <li>Wykonywanie awaryjnych kopii zapasowych (backupów) chroniących infrastrukturę.</li>
-</ul>
-<p><strong>Nigdy nie wykorzystujemy powierzonych nam danych do własnych celów marketingowych</strong> ani nie odsprzedajemy ich innym podmiotom.</p>
-
-<h3 id="b2c-bezpieczenstwo-narzedzia">III. Zabezpieczenia i narzędzia technologiczne</h3>
-<p>Bezpieczeństwo danych traktujemy jako najwyższy priorytet, stosując zaawansowane procedury informatyczne:</p>
-<ul>
-  <li>Prace programistyczne realizowane są wyłącznie na środowiskach roboczych z wykorzystaniem <strong>szyfrowanych dysków lokalnych</strong>.</li>
-  <li>Dostęp do strategicznych zasobów chmurowych zabezpieczony jest uwierzytelnianiem dwuskładnikowym (2FA).</li>
-</ul>
-<p>W ramach świadczenia usług korzystamy z zaufanej, globalnej infrastruktury IT, dostarczanej m.in. przez OVH, systemy Cloudflare, ekosystem Google (m.in. Firebase, Analytics) oraz platformę dla programistów GitHub. Oznacza to, że ze względów technologicznych zabezpieczone pakiety danych mogą być transferowane przez serwery znajdujące się poza Europejskim Obszarem Gospodarczym (EOG), co każdorazowo opiera się o najwyższe standardy szyfrowania oraz zatwierdzone przez UE klauzule prawne.</p>
-
-<h3 id="b2c-twoje-prawa">IV. Realizacja Twoich Praw (RODO)</h3>
-<p>Z uwagi na fakt, że nasza rola ogranicza się wyłącznie do dostarczania zaplecza technologicznego, wszelkie decyzje dotyczące Twoich danych podejmuje nasz Klient.</p>
-  <p>W związku z tym, jeśli chcesz zrealizować swoje prawa wynikające z RODO – na przykład zażądać <strong>usunięcia, sprostowania, ograniczenia przetwarzania lub wglądu do swoich danych osobowych</strong> – prosimy o kontakt bezpośrednio z właścicielem strony internetowej lub sklepu (Administratorem Danych), na którym te dane zostały podane. My, jako partner technologiczny, zapewnimy mu natychmiastowe wsparcie narzędziowe w celu sprawnej obsługi Twojego zgłoszenia.</p>`,
-  "warunki-korzystania-z-aplikacji-i-janek": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Warunki korzystania z aplikacji i-JANEK</h2>
-
-<p>Niniejszy dokument określa zasady korzystania z aplikacji desktopowej <strong>i-JANEK</strong>, jej funkcji pomocniczych oraz usług z nią powiązanych, w szczególności w obszarze zdalnej administracji, diagnostyki, backupu, komunikacji oraz obsługi urządzeń przypisanych do konta użytkownika.</p>
-
-<h3>1. Postanowienia ogólne</h3>
-<ul>
-  <li>Aplikacja i-JANEK jest narzędziem służącym do zarządzania urządzeniami, wsparcia technicznego oraz realizacji czynności administracyjnych wykonywanych przez uprawnionego operatora.</li>
-  <li>Właścicielem i administratorem rozwiązania jest Igor Janicki, prowadzący działalność pod marką i-JANICKI.</li>
-  <li>Korzystanie z aplikacji oznacza akceptację niniejszych warunków, polityki prywatności oraz wszystkich komunikatów wyświetlanych podczas pierwszej konfiguracji i w trakcie działania programu.</li>
-  <li>Aplikacja może działać samodzielnie lub w połączeniu z usługami zewnętrznymi, takimi jak Firebase, Google Drive, Google OAuth, RustDesk, systemowe usługi Windows oraz własna warstwa backendowa serwisu.</li>
-</ul>
-
-<h3>2. Zakres działania aplikacji</h3>
-<ul>
-  <li>i-JANEK może prezentować stan urządzenia, dane techniczne, alerty, historię zdarzeń, wiadomości, informacje o backupach oraz dane potrzebne do opieki informatycznej.</li>
-  <li>Aplikacja może inicjować lub wspierać działania administracyjne, w tym zdalną diagnostykę, czynności serwisowe, uruchamianie skryptów naprawczych i synchronizację wybranych danych.</li>
-  <li>Niektóre funkcje mogą być dostępne wyłącznie na określonych systemach operacyjnych lub po spełnieniu wymagań technicznych. Dotyczy to w szczególności funkcji zależnych od Windows, konfiguracji przeglądarki, usług Google lub integracji backendowych.</li>
-  <li>Zestaw funkcji może być rozwijany, zmieniany albo czasowo ograniczany bez wpływu na ważność pozostałych postanowień tego dokumentu.</li>
-</ul>
-
-<h3>3. Warunki techniczne</h3>
-<ul>
-  <li>Do poprawnego działania aplikacji wymagane jest urządzenie z dostępem do internetu oraz środowisko zgodne z aktualnymi wymaganiami technicznymi projektu.</li>
-  <li>Użytkownik powinien utrzymywać aktualny system operacyjny, działające połączenie sieciowe oraz dostęp do usług zewnętrznych wymaganych przez aplikację.</li>
-  <li>Wyłączenie JavaScript, blokowanie plików cookie, ograniczenie uprawnień aplikacji lub ingerencja w komponenty systemowe może spowodować nieprawidłowe działanie części funkcji.</li>
-</ul>
-
-<h3>4. Konto, autoryzacja i przypisanie urządzenia</h3>
-<ul>
-  <li>Dostęp do aplikacji może wymagać logowania przez konto Google lub inny mechanizm autoryzacji wskazany przez operatora systemu.</li>
-  <li>Urządzenie może zostać przypisane do konkretnego użytkownika, firmy lub profilu organizacyjnego.</li>
-  <li>Wykorzystanie aplikacji na urządzeniu niezatwierdzonym, obcym lub nieautoryzowanym jest niedozwolone bez wyraźnej zgody administratora systemu.</li>
-  <li>Użytkownik odpowiada za zachowanie poufności danych dostępowych oraz za działania wykonane z jego konta lub na jego urządzeniu.</li>
-</ul>
-
-<h3>5. Dane, monitoring i prywatność</h3>
-<ul>
-  <li>Aplikacja może przetwarzać dane techniczne i organizacyjne niezbędne do działania, w tym identyfikatory urządzenia, stan systemu, logi, alerty, historię komunikacji, ustawienia i dane konfiguracyjne.</li>
-  <li>W przypadku funkcji diagnostycznych i wsparcia technicznego mogą być zbierane informacje o procesach, obciążeniu zasobów, stanie dysków, temperaturach, błędach i statusie usług systemowych.</li>
-  <li>Zakres przetwarzania danych jest ograniczony do celów związanych z obsługą, bezpieczeństwem, backupem, utrzymaniem i rozwojem aplikacji.</li>
-  <li>Szczegółowe zasady przetwarzania danych osobowych i technicznych określa odrębna Polityka Prywatności oraz dokumenty opublikowane na podstronie /dokumenty.</li>
-</ul>
-
-<h3>6. Zasady korzystania</h3>
-<ul>
-  <li>Użytkownik zobowiązuje się korzystać z aplikacji zgodnie z prawem, zasadami współżycia społecznego oraz instrukcjami administratora systemu.</li>
-  <li>Zakazane jest obchodzenie zabezpieczeń, próby uzyskania nieautoryzowanego dostępu, modyfikowanie kodu, wstrzykiwanie skryptów, podszywanie się pod inne urządzenia lub użytkowników oraz ingerencja w logikę działania aplikacji.</li>
-  <li>Zakazane jest używanie aplikacji do celów szkodliwych, w szczególności do wykradania danych, zakłócania działania systemu, ukrywania aktywności lub omijania polityk bezpieczeństwa.</li>
-  <li>Jeżeli urządzenie jest współdzielone, użytkownik powinien upewnić się, że ma odpowiednie uprawnienia do korzystania z funkcji aplikacji i do przetwarzanych danych.</li>
-</ul>
-
-<h3>7. Odpowiedzialność</h3>
-<ul>
-  <li>Aplikacja jest dostarczana w modelu „tak jak jest”, z uwzględnieniem jej bieżącej funkcjonalności i dostępności usług zewnętrznych.</li>
-  <li>Administrator nie ponosi odpowiedzialności za szkody wynikające z nieprawidłowej konfiguracji urządzenia, przerw w dostępie do internetu, awarii usług zewnętrznych ani działań użytkownika sprzecznych z tym dokumentem.</li>
-  <li>W zakresie dozwolonym przez prawo odpowiedzialność za korzystanie z aplikacji na urządzeniach organizacji lub osób trzecich spoczywa na osobie, która uruchomiła aplikację albo zarządza środowiskiem, na którym działa.</li>
-</ul>
-
-<h3>8. Aktualizacje i zmiany</h3>
-<ul>
-  <li>Aplikacja może być aktualizowana automatycznie lub ręcznie.</li>
-  <li>Zmiany funkcji, bezpieczeństwa, integracji i zakresu zbieranych danych mogą być wprowadzane w kolejnych wersjach aplikacji bez konieczności publikowania osobnego aneksu do każdego wydania.</li>
-  <li>Kontynuowanie korzystania z aplikacji po publikacji zmian oznacza akceptację zaktualizowanych warunków, o ile obowiązujące przepisy prawa nie stanowią inaczej.</li>
-</ul>
-
-<h3>9. Kontakt</h3>
-<ul>
-  <li>W sprawach związanych z aplikacją i-JANEK należy kontaktować się pod adresem e-mail: <a href="mailto:igor.janicki27@gmail.com">igor.janicki27@gmail.com</a>.</li>
-  <li>Wiadomość powinna zawierać możliwie konkretny opis problemu, model urządzenia, system operacyjny oraz okoliczności wystąpienia błędu.</li>
-  <li>Jeżeli zgłoszenie dotyczy danych osobowych lub uprawnień dostępu, administrator może poprosić o dodatkową weryfikację tożsamości.</li>
-</ul>
-
-<h3>10. Postanowienia końcowe</h3>
-<ul>
-  <li>Jeżeli którekolwiek postanowienie niniejszego dokumentu okaże się nieważne lub nieskuteczne, nie wpływa to na ważność pozostałych postanowień.</li>
-  <li>Dokument obowiązuje od chwili opublikowania na podstronie /dokumenty i pozostaje w mocy do czasu jego zastąpienia nową wersją.</li>
-  <li>Zaleca się, aby przed rozpoczęciem pracy produkcyjnej treść dokumentu została zweryfikowana pod kątem wymogów prawnych i organizacyjnych konkretnego wdrożenia.</li>
-</ul>`
+`,
+    "warunki-korzystania-z-aplikacji-i-janek": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Warunki korzystania z aplikacji i-JANEK</h2>
+  
+  <p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+  
+  <h3 id="postanowienia-ogolne">§1. Postanowienia ogólne</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Niniejszy dokument określa zasady korzystania z aplikacji i-JANEK.</li>
+    <li>Właścicielem i administratorem rozwiązania jest Igor Janicki, działający pod marką i-JANICKI.</li>
+    <li>Aplikacja i-JANEK może służyć do wsparcia technicznego, diagnostyki, zarządzania urządzeniami, komunikacji, monitoringu technicznego, backupu, obsługi zgłoszeń oraz administracji IT.</li>
+    <li>Korzystanie z aplikacji oznacza akceptację niniejszych warunków, o ile użytkownik miał możliwość zapoznania się z nimi przed rozpoczęciem korzystania.</li>
+    <li>Aplikacja może działać samodzielnie albo w połączeniu z usługami zewnętrznymi, takimi jak Google, Firebase, Google Drive, RustDesk, usługi systemowe Windows, usługi chmurowe lub własne zaplecze techniczne.</li>
+  </ol>
+  
+  <h3 id="zakres-dzialania-aplikacji">§2. Zakres działania aplikacji</h3>
+  <p>Aplikacja może umożliwiać w szczególności:</p>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>prezentowanie stanu urządzenia,</li>
+    <li>diagnostykę błędów,</li>
+    <li>wyświetlanie komunikatów technicznych,</li>
+    <li>obsługę zgłoszeń,</li>
+    <li>prezentowanie informacji o backupach,</li>
+    <li>wsparcie zdalnej administracji,</li>
+    <li>synchronizację wybranych danych,</li>
+    <li>uruchamianie lub wspieranie czynności serwisowych,</li>
+    <li>prezentowanie historii zdarzeń,</li>
+    <li>obsługę funkcji bezpieczeństwa.</li>
+  </ol>
+  <p>Zakres funkcji może zależeć od wersji aplikacji, systemu operacyjnego, konfiguracji urządzenia oraz uprawnień użytkownika.</p>
+  
+  <h3 id="warunki-techniczne">§3. Warunki techniczne</h3>
+  <p>Do działania aplikacji mogą być wymagane:</p>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>zgodny system operacyjny,</li>
+    <li>dostęp do Internetu,</li>
+    <li>konto użytkownika lub mechanizm autoryzacji,</li>
+    <li>zgody systemowe,</li>
+    <li>dostęp do usług zewnętrznych,</li>
+    <li>aktualne komponenty systemowe.</li>
+  </ol>
+  <p>Ograniczenie uprawnień, blokowanie połączeń sieciowych, usunięcie komponentów lub ingerencja w pliki aplikacji może spowodować nieprawidłowe działanie.</p>
+  
+  <h3 id="konto-autoryzacja-przypisanie">§4. Konto, autoryzacja i przypisanie urządzenia</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Dostęp do aplikacji może wymagać logowania lub autoryzacji.</li>
+    <li>Urządzenie może zostać przypisane do konkretnego użytkownika, firmy, organizacji lub profilu technicznego.</li>
+    <li>Korzystanie z aplikacji na urządzeniu, do którego użytkownik nie ma praw lub uprawnień, jest zabronione.</li>
+    <li>Użytkownik odpowiada za bezpieczeństwo swoich danych dostępowych.</li>
+    <li>Administrator może zablokować dostęp do aplikacji w przypadku podejrzenia nadużycia, naruszenia bezpieczeństwa lub zakończenia współpracy.</li>
+  </ol>
+  
+  <h3 id="dane-i-prywatnosc">§5. Dane i prywatność</h3>
+  <p>Aplikacja może przetwarzać dane techniczne i organizacyjne niezbędne do działania, w szczególności:</p>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>identyfikator urządzenia,</li>
+    <li>nazwę urządzenia,</li>
+    <li>informacje o systemie operacyjnym,</li>
+    <li>status połączenia,</li>
+    <li>logi techniczne,</li>
+    <li>historię błędów,</li>
+    <li>alerty,</li>
+    <li>informacje o backupach,</li>
+    <li>dane konfiguracyjne,</li>
+    <li>dane potrzebne do realizacji wsparcia technicznego.</li>
+  </ol>
+  <p>W przypadku funkcji diagnostycznych aplikacja może przetwarzać informacje o stanie dysków, usług systemowych, zasobów urządzenia, błędach, procesach lub konfiguracji.</p>
+  <p>Zakres przetwarzania danych jest ograniczony do celów związanych z działaniem aplikacji, bezpieczeństwem, diagnostyką, backupem, administracją i wsparciem technicznym.</p>
+  <p>Szczegółowe zasady przetwarzania danych określa Polityka Prywatności i dokumenty dostępne pod adresem: https://i-janicki.pl/dokumenty.</p>
+  
+  <h3 id="zasady-korzystania">§6. Zasady korzystania</h3>
+  <p>Użytkownik zobowiązuje się do korzystania z aplikacji zgodnie z prawem, przeznaczeniem aplikacji oraz instrukcjami administratora.</p>
+  <p>Zabronione jest:</p>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>obchodzenie zabezpieczeń,</li>
+    <li>uzyskiwanie nieautoryzowanego dostępu,</li>
+    <li>modyfikowanie kodu aplikacji bez zgody właściciela,</li>
+    <li>podszywanie się pod inne urządzenie lub użytkownika,</li>
+    <li>wykorzystywanie aplikacji do działań szkodliwych,</li>
+    <li>zakłócanie działania aplikacji, backendu lub usług zewnętrznych,</li>
+    <li>używanie aplikacji na urządzeniu bez zgody właściciela lub administratora.</li>
+  </ol>
+  
+  <h3 id="odpowiedzialnosc">§7. Odpowiedzialność</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Aplikacja jest udostępniana w aktualnym stanie technicznym i funkcjonalnym.</li>
+    <li>Administrator dokłada starań, aby aplikacja działała stabilnie i bezpiecznie, ale nie gwarantuje nieprzerwanego i bezbłędnego działania.</li>
+    <li>Administrator nie odpowiada za szkody wynikające z:
+      <ul style="padding-left:1.2rem">
+        <li>nieprawidłowej konfiguracji urządzenia,</li>
+        <li>awarii systemu operacyjnego,</li>
+        <li>przerw w dostępie do Internetu,</li>
+        <li>awarii usług zewnętrznych,</li>
+        <li>działań użytkownika sprzecznych z dokumentacją,</li>
+        <li>ingerencji osób trzecich,</li>
+        <li>braku aktualizacji po stronie użytkownika.</li>
+      </ul>
+    </li>
+    <li>Żadne postanowienie dokumentu nie wyłącza odpowiedzialności, której nie można wyłączyć na podstawie bezwzględnie obowiązujących przepisów prawa.</li>
+  </ol>
+  
+  <h3 id="aktualizacje">§8. Aktualizacje</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Aplikacja może być aktualizowana automatycznie lub ręcznie.</li>
+    <li>Aktualizacje mogą obejmować poprawki błędów, zmiany bezpieczeństwa, nowe funkcje, zmiany integracji lub usunięcie funkcji przestarzałych.</li>
+    <li>Brak aktualizacji może wpłynąć na bezpieczeństwo i prawidłowe działanie aplikacji.</li>
+  </ol>
+  
+  <h3 id="zakonczenie-korzystania">§9. Zakończenie korzystania</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Użytkownik może zaprzestać korzystania z aplikacji poprzez jej odinstalowanie lub dezaktywację, o ile nie narusza to zasad obowiązujących w organizacji, która zarządza urządzeniem.</li>
+    <li>Administrator może ograniczyć lub zakończyć dostęp do aplikacji w przypadku zakończenia współpracy, naruszenia zasad korzystania, względów bezpieczeństwa lub zmian organizacyjnych.</li>
+    <li>Po zakończeniu korzystania dane mogą być przechowywane przez okres niezbędny do rozliczeń, bezpieczeństwa, diagnostyki, obrony przed roszczeniami lub spełnienia obowiązków prawnych.</li>
+  </ol>
+  
+  <h3 id="kontakt">§10. Kontakt</h3>
+  <p>W sprawach związanych z aplikacją należy kontaktować się:</p>
+  <p>
+    Igor Janicki<br>
+    E-mail: igor.janicki27@gmail.com<br>
+    Strona: https://i-janicki.pl<br>
+    Dokumenty: https://i-janicki.pl/dokumenty
+  </p>
+  
+  <h3 id="postanowienia-koncowe">§11. Postanowienia końcowe</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Jeżeli którekolwiek postanowienie dokumentu okaże się nieważne lub nieskuteczne, pozostałe postanowienia pozostają w mocy.</li>
+    <li>Dokument obowiązuje od chwili opublikowania na stronie https://i-janicki.pl/dokumenty.</li>
+    <li>Administrator może zmienić dokument z przyczyn prawnych, technicznych, organizacyjnych lub bezpieczeństwa.</li>
+  </ol>
+  `
 };

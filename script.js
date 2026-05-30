@@ -1255,8 +1255,6 @@ function setupContactForm() {
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const status  = $('formStatus');
-    const btn     = form.querySelector('[type=submit]');
-    const btnText = $('submitBtnText');
 
     // Sprawdź rate limit
     const lastSubmit = localStorage.getItem(FORM_RATE_KEY);
@@ -1275,41 +1273,108 @@ function setupContactForm() {
       return;
     }
 
-    btnText.textContent    = t('contact-sending');
-    btn.disabled           = true;
-    status.textContent     = '';
-    status.className       = 'form-status';
+    // Pokaż modal zgody RODO
+    showConsentModal(() => {
+      submitContactForm(form);
+    });
+  });
 
-    try {
-      const res  = await fetch('https://api.web3forms.com/submit', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(Object.fromEntries(new FormData(form))),
-      });
-      const data = await res.json();
-      if (data.success) {
-        localStorage.setItem(FORM_RATE_KEY, String(Date.now()));
-        status.className   = 'form-status is-ok';
-        status.textContent = t('contact-sent');
-        form.reset();
-        prefillContact();
-        // Jeśli jesteśmy na kroku kontaktu w tutorialu, przejdź do następnego (Opinie)
-        const steps = getSteps();
-        if (steps[tutStep]?.id === 'contact') {
-          const reviewIdx = getStepIndex('reviews');
-          setTimeout(() => goStep(reviewIdx), 1500);
-        }
-      } else {
-        throw new Error(data.message || 'Błąd serwera');
-      }
-    } catch {
-      status.className   = 'form-status is-error';
-      status.textContent = t('contact-error');
-    } finally {
-      btnText.textContent = t('contact-submit');
-      btn.disabled        = false;
+  setupConsentModal();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MODAL ZGODY RODO (przed wysłaniem formularza kontaktowego)
+// ─────────────────────────────────────────────────────────────────
+
+function showConsentModal(onAccept) {
+  const overlay = $('consentOverlay');
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay._onAccept = onAccept;
+}
+
+function hideConsentModal() {
+  const overlay = $('consentOverlay');
+  if (!overlay) return;
+  overlay.hidden = true;
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay._onAccept = null;
+}
+
+function setupConsentModal() {
+  const overlay = $('consentOverlay');
+  if (!overlay || overlay.dataset.bound) return;
+  overlay.dataset.bound = '1';
+
+  // Akceptuj — wyślij formularz
+  const acceptBtn = $('consentAccept');
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', () => {
+      const cb = overlay._onAccept;
+      hideConsentModal();
+      if (typeof cb === 'function') cb();
+    });
+  }
+
+  // Anuluj — zamknij okno, nie czyść formularza
+  const cancelBtn = $('consentCancel');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', hideConsentModal);
+  }
+
+  // Kliknięcie w backdrop / przycisk zamknięcia
+  overlay.querySelectorAll('[data-consent-close]').forEach(el => {
+    el.addEventListener('click', hideConsentModal);
+  });
+
+  // Escape
+  document.addEventListener('keydown', function onKey(e) {
+    if (e.key === 'Escape' && !overlay.hidden) {
+      hideConsentModal();
     }
   });
+}
+
+async function submitContactForm(form) {
+  const status  = $('formStatus');
+  const btn     = form.querySelector('[type=submit]');
+  const btnText = $('submitBtnText');
+
+  btnText.textContent    = t('contact-sending');
+  btn.disabled           = true;
+  status.textContent     = '';
+  status.className       = 'form-status';
+
+  try {
+    const res  = await fetch('https://api.web3forms.com/submit', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(Object.fromEntries(new FormData(form))),
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem(FORM_RATE_KEY, String(Date.now()));
+      status.className   = 'form-status is-ok';
+      status.textContent = t('contact-sent');
+      form.reset();
+      prefillContact();
+      // Jeśli jesteśmy na kroku kontaktu w tutorialu, przejdź do następnego (Opinie)
+      const steps = getSteps();
+      if (steps[tutStep]?.id === 'contact') {
+        const reviewIdx = getStepIndex('reviews');
+        setTimeout(() => goStep(reviewIdx), 1500);
+      }
+    } else {
+      throw new Error(data.message || 'Błąd serwera');
+    }
+  } catch {
+    status.className   = 'form-status is-error';
+    status.textContent = t('contact-error');
+  } finally {
+    btnText.textContent = t('contact-submit');
+    btn.disabled        = false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
