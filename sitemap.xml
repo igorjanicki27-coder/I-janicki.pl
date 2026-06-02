@@ -2,26 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-janicki.pl/</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/firmy/</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/firmy/admin.html</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/firmy/client.html</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/firmy/elmet.html</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/firmy/sredzka-korona.html</loc>
-    <lastmod>2026-05-28</lastmod>
+    <lastmod>2026-05-30</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/stats/</loc>
+    <lastmod>2026-05-30</lastmod>
   </url>
 </urlset>
