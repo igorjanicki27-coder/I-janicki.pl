@@ -25,7 +25,11 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { min-height: 100vh; background: var(--bg-0); color: var(--text);
       font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
-    body { background: radial-gradient(ellipse at 50% 30%,#1a1033 0%,#05060c 65%,#000 100%); }
+    body {
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 30%,#1a1033 0%,#05060c 65%,#000 100%);
+    }
 
     /* Topbar */
     .topbar {
@@ -44,7 +48,11 @@
       color: var(--muted); letter-spacing: 1px; }
 
     /* Main */
-    .main { max-width: 760px; margin: 0 auto; padding: 40px 24px 60px; }
+    .main {
+      flex: 1;
+      max-width: 760px; margin: 0 auto; padding: 40px 24px 60px;
+      width: 100%;
+    }
     h1 {
       font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700;
       letter-spacing: 2px; margin-bottom: 8px;
@@ -110,10 +118,46 @@
     .back-link:hover { color: var(--accent-4); border-color: var(--accent-4); }
 
     /* Footer */
-    footer {
-      text-align: center; padding: 20px;
+    .foot {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 15px 44px 9px 16px;
       font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      color: var(--muted);
+      line-height: 1.3;
+      color: rgba(214, 223, 255, 0.72);
+      letter-spacing: 0.5px;
+      position: relative; z-index: 5; flex-shrink: 0;
+      isolation: isolate;
+      background: linear-gradient(180deg, rgba(18, 24, 42, 0.56) 0%, rgba(9, 13, 24, 0.62) 100%);
+      border-top: 1px solid rgba(145, 163, 214, 0.24);
+      backdrop-filter: blur(20px) saturate(145%);
+      -webkit-backdrop-filter: blur(20px) saturate(145%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 -10px 32px rgba(0, 0, 0, 0.26);
+    }
+    .foot-sep { opacity: 0.5; }
+    .foot-mail { text-decoration: none; color: rgba(219, 229, 255, 0.82); transition: color 0.2s; }
+    .foot-mail:hover { color: var(--accent-4); }
+    .foot-docs { text-decoration: none; color: rgba(219, 229, 255, 0.82); transition: color 0.2s; }
+    .foot-docs:hover { color: var(--accent-4); }
+    .cookie-foot-btn {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      font-size: 16px;
+      line-height: 1;
+      opacity: 0.6;
+      cursor: pointer;
+      padding: 2px 4px;
+      color: inherit;
+      transition: opacity 0.2s;
+    }
+    .cookie-foot-btn:hover {
+      opacity: 1;
     }
   </style>
 </head>
@@ -121,7 +165,7 @@
 
 <header class="topbar">
   <a class="brand" href="../">i-JANICKI</a>
-  <span class="topbar-sub">/ Dokumenty prawne</span>
+  <span class="topbar-sub">/ Dokumenty</span>
 </header>
 
 <main class="main">
@@ -193,10 +237,22 @@
   </div>
 </main>
 
-<footer>© <span id="year"></span> i-JANICKI · <a href="mailto:igor.janicki27@gmail.com" style="color:#40c9ff">igor.janicki27@gmail.com</a></footer>
+<footer class="foot">
+    <span>© <span id="year"></span> i-JANICKI</span>
+    <span class="foot-sep">·</span>
+    <a href="mailto:igor.janicki27@gmail.com" class="foot-mail">igor.janicki27@gmail.com</a>
+    <span class="foot-sep">·</span>
+    <a href="../" class="foot-docs">Strona główna</a>
+    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
+  </footer>
 
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Obsługa przycisku cookie w stopce — przekierowuje do strony głównej z ustawieniami
+  document.getElementById('cookieFootBtn')?.addEventListener('click', () => {
+    window.location.href = '../?cookies=1';
+  });
 
   document.querySelectorAll('.doc-item').forEach(item => {
     const header  = item.querySelector('.doc-header');
