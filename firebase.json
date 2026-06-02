@@ -64,6 +64,12 @@
         "headers": [
           { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
         ]
+      },
+      {
+        "source": "stats/**",
+        "headers": [
+          { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
+        ]
       }
     ]
   }

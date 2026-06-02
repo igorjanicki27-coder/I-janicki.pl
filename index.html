@@ -38,7 +38,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -51,7 +51,7 @@
   </noscript>
 
   <!-- Analytics — zaladuje się defer (mały plik, potrzebny od razu) -->
-  <script defer src="analytics.js?v=8"></script>
+  <script defer src="analytics.js?v=9"></script>
   <!-- Firebase Firestore — załaduje się DOPIERO na żądanie (Reviews) by przyspieszyć start -->
   <!-- Wczytane dynamicznie w script.js gdy user kliknie na Reviews -->
 
@@ -789,10 +789,10 @@
         top: 50%;
         bottom: auto;
         margin-left: 0;
-        padding: 0;
+        padding: 3px 10px;
         opacity: 0.74;
         transform: translateY(-50%) !important;
-        font-size: 12px;
+        font-size: 11px;
       }
     }
 
@@ -1149,7 +1149,7 @@
     <a href="mailto:igor.janicki27@gmail.com" class="foot-mail">igor.janicki27@gmail.com</a>
     <span class="foot-sep">·</span>
     <a href="./dokumenty" class="foot-docs">Dokumenty</a>
-    <button class="cookie-foot-btn" id="cookieFootBtn" title="Ustawienia plików cookie" aria-label="Zmień ustawienia cookies" data-i18n-title="cookie-settings-title" data-i18n-aria-label="cookie-settings-change">🍪</button>
+    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
 
   <!-- ═══════════════ MODAL (sekcje treści) ═══════════════ -->
@@ -1192,51 +1192,7 @@
 
   <!-- ═══════════════ PANEL COOKIES ═══════════════ -->
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
-       aria-label="Ustawienia plików cookie" aria-hidden="true" hidden>
-    <div class="cookie-panel">
-      <div class="cookie-header">
-        <span class="cookie-icon" aria-hidden="true">🍪</span>
-        <h2>Pliki cookie i prywatność</h2>
-      </div>
-      <p class="cookie-desc">
-        Ta strona używa plików cookie i pamięci lokalnej. Część jest <strong>niezbędna</strong>
-        do działania (sesja, preferencje, stan samouczka) i nie wymaga zgody. Pozostałe
-        (Google Analytics) pomagają ulepszać stronę — wymagają Twojej zgody zgodnie z RODO.
-      </p>
-
-      <div class="cookie-options">
-        <div class="cookie-option">
-          <div class="cookie-option-info">
-            <strong>Niezbędne</strong>
-            <p>Sesja, preferencje, stan samouczka i Twoje imię. Zawsze aktywne — niezbędne do działania strony.</p>
-          </div>
-          <div class="cookie-badge-always cookie-badge-essential">Niezbędne</div>
-        </div>
-        <div class="cookie-option">
-          <div class="cookie-option-info">
-            <strong>Analityczne — Google Analytics</strong>
-            <p>Anonimowe dane o ruchu: odwiedziny, czas spędzony, źródła. Pomaga ulepszać stronę.</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-            <div id="cookieAnalyticsStatus" class="cookie-status-indicator" style="font-size:12px;color:var(--muted)"></div>
-            <div class="cookie-badge-always cookie-badge-extra">Dodatkowe</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cookie-docs-row">
-        <button class="cookie-doc-link" data-doc="regulamin">Regulamin witryny</button>
-        <button class="cookie-doc-link" data-doc="polityka-prywatnosci">Polityka prywatności</button>
-        <button class="cookie-doc-link" data-doc="polityka-rodo">Polityka RODO</button>
-        <a class="cookie-doc-link" href="./dokumenty">Wszystkie dokumenty</a>
-      </div>
-
-      <div class="cookie-actions">
-        <button class="cookie-btn cookie-btn-essential" id="cookieEssential">Tylko niezbędne</button>
-        <button class="cookie-btn cookie-btn-all" id="cookieAcceptAll">Akceptuję wszystkie</button>
-      </div>
-    </div>
-  </div>
+       aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>
 
   <!-- ═══════════════ PRZEGLĄDARKA DOKUMENTÓW ═══════════════ -->
   <div class="doc-overlay" id="docOverlay" role="dialog" aria-modal="true"
@@ -1483,7 +1439,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
-  <script defer src="script.min.js?v=6"></script>
+  <script defer src="script.min.js?v=14"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1500;

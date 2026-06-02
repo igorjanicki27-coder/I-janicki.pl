@@ -6,5 +6,6 @@ Disallow: /dokumenty/
 Disallow: /kalkulator/
 Disallow: /kalkulator/_app/
 Disallow: /kalkulator/stare/
+Disallow: /stats/
 
 Sitemap: https://i-janicki.pl/sitemap.xml

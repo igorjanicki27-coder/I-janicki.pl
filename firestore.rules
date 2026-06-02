@@ -166,8 +166,41 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/firmy_pins/$(firmySessionPin())).data.clientId == clientId;
     }
 
+    function statsSettingsExists() {
+      return exists(/databases/$(database)/documents/stats_settings/default);
+    }
+
+    function statsPinHash() {
+      return get(/databases/$(database)/documents/stats_settings/default).data.pinHash;
+    }
+
+    function statsMaxAttempts() {
+      return statsSettingsExists()
+        && get(/databases/$(database)/documents/stats_settings/default).data.maxAttempts is int
+        && get(/databases/$(database)/documents/stats_settings/default).data.maxAttempts >= 1
+        && get(/databases/$(database)/documents/stats_settings/default).data.maxAttempts <= 10
+        ? get(/databases/$(database)/documents/stats_settings/default).data.maxAttempts
+        : 3;
+    }
+
+    function statsLockMinutes() {
+      return statsSettingsExists()
+        && get(/databases/$(database)/documents/stats_settings/default).data.lockMinutes is int
+        && get(/databases/$(database)/documents/stats_settings/default).data.lockMinutes >= 1
+        && get(/databases/$(database)/documents/stats_settings/default).data.lockMinutes <= 60
+        ? get(/databases/$(database)/documents/stats_settings/default).data.lockMinutes
+        : 5;
+    }
+
+    function hasActiveStatsSession() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/stats_sessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/stats_sessions/$(request.auth.uid)).data.unlockUntil is timestamp
+        && get(/databases/$(database)/documents/stats_sessions/$(request.auth.uid)).data.unlockUntil > request.time;
+    }
+
     match /analytics_events/{id} {
-      allow list: if true;
+      allow list: if hasActiveStatsSession();
       allow create: if isValidAnalyticsEvent();
     }
 
@@ -201,6 +234,40 @@ service cloud.firestore {
       allow update: if resource.data.approved == false
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['approved'])
         && request.resource.data.approved == true;
+    }
+
+    match /contact_leads/{leadId} {
+      allow get, list: if isMaster();
+      allow create: if request.resource.data.keys().hasOnly([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.keys().hasAll([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$')
+        && request.resource.data.consentAcceptedDates is list
+        && request.resource.data.consentAcceptedDates.size() >= 1;
+      allow update: if request.resource.data.keys().hasOnly([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$')
+        && request.resource.data.consentAcceptedDates is list
+        && request.resource.data.consentAcceptedDates.size() >= resource.data.consentAcceptedDates.size();
     }
 
     match /calculator_orders/{orderId} {
@@ -361,6 +428,86 @@ service cloud.firestore {
         allow get, list: if isFirmyAdmin() || isFirmyClientFor(clientId);
         allow create, update, delete: if isFirmyAdmin();
       }
+    }
+
+    match /stats_settings/{settingId} {
+      allow get: if false;
+      allow list: if false;
+      allow create, update, delete: if isMaster();
+    }
+
+    match /stats_pin_attempts/{attemptId} {
+      allow get: if isOwner(attemptId);
+      allow list: if false;
+      allow create: if isOwner(attemptId)
+        && statsSettingsExists()
+        && statsPinHash() is string
+        && request.resource.data.keys().hasOnly(['uid', 'pinHash', 'failedAttempts', 'lockUntil', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.pinHash is string
+        && request.resource.data.failedAttempts is int
+        && request.resource.data.lockUntil is timestamp
+        && request.resource.data.updatedAt == request.time
+        && (
+          (request.resource.data.pinHash == statsPinHash()
+            && request.resource.data.failedAttempts == 0
+            && request.resource.data.lockUntil <= request.time)
+          || (request.resource.data.pinHash != statsPinHash()
+            && request.resource.data.failedAttempts == 1
+            && request.resource.data.lockUntil <= request.time)
+        );
+      allow update: if isOwner(attemptId)
+        && resource.data.uid == request.auth.uid
+        && statsSettingsExists()
+        && statsPinHash() is string
+        && request.resource.data.keys().hasOnly(['uid', 'pinHash', 'failedAttempts', 'lockUntil', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.pinHash is string
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.failedAttempts is int
+        && resource.data.lockUntil <= request.time
+        && (
+          // Success: reset attempts
+          (request.resource.data.pinHash == statsPinHash()
+            && request.resource.data.failedAttempts == 0
+            && request.resource.data.lockUntil <= request.time)
+          // Failure: increment attempts and maybe lock
+          || (request.resource.data.pinHash != statsPinHash()
+            && (
+              request.resource.data.failedAttempts == resource.data.failedAttempts + 1
+              || (
+                resource.data.failedAttempts >= statsMaxAttempts()
+                && request.resource.data.failedAttempts == 1
+              )
+            )
+            && (
+              request.resource.data.failedAttempts >= statsMaxAttempts()
+                ? request.resource.data.lockUntil == request.time + duration.value(statsLockMinutes(), 'm')
+                : request.resource.data.lockUntil <= request.time
+            ))
+        );
+      allow delete: if false;
+    }
+
+    match /stats_sessions/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create, update: if isOwner(uid)
+        && statsSettingsExists()
+        && statsPinHash() is string
+        && existsAfter(/databases/$(database)/documents/stats_pin_attempts/$(uid))
+        && getAfter(/databases/$(database)/documents/stats_pin_attempts/$(uid)).data.failedAttempts == 0
+        && getAfter(/databases/$(database)/documents/stats_pin_attempts/$(uid)).data.lockUntil <= request.time
+        && request.resource.data.keys().hasOnly(['uid', 'pinHash', 'unlockUntil', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.pinHash is string
+        && request.resource.data.pinHash == statsPinHash()
+        && request.resource.data.unlockUntil is timestamp
+        && request.resource.data.unlockUntil > request.time
+        && request.resource.data.unlockUntil <= request.time + duration.value(12, 'h')
+        && request.resource.data.updatedAt == request.time
+        ;
+      allow delete: if isOwner(uid);
     }
 
     // Czaty, komendy, presence i telemetry dzialaja w Realtime Database,

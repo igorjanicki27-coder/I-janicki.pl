@@ -10,20 +10,56 @@
     messagingSenderId: '745361888690',
     appId: '1:745361888690:web:1af2df4ddf8fe7b4d600ab',
   };
-  const COOKIE_KEY = 'ijanek_cookie_analytics';
+
+  // Storage keys — jedna decyzja + osobne zgody per kategoria
+  const KEY_DECISION   = 'ijanek_cookie_decision';   // 'all' | 'essential' | 'custom' | null (brak)
+  const KEY_ANALYTICS  = 'ijanek_cookie_analytics';  // 'true' | 'false'
+  const KEY_MARKETING  = 'ijanek_cookie_marketing';  // 'true' | 'false'
+  const KEY_EXTERNAL   = 'ijanek_cookie_external';   // 'true' | 'false'
+
   const HOME_VISIT_KEY = 'ijanek_metric_home_visit_logged';
   const TUTORIAL_COMPLETE_KEY = 'ijanek_metric_tutorial_complete_logged';
   const HOME_PATHS = new Set(['/', '/index.html']);
+
+  function isHomePath() {
+    return HOME_PATHS.has(window.location.pathname || '/');
+  }
+
   const sessionStartedAt = Date.now();
   let sessionDurationSent = false;
   let firebaseApp = null;
   let firebaseSDKPromise = null;
 
-  // ────────────────────────────────────────────────────────────────
-  // Consent Mode v2 — ustaw domyślną odmowę NATYCHMIAST (przed gtag.js)
-  // Zgodnie z instrukcją Google: gtag('consent', 'default') w <head>
-  // przed kodem banera z prośbą o zgodę
-  // ────────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════
+  // Consent helpers
+  // ════════════════════════════════════════════════════════════════
+  function hasDecision() {
+    try { return localStorage.getItem(KEY_DECISION) !== null; } catch (_) { return false; }
+  }
+
+  function isConsentTrue(key) {
+    try { return localStorage.getItem(key) === 'true'; } catch (_) { return false; }
+  }
+
+  function hasAnalyticsConsent() { return isConsentTrue(KEY_ANALYTICS); }
+  function hasMarketingConsent()  { return isConsentTrue(KEY_MARKETING); }
+  function hasExternalConsent()   { return isConsentTrue(KEY_EXTERNAL); }
+
+  function buildConsentUpdate() {
+    return {
+      'ad_user_data':          hasMarketingConsent() ? 'granted' : 'denied',
+      'ad_personalization':    hasMarketingConsent() ? 'granted' : 'denied',
+      'ad_storage':            hasMarketingConsent() ? 'granted' : 'denied',
+      'analytics_storage':     hasAnalyticsConsent() ? 'granted' : 'denied',
+      'functionality_storage': hasExternalConsent()  ? 'granted' : 'denied',
+      'personalization_storage': hasExternalConsent()  ? 'granted' : 'denied',
+      'security_storage':      'granted', // zawsze — niezbędne
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // Consent Mode v2 — domyślna odmowa NATYCHMIAST (przed gtag.js)
+  // ════════════════════════════════════════════════════════════════
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function gtag() {
     window.dataLayer.push(arguments);
@@ -34,21 +70,20 @@
     'ad_personalization': 'denied',
     'ad_storage': 'denied',
     'analytics_storage': 'denied',
+    'functionality_storage': 'denied',
+    'personalization_storage': 'denied',
+    'security_storage': 'granted',
     'wait_for_update': 500,
   });
 
-  // Jeśli zgoda była już udzielona wcześniej (z poprzedniej sesji),
-  // natychmiast zaktualizuj — zanim gtag.js się załaduje
-  if (hasAnalyticsConsent()) {
-    window.gtag('consent', 'update', {
-      'ad_user_data': 'granted',
-      'ad_personalization': 'granted',
-      'ad_storage': 'granted',
-      'analytics_storage': 'granted',
-    });
+  // Jeśli zgoda już udzielona wcześniej — natychmiast zaktualizuj
+  if (hasDecision()) {
+    window.gtag('consent', 'update', buildConsentUpdate());
   }
 
-  // Dynamicznie załaduj Firebase SDK (102KB) dopiero gdy będzie potrzebny
+  // ════════════════════════════════════════════════════════════════
+  // Dynamiczne ładowanie Firebase SDK (tylko gdy potrzebne)
+  // ════════════════════════════════════════════════════════════════
   function loadFirebaseSDK() {
     if (firebaseSDKPromise) return firebaseSDKPromise;
     if (window.firebase && typeof window.firebase.initializeApp === 'function') {
@@ -85,18 +120,9 @@
     return firebaseApp;
   }
 
-  function hasAnalyticsConsent() {
-    try {
-      return localStorage.getItem(COOKIE_KEY) === 'true';
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function isHomePath() {
-    return HOME_PATHS.has(window.location.pathname || '/');
-  }
-
+  // ════════════════════════════════════════════════════════════════
+  // GA — ładuje się TYLKO gdy jest zgoda analityczna
+  // ════════════════════════════════════════════════════════════════
   function loadGA() {
     if (!hasAnalyticsConsent()) return false;
     if (window._gaLoaded) return true;
@@ -105,7 +131,7 @@
 
     const gaScript = document.createElement('script');
     gaScript.async = true;
-    gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+    gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + MEASUREMENT_ID;
     document.head.appendChild(gaScript);
 
     window.gtag('js', new Date());
@@ -118,22 +144,21 @@
     try {
       const app = await ensureFirebaseApp();
       const firestore = window.firebase.firestore(app);
-    const payload = {
-      type,
-      path: window.location.pathname || '/',
-      timestamp: new Date(),
-    };
+      const payload = {
+        type,
+        path: window.location.pathname || '/',
+        timestamp: new Date(),
+      };
 
-    if (extraFields) {
-      Object.entries(extraFields).forEach(([key, value]) => {
-        if (value === undefined || value === null) return;
-        payload[key] = value;
-      });
-    }
+      if (extraFields) {
+        Object.entries(extraFields).forEach(([key, value]) => {
+          if (value === undefined || value === null) return;
+          payload[key] = value;
+        });
+      }
 
-    await firestore.collection('analytics_events').add(payload);
-
-    return true;
+      await firestore.collection('analytics_events').add(payload);
+      return true;
     } catch (err) {
       console.warn('Analytics event write failed:', err);
       return false;
@@ -144,24 +169,14 @@
     try {
       if (sessionStorage.getItem(storageKey) === 'true') return false;
       sessionStorage.setItem(storageKey, 'pending');
-    } catch (_) {
-      // Ignore storage issues and continue best-effort.
-    }
+    } catch (_) { /* ignore */ }
 
     try {
       const result = await writer();
-      try {
-        sessionStorage.setItem(storageKey, 'true');
-      } catch (_) {
-        // Ignore storage issues.
-      }
+      try { sessionStorage.setItem(storageKey, 'true'); } catch (_) { /* ignore */ }
       return result;
     } catch (err) {
-      try {
-        sessionStorage.removeItem(storageKey);
-      } catch (_) {
-        // Ignore storage issues.
-      }
+      try { sessionStorage.removeItem(storageKey); } catch (_) { /* ignore */ }
       console.warn('Analytics event error:', err);
       return false;
     }
@@ -170,17 +185,11 @@
   function maybeTrackHomeVisit() {
     if (!hasAnalyticsConsent() || !isHomePath()) return Promise.resolve(false);
 
-    // Na mobile - nie wysyłaj home_visit eager, czekaj na user interaction
-    // To oszczędza Firebase SDK ładowania na initial load
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
     if (isMobile) {
-      // Wyślij event dopiero gdy user zacznie interakcjonować
       const trackOnInteraction = () => {
         oncePerSession(HOME_VISIT_KEY, () =>
-          writeAnalyticsEvent('page_visit', {
-            page: 'home',
-            source: 'user_interaction',
-          })
+          writeAnalyticsEvent('page_visit', { page: 'home', source: 'user_interaction' })
         );
         document.removeEventListener('click', trackOnInteraction);
         document.removeEventListener('scroll', trackOnInteraction);
@@ -191,10 +200,7 @@
     }
 
     return oncePerSession(HOME_VISIT_KEY, () =>
-      writeAnalyticsEvent('page_visit', {
-        page: 'home',
-        source: 'home_entry',
-      })
+      writeAnalyticsEvent('page_visit', { page: 'home', source: 'home_entry' })
     );
   }
 
@@ -207,10 +213,7 @@
     }
 
     return oncePerSession(TUTORIAL_COMPLETE_KEY, () =>
-      writeAnalyticsEvent('tutorial_complete', {
-        page: 'home',
-        source: 'finish_button',
-      })
+      writeAnalyticsEvent('tutorial_complete', { page: 'home', source: 'finish_button' })
     );
   }
 
@@ -229,23 +232,24 @@
     const durationSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000));
     sessionDurationSent = true;
 
-    // Use GA only, don't load Firebase for session tracking
     loadGA();
     if (typeof window.gtag === 'function') {
-      window.gtag('event', 'session_duration', {
-        durationSeconds,
-      });
+      window.gtag('event', 'session_duration', { durationSeconds });
     }
 
     return true;
   }
 
+  // ════════════════════════════════════════════════════════════════
+  // Public API
+  // ════════════════════════════════════════════════════════════════
   window.IJanickiAnalytics = {
-    config: {
-      measurementId: MEASUREMENT_ID,
-      firebaseConfig: FIREBASE_CONFIG,
-    },
+    config: { measurementId: MEASUREMENT_ID, firebaseConfig: FIREBASE_CONFIG },
+    hasDecision,
     hasAnalyticsConsent,
+    hasMarketingConsent,
+    hasExternalConsent,
+    buildConsentUpdate,
     loadGA,
     maybeTrackHomeVisit,
     trackTutorialComplete,
@@ -253,6 +257,7 @@
     maybeTrackSessionDuration,
   };
 
+  // Legacy exports
   window.hasAnalyticsConsent = hasAnalyticsConsent;
   window.loadGA = loadGA;
   window.maybeTrackHomeVisit = maybeTrackHomeVisit;
@@ -260,11 +265,9 @@
   window.trackAnalyticsEvent = trackAnalyticsEvent;
   window.maybeTrackSessionDuration = maybeTrackSessionDuration;
 
+  // Jeśli zgoda już udzielona — załaduj GA (lekkie), Firebase dopiero na demand
   if (hasAnalyticsConsent()) {
-    // Załaduj GA (lekki) ale NOT Firebase (102KB)
-    // Firebase załaduje się dopiero na writeAnalyticsEvent (user interaction)
     loadGA();
-    // maybeTrackHomeVisit() usunięte — Firebase zaloguje się dopiero na demand
   }
 
   window.addEventListener('visibilitychange', () => {

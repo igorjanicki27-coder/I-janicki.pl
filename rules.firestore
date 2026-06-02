@@ -143,6 +143,40 @@ service cloud.firestore {
         && request.resource.data.approved == true;
     }
 
+    match /contact_leads/{leadId} {
+      allow get, list: if isMaster();
+      allow create: if request.resource.data.keys().hasOnly([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.keys().hasAll([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$')
+        && request.resource.data.consentAcceptedDates is list
+        && request.resource.data.consentAcceptedDates.size() >= 1;
+      allow update: if request.resource.data.keys().hasOnly([
+          'firstName',
+          'lastName',
+          'email',
+          'consentAcceptedDates'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$')
+        && request.resource.data.consentAcceptedDates is list
+        && request.resource.data.consentAcceptedDates.size() >= resource.data.consentAcceptedDates.size();
+    }
+
     match /devices/{deviceId} {
       allow read: if isMaster() || isDeviceOwner();
       allow create: if isMaster() || isCreatingOwnDevice();

@@ -23,6 +23,8 @@ const LS = {
   NAME:             'ijanek_name',
   COOKIE_DECISION:  'ijanek_cookie_decision',
   COOKIE_ANALYTICS: 'ijanek_cookie_analytics',
+  COOKIE_MARKETING: 'ijanek_cookie_marketing',
+  COOKIE_EXTERNAL:  'ijanek_cookie_external',
   TUTORIAL_DONE:    'ijanek_tutorial_done',
   THEME:            'ijanek_theme',
   LANG:             'ijanek_lang',
@@ -31,11 +33,11 @@ const SS = { SECTION: 'ijanek_active_section' };
 
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL STEPS
-// 0:greeting(+lang+theme)  1:cookies  2:name  3-8:sections  9:reviews
+// 0:cookies(only 1st-visit)  1:greeting  2:name  3-8:sections  9:reviews
 // ─────────────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 'greeting'                                            },  // 0 (lang+theme inside)
-  { id: 'cookies'                                             },  // 1
+  { id: 'cookies'                                             },  // 0 — pierwszy krok tylko przy pierwszej wizycie
+  { id: 'greeting'                                            },  // 1 (lang+theme inside)
   { id: 'name'                                                },  // 2
   { id: 'about',    topic: 'about',    label: 'O mnie'       },  // 3
   { id: 'services', topic: 'services', label: 'Usługi'       },  // 4
@@ -71,6 +73,7 @@ let reviewRating = 0;
 let visitedSteps = new Set(); // Track which steps user has visited
 let currentView = null;
 let currentDocName = null;
+let cookieTutorialView = 'banner'; // 'banner' | 'settings' — stan panelu cookies w tutorialu
 
 // ─────────────────────────────────────────────────────────────────
 // DOM REFS (lazy getters so we don't need to worry about order)
@@ -97,7 +100,6 @@ const dom = {
   get modalRoot()      { return $('modalRoot');             },
   get modalBody()      { return $('modalBody');             },
   get cookieOverlay()  { return $('cookieOverlay');         },
-  get cookieToggle()   { return $('cookieAnalyticsToggle'); },
   get docOverlay()     { return $('docOverlay');            },
   get docContent()     { return $('docContent');            },
   get docTitle()       { return $('docTitle');              },
@@ -192,22 +194,21 @@ const TRANSLATIONS = {
     'doc-load-error': 'Nie można załadować dokumentu.',
     'tutorial-step': 'Krok {number}',
     'cookie-title': 'Pliki cookie 🍪',
-    'cookie-decided': 'Twoje preferencje cookie zostały zapisane.',
-    'cookie-ga-on': '✓ włączony',
-    'cookie-ga-off': '✗ wyłączony',
-    'cookie-change': 'Możesz je zmienić w każdej chwili — kliknij 🍪 w stopce.',
-    'cookie-msg': 'Ta strona korzysta z plików cookie. <strong>Niezbędne</strong> (sesja, imię, preferencje) zawsze aktywne.',
-    'cookie-ask': 'Czy wyrażasz zgodę na <strong>Google Analytics</strong>?',
-    'cookie-essential': 'Tylko niezbędne',
-    'cookie-all': 'Akceptuję wszystkie',
-    'cookie-desc': 'Ta strona używa plików cookie i pamięci lokalnej. Część jest <strong>niezbędna</strong> do działania (sesja, preferencje, stan samouczka) i nie wymaga zgody. Pozostałe (Google Analytics) pomagają ulepszać stronę — wymagają Twojej zgody zgodnie z RODO.',
+    'cookie-banner-text': 'Ta strona korzysta z plików cookies niezbędnych do prawidłowego działania oraz — za Twoją zgodą — z cookies analitycznych i marketingowych. Możesz zaakceptować wszystkie, odrzucić opcjonalne albo dostosować ustawienia. <span class="cookie-doc-link">Więcej informacji: <a href="./dokumenty/index.html" target="_blank" rel="noopener">Dokumenty</a></span>',
+    'cookie-settings-title-panel': 'Ustawienia plików cookie',
+    'cookie-accept-all': 'Akceptuję wszystkie',
+    'cookie-reject-optional': 'Odrzucam opcjonalne',
+    'cookie-settings-btn': 'Ustawienia',
+    'cookie-save-settings': 'Zapisz ustawienia',
     'cookie-essential-title': 'Niezbędne',
-    'cookie-essential-desc': 'Sesja, preferencje, stan samouczka i Twoje imię. Zawsze aktywne — niezbędne do działania strony.',
-    'cookie-analytics-title': 'Analityczne — Google Analytics',
-    'cookie-analytics-desc': 'Anonimowe dane o ruchu: odwiedziny, czas spędzony, źródła. Pomaga ulepszać stronę.',
-    'cookie-badge-essential': 'Niezbędne',
-    'cookie-badge-extra': 'Dodatkowe',
-    'cookie-extra': 'Dodatkowe',
+    'cookie-essential-desc': 'Zawsze aktywne. Techniczne cookies potrzebne do działania strony, bezpieczeństwa, formularzy i zapamiętania zgód.',
+    'cookie-analytics-title': 'Analityczne',
+    'cookie-analytics-desc': 'Opcjonalne. Np. Google Analytics, statystyki odwiedzin, źródła wejść, zachowanie na stronie.',
+    'cookie-marketing-title': 'Marketingowe',
+    'cookie-marketing-desc': 'Opcjonalne. Np. Google Ads, remarketing, piksele reklamowe.',
+    'cookie-external-title': 'Zewnętrzne / multimedialne',
+    'cookie-external-desc': 'Opcjonalne. Np. YouTube, Google Maps, osadzone treści społecznościowe.',
+    'cookie-always-on': 'Zawsze aktywne',
     'cookie-doc-regulamin': 'Regulamin witryny',
     'cookie-doc-privacy': 'Polityka prywatności',
     'cookie-doc-rodo': 'Polityka RODO',
@@ -352,22 +353,21 @@ const TRANSLATIONS = {
     'doc-load-error': 'Unable to load the document.',
     'tutorial-step': 'Step {number}',
     'cookie-title': 'Cookies 🍪',
-    'cookie-decided': 'Your cookie preferences have been saved.',
-    'cookie-ga-on': '✓ enabled',
-    'cookie-ga-off': '✗ disabled',
-    'cookie-change': 'You can change them anytime — click 🍪 in the footer.',
-    'cookie-msg': 'This site uses cookies. <strong>Essential</strong> (session, name, preferences) are always active.',
-    'cookie-ask': 'Do you agree to <strong>Google Analytics</strong>?',
-    'cookie-essential': 'Essential only',
-    'cookie-all': 'Accept all',
-    'cookie-desc': 'This site uses cookies and local storage. Some are <strong>essential</strong> for operation (session, preferences, tutorial state) and do not require consent. Others (Google Analytics) help improve the site and require your consent under GDPR.',
+    'cookie-banner-text': 'This site uses cookies essential for proper functioning and — with your consent — analytical and marketing cookies. You can accept all, reject optional ones, or customize settings. <span class="cookie-doc-link">More info: <a href="./dokumenty/index.html" target="_blank" rel="noopener">Documents</a></span>',
+    'cookie-settings-title-panel': 'Cookie settings',
+    'cookie-accept-all': 'Accept all',
+    'cookie-reject-optional': 'Reject optional',
+    'cookie-settings-btn': 'Settings',
+    'cookie-save-settings': 'Save settings',
     'cookie-essential-title': 'Essential',
-    'cookie-essential-desc': 'Session, preferences, tutorial state and your name. Always active because they are required for the site to work.',
-    'cookie-analytics-title': 'Analytics — Google Analytics',
-    'cookie-analytics-desc': 'Anonymous traffic data: visits, time spent, sources. Helps improve the site.',
-    'cookie-badge-essential': 'Essential',
-    'cookie-badge-extra': 'Additional',
-    'cookie-extra': 'Additional',
+    'cookie-essential-desc': 'Always active. Technical cookies needed for site operation, security, forms and consent storage.',
+    'cookie-analytics-title': 'Analytics',
+    'cookie-analytics-desc': 'Optional. E.g. Google Analytics, visit statistics, traffic sources, on-site behavior.',
+    'cookie-marketing-title': 'Marketing',
+    'cookie-marketing-desc': 'Optional. E.g. Google Ads, remarketing, advertising pixels.',
+    'cookie-external-title': 'External / media',
+    'cookie-external-desc': 'Optional. E.g. YouTube, Google Maps, embedded social content.',
+    'cookie-always-on': 'Always active',
     'cookie-doc-regulamin': 'Website rules',
     'cookie-doc-privacy': 'Privacy & cookies policy',
     'cookie-doc-rodo': 'GDPR policy',
@@ -538,8 +538,8 @@ function rerenderVisibleUi() {
   localizeRoot(document);
 
   if (!dom.cookieOverlay.hidden) {
-    dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
-    updateCookieAnalyticsStatus();
+    const currentView = dom.cookieOverlay.querySelector('[data-cookie-view]')?.dataset.cookieView || 'banner';
+    dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay', currentView);
     dom.cookieOverlay.hidden = false;
     dom.cookieOverlay.setAttribute('aria-hidden', 'false');
   }
@@ -558,7 +558,7 @@ function rerenderVisibleUi() {
     switch (step.id) {
       case 'greeting': renderGreeting(); break;
       case 'name': renderNameInput(); break;
-      case 'cookies': renderCookieStep(); break;
+      case 'cookies': cookieTutorialView = 'banner'; renderCookieStep(); break;
       case 'reviews': renderReviewStep(); break;
       default: renderSectionStep(step); break;
     }
@@ -659,11 +659,23 @@ function initGlobalClick() {
 
     if (cookieBtn) {
       const mode = cookieBtn.closest('[data-cookie-mode]')?.dataset.cookieMode || 'overlay';
-      cookieDecide(cookieBtn.dataset.cookieAction === 'all');
-      if (mode === 'tutorial') {
-        goStep(tutStep + 1);
-      } else {
-        closeCookiePanel();
+      const action = cookieBtn.dataset.cookieAction;
+
+      if (action === 'settings') {
+        // Przejdź do widoku ustawień
+        switchToCookieSettings(mode);
+      } else if (action === 'reject') {
+        // Odrzuć opcjonalne
+        cookieDecideAll(false);
+        afterCookieAction(mode);
+      } else if (action === 'all') {
+        // Akceptuj wszystkie
+        cookieDecideAll(true);
+        afterCookieAction(mode);
+      } else if (action === 'save') {
+        // Zapisz bieżące ustawienia z przełączników
+        saveCookieSettings();
+        afterCookieAction(mode);
       }
       return;
     }
@@ -826,7 +838,7 @@ function goStep(idx) {
   switch (step.id) {
     case 'greeting': renderGreeting();        break;
     case 'name':     renderNameInput();       break;
-    case 'cookies':  renderCookieStep();      break;
+    case 'cookies':  cookieTutorialView = 'banner'; renderCookieStep(); break;
     case 'reviews':  renderReviewStep();      break;
     default:         renderSectionStep(step); break;
   }
@@ -894,53 +906,82 @@ function renderNameInput() {
 
 function renderCookieStep() {
   currentView = 'cookies';
-  setPanel('', renderCookiePanelHtml('tutorial'), false, false);
-  updateCookieAnalyticsStatus();
+  setPanel('', renderCookiePanelHtml('tutorial', cookieTutorialView), false, false);
 }
 
-function renderCookiePanelHtml(mode) {
+// Renderuje panel cookies: view = 'banner' (pierwszy baner) lub 'settings' (panel z kategoriami)
+function renderCookiePanelHtml(mode, view) {
   const panelClass = mode === 'tutorial' ? 'cookie-panel cookie-panel--embedded' : 'cookie-panel';
+  const actualView = view || 'banner';
 
+  if (actualView === 'settings') {
+    return renderCookieSettingsHtml(mode, panelClass);
+  }
+  return renderCookieBannerHtml(mode, panelClass);
+}
+
+// Baner — krótki tekst + 3 równorzędne przyciski
+function renderCookieBannerHtml(mode, panelClass) {
   return `
-    <div class="${panelClass}" data-cookie-mode="${mode}">
+    <div class="${panelClass}" data-cookie-mode="${mode}" data-cookie-view="banner">
       <div class="cookie-header">
         <span class="cookie-icon" aria-hidden="true">🍪</span>
         <h2>${t('cookie-title')}</h2>
       </div>
-      <p class="cookie-desc">
-        ${t('cookie-desc')}
-      </p>
-
-      <div class="cookie-options">
-        <div class="cookie-option">
-          <div class="cookie-option-info">
-            <strong>${t('cookie-essential-title')}</strong>
-            <p>${t('cookie-essential-desc')}</p>
-          </div>
-          <div class="cookie-badge-always cookie-badge-essential">${t('cookie-badge-essential')}</div>
-        </div>
-        <div class="cookie-option">
-          <div class="cookie-option-info">
-            <strong>${t('cookie-analytics-title')}</strong>
-            <p>${t('cookie-analytics-desc')}</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-            <div class="cookie-status-indicator" data-cookie-analytics-status style="font-size:12px;color:var(--muted)"></div>
-            <div class="cookie-badge-always cookie-badge-extra" data-cookie-badge-extra>${t('cookie-extra')}</div>
-          </div>
-        </div>
+      <p class="cookie-banner-text">${t('cookie-banner-text')}</p>
+      <div class="cookie-banner-actions">
+        <button class="cookie-btn cookie-btn-settings" data-cookie-action="settings">${t('cookie-settings-btn')}</button>
+        <button class="cookie-btn cookie-btn-reject" data-cookie-action="reject">${t('cookie-reject-optional')}</button>
+        <button class="cookie-btn cookie-btn-accept-all" data-cookie-action="all">${t('cookie-accept-all')}</button>
       </div>
+    </div>`;
+}
 
+// Panel ustawień — 4 kategorie z przełącznikami
+function renderCookieSettingsHtml(mode, panelClass) {
+  const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
+  const marketingOn = localStorage.getItem(LS.COOKIE_MARKETING) === 'true';
+  const externalOn  = localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true';
+
+  const row = (id, title, desc, checked, disabled) => `
+    <div class="cookie-category-row">
+      <div class="cookie-category-info">
+        <strong>${title}</strong>
+        <p>${desc}</p>
+      </div>
+      <div class="cookie-category-control">
+        ${disabled
+          ? `<span class="cookie-always-badge">${t('cookie-always-on')}</span>`
+          : `<label class="cookie-switch" for="${id}">
+               <input type="checkbox" class="cookie-checkbox" id="${id}" data-cookie-category="${id}" ${checked ? 'checked' : ''}>
+               <span class="cookie-switch-ui"></span>
+             </label>`
+        }
+      </div>
+    </div>`;
+
+  return `
+    <div class="${panelClass}" data-cookie-mode="${mode}" data-cookie-view="settings">
+      <div class="cookie-header">
+        <span class="cookie-icon" aria-hidden="true">🍪</span>
+        <h2>${t('cookie-settings-title-panel')}</h2>
+      </div>
+      <div class="cookie-categories">
+        ${row('essential', t('cookie-essential-title'), t('cookie-essential-desc'), true, true)}
+        ${row('analytics', t('cookie-analytics-title'), t('cookie-analytics-desc'), analyticsOn, false)}
+        ${row('marketing', t('cookie-marketing-title'), t('cookie-marketing-desc'), marketingOn, false)}
+        ${row('external', t('cookie-external-title'), t('cookie-external-desc'), externalOn, false)}
+      </div>
       <div class="cookie-docs-row">
         <button class="cookie-doc-link" data-doc="regulamin">${t('cookie-doc-regulamin')}</button>
         <button class="cookie-doc-link" data-doc="polityka-prywatnosci">${t('cookie-doc-privacy')}</button>
         <button class="cookie-doc-link" data-doc="polityka-rodo">${t('cookie-doc-rodo')}</button>
         <a class="cookie-doc-link" href="./dokumenty">${t('cookie-doc-all-docs')}</a>
       </div>
-
-      <div class="cookie-actions">
-        <button class="cookie-btn cookie-btn-essential" data-cookie-action="essential">${t('cookie-essential')}</button>
-        <button class="cookie-btn cookie-btn-all" data-cookie-action="all">${t('cookie-all')}</button>
+      <div class="cookie-settings-actions">
+        <button class="cookie-btn cookie-btn-save" data-cookie-action="save">${t('cookie-save-settings')}</button>
+        <button class="cookie-btn cookie-btn-reject" data-cookie-action="reject">${t('cookie-reject-optional')}</button>
+        <button class="cookie-btn cookie-btn-accept-all" data-cookie-action="all">${t('cookie-accept-all')}</button>
       </div>
     </div>`;
 }
@@ -1247,6 +1288,78 @@ function isValidEmailOrPhone(val) {
   return emailRe.test(val) || phoneRe.test(val);
 }
 
+function isValidEmail(val) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val);
+}
+
+function splitContactName(fullName) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: '', lastName: '' };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
+}
+
+function leadDocIdFromEmail(email) {
+  return `lead_${encodeURIComponent(email.toLowerCase())}`;
+}
+
+function getConsentDatesFromDoc(doc) {
+  const values = doc?.fields?.consentAcceptedDates?.arrayValue?.values || [];
+  return values
+    .map(v => v.timestampValue)
+    .filter(Boolean);
+}
+
+async function upsertContactLead({ fullName, email, consentAcceptedAt }) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  if (!isValidEmail(normalizedEmail)) return;
+
+  const { firstName, lastName } = splitContactName(fullName);
+  const docId = leadDocIdFromEmail(normalizedEmail);
+  const docUrl = `${FIRESTORE_BASE}/contact_leads/${docId}`;
+  let consentAcceptedDates = [consentAcceptedAt];
+  let method = 'POST';
+  let url = `${FIRESTORE_BASE}/contact_leads?documentId=${encodeURIComponent(docId)}`;
+
+  const existingRes = await fetch(docUrl, { method: 'GET' });
+  if (existingRes.ok) {
+    const existingDoc = await existingRes.json();
+    const existingDates = getConsentDatesFromDoc(existingDoc);
+    consentAcceptedDates = [...existingDates, consentAcceptedAt];
+    method = 'PATCH';
+    url = `${docUrl}?updateMask.fieldPaths=firstName&updateMask.fieldPaths=lastName&updateMask.fieldPaths=email&updateMask.fieldPaths=consentAcceptedDates`;
+  } else if (existingRes.status !== 404) {
+    throw new Error(`Firestore read failed: ${existingRes.status}`);
+  }
+
+  const body = {
+    fields: {
+      firstName: { stringValue: firstName },
+      lastName: { stringValue: lastName },
+      email: { stringValue: normalizedEmail },
+      consentAcceptedDates: {
+        arrayValue: {
+          values: consentAcceptedDates.map(ts => ({ timestampValue: ts })),
+        },
+      },
+    },
+  };
+
+  const writeRes = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!writeRes.ok) {
+    throw new Error(`Firestore write failed: ${writeRes.status}`);
+  }
+}
+
 function setupContactForm() {
   const form = $('contactForm');
   if (!form || form.dataset.bound) return;
@@ -1340,6 +1453,10 @@ async function submitContactForm(form) {
   const status  = $('formStatus');
   const btn     = form.querySelector('[type=submit]');
   const btnText = $('submitBtnText');
+  const formData = Object.fromEntries(new FormData(form));
+  const fullName = String(formData.name || formData.fullname || '').trim();
+  const contactValue = String(formData.email || '').trim();
+  const consentAcceptedAt = new Date().toISOString();
 
   btnText.textContent    = t('contact-sending');
   btn.disabled           = true;
@@ -1350,10 +1467,20 @@ async function submitContactForm(form) {
     const res  = await fetch('https://api.web3forms.com/submit', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(Object.fromEntries(new FormData(form))),
+      body:    JSON.stringify(formData),
     });
     const data = await res.json();
     if (data.success) {
+      try {
+        await upsertContactLead({
+          fullName,
+          email: contactValue,
+          consentAcceptedAt,
+        });
+      } catch (err) {
+        console.warn('Contact lead save error:', err);
+      }
+
       localStorage.setItem(FORM_RATE_KEY, String(Date.now()));
       status.className   = 'form-status is-ok';
       status.textContent = t('contact-sent');
@@ -1381,42 +1508,65 @@ async function submitContactForm(form) {
 // COOKIE PANEL
 // ─────────────────────────────────────────────────────────────────
 function initCookiePanel() {
-  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
-  updateCookieAnalyticsStatus();
+  // Jeśli brak decyzji i tutorial już zakończony — pokaż baner
+  // (jeśli tutorial się zaraz zacznie, to krok cookies w tutorialu przejmie obsługę)
+  if (!localStorage.getItem(LS.COOKIE_DECISION) && tutDone) {
+    showCookieBanner();
+  }
 
   const footBtn = $('cookieFootBtn');
   if (footBtn) footBtn.addEventListener('click', openCookiePanel);
 }
 
-function updateCookieAnalyticsStatus() {
-  const analyticsOn = localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true';
-  document.querySelectorAll('[data-cookie-analytics-status]').forEach(statusEl => {
-    statusEl.textContent = analyticsOn ? '✓' : '✗';
-    statusEl.style.color = analyticsOn ? 'var(--accent-4)' : 'var(--muted)';
-  });
-  document.querySelectorAll('[data-cookie-badge-extra]').forEach(badgeEl => {
-    if (badgeEl.classList.contains('cookie-badge-extra')) {
-      badgeEl.classList.toggle('is-enabled', analyticsOn);
-    }
-  });
+// Pokazuje pierwszy baner
+function showCookieBanner() {
+  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay', 'banner');
+  dom.cookieOverlay.hidden = false;
+  dom.cookieOverlay.setAttribute('aria-hidden', 'false');
 }
 
-function cookieDecide(analytics) {
-  localStorage.setItem(LS.COOKIE_DECISION,  analytics ? 'all' : 'essential');
-  localStorage.setItem(LS.COOKIE_ANALYTICS, analytics ? 'true' : 'false');
-  updateCookieAnalyticsStatus();
+// Przełącza z banera na widok ustawień
+function switchToCookieSettings(mode) {
+  if (mode === 'tutorial') {
+    cookieTutorialView = 'settings';
+  }
+  const target = mode === 'tutorial' ? dom.panelContent : dom.cookieOverlay;
+  target.innerHTML = renderCookiePanelHtml(mode, 'settings');
+}
 
-  // Consent Mode v2 — poinformuj Google o decyzji użytkownika
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = window.gtag || function gtag() {
-    window.dataLayer.push(arguments);
+// Akceptuje/odrzuca wszystkie opcjonalne kategorie
+function cookieDecideAll(accept) {
+  const val = accept ? 'true' : 'false';
+  localStorage.setItem(LS.COOKIE_DECISION,  accept ? 'all' : 'essential');
+  localStorage.setItem(LS.COOKIE_ANALYTICS, val);
+  localStorage.setItem(LS.COOKIE_MARKETING, val);
+  localStorage.setItem(LS.COOKIE_EXTERNAL,  val);
+
+  applyConsentToGtag();
+
+  if (accept) {
+    window.loadGA?.();
+    window.maybeTrackHomeVisit?.();
+  }
+}
+
+// Zapisuje ustawienia z przełączników w panelu
+function saveCookieSettings() {
+  const getCheck = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.checked : false;
   };
-  window.gtag('consent', 'update', {
-    'ad_user_data': analytics ? 'granted' : 'denied',
-    'ad_personalization': analytics ? 'granted' : 'denied',
-    'ad_storage': analytics ? 'granted' : 'denied',
-    'analytics_storage': analytics ? 'granted' : 'denied',
-  });
+
+  const analytics = getCheck('analytics');
+  const marketing = getCheck('marketing');
+  const external  = getCheck('external');
+
+  localStorage.setItem(LS.COOKIE_DECISION,  'custom');
+  localStorage.setItem(LS.COOKIE_ANALYTICS, analytics ? 'true' : 'false');
+  localStorage.setItem(LS.COOKIE_MARKETING, marketing ? 'true' : 'false');
+  localStorage.setItem(LS.COOKIE_EXTERNAL,  external  ? 'true' : 'false');
+
+  applyConsentToGtag();
 
   if (analytics) {
     window.loadGA?.();
@@ -1424,9 +1574,37 @@ function cookieDecide(analytics) {
   }
 }
 
+// Aplikuje Consent Mode v2 do Google
+function applyConsentToGtag() {
+  var update = window.IJanickiAnalytics?.buildConsentUpdate?.();
+  if (!update) {
+    // Fallback
+    update = {
+      'ad_user_data':          localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
+      'ad_personalization':    localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
+      'ad_storage':            localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
+      'analytics_storage':     localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true' ? 'granted' : 'denied',
+      'functionality_storage': localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true'  ? 'granted' : 'denied',
+      'personalization_storage': localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true'  ? 'granted' : 'denied',
+      'security_storage':      'granted',
+    };
+  }
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
+  window.gtag('consent', 'update', update);
+}
+
+// Akcja po podjęciu decyzji (zamknięcie panelu lub przejście tutoriala dalej)
+function afterCookieAction(mode) {
+  if (mode === 'tutorial') {
+    goStep(tutStep + 1);
+  } else {
+    closeCookiePanel();
+  }
+}
+
 function openCookiePanel() {
-  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay');
-  updateCookieAnalyticsStatus();
+  dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay', 'settings');
   dom.cookieOverlay.hidden = false;
   dom.cookieOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -1434,7 +1612,8 @@ function openCookiePanel() {
 function closeCookiePanel() {
   dom.cookieOverlay.hidden = true;
   dom.cookieOverlay.setAttribute('aria-hidden', 'true');
-  // Jeśli jesteśmy na kroku cookies tutoriala i decyzja właśnie podjęta — przejdź dalej
+  // Jeśli jesteśmy w trakcie tutoriala, na kroku cookies i decyzja właśnie podjęta — przejdź dalej
+  if (tutDone) return;
   const steps = getSteps();
   if (steps[tutStep]?.id === 'cookies' && localStorage.getItem(LS.COOKIE_DECISION)) {
     goStep(tutStep + 1);
