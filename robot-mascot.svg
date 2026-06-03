@@ -1,0 +1,76 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="edge" x1="70" y1="52" x2="440" y2="454" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#40C9FF"/>
+      <stop offset="0.42" stop-color="#7F40FF"/>
+      <stop offset="1" stop-color="#FF00D4"/>
+    </linearGradient>
+    <radialGradient id="field" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 258) rotate(90) scale(192)">
+      <stop stop-color="#40C9FF" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#7F40FF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="166" y1="138" x2="338" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#152344"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </linearGradient>
+    <filter id="mainGlow" x="-55%" y="-55%" width="210%" height="210%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#7F40FF" flood-opacity="0.34"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#40C9FF" flood-opacity="0.28"/>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="72" fill="#05060D"/>
+  <circle cx="256" cy="256" r="194" fill="url(#field)"/>
+  <circle cx="256" cy="256" r="208" stroke="url(#edge)" stroke-width="2.5" opacity="0.13"/>
+  <path d="M84 390C121 330 178 300 256 300C334 300 391 330 428 390" stroke="url(#edge)" stroke-width="3" opacity="0.14"/>
+
+  <g filter="url(#mainGlow)">
+    <path d="M161 167C161 137.7 184.7 114 214 114H298C327.3 114 351 137.7 351 167V248C351 277.3 327.3 301 298 301H214C184.7 301 161 277.3 161 248V167Z" fill="#0D1222" stroke="url(#edge)" stroke-width="7"/>
+    <path d="M182 186C182 167.8 196.8 153 215 153H297C315.2 153 330 167.8 330 186V231C330 249.2 315.2 264 297 264H215C196.8 264 182 249.2 182 231V186Z" fill="url(#panel)" stroke="url(#edge)" stroke-width="3.2"/>
+    <path d="M210 153V129" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M302 153V129" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="210" cy="118" r="8" fill="#40C9FF"/>
+    <circle cx="302" cy="118" r="8" fill="#FF00D4"/>
+    <rect x="196" y="193" width="120" height="24" rx="12" fill="#09111F" stroke="url(#edge)" stroke-width="2"/>
+    <circle cx="226" cy="205" r="9" fill="#40C9FF"/>
+    <circle cx="286" cy="205" r="9" fill="#FF00D4"/>
+    <path d="M214 237C227 251 285 251 298 237" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M189 278H323" stroke="url(#edge)" stroke-width="3" opacity="0.25"/>
+
+    <path d="M128 215C128 203.4 137.4 194 149 194H161V235H149C137.4 235 128 225.6 128 214V215Z" fill="#0B1020" stroke="url(#edge)" stroke-width="5"/>
+    <path d="M384 215C384 203.4 374.6 194 363 194H351V235H363C374.6 235 384 225.6 384 214V215Z" fill="#0B1020" stroke="url(#edge)" stroke-width="5"/>
+    <path d="M151 207H118" stroke="url(#edge)" stroke-width="6" stroke-linecap="round" opacity="0.78"/>
+    <path d="M394 207H361" stroke="url(#edge)" stroke-width="6" stroke-linecap="round" opacity="0.78"/>
+
+    <path d="M194 301H318C331.3 301 342 311.7 342 325V359C342 372.3 331.3 383 318 383H194C180.7 383 170 372.3 170 359V325C170 311.7 180.7 301 194 301Z" fill="#0D1222" stroke="url(#edge)" stroke-width="6"/>
+    <rect x="199" y="323" width="114" height="22" rx="11" fill="#10192F" stroke="url(#edge)" stroke-width="2"/>
+    <path d="M214 383V425" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M298 383V425" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M194 301L161 346" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M318 301L351 346" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M159 346L139 376" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M353 346L373 376" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M196 425L182 453" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M316 425L330 453" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M168 455H206" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M306 455H344" stroke="url(#edge)" stroke-width="6" stroke-linecap="round"/>
+
+    <path d="M344 176L391 150" stroke="url(#edge)" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+    <path d="M345 191L406 191" stroke="url(#edge)" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+    <path d="M340 208L387 234" stroke="url(#edge)" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+  </g>
+
+  <g filter="url(#softGlow)">
+    <circle cx="256" cy="256" r="154" stroke="url(#edge)" stroke-width="1.5" opacity="0.13" stroke-dasharray="10 14"/>
+    <path d="M334 138H392V196" stroke="url(#edge)" stroke-width="2.4" opacity="0.5"/>
+    <path d="M331 141L392 196" stroke="url(#edge)" stroke-width="2.4" opacity="0.34"/>
+  </g>
+</svg>

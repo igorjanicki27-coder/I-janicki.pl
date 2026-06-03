@@ -129,6 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Opóźnij tutorial do następnej klatki (requestAnimationFrame)
   // Tutorial zawiera 1000+ DOM mutacji - nie blokuj initial render
   requestAnimationFrame(() => {
+    // Tutorial wymaga panelu — na podstronach bez panelu pomijamy
+    if (!$('panel')) return;
     if (tutDone) {
       showReturning();
     } else {
@@ -537,14 +539,14 @@ function localizeRoot(root) {
 function rerenderVisibleUi() {
   localizeRoot(document);
 
-  if (!dom.cookieOverlay.hidden) {
+  if (dom.cookieOverlay && !dom.cookieOverlay.hidden) {
     const currentView = dom.cookieOverlay.querySelector('[data-cookie-view]')?.dataset.cookieView || 'banner';
     dom.cookieOverlay.innerHTML = renderCookiePanelHtml('overlay', currentView);
     dom.cookieOverlay.hidden = false;
     dom.cookieOverlay.setAttribute('aria-hidden', 'false');
   }
 
-  if (!dom.docOverlay.hidden && currentDocName) {
+  if (dom.docOverlay && !dom.docOverlay.hidden && currentDocName) {
     openDoc(currentDocName);
   }
 
@@ -567,7 +569,7 @@ function rerenderVisibleUi() {
     return;
   }
 
-  if (!dom.modalRoot.hidden) {
+  if (dom.modalRoot && !dom.modalRoot.hidden) {
     const topic = sessionStorage.getItem(SS.SECTION);
     if (topic) openModal(topic);
   }
@@ -686,22 +688,25 @@ function initGlobalClick() {
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (!dom.docOverlay.hidden)    { closeDoc();         return; }
-    if (!dom.cookieOverlay.hidden) { closeCookiePanel(); return; }
-    if (!dom.modalRoot.hidden)     { closeModal();       return; }
+    if (dom.docOverlay && !dom.docOverlay.hidden) { closeDoc(); return; }
+    if (dom.cookieOverlay && !dom.cookieOverlay.hidden) { closeCookiePanel(); return; }
+    if (dom.modalRoot && !dom.modalRoot.hidden)         { closeModal();       return; }
   });
 
   // Tutorial nav buttons
-  $('tutBack').addEventListener('click', () => {
+  const tutBackEl = $('tutBack');
+  if (tutBackEl) tutBackEl.addEventListener('click', () => {
     if (tutStep > 0) goStep(tutStep - 1);
   });
 
-  $('tutSkip').addEventListener('click', () => {
+  const tutSkipEl = $('tutSkip');
+  if (tutSkipEl) tutSkipEl.addEventListener('click', () => {
     const steps = getSteps();
     goStep(steps.length - 1);
   });
 
-  $('tutNext').addEventListener('click', () => {
+  const tutNextEl = $('tutNext');
+  if (tutNextEl) tutNextEl.addEventListener('click', () => {
     const steps = getSteps();
     const step = steps[tutStep];
     // Cookie step: must decide before continuing
@@ -751,6 +756,7 @@ function startTutorial() {
 }
 
 function buildDots() {
+  if (!dom.tutDots) return;
   dom.tutDots.innerHTML = '';
   const steps = getSteps();
   for (let i = 0; i < steps.length; i++) {
@@ -780,6 +786,9 @@ function refreshDots() {
 }
 
 function refreshNavButtons() {
+  // Na podstronach bez tutoriala (np. dokumenty) elementy nawigacji nie istnieją
+  if (!dom.tutBack || !dom.tutNext || !dom.tutSkip || !dom.tutNav) return;
+
   const steps = getSteps();
   const step         = steps[tutStep];
   const isFirst      = tutStep === 0;
@@ -1178,8 +1187,8 @@ function hideStageContent() {
 // ─────────────────────────────────────────────────────────────────
 function showReturning() {
   currentView = 'returning';
-  dom.tutProgress.hidden = true;
-  dom.tutNav.hidden      = true;
+  if (dom.tutProgress) dom.tutProgress.hidden = true;
+  if (dom.tutNav) dom.tutNav.hidden = true;
   const brandName = document.querySelector('.brand-name');
   if (brandName) {
     brandName.textContent = 'i-JANICKI';
@@ -1639,7 +1648,8 @@ const DOC_TITLES = {
 };
 
 function initDocViewer() {
-  $('docClose').addEventListener('click', closeDoc);
+  const docCloseEl = $('docClose');
+  if (docCloseEl) docCloseEl.addEventListener('click', closeDoc);
 }
 
 function openDoc(name) {
