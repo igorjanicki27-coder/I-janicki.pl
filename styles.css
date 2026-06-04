@@ -1223,12 +1223,12 @@ html[data-theme="light"] .foot-docs {
 .cookie-overlay {
   position: fixed; inset: 0; z-index: 500;
   display: flex; align-items: flex-end; justify-content: center;
-  padding: 16px;
+  padding: 16px; pointer-events: none;
   background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
 }
 .cookie-overlay[aria-hidden="false"] { animation: fade-in 0.25s ease; }
 .cookie-panel {
-  width: min(600px, 96vw); background: var(--bg-1);
+  width: min(600px, 96vw); background: var(--bg-1); pointer-events: auto;
   border: 1px solid var(--border);
   border-radius: 20px; padding: 24px;
   box-shadow: 0 -10px 60px rgba(0,0,0,0.6), var(--shadow-neon);
