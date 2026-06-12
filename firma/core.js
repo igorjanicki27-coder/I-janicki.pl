@@ -1,0 +1,549 @@
+import {
+  calculateFirmLedger,
+  categoryLabel,
+  currentMonthKey,
+  formatCurrency,
+  formatDate,
+  getMonthRow,
+  summarizeLedgerScope,
+  monthFromDate,
+  monthLabel,
+  payerLabel,
+  roundCurrency,
+  uid,
+} from './logic.js?v=15';
+import {
+  createEmptyState,
+  loadState,
+  saveState,
+} from './storage.js?v=15';
+
+// --- Icons ---
+export function icon(name) {
+  const icons = {
+    plus: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14" /></svg>',
+    wallet: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Zm0 0V6a2 2 0 0 1 2-2h11M16 13h4" /></svg>',
+    file: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Zm0 0v5h5M9 13h6M9 17h6M9 9h1" /></svg>',
+    chart: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M10 19v-8M16 19V9M22 19H2" /></svg>',
+    eye: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /></svg>',
+    trash: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M7 6l1 14h8l1-14M10 10v6M14 10v6" /></svg>',
+    edit: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 4.5-1 9.5-9.5-3.5-3.5L5 15.5 4 20Zm10-12 3.5 3.5" /></svg>',
+    upload: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>',
+    download: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>',
+    home: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" /></svg>',
+    arrowLeft: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>',
+    lock: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>',
+    firm: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" /></svg>',
+    'x-circle': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>',
+    'rotate-ccw': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>',
+  };
+  return `<span class="icon">${icons[name] || icons.file}</span>`;
+}
+
+// --- Escape ---
+export function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// --- State helpers ---
+export function initializeState() {
+  let state = loadState();
+  if (!state.ui) {
+    state.ui = createEmptyState().ui;
+  }
+  state.ui.activeTab ||= 'overview';
+  state.ui.activeMonthTab ||= 'overview';
+  state.ui.activeInvoiceTab ||= 'own';
+  return state;
+}
+
+export function persistState(state) {
+  return saveState(state);
+}
+
+export function getSelectedFirm(state) {
+  if (!state.ui.selectedFirmId) return null;
+  const firm = state.firms.find((item) => item.id === state.ui.selectedFirmId);
+  if (!firm) {
+    state.ui.selectedFirmId = null;
+    return null;
+  }
+  return firm;
+}
+
+export function firmDisplayName(firm) {
+  return (firm && (firm.displayName || firm.name)) || '';
+}
+
+export function safeMonthValue(state) {
+  const m = state.ui.selectedMonth;
+  if (m === '__all__' || m === '__year__' || m === '__quarter__') return currentMonthKey();
+  return m || currentMonthKey();
+}
+
+export function ensureSelectedMonth(firm, state) {
+  const ledger = calculateFirmLedger(firm);
+  let selected = state.ui.selectedMonth;
+  if (selected !== '__all__' && selected !== '__year__' && selected !== '__quarter__') {
+    if (!selected || !ledger.months.includes(selected)) {
+      selected = ledger.months.length > 0 ? ledger.months[0] : null;
+      state.ui.selectedMonth = selected;
+    }
+  }
+  return {
+    ledger,
+    selectedMonth: selected,
+    monthRow: selected && !['__all__', '__year__', '__quarter__'].includes(selected) ? getMonthRow(ledger, selected) : null,
+  };
+}
+
+export function selectFirm(state, firmId, persistFn, renderFn) {
+  state.ui.selectedFirmId = firmId;
+  state.ui.selectedMonth = null;
+  state.ui.activeMonthTab = 'overview';
+  persistFn(state);
+  renderFn();
+}
+
+// --- UI Components ---
+export function statCard(label, value, tone = 'default', note = '') {
+  return `
+    <article class="stat-card stat-${tone}">
+      <span class="stat-label">${label}</span>
+      <strong class="stat-value">${value}</strong>
+      ${note ? `<span class="stat-note">${note}</span>` : ''}
+    </article>
+  `;
+}
+
+export function getSettlementMeta(value) {
+  const amount = roundCurrency(Math.abs(value || 0));
+  if (value > 0) {
+    return {
+      label: 'Klient ma do zapłaty',
+      shortLabel: 'Klient ma do zapłaty',
+      amount,
+      tone: 'rose',
+      badgeClass: 'is-negative',
+      textClass: 'tone-rose',
+    };
+  }
+  if (value < 0) {
+    return {
+      label: 'Nadpłata klienta',
+      shortLabel: 'Nadpłata klienta',
+      amount,
+      tone: 'emerald',
+      badgeClass: 'is-positive',
+      textClass: 'tone-mint',
+    };
+  }
+  return {
+    label: 'Klient rozliczony',
+    shortLabel: 'Klient rozliczony',
+    amount: 0,
+    tone: 'default',
+    badgeClass: 'is-positive',
+    textClass: '',
+  };
+}
+
+// --- Modal helpers ---
+let modalRoot = null;
+
+export function setModalRoot(root) {
+  modalRoot = root;
+}
+
+export function closeModal() {
+  if (modalRoot) modalRoot.innerHTML = '';
+}
+
+export function openModal(title, content, { wide = false } = {}) {
+  if (!modalRoot) return;
+  modalRoot.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-card ${wide ? 'is-wide' : ''}" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+        <div class="modal-head">
+          <h2>${escapeHtml(title)}</h2>
+          <button class="icon-button" type="button" data-action="close-modal" aria-label="Zamknij">
+            <span class="close-mark">×</span>
+          </button>
+        </div>
+        <div class="modal-body">${content}</div>
+      </div>
+    </div>
+  `;
+}
+
+export function labeledInput({ name, label, type = 'text', value = '', placeholder = '', required = false, step = 'any', min = '', options = null }) {
+  if (type === 'select') {
+    return `
+      <label class="field">
+        <span>${label}</span>
+        <select name="${name}" ${required ? 'required' : ''}>
+          ${options.map((option) => `
+            <option value="${option.value}" ${String(option.value) === String(value) ? 'selected' : ''}>${option.label}</option>
+          `).join('')}
+        </select>
+      </label>
+    `;
+  }
+
+  return `
+    <label class="field">
+      <span>${label}</span>
+      <input
+        type="${type}"
+        name="${name}"
+        value="${escapeHtml(value ?? '')}"
+        placeholder="${escapeHtml(placeholder)}"
+        ${required ? 'required' : ''}
+        ${type === 'number' ? `step="${step}" ${min !== '' ? `min="${min}"` : ''}` : ''}
+      />
+    </label>
+  `;
+}
+
+// Dwa osobne selecty: miesiąc (1-12) i rok (+/- 5 lat)
+export function monthYearFields(prefix, value) {
+  const MONTH_NAMES = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const [yearStr, monthStr] = value ? value.split('-') : [String(currentYear), currentMonth];
+  const years = [];
+  for (let y = currentYear - 5; y <= currentYear + 5; y++) years.push(y);
+
+  return `
+    <label class="field">
+      <span>Miesiąc</span>
+      <select name="${prefix}Month" required>
+        ${MONTH_NAMES.map((name, i) => {
+          const m = String(i + 1).padStart(2, '0');
+          return `<option value="${m}" ${m === monthStr ? 'selected' : ''}>${name}</option>`;
+        }).join('')}
+      </select>
+    </label>
+    <label class="field">
+      <span>Rok</span>
+      <select name="${prefix}Year" required>
+        ${years.map((y) => `<option value="${y}" ${String(y) === yearStr ? 'selected' : ''}>${y}</option>`).join('')}
+      </select>
+    </label>
+  `;
+}
+
+// Odczytuje YYYY-MM z dwóch pól FormData
+export function readMonthYear(formData, prefix) {
+  const month = String(formData.get(`${prefix}Month`)).padStart(2, '0');
+  const year = String(formData.get(`${prefix}Year`));
+  return `${year}-${month}`;
+}
+
+export function textareaField({ name, label, value = '', placeholder = '' }) {
+  return `
+    <label class="field">
+      <span>${label}</span>
+      <textarea name="${name}" rows="4" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value || '')}</textarea>
+    </label>
+  `;
+}
+
+export function modalActions(primaryLabel, secondaryLabel = 'Anuluj') {
+  return `
+    <div class="modal-actions">
+      <button class="ghost-button" type="button" data-action="close-modal">${secondaryLabel}</button>
+      <button class="primary-button" type="submit">${primaryLabel}</button>
+    </div>
+  `;
+}
+
+// --- Breadcrumb ---
+export function updateTopbar(state, activeTab) {
+  const container = document.getElementById('topbarContent');
+  if (!container) return;
+
+  const firm = state.firms.find((item) => item.id === state.ui.selectedFirmId) || null;
+  if (!firm || !state.ui.selectedFirmId) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const { ledger, selectedMonth } = ensureSelectedMonth(firm, state);
+  const scope = summarizeLedgerScope(ledger, selectedMonth);
+  const availableBalance = ledger.totals.adBalance || 0;
+  const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
+
+  container.innerHTML = `
+    <div class="topbar-grid">
+      <div class="topbar-grid-left">
+        <div class="tab-row">
+          <a class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" href="przeglad.html">Przegląd</a>
+          <a class="tab-button ${activeTab === 'invoices' ? 'is-active' : ''}" href="faktury.html">Faktury</a>
+          <a class="tab-button ${activeTab === 'balance' ? 'is-active' : ''}" href="portfel.html">Rozrachunek</a>
+        </div>
+      </div>
+      <div class="topbar-grid-center">
+        <div class="topbar-badges">
+          <div class="saldo-badge ${settlement.badgeClass}">
+            <span class="saldo-label">${settlement.shortLabel}</span>
+            <strong class="saldo-value">${formatCurrency(settlement.amount)}</strong>
+          </div>
+          <div class="do-wydania-badge ${availableBalance < 0 ? 'is-negative' : 'is-positive'}">
+            <span class="do-wydania-label">Dostępne na reklamę</span>
+            <strong class="do-wydania-value">${formatCurrency(availableBalance)}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-grid-right">
+        ${ledger.rows.length > 0 ? `
+          <div class="month-picker">
+            <select data-action="select-month-dropdown" aria-label="Wybierz miesiąc">
+              <option value="__all__" ${selectedMonth === '__all__' ? 'selected' : ''}>Razem</option>
+              <option value="__year__" ${selectedMonth === '__year__' ? 'selected' : ''}>Ten rok</option>
+              <option value="__quarter__" ${selectedMonth === '__quarter__' ? 'selected' : ''}>Ten kwartał</option>
+              <option disabled class="month-separator">───</option>
+              ${ledger.rows.map((row) => `
+                <option value="${row.month}" ${row.month === selectedMonth ? 'selected' : ''}>
+                  ${row.label}
+                </option>
+              `).join('')}
+              <option disabled class="month-separator">───</option>
+            </select>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// --- Firm List (shared by przeglad and other pages) ---
+export function renderFirmList(state) {
+  return `
+    <div class="firm-list-page">
+      <div class="list-page-head">
+        <div>
+          <p class="eyebrow">Firma</p>
+          <h1>Klienci</h1>
+        </div>
+      </div>
+
+      ${state.firms.length === 0 ? `
+        <div class="empty-block">
+          <p>Dodaj pierwszą firmę i zacznij od miesiąca, salda albo faktury.</p>
+          <button class="primary-button" type="button" data-action="add-firm">Dodaj firmę</button>
+        </div>
+      ` : `
+        <div class="firm-grid">
+          ${state.firms.map((firm) => {
+            const ledger = calculateFirmLedger(firm);
+            const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
+            return `
+            <div class="firm-card tile-card" data-action="select-firm" data-id="${firm.id}" tabindex="0" role="button">
+              <div class="tile-card-top">
+                <div class="firm-title-group">
+                  <span class="firm-title">${escapeHtml(firmDisplayName(firm))}</span>
+                  ${firm.notes ? `<span class="firm-notes">${escapeHtml(firm.notes)}</span>` : ''}
+                </div>
+                <span class="firm-card-actions">
+                  <button class="icon-button" type="button" data-action="edit-firm-from-list" data-id="${firm.id}" aria-label="Edytuj">
+                    ${icon('edit')}
+                  </button>
+                  <button class="icon-button tone-danger" type="button" data-action="delete-firm-from-list" data-id="${firm.id}" aria-label="Usuń">
+                    ${icon('trash')}
+                  </button>
+                </span>
+              </div>
+              <div class="firm-contact-line">
+                ${(firm.address1 || firm.address) ? `<span class="firm-address">${escapeHtml(firm.address1 || firm.address)}</span>` : ''}
+                ${firm.address2 ? `<span class="firm-address">${escapeHtml(firm.address2)}</span>` : ''}
+                ${firm.phone ? `<span class="firm-phone">${escapeHtml(firm.phone)}</span>` : ''}
+              </div>
+              <div class="tile-card-balance ${settlement.badgeClass}">
+                <span class="balance-label">${settlement.shortLabel}</span>
+                <strong class="balance-value">${formatCurrency(settlement.amount)}</strong>
+              </div>
+            </div>
+          `}).join('')}
+        </div>
+      `}
+
+      <button class="fab-button" type="button" data-action="add-firm" aria-label="Dodaj firmę">
+        ${icon('plus')}
+      </button>
+    </div>
+  `;
+}
+
+// --- FAB Menu (direct action, no dropdown) ---
+export function renderFabMenu(directAction) {
+  return `
+    <div class="fab-container">
+      <button class="fab-button" type="button" data-action="${directAction}" aria-label="Dodaj">
+        ${icon('plus')}
+      </button>
+    </div>
+  `;
+}
+
+// --- Toolbar (tabs + saldo, used in firm detail) ---
+
+
+// --- Category summary ---
+export function getCategorySummary(expenses) {
+  const map = new Map();
+  for (const expense of expenses) {
+    const key = expense.category || 'inne';
+    map.set(key, roundCurrency((map.get(key) || 0) + Number(expense.amount || 0)));
+  }
+  return [...map.entries()]
+    .map(([key, amount]) => ({ key, label: categoryLabel(key), amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+// --- Navigate to subpage preserving firm context ---
+export function navigateTo(page, state) {
+  if (state.ui.selectedFirmId) {
+    sessionStorage.setItem('ijanicki_firma_activeFirm', state.ui.selectedFirmId);
+    sessionStorage.setItem('ijanicki_firma_activeMonth', state.ui.selectedMonth || '');
+    sessionStorage.setItem('ijanicki_firma_activeTab', state.ui.activeTab || 'overview');
+  }
+  window.location.href = page;
+}
+
+// --- Restore firm context from sessionStorage ---
+export function restoreContext(state) {
+  const firmId = sessionStorage.getItem('ijanicki_firma_activeFirm');
+  const month = sessionStorage.getItem('ijanicki_firma_activeMonth');
+  const tab = sessionStorage.getItem('ijanicki_firma_activeTab');
+  if (firmId && state.firms.some(f => f.id === firmId)) {
+    state.ui.selectedFirmId = firmId;
+    state.ui.selectedMonth = month || null;
+    state.ui.activeTab = tab || 'overview';
+  }
+}
+
+// --- Edit month (2-step modal from dropdown) ---
+export function findMonthConfig(state, month) {
+  return getSelectedFirm(state)?.months.find((item) => item.month === month) || null;
+}
+
+/**
+ * 2-krokowy modal edycji miesiaca wywolywany z dropdowna ("Edytuj miesiac...").
+ * Krok 1: wybor miesiaca z listy.
+ * Krok 2: formularz edycji wybranego miesiaca.
+ */
+export function openEditMonthPicker(state, renderFn) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+
+  const rows = calculateFirmLedger(firm).rows;
+
+  if (rows.length === 0) {
+    openModal('Edytuj miesiac', '<p class="empty-msg">Brak miesiecy do edycji.</p>');
+    return;
+  }
+
+  const monthRows = rows.map((r) => `
+    <div class="month-edit-row" data-action="select-edit-month" data-month="${r.month}">
+      <span class="month-edit-label">${r.label}</span>
+      <button class="mini-button" type="button">Edytuj</button>
+    </div>
+  `).join('');
+
+  openModal('Edytuj miesiac', `
+    <div class="edit-month-step1">
+      <p class="eyebrow">Krok 1 z 2</p>
+      <h3>Wybierz miesiac do edycji</h3>
+      <div class="month-edit-list">${monthRows}</div>
+    </div>
+  `);
+
+  // Delegacja klikniecia na wierszach listy miesiecy
+  const body = document.querySelector('.modal-body');
+  if (!body) return;
+  body.addEventListener('click', function stepHandler(e) {
+    const row = e.target.closest('[data-action="select-edit-month"]');
+    if (!row) return;
+    body.removeEventListener('click', stepHandler);
+    showMonthEditStep2(state, row.dataset.month, renderFn);
+  });
+}
+
+/** Krok 2 – formularz edycji wybranego miesiaca */
+function showMonthEditStep2(state, month, renderFn) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const existing = findMonthConfig(state, month);
+  if (!existing) return;
+
+  const formContent = `
+    <div class="edit-month-step2">
+      <p class="eyebrow">Krok 2 z 2</p>
+      <h3>Edytuj: ${monthLabel(month)}</h3>
+      <form id="monthForm" class="form-grid">
+        <div class="form-row">
+          ${monthYearFields('month', existing.month)}
+          ${labeledInput({ name: 'budget', label: 'Budzet miesiaca', type: 'number', value: existing.budget ?? '', min: '0', required: true })}
+          ${labeledInput({ name: 'compensationPercent', label: '% wynagrodzenia', type: 'number', value: existing.compensationPercent ?? 50, min: '0', required: true })}
+        </div>
+        <div class="modal-actions is-split">
+          <button class="ghost-button tone-danger" type="button" data-action="delete-month-from-modal" data-month="${month}">Usun miesiac</button>
+          <div class="modal-actions-group">
+            <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
+            <button class="primary-button" type="submit">Zapisz miesiac</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  `;
+
+  const modalBody = document.querySelector('.modal-body');
+  if (!modalBody) return;
+  modalBody.innerHTML = formContent;
+
+  const form = document.getElementById('monthForm');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const monthVal = readMonthYear(data, 'month');
+
+    // Blokada duplikatow (przy zmianie miesiaca na inny)
+    if (monthVal !== month && firm.months.some(m => m.month === monthVal && m.id !== existing.id)) {
+      alert('Ten miesiac juz istnieje.');
+      return;
+    }
+
+    const monthEntry = {
+      id: existing.id || uid(),
+      month: monthVal,
+      budget: roundCurrency(data.get('budget')),
+      compensationPercent: roundCurrency(data.get('compensationPercent')),
+      updatedAt: new Date().toISOString(),
+    };
+
+    firm.months = [
+      ...firm.months.filter((item) => item.month !== monthVal && item.id !== monthEntry.id),
+      monthEntry,
+    ].sort((a, b) => a.month.localeCompare(b.month));
+    firm.updatedAt = new Date().toISOString();
+    state.ui.selectedMonth = monthVal;
+    state.ui.activeMonthTab = 'overview';
+    persistState(state);
+    // Aktualizuj sessionStorage, aby odswiezenie strony nie cofnęło zmiany
+    if (state.ui.selectedFirmId) {
+      sessionStorage.setItem('ijanicki_firma_activeFirm', state.ui.selectedFirmId);
+      sessionStorage.setItem('ijanicki_firma_activeMonth', state.ui.selectedMonth || '');
+      sessionStorage.setItem('ijanicki_firma_activeTab', state.ui.activeTab || 'overview');
+    }
+    closeModal();
+    renderFn();
+  });
+}

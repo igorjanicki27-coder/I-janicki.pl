@@ -1,0 +1,252 @@
+{
+  "t": "2026-06-05T10:22:03.922Z",
+  "f": [
+    {
+      "p": ".myAgent/index.json",
+      "m": "2026-06-05T06:26:59.044Z",
+      "z": 3111,
+      "k": 0,
+      "s": "{   \"t\": \"2026-06-05T06:26:59.043Z\",   \"f\": ["
+    },
+    {
+      "p": "app.js",
+      "m": "2026-06-05T09:49:31.746Z",
+      "z": 74676,
+      "k": 0
+    },
+    {
+      "p": "core.js",
+      "m": "2026-06-05T10:08:30.107Z",
+      "z": 15550,
+      "k": 0,
+      "s": "import {   calculateFirmLedger,   categoryLabel,",
+      "e": [
+        "icon",
+        "escapeHtml",
+        "initializeState",
+        "persistState",
+        "getSelectedFirm",
+        "safeMonthValue",
+        "ensureSelectedMonth",
+        "selectFirm",
+        "statCard",
+        "setModalRoot",
+        "closeModal",
+        "openModal",
+        "labeledInput",
+        "textareaField",
+        "modalActions",
+        "updateBreadcrumb",
+        "renderFirmList",
+        "renderFabMenu",
+        "renderToolbar",
+        "getCategorySummary"
+      ]
+    },
+    {
+      "p": "faktury.html",
+      "m": "2026-06-05T10:14:18.575Z",
+      "z": 1866,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\"> <head>"
+    },
+    {
+      "p": "faktury.js",
+      "m": "2026-06-05T10:15:36.999Z",
+      "z": 22261,
+      "k": 0,
+      "s": "import {   addDays,   calculateFirmLedger,"
+    },
+    {
+      "p": "index.html",
+      "m": "2026-06-05T10:08:55.916Z",
+      "z": 3948,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\"> <head>"
+    },
+    {
+      "p": "invoice.js",
+      "m": "2026-06-04T21:35:41.899Z",
+      "z": 8519,
+      "k": 0,
+      "s": "import { formatCurrency, formatDate } from './logic.js'; function escapeHtml(value) {   return String(value || '')",
+      "e": [
+        "buildInvoiceHtml",
+        "openInvoicePreview"
+      ]
+    },
+    {
+      "p": "logic.js",
+      "m": "2026-06-05T09:43:26.255Z",
+      "z": 9595,
+      "k": 0,
+      "s": "export const EXPENSE_CATEGORIES = [   { value: 'google_ads', label: 'Google Ads' },   { value: 'backlinki', label: 'Backlinki' },",
+      "e": [
+        "EXPENSE_CATEGORIES",
+        "PAYMENT_METHODS",
+        "PAYER_OPTIONS",
+        "VAT_OPTIONS",
+        "roundCurrency",
+        "formatCurrency",
+        "formatPercent",
+        "formatDate",
+        "monthFromDate",
+        "currentMonthKey",
+        "monthLabel",
+        "slugify",
+        "uid",
+        "addDays",
+        "categoryLabel",
+        "payerLabel",
+        "paymentMethodLabel",
+        "getOrderedMonths",
+        "calculateFirmLedger",
+        "getMonthRow"
+      ]
+    },
+    {
+      "p": "portfel.html",
+      "m": "2026-06-05T10:15:53.702Z",
+      "z": 1866,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\"> <head>"
+    },
+    {
+      "p": "portfel.js",
+      "m": "2026-06-05T10:16:46.964Z",
+      "z": 15566,
+      "k": 0,
+      "s": "import {   calculateFirmLedger,   formatCurrency,"
+    },
+    {
+      "p": "przeglad.html",
+      "m": "2026-06-05T10:11:46.956Z",
+      "z": 1869,
+      "k": 0,
+      "s": "<!doctype html> <html lang=\"pl\"> <head>"
+    },
+    {
+      "p": "przeglad.js",
+      "m": "2026-06-05T10:14:01.245Z",
+      "z": 29568,
+      "k": 0,
+      "s": "import {   calculateFirmLedger,   categoryLabel,"
+    },
+    {
+      "p": "storage.js",
+      "m": "2026-06-05T09:36:48.070Z",
+      "z": 7293,
+      "k": 0,
+      "s": "const STORAGE_KEY = 'ijanicki_firma_state_v1'; const DB_NAME = 'ijanicki-firma-files'; const DB_VERSION = 1;",
+      "e": [
+        "createEmptyState",
+        "normalizeState",
+        "loadState",
+        "saveState"
+      ]
+    },
+    {
+      "p": "styles.css",
+      "m": "2026-06-05T10:09:42.468Z",
+      "z": 27353,
+      "k": 0,
+      "s": ":root {   --bg: #061019;   --bg-soft: #0c1822;"
+    }
+  ],
+  "r": {
+    "name": "firma",
+    "type": "directory",
+    "children": [
+      {
+        "name": ".myAgent",
+        "type": "directory",
+        "children": [
+          {
+            "name": "index.json",
+            "type": "file",
+            "path": ".myAgent/index.json",
+            "s": "{   \"t\": \"2026-06-05T06:26:59.043Z\",   \"f\": ["
+          }
+        ]
+      },
+      {
+        "name": "app.js",
+        "type": "file",
+        "path": "app.js"
+      },
+      {
+        "name": "core.js",
+        "type": "file",
+        "path": "core.js",
+        "s": "import {   calculateFirmLedger,   categoryLabel,"
+      },
+      {
+        "name": "faktury.html",
+        "type": "file",
+        "path": "faktury.html",
+        "s": "<!doctype html> <html lang=\"pl\"> <head>"
+      },
+      {
+        "name": "faktury.js",
+        "type": "file",
+        "path": "faktury.js",
+        "s": "import {   addDays,   calculateFirmLedger,"
+      },
+      {
+        "name": "index.html",
+        "type": "file",
+        "path": "index.html",
+        "s": "<!doctype html> <html lang=\"pl\"> <head>"
+      },
+      {
+        "name": "invoice.js",
+        "type": "file",
+        "path": "invoice.js",
+        "s": "import { formatCurrency, formatDate } from './logic.js'; function escapeHtml(value) {   return String(value || '')"
+      },
+      {
+        "name": "logic.js",
+        "type": "file",
+        "path": "logic.js",
+        "s": "export const EXPENSE_CATEGORIES = [   { value: 'google_ads', label: 'Google Ads' },   { value: 'backlinki', label: 'Backlinki' },"
+      },
+      {
+        "name": "portfel.html",
+        "type": "file",
+        "path": "portfel.html",
+        "s": "<!doctype html> <html lang=\"pl\"> <head>"
+      },
+      {
+        "name": "portfel.js",
+        "type": "file",
+        "path": "portfel.js",
+        "s": "import {   calculateFirmLedger,   formatCurrency,"
+      },
+      {
+        "name": "przeglad.html",
+        "type": "file",
+        "path": "przeglad.html",
+        "s": "<!doctype html> <html lang=\"pl\"> <head>"
+      },
+      {
+        "name": "przeglad.js",
+        "type": "file",
+        "path": "przeglad.js",
+        "s": "import {   calculateFirmLedger,   categoryLabel,"
+      },
+      {
+        "name": "storage.js",
+        "type": "file",
+        "path": "storage.js",
+        "s": "const STORAGE_KEY = 'ijanicki_firma_state_v1'; const DB_NAME = 'ijanicki-firma-files'; const DB_VERSION = 1;"
+      },
+      {
+        "name": "styles.css",
+        "type": "file",
+        "path": "styles.css",
+        "s": ":root {   --bg: #061019;   --bg-soft: #0c1822;"
+      }
+    ]
+  },
+  "v": 1
+}

@@ -4,6 +4,7 @@ Disallow: /i-JANEK/
 Disallow: /Szablony/
 Disallow: /dokumenty/
 Disallow: /kalkulator/
+Disallow: /firma/
 Disallow: /kalkulator/_app/
 Disallow: /kalkulator/stare/
 

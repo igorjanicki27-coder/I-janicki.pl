@@ -1,0 +1,433 @@
+import {
+  calculateFirmLedger,
+  formatCurrency,
+  formatDate,
+  roundCurrency,
+  uid,
+} from './logic.js';
+import {
+  getAttachment,
+} from './storage.js';
+import {
+  icon,
+  escapeHtml,
+  statCard,
+  initializeState,
+  persistState,
+  getSelectedFirm,
+  safeMonthValue,
+  ensureSelectedMonth,
+  setModalRoot,
+  closeModal,
+  openModal,
+  labeledInput,
+  modalActions,
+  updateTopbar,
+  renderFabMenu,
+  navigateTo,
+  restoreContext,
+} from './core.js';
+
+// --- State ---
+let state = initializeState();
+restoreContext(state);
+state.ui.activeTab = 'balance';
+
+const root = document.getElementById('app');
+const modalRoot = document.getElementById('modalRoot');
+setModalRoot(modalRoot);
+
+function persist() {
+  state = persistState(state);
+  sessionStorage.setItem('ijanicki_firma_activeFirm', state.ui.selectedFirmId || '');
+  sessionStorage.setItem('ijanicki_firma_activeMonth', state.ui.selectedMonth || '');
+}
+
+const firm = getSelectedFirm(state);
+
+// --- Wallet rendering ---
+function renderBalance() {
+  const { ledger } = ensureSelectedMonth(firm, state);
+  const walletEntries = [...(firm.walletEntries || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const expenses = walletEntries.filter(e => e.type === 'expense');
+  const incomes = walletEntries.filter(e => e.type === 'income');
+
+  return `
+    <section class="section-band">
+      <div class="stats-grid stats-grid-4">
+        ${statCard('Aktualne saldo', formatCurrency(ledger.totals.walletBalance), ledger.totals.walletBalance < 0 ? 'rose' : 'emerald', 'Saldo klienta wobec Ciebie')}
+        ${statCard('Przychody', formatCurrency(ledger.totals.totalWalletIncome), 'emerald', 'Wplywy do portfela')}
+        ${statCard('Rozchody', formatCurrency(ledger.totals.totalWalletExpenses), 'rose', 'Wydatki z portfela')}
+        ${statCard('Bilans portfela', formatCurrency(ledger.totals.totalWalletNet), ledger.totals.totalWalletNet < 0 ? 'rose' : 'emerald', 'Przychody minus rozchody')}
+      </div>
+    </section>
+
+    <section class="section-band">
+      <div class="wallet-grid">
+        <div class="wallet-column">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">Portfel</p>
+              <h3>Rozchody</h3>
+            </div>
+            <button class="primary-button" type="button" data-action="add-wallet-expense">${icon('plus')}Dodaj rozchod</button>
+          </div>
+
+          ${expenses.length === 0 ? `
+            <div class="empty-block">
+              <p>Brak rozchodow. Dodaj wpis podpinajac fakture.</p>
+            </div>
+          ` : `
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Lp.</th>
+                    <th>Data</th>
+                    <th>Tytul</th>
+                    <th>Nr FV</th>
+                    <th>Kwota</th>
+                    <th>Z/W</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${expenses.map((entry, index) => {
+                    const linkedInv = firm.invoices.find(inv => inv.id === entry.linkedInvoiceId);
+                    const zwLabel = linkedInv ? (linkedInv.kind === 'own' ? 'W' : 'Z') : '-';
+                    return `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${formatDate(entry.date)}</td>
+                      <td>${escapeHtml(entry.title || linkedInv?.title || '-')}</td>
+                      <td>${escapeHtml(linkedInv?.number || '-')}</td>
+                      <td class="tone-rose">${formatCurrency(linkedInv?.amount || 0)}</td>
+                      <td><span class="badge ${zwLabel === 'W' ? 'badge-wew' : 'badge-zew'}">${zwLabel}</span></td>
+                      <td class="table-actions">
+                        ${linkedInv?.attachmentIds?.length ? `<button class="mini-button" type="button" data-action="download-wallet-attachment" data-id="${entry.id}" aria-label="Pobierz">${icon('download')}</button>` : ''}
+                        <button class="mini-button tone-danger" type="button" data-action="delete-wallet-entry" data-id="${entry.id}">${icon('trash')}</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+
+        <div class="wallet-column">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">Portfel</p>
+              <h3>Przychody</h3>
+            </div>
+            <button class="primary-button" type="button" data-action="add-wallet-income">${icon('plus')}Dodaj przychod</button>
+          </div>
+
+          ${incomes.length === 0 ? `
+            <div class="empty-block">
+              <p>Brak przychodow. Dodaj wpis.</p>
+            </div>
+          ` : `
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Lp.</th>
+                    <th>Data</th>
+                    <th>Tytul</th>
+                    <th>Kwota</th>
+                    <th>K/G</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${incomes.map((entry, index) => {
+                    const methodLabel = entry.method === 'cash' ? 'G' : 'K';
+                    return `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${formatDate(entry.date)}</td>
+                      <td>${escapeHtml(entry.title || '-')}</td>
+                      <td class="tone-mint">${formatCurrency(entry.amount)}</td>
+                      <td><span class="badge ${entry.method === 'cash' ? 'badge-gotowka' : 'badge-karta'}">${methodLabel}</span></td>
+                      <td class="table-actions">
+                        <button class="mini-button tone-danger" type="button" data-action="delete-wallet-entry" data-id="${entry.id}">${icon('trash')}</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderFirmDetail() {
+  return `
+    <div class="firm-detail-page">
+      <section class="main-area">
+        ${renderBalance()}
+      </section>
+      ${renderFabMenu()}
+    </div>
+  `;
+}
+
+// --- Modals ---
+function openWalletExpenseModal() {
+  const allInvoices = [...firm.invoices].sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+  const linkedIds = new Set((firm.walletEntries || []).filter(e => e.type === 'expense').map(e => e.linkedInvoiceId));
+  const availableInvoices = allInvoices.filter(inv => !linkedIds.has(inv.id));
+
+  openModal(
+    'Dodaj rozchod',
+    `
+      <form id="walletExpenseForm" class="form-grid">
+        ${availableInvoices.length === 0 ? `
+          <div class="empty-block" style="grid-column:1/-1">
+            <p>Brak dostepnych faktur do podpiecia. Wszystkie faktury sa juz podpiete jako rozchody lub nie ma zadnych faktur.</p>
+          </div>
+        ` : `
+          ${labeledInput({
+            name: 'invoiceId',
+            label: 'Wybierz fakture',
+            type: 'select',
+            value: '',
+            options: [
+              { value: '', label: '- wybierz fakture -' },
+              ...availableInvoices.map(inv => ({
+                value: inv.id,
+                label: `${escapeHtml(inv.number || 'Brak nr')} - ${escapeHtml(inv.title || '')} (${formatCurrency(inv.amount)})`,
+              })),
+            ],
+          })}
+          <div class="field field-span-2" id="walletExpensePreview" style="display:none;">
+            <div class="info-box">
+              <p><strong>Podglad:</strong></p>
+              <p id="walletExpensePreviewText"></p>
+            </div>
+          </div>
+        `}
+        ${availableInvoices.length > 0 ? modalActions('Dodaj rozchod') : `
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
+          </div>
+        `}
+      </form>
+    `,
+    { wide: true }
+  );
+
+  if (availableInvoices.length === 0) return;
+
+  const form = document.getElementById('walletExpenseForm');
+  const selectEl = form.querySelector('[name="invoiceId"]');
+  const previewDiv = document.getElementById('walletExpensePreview');
+  const previewText = document.getElementById('walletExpensePreviewText');
+
+  selectEl.addEventListener('change', () => {
+    const inv = firm.invoices.find(i => i.id === selectEl.value);
+    if (inv) {
+      const zwLabel = inv.kind === 'own' ? 'W (wewnetrzna)' : 'Z (zewnetrzna)';
+      previewText.innerHTML = `
+        <strong>Nr FV:</strong> ${escapeHtml(inv.number || '-')}<br>
+        <strong>Tytul:</strong> ${escapeHtml(inv.title || '-')}<br>
+        <strong>Kwota:</strong> ${formatCurrency(inv.amount)}<br>
+        <strong>Oznaczenie:</strong> ${zwLabel}<br>
+        <strong>Zalacznik:</strong> ${inv.attachmentIds?.length ? 'Tak' : 'Brak'}
+      `;
+      previewDiv.style.display = 'block';
+    } else {
+      previewDiv.style.display = 'none';
+    }
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const invoiceId = String(data.get('invoiceId'));
+    const inv = firm.invoices.find(i => i.id === invoiceId);
+    if (!inv) {
+      window.alert('Wybierz fakture.');
+      return;
+    }
+
+    const entry = {
+      id: uid(),
+      type: 'expense',
+      date: inv.issueDate || new Date().toISOString().slice(0, 10),
+      title: inv.title || '',
+      linkedInvoiceId: inv.id,
+      createdAt: new Date().toISOString(),
+    };
+
+    firm.walletEntries = [...(firm.walletEntries || []), entry];
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    closeModal();
+    render();
+  });
+}
+
+function openWalletIncomeModal(existing = null) {
+  openModal(
+    existing ? 'Edytuj przychod' : 'Dodaj przychod',
+    `
+      <form id="walletIncomeForm" class="form-grid">
+        ${labeledInput({ name: 'date', label: 'Data', type: 'date', value: existing?.date || new Date().toISOString().slice(0, 10), required: true })}
+        ${labeledInput({ name: 'title', label: 'Tytul', value: existing?.title || '', placeholder: 'Np. Wplata klienta', required: true })}
+        ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: existing?.amount ?? '', min: '0', required: true })}
+        ${labeledInput({
+          name: 'method',
+          label: 'Metoda platnosci',
+          type: 'select',
+          value: existing?.method || 'card',
+          options: [
+            { value: 'card', label: 'Karta (K)' },
+            { value: 'cash', label: 'Gotowka (G)' },
+          ],
+        })}
+        ${modalActions(existing ? 'Zapisz przychod' : 'Dodaj przychod')}
+      </form>
+    `
+  );
+
+  const form = document.getElementById('walletIncomeForm');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const entry = {
+      id: existing?.id || uid(),
+      type: 'income',
+      date: String(data.get('date')),
+      title: String(data.get('title') || '').trim(),
+      amount: roundCurrency(data.get('amount')),
+      method: String(data.get('method')),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
+
+    firm.walletEntries = [
+      ...(firm.walletEntries || []).filter(e => e.id !== entry.id),
+      entry,
+    ].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    closeModal();
+    render();
+  });
+}
+
+async function openAttachmentById(id) {
+  const attachment = await getAttachment(id);
+  if (!attachment?.blob) {
+    window.alert('Nie udalo sie odczytac pliku.');
+    return;
+  }
+  const url = URL.createObjectURL(attachment.blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// --- Event Handling ---
+function handleClick(event) {
+  const openFab = document.querySelector('.fab-container.is-open');
+  if (openFab && !event.target.closest('.fab-container')) {
+    openFab.classList.remove('is-open');
+  }
+
+  if (event.target instanceof HTMLElement && event.target.classList.contains('modal-overlay')) {
+    closeModal();
+    return;
+  }
+
+  const target = event.target.closest('[data-action]');
+  if (!target) return;
+
+  const { action } = target.dataset;
+
+  if (action === 'toggle-fab-menu') {
+    const container = target.closest('.fab-container');
+    if (container) container.classList.toggle('is-open');
+    return;
+  }
+
+  if (target.closest('.fab-container.is-open')) {
+    target.closest('.fab-container').classList.remove('is-open');
+  }
+
+  if (action === 'close-modal') return closeModal();
+
+  // Navigation
+  if (action === 'nav-portfel') return;
+  if (action === 'nav-faktury') return navigateTo('faktury.html', state);
+
+  if (action === 'add-wallet-expense') return openWalletExpenseModal();
+  if (action === 'add-wallet-income') return openWalletIncomeModal();
+  if (action === 'issue-invoice') return navigateTo('faktury.html', state);
+  if (action === 'add-expense') return navigateTo('przeglad.html', state);
+  if (action === 'add-balance-plus') return navigateTo('przeglad.html', state);
+  if (action === 'add-month') return navigateTo('przeglad.html', state);
+
+  if (action === 'delete-wallet-entry') {
+    if (!firm || !window.confirm('Usunac ten wpis portfela?')) return;
+    firm.walletEntries = (firm.walletEntries || []).filter((item) => item.id !== target.dataset.id);
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    return render();
+  }
+  if (action === 'download-wallet-attachment') {
+    const walletEntry = (firm.walletEntries || []).find(e => e.id === target.dataset.id);
+    if (!walletEntry?.linkedInvoiceId) return;
+    const linkedInv = firm.invoices.find(inv => inv.id === walletEntry.linkedInvoiceId);
+    if (!linkedInv?.attachmentIds?.length) return;
+    for (const attachmentId of linkedInv.attachmentIds) {
+      void openAttachmentById(attachmentId);
+    }
+    return;
+  }
+}
+
+// --- Render ---
+function render() {
+  if (!firm) {
+    state.ui.selectedFirmId = null;
+    window.location.href = 'przeglad.html';
+    return;
+  }
+
+  try {
+    root.innerHTML = renderFirmDetail();
+    updateTopbar(state, 'balance');
+  } catch (e) {
+    root.innerHTML = `
+      <div style="padding: 40px; color: #f44; font-family: monospace;">
+        <h2>Blad renderowania</h2>
+        <pre>${escapeHtml(e.message)}</pre>
+      </div>
+    `;
+  }
+}
+
+// --- Init ---
+document.body.addEventListener('click', handleClick);
+
+document.body.addEventListener('change', (event) => {
+  const target = event.target.closest('[data-action="select-month-dropdown"]');
+  if (!target) return;
+  if (!firm) return;
+  state.ui.selectedMonth = target.value;
+  persist();
+  render();
+});
+
+if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
+  window.location.href = 'index.html';
+} else if (!firm) {
+  window.location.href = 'przeglad.html';
+} else {
+  render();
+}
