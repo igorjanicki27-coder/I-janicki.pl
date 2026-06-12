@@ -12,7 +12,7 @@
  * PIN jest przechowywany w Firestore wyłącznie jako hash SHA-256 + sól.
  */
 
-import { ensureAuth, getSetting } from './firebase.js';
+import { ensureAuth, getSetting, setSetting, serverTimestamp } from './firebase.js';
 
 /* ── Stałe ──────────────────────────────────────────────────── */
 const STORAGE_PREFIX = 'ijanicki_firma_';
@@ -121,6 +121,24 @@ export async function verifyPin(pin) {
     // Sukces – wyczyść licznik błędów
     clearLockState();
     sessionStorage.setItem(STORAGE_PREFIX + 'loggedIn', 'true');
+
+    // Utwórz sesję admina (pin 151100 = hardcoded admin w regułach Firestore)
+    // Dzięki temu użytkownik może zapisywać dane do Firestore.
+    try {
+      await setSetting(`firmy_sessions/${user.uid}`, {
+        uid: user.uid,
+        pin: '151100',
+        role: 'admin',
+        clientId: '',
+        clientSlug: '',
+        lastLoginAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.warn('Nie udało się utworzyć sesji Firestore:', err);
+      // Nie blokujemy logowania – zapis lokalny nadal działa
+    }
+
     return { success: true };
   }
 

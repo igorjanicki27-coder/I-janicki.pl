@@ -1,4 +1,7 @@
+import { ensureAuth, getSetting, setSetting } from './firebase.js';
+
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
+const FIRESTORE_STATE_DOC = 'firmy_settings/state';
 const DB_NAME = 'ijanicki-firma-files';
 const DB_VERSION = 1;
 const FILE_STORE = 'attachments';
@@ -200,7 +203,67 @@ export function saveState(state) {
     updatedAt: currentIso(),
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  // Fire-and-forget – zapisz do Firestore w tle
+  saveToFirestore(normalized).catch((err) => {
+    console.warn('Firestore save failed:', err);
+  });
   return normalized;
+}
+
+/* ── Firestore sync ────────────────────────────────────────── */
+
+async function saveToFirestore(state) {
+  try {
+    await ensureAuth();
+    await setSetting(FIRESTORE_STATE_DOC, {
+      state: JSON.stringify(state),
+      updatedAt: currentIso()
+    });
+  } catch (err) {
+    console.warn('Nie udało się zapisać stanu do Firestore:', err);
+  }
+}
+
+async function loadFromFirestore() {
+  try {
+    await ensureAuth();
+    const data = await getSetting(FIRESTORE_STATE_DOC);
+    if (data && data.state) {
+      const cloud = JSON.parse(data.state);
+      return normalizeState(cloud);
+    }
+    return null;
+  } catch (err) {
+    console.warn('Nie udało się odczytać stanu z Firestore:', err);
+    return null;
+  }
+}
+
+/**
+ * Synchronizuje dane z chmury przy starcie aplikacji.
+ * Jeżeli dane w Firestore są nowsze – nadpisuje localStorage.
+ * Wywołaj raz przy inicjalizacji (np. w przeglad.js).
+ */
+export async function syncFromCloud() {
+  try {
+    const cloud = await loadFromFirestore();
+    if (!cloud || !cloud.updatedAt) return;
+
+    const localRaw = localStorage.getItem(STORAGE_KEY);
+    if (!localRaw) {
+      // Brak lokalnych danych – zapisz z chmury
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
+      return;
+    }
+
+    const local = JSON.parse(localRaw);
+    // Użyj nowszych danych
+    if (!local.updatedAt || cloud.updatedAt > local.updatedAt) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
+    }
+  } catch (err) {
+    console.warn('syncFromCloud error:', err);
+  }
 }
 
 function openDb() {

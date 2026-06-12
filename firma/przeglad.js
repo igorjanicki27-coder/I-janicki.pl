@@ -22,6 +22,7 @@ import {
   deleteAttachment,
   getAttachment,
   loadState,
+  syncFromCloud,
 } from './storage.js?v=16';
 import {
   icon,
@@ -1552,5 +1553,5 @@ document.body.addEventListener('change', (event) => {
 if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'index.html';
 } else {
-  render();
+  syncFromCloud().then(() => render());
 }

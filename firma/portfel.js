@@ -10,6 +10,7 @@ import {
 } from './logic.js?v=13';
 import {
   getAttachment,
+  syncFromCloud,
 } from './storage.js?v=13';
 import {
   icon,
@@ -314,5 +315,5 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
 } else if (!firm) {
   window.location.href = 'przeglad.html';
 } else {
-  render();
+  syncFromCloud().then(() => render());
 }

@@ -14,6 +14,7 @@ import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
+  syncFromCloud,
 } from './storage.js?v=13';
 import {
   icon,
@@ -1340,8 +1341,9 @@ document.body.addEventListener('change', (event) => {
 if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'index.html';
 } else {
-  render();
-  // Przywróć podgląd faktury po odświeżeniu strony
+  syncFromCloud().then(() => {
+    render();
+    // Przywróć podgląd faktury po odświeżeniu strony
   try {
     const raw = sessionStorage.getItem('ijanicki_firma_previewInvoice');
     if (raw) {
@@ -1359,4 +1361,5 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
       }
     }
   } catch (_) { /* ignoruj błędy parsowania */ }
+  });
 }

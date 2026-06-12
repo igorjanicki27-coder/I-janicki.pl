@@ -15,7 +15,9 @@ import {
 import {
   getFirestore,
   doc,
-  getDoc
+  getDoc,
+  setDoc,
+  serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /* ── Firebase config ─────────────────────────────────────────── */
@@ -52,10 +54,20 @@ export function ensureAuth() {
   });
 }
 
-/** Pobiera dokument z Firestore (bez zapisu). */
+/** Pobiera dokument z Firestore. */
 export async function getSetting(docPath) {
   const snap = await getDoc(doc(db, docPath));
   return snap.exists() ? snap.data() : null;
 }
 
-export { auth, db };
+/** Zapisuje dokument w Firestore. */
+export async function setSetting(docPath, data) {
+  await setDoc(doc(db, docPath), data);
+}
+
+/** Pobiera surowy snapshot (do sprawdzenia exists/metadata). */
+export async function getDocSnapshot(docPath) {
+  return getDoc(doc(db, docPath));
+}
+
+export { auth, db, serverTimestamp };
