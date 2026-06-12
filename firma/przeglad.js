@@ -107,10 +107,6 @@ function generateMonthOptions(firm, excludeMonth) {
   return result;
 }
 
-function findExpense(id) {
-  return getSelectedFirm(state)?.expenses.find((item) => item.id === id) || null;
-}
-
 function firmMonthsOptions(firm) {
   var months = [...(firm?.months || [])].sort(function(a, b) { return b.month.localeCompare(a.month); });
   return months.map(function(m) { return { value: m.month, label: monthLabel(m.month) }; });
@@ -567,7 +563,6 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             <p class="eyebrow">Ostatnie wydatki</p>
             <h3>Najświeższe pozycje z tego miesiąca</h3>
           </div>
-          <button class="primary-button" type="button" data-action="add-expense">${icon('plus')}Dodaj wydatek</button>
         </div>
         ${expensePreview.length === 0 ? `
           <div class="empty-block"><p>Brak wydatków w tym miesiącu.</p></div>
@@ -612,7 +607,6 @@ function renderMonthExpenses(month, expenses) {
         <p class="eyebrow">Wydatki</p>
         <h3>${monthLabel(month)}</h3>
       </div>
-      <button class="primary-button" type="button" data-action="add-expense">${icon('plus')}Dodaj wydatek</button>
     </div>
 
     ${expenses.length === 0 ? `
@@ -629,7 +623,6 @@ function renderMonthExpenses(month, expenses) {
               <th>Opis</th>
               <th>Platnik</th>
               <th>Kwota</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -643,10 +636,6 @@ function renderMonthExpenses(month, expenses) {
                 </td>
                 <td>${payerLabel(expense.payer)}</td>
                 <td>${formatCurrency(expense.amount)}</td>
-                <td class="table-actions">
-                  <button class="mini-button" type="button" data-action="edit-expense" data-id="${expense.id}">${icon('edit')}</button>
-                  <button class="mini-button tone-danger" type="button" data-action="delete-expense" data-id="${expense.id}">${icon('trash')}</button>
-                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -1136,58 +1125,6 @@ function showMonthEditStep2(month) {
   });
 }
 
-function openExpenseModal(existing = null) {
-  const firm = getSelectedFirm(state);
-  if (!firm) return;
-  const defaultDate = existing?.date || new Date().toISOString().slice(0, 10);
-
-  openModal(
-    existing ? 'Edytuj wydatek' : 'Dodaj wydatek',
-    `
-      <form id="expenseForm" class="form-grid">
-        ${labeledInput({ name: 'date', label: 'Data', type: 'date', value: defaultDate, required: true })}
-        ${monthYearFields('month', existing?.month || safeMonthValue(state))}
-        ${labeledInput({ name: 'category', label: 'Kategoria', type: 'select', value: existing?.category || 'google_ads', options: EXPENSE_CATEGORIES })}
-        ${labeledInput({ name: 'payer', label: 'Platnik', type: 'select', value: existing?.payer || 'my_funds', options: PAYER_OPTIONS })}
-        ${labeledInput({ name: 'vendor', label: 'Dostawca / wystawca', value: existing?.vendor || '' })}
-        ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: existing?.amount ?? '', min: '0', required: true })}
-        <div class="field field-span-2">
-          <span>Opis</span>
-          <textarea name="description" rows="4">${escapeHtml(existing?.description || '')}</textarea>
-        </div>
-        ${modalActions(existing ? 'Zapisz wydatek' : 'Dodaj wydatek')}
-      </form>
-    `
-  );
-
-  const form = document.getElementById('expenseForm');
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const data = new FormData(form);
-    const expense = {
-      id: existing?.id || uid(),
-      date: String(data.get('date')),
-      month: readMonthYear(data, 'month'),
-      category: String(data.get('category')),
-      payer: String(data.get('payer')),
-      vendor: String(data.get('vendor') || '').trim(),
-      amount: roundCurrency(data.get('amount')),
-      description: String(data.get('description') || '').trim(),
-      linkedInvoiceId: existing?.linkedInvoiceId || null,
-      attachmentIds: existing?.attachmentIds || [],
-      createdAt: existing?.createdAt || new Date().toISOString(),
-    };
-    firm.expenses = [...firm.expenses.filter((item) => item.id !== expense.id), expense]
-      .sort((a, b) => a.date.localeCompare(b.date));
-    firm.updatedAt = new Date().toISOString();
-    state.ui.selectedMonth = expense.month;
-    state.ui.activeMonthTab = 'expenses';
-    persist();
-    closeModal();
-    render();
-  });
-}
-
 function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
   const firm = getSelectedFirm(state);
   if (!firm) return;
@@ -1432,15 +1369,6 @@ function handleClick(event) {
     state.ui.activeMonthTab = 'overview';
     persist();
     closeModal();
-    return render();
-  }
-  if (action === 'add-expense') return openExpenseModal();
-  if (action === 'edit-expense') return openExpenseModal(findExpense(target.dataset.id));
-  if (action === 'delete-expense') {
-    if (!firm || !window.confirm('Usunac ten wydatek?')) return;
-    firm.expenses = firm.expenses.filter((item) => item.id !== target.dataset.id);
-    firm.updatedAt = new Date().toISOString();
-    persist();
     return render();
   }
   if (action === 'add-balance-plus') return openBalanceEntryModal(null, 'plus');
