@@ -71,56 +71,130 @@
           </button>
         </form>
 
-        <p class="login-hint">Tryb emulacji — wprowadź dowolny PIN, aby przejść dalej.</p>
+        <p class="login-hint" id="loginHint">Wprowadź PIN, aby się zalogować.</p>
+        <div class="login-error" id="loginError" style="display:none;"></div>
       </div>
     </main>
   </div>
 
   <script type="module">
+    import { verifyPin, isLoggedIn, logout, isLockedOut, lockRemainingSeconds } from './auth.js';
+
     const form = document.getElementById('loginForm');
     const input = document.getElementById('pinInput');
+    const hint = document.getElementById('loginHint');
+    const errorEl = document.getElementById('loginError');
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    form.addEventListener('submit', (event) => {
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+    }
+
+    function hideError() {
+      errorEl.style.display = 'none';
+    }
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      input.disabled = loading;
+      submitBtn.textContent = loading ? 'Sprawdzanie…' : 'Zaloguj się';
+      if (!loading) {
+        // przywróć ikonę strzałki
+        submitBtn.innerHTML = `Zaloguj się
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>`;
+      }
+    }
+
+    // Sprawdź blokadę przy ładowaniu
+    if (isLockedOut()) {
+      const sec = lockRemainingSeconds();
+      const min = Math.ceil(sec / 60);
+      form.style.display = 'none';
+      showError(`⛔ Konto tymczasowo zablokowane. Spróbuj ponownie za ${min} min.`);
+    }
+
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      hideError();
+
       const pin = input.value.trim();
 
-      if (!pin || pin.length < 1) {
+      if (!pin || pin.length < 4) {
         input.classList.add('pin-error');
-        input.placeholder = 'Wprowadź PIN';
+        showError('PIN musi mieć minimum 4 cyfry.');
         setTimeout(() => {
           input.classList.remove('pin-error');
-          input.placeholder = '····';
         }, 1500);
         return;
       }
 
-      // Emulacja — każdy PIN jest akceptowany
-      sessionStorage.setItem('ijanicki_firma_loggedIn', 'true');
-      // Zawsze zaczynaj od listy firm, nie wchodź do poprzednio wybranej
-      sessionStorage.removeItem('ijanicki_firma_activeFirm');
-      sessionStorage.removeItem('ijanicki_firma_activeMonth');
-      window.location.href = 'przeglad.html';
+      setLoading(true);
+
+      try {
+        const result = await verifyPin(pin);
+
+        if (result.success) {
+          sessionStorage.removeItem('ijanicki_firma_activeFirm');
+          sessionStorage.removeItem('ijanicki_firma_activeMonth');
+          window.location.href = 'przeglad.html';
+          return;
+        }
+
+        // Błędny PIN lub blokada
+        showError(result.error);
+        input.classList.add('pin-error');
+        input.value = '';
+        input.focus();
+        setTimeout(() => input.classList.remove('pin-error'), 1500);
+
+        // Jeśli konto właśnie zostało zablokowane – ukryj formularz
+        if (isLockedOut()) {
+          form.style.display = 'none';
+          hint.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(err);
+        showError('Wystąpił błąd. Spróbuj ponownie później.');
+      } finally {
+        setLoading(false);
+      }
     });
 
     // Jeśli już zalogowany — pokaż panel zamiast logowania
-    if (sessionStorage.getItem('ijanicki_firma_loggedIn') === 'true') {
-      document.getElementById('loginForm').style.display = 'none';
-      document.querySelector('.login-hint').style.display = 'none';
+    if (isLoggedIn()) {
+      form.style.display = 'none';
+      hint.style.display = 'none';
+      errorEl.style.display = 'none';
+
       const loggedInBox = document.createElement('div');
       loggedInBox.className = 'logged-in-box';
       loggedInBox.innerHTML = `
         <p style="margin:0 0 16px;color:#94a3b8;font-size:15px;">Jesteś zalogowany</p>
-        <button class="login-button" onclick="sessionStorage.removeItem('ijanicki_firma_activeFirm');sessionStorage.removeItem('ijanicki_firma_activeMonth');window.location.href='przeglad.html'">
+        <button class="login-button" id="gotoFirmsBtn">
           Przejdź do firm
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
-        <button class="logout-button" onclick="sessionStorage.removeItem('ijanicki_firma_loggedIn');window.location.reload()" style="margin-top:12px;background:none;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:14px;">
+        <button class="logout-button" id="logoutBtn" style="margin-top:12px;background:none;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:14px;">
           Wyloguj się
         </button>
       `;
       document.querySelector('.login-card').appendChild(loggedInBox);
+
+      document.getElementById('gotoFirmsBtn').addEventListener('click', () => {
+        sessionStorage.removeItem('ijanicki_firma_activeFirm');
+        sessionStorage.removeItem('ijanicki_firma_activeMonth');
+        window.location.href = 'przeglad.html';
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        logout();
+        window.location.reload();
+      });
     }
   </script>
 </body>
