@@ -771,6 +771,10 @@ function openExternalInvoiceStep3(step2Data) {
           <span>Zalacznik (PDF lub obraz, do 1 MB)</span>
           <input type="file" name="file" accept=".pdf,image/*" />
         </label>
+        <label class="field checkbox-row field-span-2">
+          <input type="checkbox" name="skipBudget" value="1" />
+          <span>Nie odejmuj od budżetu</span>
+        </label>
         ${modalActions('Dodaj fakture')}
       </form>
     `,
