@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=16';
+} from './storage.js?v=17';
 
 // --- Icons ---
 export function icon(name) {
