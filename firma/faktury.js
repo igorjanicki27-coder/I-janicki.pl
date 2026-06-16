@@ -9,13 +9,13 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=13';
+} from './logic.js?v=17';
 import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
   syncFromCloud,
-} from './storage.js?v=13';
+} from './storage.js?v=17';
 import {
   icon,
   escapeHtml,
@@ -36,8 +36,9 @@ import {
   navigateTo,
   openEditMonthPicker,
   restoreContext,
-} from './core.js?v=13';
-import { openInvoicePreview } from './invoice.js?v=13';
+  initSyncIndicator,
+} from './core.js?v=17';
+import { openInvoicePreview } from './invoice.js?v=17';
 
 // --- State ---
 let state = initializeState();
@@ -246,7 +247,7 @@ function renderInvoiceRow(invoice, index, showActions = false) {
   const kindLabel = invoice.kind === 'own' ? 'W' : 'Z';
   const kindTitle = invoice.kind === 'own' ? 'Wewnetrzna (wystawiona dla klienta)' : 'Zewnetrzna (dokument kosztowy)';
   const paid = invoice.paidBy === 'me' || invoice.paidBy === 'client';
-  const budgetFlag = invoice.kind === 'external' && invoice.subtractFromBudget === false ? '<span class="table-subline">Nie odejmuje od budżetu</span>' : '';
+  const budgetFlag = invoice.subtractFromBudget === false ? '<span class="table-subline">Nie odejmuje od budżetu</span>' : '';
   return `
     <tr data-id="${invoice.id}">
       <td class="col-lp">${index + 1}</td>
@@ -602,6 +603,10 @@ function openOwnInvoiceStep3(step2Data) {
           <span>Uwagi</span>
           <textarea name="notes" rows="2"></textarea>
         </label>
+        <label class="field checkbox-row field-span-2">
+          <input type="checkbox" name="skipBudget" value="1" />
+          <span>Nie odejmuj od budżetu</span>
+        </label>
         ${modalActions('Wystaw fakture')}
       </form>
     `,
@@ -667,7 +672,9 @@ function openOwnInvoiceStep3(step2Data) {
     }
 
     const total = itemsData.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
-    const notes = String(new FormData(form).get('notes') || '').trim();
+    const formData = new FormData(form);
+    const notes = String(formData.get('notes') || '').trim();
+    const subtractFromBudget = !formData.get('skipBudget');
 
     const invoice = {
       id: uid(),
@@ -692,6 +699,7 @@ function openOwnInvoiceStep3(step2Data) {
       },
       issuerSnapshot: { ...state.settings.issuer },
       notes,
+      subtractFromBudget,
       amount: roundCurrency(total),
       items: itemsData,
       attachmentIds: [],
@@ -762,11 +770,6 @@ function openExternalInvoiceStep3(step2Data) {
         <label class="field">
           <span>Zalacznik (PDF lub obraz, do 1 MB)</span>
           <input type="file" name="file" accept=".pdf,image/*" />
-        </label>
-        <label class="field checkbox-row field-span-2">
-          <input type="checkbox" name="skipBudget" value="1" />
-          <span>Nie odejmuj od budżetu</span>
-          <small style="grid-column: 2 / -1; color: var(--text-muted); line-height: 1.4;">Faktura zostanie w rejestrze, ale nie zmniejszy puli „Dostępne na reklamę”.</small>
         </label>
         ${modalActions('Dodaj fakture')}
       </form>
@@ -944,9 +947,7 @@ function openInvoiceDetailModal(invoice) {
   const items = invoice.items || [];
   const kindLabel = invoice.kind === 'own' ? 'Wlasna' : 'Zewnetrzna';
   const paidLabel = invoice.paidBy === 'me' ? 'Oplacilem ja' : invoice.paidBy === 'client' ? 'Oplacil klient' : 'Nieoplacona';
-  const budgetLabel = invoice.kind === 'external'
-    ? (invoice.subtractFromBudget === false ? 'Nie odejmuje od budżetu' : 'Odejmuje od budżetu')
-    : '';
+  const budgetLabel = invoice.subtractFromBudget === false ? 'Nie odejmuje od budżetu' : 'Odejmuje od budżetu';
   const itemsHtml = items.length === 0
     ? '<p style="text-align:center;color:var(--text-dim);padding:12px">Brak pozycji.</p>'
     : `<table class="data-table" style="margin:0">
@@ -1341,6 +1342,7 @@ document.body.addEventListener('change', (event) => {
 if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'index.html';
 } else {
+  initSyncIndicator();
   syncFromCloud().then(() => {
     render();
     // Przywróć podgląd faktury po odświeżeniu strony

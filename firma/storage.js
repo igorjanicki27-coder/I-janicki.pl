@@ -2,13 +2,111 @@ import { ensureAuth, getSetting, setSetting } from './firebase.js';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
-const DB_NAME = 'ijanicki-firma-files';
-const DB_VERSION = 1;
-const FILE_STORE = 'attachments';
+const SYNC_STATUS_KEY = 'ijanicki_firma_sync_status';
+
+/* ── Sync status (globalny, per-firma) ─────────────────────── */
+
+/**
+ * Status synchronizacji:
+ *   'synced'    – wszystko zapisane w chmurze
+ *   'saving'    – zapis w toku
+ *   'error'     – błąd zapisu (po wyczerpaniu retry)
+ *   'idle'      – brak aktywności
+ */
+const syncStatus = {
+  currentFirmId: null,
+  state: 'idle',
+  lastSync: null,
+  lastError: null,
+  pending: 0,      // liczba oczekujących zapisów
+  retryCount: 0,
+};
+
+// Listenery do aktualizacji UI
+const syncListeners = new Set();
+
+export function onSyncChange(fn) {
+  syncListeners.add(fn);
+  return () => syncListeners.delete(fn);
+}
+
+function notifySyncListeners() {
+  const status = getSyncStatus();
+  for (const fn of syncListeners) {
+    try { fn(status); } catch (_) { /* ignoruj */ }
+  }
+}
+
+export function getSyncStatus() {
+  return { ...syncStatus };
+}
+
+export function setSyncFirm(firmId) {
+  syncStatus.currentFirmId = firmId;
+}
+
+/* ── Kolejka synchronizacji z retry ────────────────────────── */
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
+
+let syncTimer = null;
+let pendingSave = null;
 
 function currentIso() {
   return new Date().toISOString();
 }
+
+function scheduleFirestoreSync(state) {
+  pendingSave = state;
+  syncStatus.pending += 1;
+  syncStatus.state = 'saving';
+  notifySyncListeners();
+
+  // Debounce – jeśli w ciągu 500ms przyjdzie kolejny zapis, wyślij tylko najnowszy
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    const toSave = pendingSave;
+    pendingSave = null;
+    if (toSave) {
+      flushToFirestore(toSave);
+    }
+  }, 500);
+}
+
+async function flushToFirestore(state, attempt = 1) {
+  try {
+    await ensureAuth();
+    await setSetting(FIRESTORE_STATE_DOC, {
+      state: JSON.stringify(state),
+      updatedAt: currentIso(),
+    });
+    // Sukces
+    syncStatus.state = 'synced';
+    syncStatus.lastSync = currentIso();
+    syncStatus.lastError = null;
+    syncStatus.retryCount = 0;
+    syncStatus.pending = Math.max(0, syncStatus.pending - 1);
+    notifySyncListeners();
+  } catch (err) {
+    console.warn(`Firestore save failed (attempt ${attempt}/${MAX_RETRIES}):`, err.message);
+    if (attempt < MAX_RETRIES) {
+      syncStatus.retryCount = attempt;
+      notifySyncListeners();
+      // Retry po opóźnieniu
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+      return flushToFirestore(state, attempt + 1);
+    }
+    // Wyczerpano próby
+    syncStatus.state = 'error';
+    syncStatus.lastError = err.message;
+    syncStatus.pending = Math.max(0, syncStatus.pending - 1);
+    notifySyncListeners();
+  }
+}
+
+/* ── State helpers ──────────────────────────────────────────── */
 
 function defaultIssuer() {
   return {
@@ -50,8 +148,6 @@ function ensureArray(value) {
 
 function normalizeFirm(firm) {
   const now = currentIso();
-  // Używaj firm.months jeśli jest tablicą (nawet pustą – użytkownik mógł usunąć wszystkie).
-  // budgetEntries to stara migracja – tylko gdy months nie istnieje w ogóle.
   const months = Array.isArray(firm.months)
     ? firm.months
     : ensureArray(firm.budgetEntries).map((entry) => ({
@@ -72,7 +168,6 @@ function normalizeFirm(firm) {
         createdAt: payment.createdAt || now,
       }));
 
-  // Migracja starego address -> address1/address2
   const address1 = firm.address1 || firm.address || '';
   const address2 = firm.address2 || '';
 
@@ -120,9 +215,7 @@ function normalizeFirm(firm) {
       date: entry.date || now.slice(0, 10),
       period: entry.period || null,
       title: entry.title || '',
-      // expense fields
       linkedInvoiceId: entry.linkedInvoiceId || null,
-      // income fields
       amount: Number(entry.amount || 0),
       method: entry.method || 'card',
       createdAt: entry.createdAt || now,
@@ -197,32 +290,22 @@ export function loadState() {
   }
 }
 
+/**
+ * Zapisuje stan natychmiast do localStorage,
+ * a synchronizację z Firestore kolejkuje w tle (z retry).
+ */
 export function saveState(state) {
   const normalized = normalizeState({
     ...state,
     updatedAt: currentIso(),
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-  // Fire-and-forget – zapisz do Firestore w tle
-  saveToFirestore(normalized).catch((err) => {
-    console.warn('Firestore save failed:', err);
-  });
+  // Kolejkuj synchronizację z Firestore (z debounce i retry)
+  scheduleFirestoreSync(normalized);
   return normalized;
 }
 
 /* ── Firestore sync ────────────────────────────────────────── */
-
-async function saveToFirestore(state) {
-  try {
-    await ensureAuth();
-    await setSetting(FIRESTORE_STATE_DOC, {
-      state: JSON.stringify(state),
-      updatedAt: currentIso()
-    });
-  } catch (err) {
-    console.warn('Nie udało się zapisać stanu do Firestore:', err);
-  }
-}
 
 async function loadFromFirestore() {
   try {
@@ -241,8 +324,8 @@ async function loadFromFirestore() {
 
 /**
  * Synchronizuje dane z chmury przy starcie aplikacji.
- * Jeżeli dane w Firestore są nowsze – nadpisuje localStorage.
- * Wywołaj raz przy inicjalizacji (np. w przeglad.js).
+ * Merge per-firma: dla każdej firmy porównuje updatedAt,
+ * nowsza wersja wygrywa (zamiast globalnego "ostatni wygrywa").
  */
 export async function syncFromCloud() {
   try {
@@ -251,82 +334,186 @@ export async function syncFromCloud() {
 
     const localRaw = localStorage.getItem(STORAGE_KEY);
     if (!localRaw) {
-      // Brak lokalnych danych – zapisz z chmury
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
+      syncStatus.state = 'synced';
+      syncStatus.lastSync = currentIso();
+      notifySyncListeners();
       return;
     }
 
-    const local = JSON.parse(localRaw);
-    // Użyj nowszych danych
-    if (!local.updatedAt || cloud.updatedAt > local.updatedAt) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
+    const local = normalizeState(JSON.parse(localRaw));
+
+    // Merge per-firma: dla każdej firmy porównaj updatedAt
+    const mergedFirms = [];
+
+    // Mapa firm z chmury
+    const cloudFirmMap = new Map();
+    for (const cf of cloud.firms) {
+      cloudFirmMap.set(cf.id, cf);
     }
+
+    // Mapa firm lokalnych
+    const localFirmMap = new Map();
+    for (const lf of local.firms) {
+      localFirmMap.set(lf.id, lf);
+    }
+
+    // Wszystkie unikalne ID firm
+    const allFirmIds = new Set([
+      ...cloudFirmMap.keys(),
+      ...localFirmMap.keys(),
+    ]);
+
+    for (const firmId of allFirmIds) {
+      const cloudFirm = cloudFirmMap.get(firmId);
+      const localFirm = localFirmMap.get(firmId);
+
+      if (!cloudFirm) {
+        // Firma tylko lokalnie – zachowaj
+        mergedFirms.push(localFirm);
+      } else if (!localFirm) {
+        // Firma tylko w chmurze – dodaj
+        mergedFirms.push(cloudFirm);
+      } else {
+        // Firma w obu – nowsza wygrywa
+        const cloudTime = cloudFirm.updatedAt || '';
+        const localTime = localFirm.updatedAt || '';
+        mergedFirms.push(cloudTime > localTime ? cloudFirm : localFirm);
+      }
+    }
+
+    // Merge ustawień globalnych: nowsze wygrywa
+    const mergedSettings = cloud.updatedAt > local.updatedAt ? cloud.settings : local.settings;
+    const mergedInvoiceCounters = cloud.updatedAt > local.updatedAt ? cloud.invoiceCounters : local.invoiceCounters;
+    const mergedInvoiceCounterDates = cloud.updatedAt > local.updatedAt ? cloud.invoiceCounterDates : local.invoiceCounterDates;
+
+    const merged = {
+      ...local,
+      firms: mergedFirms,
+      settings: mergedSettings,
+      invoiceCounters: mergedInvoiceCounters,
+      invoiceCounterDates: mergedInvoiceCounterDates,
+      updatedAt: currentIso(),
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    syncStatus.state = 'synced';
+    syncStatus.lastSync = currentIso();
+    notifySyncListeners();
   } catch (err) {
     console.warn('syncFromCloud error:', err);
+    syncStatus.state = 'error';
+    syncStatus.lastError = err.message;
+    notifySyncListeners();
   }
 }
 
-function openDb() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(FILE_STORE)) {
-        db.createObjectStore(FILE_STORE, { keyPath: 'id' });
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+/**
+ * Wymusza natychmiastową synchronizację (np. przed opuszczeniem strony).
+ */
+export async function flushSync() {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+  if (pendingSave) {
+    const toSave = pendingSave;
+    pendingSave = null;
+    await flushToFirestore(toSave);
+  }
 }
 
-async function transaction(mode, callback) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(FILE_STORE, mode);
-    const store = tx.objectStore(FILE_STORE);
-    const result = callback(store);
+/* ── Firebase Storage – załączniki ─────────────────────────── */
 
-    tx.oncomplete = () => {
-      db.close();
-      resolve(result);
-    };
+// Lazy-load Firebase Storage (unikamy cyklicznych zależności)
+let _storageModule = null;
+let _storageInstance = null;
 
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-  });
+async function getStorageInstance() {
+  if (_storageInstance) return _storageInstance;
+  if (!_storageModule) {
+    _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+  }
+  const { app } = await import('./firebase.js');
+  _storageInstance = _storageModule.getStorage(app);
+  return _storageInstance;
 }
 
+const ATTACHMENTS_PREFIX = 'attachments';
+
+/**
+ * Zapisuje załącznik w Firebase Storage.
+ * @param {Object} record - { id, blob, name, type }
+ */
 export async function storeAttachment(record) {
-  await transaction('readwrite', (store) => {
-    store.put(record);
-  });
+  try {
+    await ensureAuth();
+    if (!_storageModule) {
+      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+    }
+    const storage = await getStorageInstance();
+    const path = `${ATTACHMENTS_PREFIX}/${record.id}`;
+    const fileRef = _storageModule.ref(storage, path);
+
+    const metadata = {
+      contentType: record.type || 'application/octet-stream',
+      customMetadata: {
+        name: record.name || '',
+        uploadedAt: currentIso(),
+      },
+    };
+
+    await _storageModule.uploadBytes(fileRef, record.blob, metadata);
+    return { id: record.id, path };
+  } catch (err) {
+    console.error('storeAttachment failed:', err);
+    throw err;
+  }
 }
 
+/**
+ * Pobiera załącznik z Firebase Storage.
+ * @param {string} id – identyfikator załącznika
+ * @returns {Promise<{id: string, blob: Blob, name: string} | null>}
+ */
 export async function getAttachment(id) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(FILE_STORE, 'readonly');
-    const store = tx.objectStore(FILE_STORE);
-    const request = store.get(id);
+  try {
+    await ensureAuth();
+    if (!_storageModule) {
+      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+    }
+    const storage = await getStorageInstance();
+    const fileRef = _storageModule.ref(storage, `${ATTACHMENTS_PREFIX}/${id}`);
 
-    request.onsuccess = () => {
-      db.close();
-      resolve(request.result || null);
-    };
-    request.onerror = () => {
-      db.close();
-      reject(request.error);
-    };
-  });
+    // Pobierz URL i ściągnij przez fetch
+    const url = await _storageModule.getDownloadURL(fileRef);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const blob = await response.blob();
+    return { id, blob, name: id };
+  } catch (err) {
+    console.warn('getAttachment failed:', err.message);
+    return null;
+  }
 }
 
+/**
+ * Usuwa załącznik z Firebase Storage.
+ */
 export async function deleteAttachment(id) {
-  await transaction('readwrite', (store) => {
-    store.delete(id);
-  });
+  try {
+    await ensureAuth();
+    if (!_storageModule) {
+      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+    }
+    const storage = await getStorageInstance();
+    const fileRef = _storageModule.ref(storage, `${ATTACHMENTS_PREFIX}/${id}`);
+    await _storageModule.deleteObject(fileRef);
+  } catch (err) {
+    console.warn('deleteAttachment failed:', err.message);
+  }
 }
+
+// Re-eksport dla kompatybilności
+export { FIRESTORE_STATE_DOC };

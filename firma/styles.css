@@ -160,6 +160,69 @@ svg {
   justify-self: end;
 }
 
+/* Grupa po prawej: sync + month picker */
+.topbar-right-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Wskaźnik synchronizacji ──────────────────────────── */
+.sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.3s, border-color 0.3s;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.sync-indicator .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sync-indicator .icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Stan: zsynchronizowano */
+.sync-indicator.sync-synced {
+  border-color: rgba(97, 229, 194, 0.25);
+  background: rgba(97, 229, 194, 0.08);
+  color: var(--cyan);
+}
+
+/* Stan: zapisywanie */
+.sync-indicator.sync-saving {
+  border-color: rgba(245, 184, 90, 0.3);
+  background: rgba(245, 184, 90, 0.1);
+  color: var(--amber);
+}
+
+/* Stan: błąd */
+.sync-indicator.sync-error {
+  border-color: rgba(244, 111, 129, 0.35);
+  background: rgba(244, 111, 129, 0.1);
+  color: var(--rose);
+}
+
+/* Animacja obracania dla zapisywania */
+.sync-spin {
+  animation: syncRotate 1.2s linear infinite;
+}
+
+@keyframes syncRotate {
+  to { transform: rotate(360deg); }
+}
+
 /* Badge ułożone pionowo w środkowej kolumnie */
 .topbar-badges {
   display: flex;

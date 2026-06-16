@@ -11,12 +11,16 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=15';
+} from './logic.js?v=17';
 import {
   createEmptyState,
   loadState,
   saveState,
-} from './storage.js?v=15';
+  getSyncStatus,
+  onSyncChange,
+  setSyncFirm,
+  flushSync,
+} from './storage.js?v=16';
 
 // --- Icons ---
 export function icon(name) {
@@ -36,6 +40,10 @@ export function icon(name) {
     firm: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" /></svg>',
     'x-circle': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>',
     'rotate-ccw': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>',
+    cloud: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></svg>',
+    'cloud-off': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c2.17 0 3.95.89 5.21 2h1.29a4.5 4.5 0 0 1 1.35 8.76M2 2l20 20" /></svg>',
+    'cloud-check': '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /><path d="m9 12 2 2 4-4" /></svg>',
+    'sync-spin': '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spin"><path d="M21 12a9 9 0 1 1-6.22-8.56M21 3v6h-6" /></svg>',
   };
   return `<span class="icon">${icons[name] || icons.file}</span>`;
 }
@@ -264,6 +272,73 @@ export function modalActions(primaryLabel, secondaryLabel = 'Anuluj') {
   `;
 }
 
+// --- Sync indicator (globalny, per-firma) ---
+export function renderSyncIndicator() {
+  const status = getSyncStatus();
+  let iconName = 'cloud';
+  let title = 'Synchronizacja';
+  let cssClass = 'sync-idle';
+
+  switch (status.state) {
+    case 'synced':
+      iconName = 'cloud-check';
+      title = 'Zsynchronizowano';
+      cssClass = 'sync-synced';
+      break;
+    case 'saving':
+      iconName = 'sync-spin';
+      title = 'Zapisywanie...';
+      cssClass = 'sync-saving';
+      break;
+    case 'error':
+      iconName = 'cloud-off';
+      title = `Błąd synchronizacji: ${status.lastError || 'nieznany'}`;
+      cssClass = 'sync-error';
+      break;
+    default:
+      iconName = 'cloud';
+      title = 'Oczekiwanie na synchronizację';
+      cssClass = 'sync-idle';
+      break;
+  }
+
+  return `<span class="sync-indicator ${cssClass}" title="${title}" aria-label="${title}">${icon(iconName)}</span>`;
+}
+
+/**
+ * Rejestruje live-update wskaźnika synchronizacji.
+ * Wywołaj raz przy inicjalizacji strony (przeglad.js, faktury.js, portfel.js).
+ */
+export function initSyncIndicator() {
+  // Live-update wskaźnika
+  onSyncChange(() => {
+    const el = document.querySelector('.sync-indicator');
+    if (!el) return;
+    const newHtml = renderSyncIndicator();
+    // Parsuj nowy HTML i podmień tylko atrybuty + zawartość
+    const temp = document.createElement('div');
+    temp.innerHTML = newHtml;
+    const newEl = temp.firstElementChild;
+    if (!el) return;
+    el.className = newEl.className;
+    el.title = newEl.title;
+    el.setAttribute('aria-label', newEl.getAttribute('aria-label') || '');
+    el.innerHTML = newEl.innerHTML;
+  });
+
+  // Próbuj wysłać zaległe dane przed opuszczeniem strony
+  window.addEventListener('beforeunload', () => {
+    flushSync();
+  });
+
+  // Również przy ukryciu strony (mobile)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      flushSync();
+    }
+  });
+}
+
 // --- Breadcrumb ---
 export function updateTopbar(state, activeTab) {
   const container = document.getElementById('topbarContent');
@@ -274,6 +349,9 @@ export function updateTopbar(state, activeTab) {
     container.innerHTML = '';
     return;
   }
+
+  // Ustaw ID firmy dla wskaźnika synchronizacji
+  setSyncFirm(firm.id);
 
   const { ledger, selectedMonth } = ensureSelectedMonth(firm, state);
   const scope = summarizeLedgerScope(ledger, selectedMonth);
@@ -302,7 +380,9 @@ export function updateTopbar(state, activeTab) {
         </div>
       </div>
       <div class="topbar-grid-right">
-        ${ledger.rows.length > 0 ? `
+        <div class="topbar-right-group">
+          ${renderSyncIndicator()}
+          ${ledger.rows.length > 0 ? `
           <div class="month-picker">
             <select data-action="select-month-dropdown" aria-label="Wybierz miesiąc">
               <option value="__all__" ${selectedMonth === '__all__' ? 'selected' : ''}>Razem</option>
@@ -318,6 +398,7 @@ export function updateTopbar(state, activeTab) {
             </select>
           </div>
         ` : ''}
+        </div>
       </div>
     </div>
   `;

@@ -70,4 +70,4 @@ export async function getDocSnapshot(docPath) {
   return getDoc(doc(db, docPath));
 }
 
-export { auth, db, serverTimestamp };
+export { app, auth, db, serverTimestamp };

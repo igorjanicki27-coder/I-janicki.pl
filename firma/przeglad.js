@@ -17,13 +17,13 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=16';
+} from './logic.js?v=17';
 import {
   deleteAttachment,
   getAttachment,
   loadState,
   syncFromCloud,
-} from './storage.js?v=16';
+} from './storage.js?v=17';
 import {
   icon,
   escapeHtml,
@@ -48,8 +48,9 @@ import {
   renderFabMenu,
   navigateTo,
   restoreContext,
-} from './core.js?v=16';
-import { openInvoicePreview } from './invoice.js?v=16';
+  initSyncIndicator,
+} from './core.js?v=17';
+import { openInvoicePreview } from './invoice.js?v=17';
 
 // --- State ---
 let state = initializeState();
@@ -1481,5 +1482,6 @@ document.body.addEventListener('change', (event) => {
 if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'index.html';
 } else {
+  initSyncIndicator();
   syncFromCloud().then(() => render());
 }

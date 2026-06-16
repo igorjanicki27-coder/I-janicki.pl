@@ -7,11 +7,11 @@ import {
   monthLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=13';
+} from './logic.js?v=17';
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=13';
+} from './storage.js?v=17';
 import {
   icon,
   escapeHtml,
@@ -29,7 +29,8 @@ import {
   renderFabMenu,
   openEditMonthPicker,
   restoreContext,
-} from './core.js?v=13';
+  initSyncIndicator,
+} from './core.js?v=17';
 
 let state = initializeState();
 restoreContext(state);
@@ -315,5 +316,6 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
 } else if (!firm) {
   window.location.href = 'przeglad.html';
 } else {
+  initSyncIndicator();
   syncFromCloud().then(() => render());
 }
