@@ -1969,8 +1969,10 @@ svg {
 }
 
 .checkbox-row {
-  grid-template-columns: auto 1fr;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 6px 12px;
 }
 
 .checkbox-row input {

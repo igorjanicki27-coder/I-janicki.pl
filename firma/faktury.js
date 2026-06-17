@@ -639,7 +639,7 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
         <label class="field checkbox-row field-span-2">
           <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
           <span>Nie odejmuj od budżetu</span>
-          <input type="checkbox" name="skipAccounting" value="1" style="margin-left:16px" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
+          <input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
           <span>Pomiń w rozliczeniach</span>
         </label>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Wystaw fakture')}
@@ -854,7 +854,7 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
         <label class="field checkbox-row field-span-2">
           <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
           <span>Nie odejmuj od budżetu</span>
-          <input type="checkbox" name="skipAccounting" value="1" style="margin-left:16px" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
+          <input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
           <span>Pomiń w rozliczeniach</span>
         </label>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Dodaj fakture')}
