@@ -25,6 +25,7 @@ import {
   loadState,
   saveState,
   storeAttachment,
+  MAX_ATTACHMENT_BYTES,
 } from './storage.js?v=12';
 import { openInvoicePreview } from './invoice.js?v=12';
 
@@ -1846,8 +1847,8 @@ function openInvoiceModal() {
     const attachmentIds = [];
 
     if (file) {
-      if (file.size > 1024 * 1024) {
-        window.alert('Plik jest większy niż 1 MB.');
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        window.alert(`Plik jest większy niż ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB (limit dla załączników).`);
         return;
       }
       const attachmentId = uid();
@@ -1951,8 +1952,8 @@ async function openExternalInvoiceModal() {
     const attachmentIds = [];
 
     if (file) {
-      if (file.size > 1024 * 1024) {
-        window.alert('Plik jest większy niż 1 MB.');
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        window.alert(`Plik jest większy niż ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB (limit dla załączników).`);
         return;
       }
       const attachmentId = uid();

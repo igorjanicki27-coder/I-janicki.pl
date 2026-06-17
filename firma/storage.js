@@ -1,4 +1,4 @@
-import { ensureAuth, getSetting, setSetting } from './firebase.js';
+import { ensureAuth, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
@@ -423,48 +423,97 @@ export async function flushSync() {
   }
 }
 
-/* ── Firebase Storage – załączniki ─────────────────────────── */
+/* ── Firestore załączniki (chunkowane, zamiast Firebase Storage) ─ */
 
-// Lazy-load Firebase Storage (unikamy cyklicznych zależności)
-let _storageModule = null;
-let _storageInstance = null;
-
-async function getStorageInstance() {
-  if (_storageInstance) return _storageInstance;
-  if (!_storageModule) {
-    _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
-  }
-  const { app } = await import('./firebase.js');
-  _storageInstance = _storageModule.getStorage(app);
-  return _storageInstance;
-}
-
-const ATTACHMENTS_PREFIX = 'attachments';
+const ATTACHMENTS_COLLECTION = 'attachments';
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5 MB – całkowity limit pliku
+const CHUNK_SIZE = 900 * 1024; // 900 KB base64 na chunk (bezpiecznie poniżej 1 MB limitu dokumentu Firestore)
 
 /**
- * Zapisuje załącznik w Firebase Storage.
+ * Konwertuje Blob na base64 string.
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // reader.result to "data:mime/type;base64,XXXXX" – wycinamy tylko base64
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Konwertuje base64 string na Blob.
+ */
+function base64ToBlob(base64, mimeType) {
+  const byteChars = atob(base64);
+  const byteArrays = [];
+  for (let offset = 0; offset < byteChars.length; offset += 512) {
+    const slice = byteChars.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+  return new Blob(byteArrays, { type: mimeType });
+}
+
+export { MAX_ATTACHMENT_BYTES };
+
+/**
+ * Zapisuje załącznik w Firestore z chunkowaniem.
+ * Struktura:
+ *   attachments/{id}          – metadane (name, type, size, chunkCount)
+ *   attachments/{id}/chunks/0 – chunk 0 (base64)
+ *   attachments/{id}/chunks/1 – chunk 1 ...
+ *
  * @param {Object} record - { id, blob, name, type }
  */
 export async function storeAttachment(record) {
   try {
     await ensureAuth();
-    if (!_storageModule) {
-      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+    if (record.blob.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`Plik przekracza limit ${Math.round(MAX_ATTACHMENT_BYTES / 1024)} KB.`);
     }
-    const storage = await getStorageInstance();
-    const path = `${ATTACHMENTS_PREFIX}/${record.id}`;
-    const fileRef = _storageModule.ref(storage, path);
 
-    const metadata = {
-      contentType: record.type || 'application/octet-stream',
-      customMetadata: {
-        name: record.name || '',
-        uploadedAt: currentIso(),
-      },
-    };
+    const base64 = await blobToBase64(record.blob);
+    const now = new Date().toISOString();
 
-    await _storageModule.uploadBytes(fileRef, record.blob, metadata);
-    return { id: record.id, path };
+    // Podziel base64 na chunki
+    const chunks = [];
+    for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+      chunks.push(base64.slice(i, i + CHUNK_SIZE));
+    }
+
+    console.log(`storeAttachment: ${record.name} – ${Math.round(record.blob.size / 1024)} KB, ${chunks.length} chunk(ów)`);
+
+    // Zapis metadanych + wszystkich chunków w batchu (maks. 500 operacji)
+    const batch = writeBatch(db);
+
+    // Metadane
+    const metaRef = doc(db, ATTACHMENTS_COLLECTION, record.id);
+    batch.set(metaRef, {
+      id: record.id,
+      name: record.name || '',
+      type: record.type || 'application/octet-stream',
+      size: record.blob.size,
+      chunkCount: chunks.length,
+      createdAt: now,
+    });
+
+    // Chunki – każdy jako osobny dokument w subkolekcji
+    for (let i = 0; i < chunks.length; i++) {
+      const chunkRef = doc(db, ATTACHMENTS_COLLECTION, record.id, 'chunks', String(i));
+      batch.set(chunkRef, { index: i, data: chunks[i] });
+    }
+
+    await batch.commit();
+    return { id: record.id };
   } catch (err) {
     console.error('storeAttachment failed:', err);
     throw err;
@@ -472,26 +521,51 @@ export async function storeAttachment(record) {
 }
 
 /**
- * Pobiera załącznik z Firebase Storage.
+ * Pobiera załącznik z Firestore (łączy chunki).
  * @param {string} id – identyfikator załącznika
  * @returns {Promise<{id: string, blob: Blob, name: string} | null>}
  */
 export async function getAttachment(id) {
   try {
     await ensureAuth();
-    if (!_storageModule) {
-      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+
+    // Pobierz metadane
+    const metaSnap = await getDoc(doc(db, ATTACHMENTS_COLLECTION, id));
+    if (!metaSnap.exists()) {
+      console.warn('getAttachment: nie znaleziono metadanych', id);
+      return null;
     }
-    const storage = await getStorageInstance();
-    const fileRef = _storageModule.ref(storage, `${ATTACHMENTS_PREFIX}/${id}`);
+    const meta = metaSnap.data();
 
-    // Pobierz URL i ściągnij przez fetch
-    const url = await _storageModule.getDownloadURL(fileRef);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // Jeśli stary format (wszystko w jednym dokumencie – pole "data")
+    if (meta.data) {
+      const blob = base64ToBlob(meta.data, meta.type || 'application/octet-stream');
+      return { id, blob, name: meta.name || 'zalacznik' };
+    }
 
-    const blob = await response.blob();
-    return { id, blob, name: id };
+    // Nowy format – pobierz chunki
+    const chunkCount = meta.chunkCount || 0;
+    if (chunkCount === 0) {
+      console.warn('getAttachment: brak chunków', id);
+      return null;
+    }
+
+    const chunksCol = collection(db, ATTACHMENTS_COLLECTION, id, 'chunks');
+    const chunkSnaps = await getDocs(chunksCol);
+
+    if (chunkSnaps.empty) {
+      console.warn('getAttachment: brak dokumentów chunków', id);
+      return null;
+    }
+
+    // Posortuj po indeksie i połącz
+    const sorted = chunkSnaps.docs
+      .map((d) => d.data())
+      .sort((a, b) => a.index - b.index);
+
+    const fullBase64 = sorted.map((c) => c.data).join('');
+    const blob = base64ToBlob(fullBase64, meta.type || 'application/octet-stream');
+    return { id, blob, name: meta.name || 'zalacznik' };
   } catch (err) {
     console.warn('getAttachment failed:', err.message);
     return null;
@@ -499,17 +573,23 @@ export async function getAttachment(id) {
 }
 
 /**
- * Usuwa załącznik z Firebase Storage.
+ * Usuwa załącznik z Firestore (metadane + chunki).
  */
 export async function deleteAttachment(id) {
   try {
     await ensureAuth();
-    if (!_storageModule) {
-      _storageModule = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js');
+
+    // Pobierz chunki
+    const chunksCol = collection(db, ATTACHMENTS_COLLECTION, id, 'chunks');
+    const chunkSnaps = await getDocs(chunksCol);
+
+    // Batch delete: metadane + wszystkie chunki
+    const batch = writeBatch(db);
+    batch.delete(doc(db, ATTACHMENTS_COLLECTION, id));
+    for (const d of chunkSnaps.docs) {
+      batch.delete(d.ref);
     }
-    const storage = await getStorageInstance();
-    const fileRef = _storageModule.ref(storage, `${ATTACHMENTS_PREFIX}/${id}`);
-    await _storageModule.deleteObject(fileRef);
+    await batch.commit();
   } catch (err) {
     console.warn('deleteAttachment failed:', err.message);
   }

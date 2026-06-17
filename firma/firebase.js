@@ -15,8 +15,12 @@ import {
 import {
   getFirestore,
   doc,
+  collection,
   getDoc,
+  getDocs,
   setDoc,
+  deleteDoc,
+  writeBatch,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -70,4 +74,4 @@ export async function getDocSnapshot(docPath) {
   return getDoc(doc(db, docPath));
 }
 
-export { app, auth, db, serverTimestamp };
+export { app, auth, db, serverTimestamp, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch };

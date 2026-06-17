@@ -15,6 +15,7 @@ import {
   getAttachment,
   storeAttachment,
   syncFromCloud,
+  MAX_ATTACHMENT_BYTES,
 } from './storage.js?v=17';
 import {
   icon,
@@ -879,8 +880,8 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
     const attachmentIds = [];
 
     if (file) {
-      if (file.size > 1024 * 1024) {
-        window.alert('Plik jest wiekszy niz 1 MB.');
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        window.alert(`Plik jest większy niż ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB (limit dla załączników).`);
         return;
       }
       const attachmentId = uid();
