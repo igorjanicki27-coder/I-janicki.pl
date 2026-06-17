@@ -1704,10 +1704,12 @@ function openExpenseModal(existing = null) {
   });
 }
 
-function nextInvoiceNumber(issueDate) {
+function nextInvoiceNumber(issueDate, commit = false) {
   const year = String(issueDate).slice(0, 4);
   const current = Number(state.invoiceCounters[year] || 0) + 1;
-  state.invoiceCounters[year] = current;
+  if (commit) {
+    state.invoiceCounters[year] = current;
+  }
   return `${current}/i-JANICKI/${year}`;
 }
 
@@ -1896,6 +1898,7 @@ function openInvoiceModal() {
       createdAt: new Date().toISOString(),
     };
 
+    invoice.number = nextInvoiceNumber(invoice.issueDate, true);
     targetFirm.invoices.push(invoice);
     targetFirm.updatedAt = new Date().toISOString();
     state.ui.selectedFirmId = targetFirm.id;

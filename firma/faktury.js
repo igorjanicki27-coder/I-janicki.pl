@@ -130,6 +130,11 @@ function syncInvoiceFinancialState(invoice, paidBy) {
   removeLinkedWalletEntries(invoice.id);
   removeLinkedExpenses(invoice.id);
 
+  // Faktury z flagą skipAccounting są całkowicie pomijane w rozliczeniach
+  if (invoice.skipAccounting) {
+    return;
+  }
+
   if (!paidBy) {
     return;
   }
@@ -228,6 +233,7 @@ function renderAllOwnInvoicesView() {
                       <div class="actions-menu" data-global-actions-menu="${invoice.id}">
                         <button class="table-action-btn" type="button" data-action="preview-global-invoice" data-inv="${invoice.id}" data-firm="${firm.id}" title="Podgląd faktury">${icon('eye')} Podgląd</button>
                         <button class="table-action-btn" type="button" data-action="view-global-invoice" data-inv="${invoice.id}" data-firm="${firm.id}" title="Szczegóły">${icon('file')} Szczegóły</button>
+                        <button class="table-action-btn" type="button" data-action="edit-global-invoice" data-inv="${invoice.id}" data-firm="${firm.id}" title="Edytuj">${icon('edit')} Edytuj</button>
                         ${invoice.attachmentIds?.length ? `<button class="table-action-btn" type="button" data-action="download-global-attachment" data-inv="${invoice.id}" data-firm="${firm.id}" title="Pobierz">${icon('download')} Pobierz</button>` : ''}
                       </div>
                     </div>
@@ -270,6 +276,7 @@ function renderInvoiceRow(invoice, index, showActions = false) {
               <button class="table-action-btn" type="button" data-action="preview-invoice" data-id="${invoice.id}" title="Podglad faktury">${icon('eye')} Podglad</button>
               <button class="table-action-btn" type="button" data-action="view-invoice" data-id="${invoice.id}" title="Szczegoly">${icon('file')} Szczegoly</button>
               <button class="table-action-btn" type="button" data-action="download-attachment" data-id="${invoice.id}" title="Pobierz">${icon('download')} Pobierz</button>
+              <button class="table-action-btn" type="button" data-action="edit-invoice" data-id="${invoice.id}" title="Edytuj">${icon('edit')} Edytuj</button>
               <button class="table-action-btn tone-amber" type="button" data-action="unmark-paid" data-id="${invoice.id}" title="Cofnij oplacenie">${icon('rotate-ccw')} Cofnij</button>
               <button class="table-action-btn tone-danger" type="button" data-action="delete-invoice" data-id="${invoice.id}" title="Usun">${icon('trash')} Usun</button>
             </div>
@@ -283,6 +290,7 @@ function renderInvoiceRow(invoice, index, showActions = false) {
               <button class="table-action-btn" type="button" data-action="preview-invoice" data-id="${invoice.id}" title="Podglad faktury">${icon('eye')} Podglad</button>
               <button class="table-action-btn" type="button" data-action="view-invoice" data-id="${invoice.id}" title="Szczegoly">${icon('file')} Szczegoly</button>
               <button class="table-action-btn" type="button" data-action="download-attachment" data-id="${invoice.id}" title="Pobierz">${icon('download')} Pobierz</button>
+              <button class="table-action-btn" type="button" data-action="edit-invoice" data-id="${invoice.id}" title="Edytuj">${icon('edit')} Edytuj</button>
               <button class="table-action-btn tone-me" type="button" data-action="mark-paid-me" data-id="${invoice.id}" title="Oplacilem ja">${icon('wallet')} Ja oplacilem</button>
               <button class="table-action-btn tone-client" type="button" data-action="mark-paid-client" data-id="${invoice.id}" title="Oplacil klient">${icon('wallet')} Klient oplacil</button>
               <button class="table-action-btn tone-amber" type="button" data-action="cancel-invoice" data-id="${invoice.id}" title="Anuluj fakture">${icon('x-circle')} Anuluj</button>
@@ -465,7 +473,7 @@ function renderFirmSelector() {
 }
 
 // --- Modals ---
-function nextInvoiceNumber(issueDate) {
+function nextInvoiceNumber(issueDate, commit = false) {
   const year = String(issueDate).slice(0, 4);
   if (!state.invoiceCounterDates) state.invoiceCounterDates = {};
   const lastDate = state.invoiceCounterDates[year];
@@ -474,8 +482,10 @@ function nextInvoiceNumber(issueDate) {
     return null; // sygnalizuje blad – data wczesniejsza niz poprzednia
   }
   const current = Number(state.invoiceCounters[year] || 0) + 1;
-  state.invoiceCounters[year] = current;
-  state.invoiceCounterDates[year] = issueDate;
+  if (commit) {
+    state.invoiceCounters[year] = current;
+    state.invoiceCounterDates[year] = issueDate;
+  }
   return `${current}/i-JANICKI/${year}`;
 }
 
@@ -503,6 +513,26 @@ function openInvoiceModal() {
     `,
     { wide: true }
   );
+}
+
+function openInvoiceEdit(invoice) {
+  if (!firm) return;
+  if (invoice.kind === 'own') {
+    // Faktura własna – przechodzi od razu do step 3 z danymi
+    openOwnInvoiceStep3({
+      title: invoice.title,
+      issueDate: invoice.issueDate,
+      vatMode: invoice.vatMode || 'zw',
+      month: invoice.month,
+    }, invoice);
+  } else {
+    // Faktura cudza – przechodzi do step 3 z danymi
+    openExternalInvoiceStep3({
+      title: invoice.title,
+      month: invoice.month,
+      issueDate: invoice.issueDate,
+    }, invoice);
+  }
 }
 
 function openOwnInvoiceStep2() {
@@ -550,9 +580,12 @@ function openOwnInvoiceStep2() {
   });
 }
 
-function openOwnInvoiceStep3(step2Data) {
+function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
   // Step 3: position table + summary
-  let items = [{ id: uid(), description: step2Data.title, quantity: 1, unitPrice: '' }];
+  const isEdit = !!existingInvoice;
+  let items = existingInvoice?.items?.length
+    ? existingInvoice.items.map((it) => ({ id: it.id || uid(), description: it.description || '', quantity: it.quantity || 1, unitPrice: it.unitPrice ?? '' }))
+    : [{ id: uid(), description: step2Data.title, quantity: 1, unitPrice: '' }];
 
   function renderItems() {
     const total = items.reduce((sum, it) => sum + (parseFloat(it.unitPrice) || 0) * (it.quantity || 1), 0);
@@ -595,19 +628,21 @@ function openOwnInvoiceStep3(step2Data) {
   }
 
   openModal(
-    'Nowa faktura własna – pozycje',
+    isEdit ? 'Edytuj fakturę własną' : 'Nowa faktura własna – pozycje',
     `
       <form id="ownInvoiceStep3Form" class="form-grid form-grid--single">
         <div id="itemsContainer">${renderItems()}</div>
         <label class="field">
           <span>Uwagi</span>
-          <textarea name="notes" rows="2"></textarea>
+          <textarea name="notes" rows="2">${isEdit ? escapeHtml(existingInvoice.notes || '') : ''}</textarea>
         </label>
         <label class="field checkbox-row field-span-2">
-          <input type="checkbox" name="skipBudget" value="1" />
+          <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
           <span>Nie odejmuj od budżetu</span>
+          <input type="checkbox" name="skipAccounting" value="1" style="margin-left:16px" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
+          <span>Pomiń w rozliczeniach</span>
         </label>
-        ${modalActions('Wystaw fakture')}
+        ${modalActions(isEdit ? 'Zapisz zmiany' : 'Wystaw fakture')}
       </form>
     `,
     { wide: true }
@@ -675,53 +710,97 @@ function openOwnInvoiceStep3(step2Data) {
     const formData = new FormData(form);
     const notes = String(formData.get('notes') || '').trim();
     const subtractFromBudget = !formData.get('skipBudget');
+    const skipAccounting = !!formData.get('skipAccounting');
 
-    const invoice = {
-      id: uid(),
-      kind: 'own',
-      source: 'system',
-      number: nextInvoiceNumber(step2Data.issueDate),
-      month: step2Data.month,
-      issueDate: step2Data.issueDate,
-      saleDate: step2Data.issueDate,
-      dueDate: null,
-      status: 'issued',
-      paidBy: null,
-      vatMode: step2Data.vatMode,
-      title: step2Data.title,
-      buyerSnapshot: {
+    if (isEdit) {
+      // Tryb edycji – aktualizuj istniejącą fakturę
+      existingInvoice.title = step2Data.title;
+      existingInvoice.month = step2Data.month;
+      existingInvoice.issueDate = step2Data.issueDate;
+      existingInvoice.saleDate = step2Data.issueDate;
+      existingInvoice.vatMode = step2Data.vatMode;
+      existingInvoice.buyerSnapshot = {
         name: firm.name,
         nip: firm.nip,
         address1: firm.address1,
         address2: firm.address2,
         phone: firm.phone,
         email: firm.email,
-      },
-      issuerSnapshot: { ...state.settings.issuer },
-      notes,
-      subtractFromBudget,
-      amount: roundCurrency(total),
-      items: itemsData,
-      attachmentIds: [],
-      createdAt: new Date().toISOString(),
-    };
+      };
+      existingInvoice.issuerSnapshot = { ...state.settings.issuer };
+      existingInvoice.notes = notes;
+      existingInvoice.subtractFromBudget = subtractFromBudget;
+      existingInvoice.skipAccounting = skipAccounting;
+      existingInvoice.amount = roundCurrency(total);
+      existingInvoice.items = itemsData;
+      existingInvoice.attachmentIds = existingInvoice.attachmentIds || [];
 
-    closeModal();
-    openInvoicePreview({
-      invoice,
-      firm,
-      issuer: state.settings.issuer,
-      onSave: () => {
-        firm.invoices.push(invoice);
-        firm.updatedAt = new Date().toISOString();
-        state.ui.selectedFirmId = firm.id;
-        persist();
-        render();
-      },
-      onCancel: () => {
-        openOwnInvoiceStep3(step2Data);
-      },
-    });
+      closeModal();
+      openInvoicePreview({
+        invoice: existingInvoice,
+        firm,
+        issuer: state.settings.issuer,
+        onSave: () => {
+          firm.updatedAt = new Date().toISOString();
+          state.ui.selectedFirmId = firm.id;
+          persist();
+          render();
+        },
+        onCancel: () => {
+          openOwnInvoiceStep3(step2Data, existingInvoice);
+        },
+      });
+    } else {
+      // Nowa faktura
+      const invoice = {
+        id: uid(),
+        kind: 'own',
+        source: 'system',
+        number: nextInvoiceNumber(step2Data.issueDate),
+        month: step2Data.month,
+        issueDate: step2Data.issueDate,
+        saleDate: step2Data.issueDate,
+        dueDate: null,
+        status: 'issued',
+        paidBy: null,
+        vatMode: step2Data.vatMode,
+        title: step2Data.title,
+        buyerSnapshot: {
+          name: firm.name,
+          nip: firm.nip,
+          address1: firm.address1,
+          address2: firm.address2,
+          phone: firm.phone,
+          email: firm.email,
+        },
+        issuerSnapshot: { ...state.settings.issuer },
+        notes,
+        subtractFromBudget,
+        skipAccounting,
+        amount: roundCurrency(total),
+        items: itemsData,
+        attachmentIds: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      closeModal();
+      openInvoicePreview({
+        invoice,
+        firm,
+        issuer: state.settings.issuer,
+        onSave: () => {
+          invoice.number = nextInvoiceNumber(invoice.issueDate, true);
+          firm.invoices.push(invoice);
+          firm.updatedAt = new Date().toISOString();
+          state.ui.selectedFirmId = firm.id;
+          persist();
+          render();
+        },
+        onCancel: () => {
+          openOwnInvoiceStep3(step2Data);
+        },
+      });
+    }
   });
 }
 
@@ -758,24 +837,27 @@ function openExternalInvoiceStep2() {
   });
 }
 
-function openExternalInvoiceStep3(step2Data) {
+function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
+  const isEdit = !!existingInvoice;
   openModal(
-    'Dodaj fakture cudza – dane',
+    isEdit ? 'Edytuj fakturę cudzą' : 'Dodaj fakture cudza – dane',
     `
       <form id="extInvoiceStep3" class="form-grid form-grid--single">
         <div class="form-row">
-          ${labeledInput({ name: 'number', label: 'Nr FV', value: '', required: true })}
-          ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: '', min: '0', step: '0.01', required: true })}
+          ${labeledInput({ name: 'number', label: 'Nr FV', value: isEdit ? existingInvoice.number : '', required: true })}
+          ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: isEdit ? existingInvoice.amount : '', min: '0', step: '0.01', required: true })}
         </div>
-        <label class="field">
+        ${isEdit ? '' : `<label class="field">
           <span>Zalacznik (PDF lub obraz, do 1 MB)</span>
           <input type="file" name="file" accept=".pdf,image/*" />
-        </label>
+        </label>`}
         <label class="field checkbox-row field-span-2">
-          <input type="checkbox" name="skipBudget" value="1" />
+          <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
           <span>Nie odejmuj od budżetu</span>
+          <input type="checkbox" name="skipAccounting" value="1" style="margin-left:16px" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
+          <span>Pomiń w rozliczeniach</span>
         </label>
-        ${modalActions('Dodaj fakture')}
+        ${modalActions(isEdit ? 'Zapisz zmiany' : 'Dodaj fakture')}
       </form>
     `,
     { wide: true }
@@ -814,36 +896,73 @@ function openExternalInvoiceStep3(step2Data) {
       attachmentIds.push(attachmentId);
     }
 
-    const invoice = {
-      id: uid(),
-      kind: 'external',
-      source: 'manual',
-      number: invoiceNumber,
-      month: step2Data.month,
-      issueDate: step2Data.issueDate,
-      saleDate: step2Data.issueDate,
-      dueDate: null,
-      status: 'issued',
-      paidBy: null,
-      vatMode: 'zw',
-      title: step2Data.title,
-      vendor: '',
-      payer: 'my_funds',
-      category: 'other',
-      subtractFromBudget: !data.get('skipBudget'),
-      notes: '',
-      amount,
-      items: [],
-      attachmentIds,
-      createdAt: new Date().toISOString(),
-    };
+    if (isEdit) {
+      // Tryb edycji – aktualizuj istniejącą fakturę
+      existingInvoice.number = invoiceNumber;
+      existingInvoice.amount = amount;
+      existingInvoice.month = step2Data.month;
+      existingInvoice.issueDate = step2Data.issueDate;
+      existingInvoice.saleDate = step2Data.issueDate;
+      existingInvoice.title = step2Data.title;
+      existingInvoice.subtractFromBudget = !data.get('skipBudget');
+      existingInvoice.skipAccounting = !!data.get('skipAccounting');
 
-    firm.invoices.push(invoice);
-    firm.updatedAt = new Date().toISOString();
-    state.ui.selectedMonth = step2Data.month;
-    persist();
-    closeModal();
-    render();
+      // Dolacz nowy zalacznik jesli dodano
+      if (file) {
+        const attachmentId = uid();
+        await storeAttachment({
+          id: attachmentId,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified,
+          blob: file,
+          createdAt: new Date().toISOString(),
+        });
+        if (!existingInvoice.attachmentIds) existingInvoice.attachmentIds = [];
+        existingInvoice.attachmentIds.push(attachmentId);
+      }
+
+      firm.updatedAt = new Date().toISOString();
+      state.ui.selectedMonth = step2Data.month;
+      await syncInvoiceFinancialState(existingInvoice, existingInvoice.paidBy);
+      persist();
+      closeModal();
+      render();
+    } else {
+      // Nowa faktura
+      const invoice = {
+        id: uid(),
+        kind: 'external',
+        source: 'manual',
+        number: invoiceNumber,
+        month: step2Data.month,
+        issueDate: step2Data.issueDate,
+        saleDate: step2Data.issueDate,
+        dueDate: null,
+        status: 'issued',
+        paidBy: null,
+        vatMode: 'zw',
+        title: step2Data.title,
+        vendor: '',
+        payer: 'my_funds',
+        category: 'other',
+        subtractFromBudget: !data.get('skipBudget'),
+        skipAccounting: !!data.get('skipAccounting'),
+        notes: '',
+        amount,
+        items: [],
+        attachmentIds,
+        createdAt: new Date().toISOString(),
+      };
+
+      firm.invoices.push(invoice);
+      firm.updatedAt = new Date().toISOString();
+      state.ui.selectedMonth = step2Data.month;
+      persist();
+      closeModal();
+      render();
+    }
   });
 }
 
@@ -1213,6 +1332,20 @@ function handleClick(event) {
     openInvoiceDetailModal(result.invoice);
     return;
   }
+  if (action === 'edit-global-invoice') {
+    const result = findInvoiceGlobal(target.dataset.inv, target.dataset.firm);
+    if (!result) return;
+    closeModal();
+    document.querySelectorAll('.actions-menu.open').forEach((m) => m.classList.remove('open'));
+    // Tymczasowo przelacz na firme
+    const prevFirmId = state.ui.selectedFirmId;
+    state.ui.selectedFirmId = result.firm.id;
+    firm = result.firm;
+    openInvoiceEdit(result.invoice);
+    // Przywroc poprzednie ustawienie po otwarciu modala
+    state.ui.selectedFirmId = prevFirmId;
+    return;
+  }
   if (action === 'download-global-attachment') {
     const result = findInvoiceGlobal(target.dataset.inv, target.dataset.firm);
     if (!result?.invoice.attachmentIds?.length) return;
@@ -1258,6 +1391,13 @@ function handleClick(event) {
     // Zamknij menu
     document.querySelectorAll('.actions-menu.open').forEach((m) => m.classList.remove('open'));
     return render();
+  }
+  if (action === 'edit-invoice') {
+    const invoice = findInvoice(target.dataset.id);
+    if (!invoice) return;
+    closeModal();
+    document.querySelectorAll('.actions-menu.open').forEach((m) => m.classList.remove('open'));
+    return openInvoiceEdit(invoice);
   }
   if (action === 'delete-invoice') return void deleteInvoice(target.dataset.id);
   if (action === 'open-attachment') return void openAttachmentById(target.dataset.attachmentId);

@@ -77,8 +77,9 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       }
 
       .sheet {
-        max-width: 960px;
-        margin: 28px auto 48px;
+        width: 793px;
+        max-width: 100%;
+        margin: 0 auto;
         display: flex;
         flex-direction: column;
         min-height: 100vh;
@@ -231,9 +232,10 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       .spacer { flex: 1; }
       /* === SIGNATURE === */
       .signature-area {
-        margin-top: 30px;
+        margin-top: 10px;
         display: flex;
         justify-content: space-between;
+        flex-shrink: 0;
       }
       .signature-area > div {
         width: 180px;
@@ -269,16 +271,17 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       }
       /* === FOOTER === */
       .footnote {
-        margin-top: 20px;
-        padding-top: 16px;
+        margin-top: 6px;
+        padding-top: 10px;
         border-top: 1px solid #dbe4ef;
         font-size: 10px;
         line-height: 1.5;
         color: #64748b;
+        flex-shrink: 0;
       }
       @media print {
         body { background: white; padding: 0; margin: 0; }
-        .sheet { margin: 0; max-width: none; box-shadow: none; padding: 15px 20px; min-height: auto; }
+        .sheet { width: auto; max-width: none; margin: 0; box-shadow: none; padding: 15px 20px; min-height: auto; }
         .spacer { flex: 0; }
       }
       @media (max-width: 800px) {
@@ -364,6 +367,13 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         <span>${formatCurrency(subtotal)}</span>
       </div>
 
+      <!-- NOTES -->
+      ${invoice.notes ? `
+      <div class="notes-block">
+        ${escapeHtml(invoice.notes)}
+      </div>
+      ` : ''}
+
       <div class="spacer"></div>
 
       <!-- SIGNATURE -->
@@ -371,13 +381,6 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         <div>Podpis sprzedawcy</div>
         <div>Podpis nabywcy</div>
       </div>
-
-      <!-- NOTES -->
-      ${invoice.notes ? `
-      <div class="notes-block">
-        ${escapeHtml(invoice.notes)}
-      </div>
-      ` : ''}
 
       <!-- FOOTER -->
       <div class="footnote">
