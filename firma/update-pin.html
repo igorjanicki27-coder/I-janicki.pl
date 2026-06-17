@@ -16,9 +16,14 @@
       background: rgba(10,22,32,0.9);
       border: 1px solid rgba(132,160,182,0.18);
       border-radius: 18px; padding: 40px; max-width: 480px;
-      text-align: center; width: 100%;
+      width: 100%; box-sizing: border-box;
     }
-    .card p { margin: 0 0 20px; line-height: 1.6; color: #b0c9db; }
+    .card h2 { margin: 0 0 8px; font-size: 1.4rem; }
+    .card .sub { margin: 0 0 24px; line-height: 1.6; color: #b0c9db; font-size: 0.9rem; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step h3 { margin: 0 0 16px; font-size: 1rem; color: #b0c9db; }
+    label { display: block; text-align: left; font-size: 0.85rem; color: #b0c9db; margin-bottom: 6px; }
     input[type="password"] {
       width: 100%; max-width: 260px; box-sizing: border-box;
       padding: 14px 18px; border: 1px solid rgba(132,160,182,0.3);
@@ -33,31 +38,58 @@
       padding: 14px 32px; border: 0; border-radius: 12px;
       font-weight: 700; font-size: 1rem; cursor: pointer;
       background: linear-gradient(135deg, #61e5c2 0%, #8df1b8 100%);
-      color: #06221d; margin-top: 16px;
+      color: #06221d; margin-top: 12px;
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .msg { margin-top: 16px; font-size: 0.85rem; line-height: 1.6; }
+    button.ghost {
+      background: transparent; border: 1px solid rgba(132,160,182,0.3);
+      color: #ebf4fb; margin-left: 8px;
+    }
+    .msg { margin-top: 12px; font-size: 0.85rem; line-height: 1.6; min-height: 1.6em; }
     .msg.ok { color: #61e5c2; }
     .msg.err { color: #f46f81; }
     .msg.wait { color: #b0c9db; }
     code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+    .button-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
   </style>
 </head>
 <body>
   <div class="card">
     <h2>🔑 Zmiana PIN</h2>
-    <p>Wpisz nowy PIN (4–10 cyfr), który będzie obowiązywał przy logowaniu.</p>
-    <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" />
-    <br/>
-    <button id="changeBtn" disabled>Zmień PIN</button>
-    <div id="msg" class="msg"></div>
+    <p class="sub">Proces składa się z dwóch kroków: najpierw podaj obecny PIN, a następnie ustaw nowy.</p>
+
+    <!-- Krok 1: weryfikacja starego PIN-u -->
+    <div class="step active" id="step1">
+      <h3>Krok 1 z 2 — weryfikacja</h3>
+      <label for="oldPin">Obecny PIN</label>
+      <input type="password" id="oldPin" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" />
+      <div class="button-row">
+        <button id="verifyBtn" disabled>Zweryfikuj PIN</button>
+      </div>
+      <div id="msg1" class="msg"></div>
+    </div>
+
+    <!-- Krok 2: ustawienie nowego PIN-u (widoczny dopiero po weryfikacji) -->
+    <div class="step" id="step2">
+      <h3>Krok 2 z 2 — nowy PIN</h3>
+      <label for="newPin">Nowy PIN (4–10 cyfr)</label>
+      <input type="password" id="newPin" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" />
+      <label for="confirmPin" style="margin-top:12px;">Potwierdź nowy PIN</label>
+      <input type="password" id="confirmPin" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" />
+      <div class="button-row">
+        <button class="ghost" id="backBtn">← Cofnij</button>
+        <button id="changeBtn" disabled>Zmień PIN</button>
+      </div>
+      <div id="msg2" class="msg"></div>
+    </div>
   </div>
+
   <script type="module">
     import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-    // --- Konfiguracja Firebase (taka sama jak w firebase.js) ---
+    /* ── Firebase config ─────────────────────────────────── */
     const firebaseConfig = {
       apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
       authDomain: 'i-janicki.firebaseapp.com',
@@ -70,16 +102,47 @@
     const app = getApps()[0] ?? initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const settingsRef = doc(db, 'firmy_settings', 'default');
+    const settingsRef = doc(db, 'firmy_settings', 'auth');
 
-    const input = document.getElementById('pinInput');
-    const btn = document.getElementById('changeBtn');
-    const msg = document.getElementById('msg');
+    /* ── Pomocnicze SHA-256 ────────────────────────────── */
+    async function hashPin(pin, salt) {
+      const msg = new TextEncoder().encode(pin + ':' + salt);
+      const buf = await crypto.subtle.digest('SHA-256', msg);
+      return Array.from(new Uint8Array(buf))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
 
-    // --- Zaloguj anonimowo przy starcie ---
+    /* ── Stan weryfikacji ─────────────────────────────── */
+    let verified = false;        // czy krok 1 zaliczony
+    let cachedSalt = null;       // sól z Firestore
+    let cachedHash = null;       // obecny hash z Firestore
+
+    /* ── Referencje DOM ───────────────────────────────── */
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const oldPin = document.getElementById('oldPin');
+    const newPin = document.getElementById('newPin');
+    const confirmPin = document.getElementById('confirmPin');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const changeBtn = document.getElementById('changeBtn');
+    const backBtn = document.getElementById('backBtn');
+    const msg1 = document.getElementById('msg1');
+    const msg2 = document.getElementById('msg2');
+
+    function showMsg(el, type, text) {
+      el.className = 'msg ' + type;
+      el.textContent = text;
+    }
+
+    function clearMsg(el) {
+      el.className = 'msg';
+      el.textContent = '';
+    }
+
+    /* ── Łączenie z Firebase przy starcie ─────────────── */
     (async function init() {
-      msg.className = 'msg wait';
-      msg.textContent = '⌛ Łączenie z Firebase...';
+      showMsg(msg1, 'wait', '⌛ Łączenie z Firebase...');
       try {
         await new Promise((resolve, reject) => {
           if (auth.currentUser) return resolve(auth.currentUser);
@@ -91,65 +154,155 @@
               .catch(reject);
           });
         });
-        msg.textContent = '';
-        msg.className = 'msg';
+        clearMsg(msg1);
       } catch (err) {
-        msg.className = 'msg err';
-        msg.textContent = '❌ Błąd logowania do Firebase: ' + err.message;
+        showMsg(msg1, 'err', '❌ Błąd logowania do Firebase: ' + err.message);
+        verifyBtn.disabled = true;
       }
     })();
 
-    // Włącz przycisk dopiero po wpisaniu min. 4 znaków
-    input.addEventListener('input', () => {
-      btn.disabled = input.value.trim().length < 4;
+    /* ── Walidacja starego PIN ───────────────────────── */
+    oldPin.addEventListener('input', () => {
+      verifyBtn.disabled = oldPin.value.trim().length < 1;
+    });
+    oldPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !verifyBtn.disabled) verifyBtn.click();
     });
 
-    // Enter = kliknij przycisk
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !btn.disabled) btn.click();
-    });
-
-    btn.addEventListener('click', async () => {
-      const newPin = input.value.trim();
-      if (newPin.length < 4) {
-        msg.className = 'msg err';
-        msg.textContent = 'PIN musi mieć co najmniej 4 znaki.';
+    verifyBtn.addEventListener('click', async () => {
+      const pin = oldPin.value.trim();
+      if (!pin) {
+        showMsg(msg1, 'err', 'Wpisz obecny PIN.');
         return;
       }
 
-      btn.disabled = true;
-      btn.textContent = '⏳ Zapisywanie...';
-      msg.className = 'msg';
-      msg.textContent = '';
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = '⏳ Sprawdzanie...';
+      showMsg(msg1, 'wait', 'Weryfikacja...');
 
       try {
-        // 1. Pobierz sól z Firestore
-        const snap = await getDoc(settingsRef);
-        const data = snap.exists() ? snap.data() : {};
-        const salt = data.pinSalt;
+        // Pobierz dane z Firestore (nowa ścieżka, fallback do starej)
+        let snap = await getDoc(settingsRef);
+        if (!snap.exists() || !snap.data().pinHash) {
+          const oldRef = doc(db, 'firmy_settings', 'default');
+          snap = await getDoc(oldRef);
+        }
+        if (!snap.exists()) throw new Error('Brak dokumentu firmy_settings/auth ani firmy_settings/default');
+        const data = snap.data();
 
-        if (!salt) {
-          throw new Error('Brak klucza pinSalt w Firestore. Najpierw uruchom setup.html.');
+        if (!data.pinHash || !data.pinSalt) {
+          throw new Error('Brak pinHash lub pinSalt w Firestore.');
         }
 
-        // 2. Oblicz hash SHA-256 (Web Crypto API)
-        const encoder = new TextEncoder();
-        const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(`${newPin}:${salt}`));
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const newHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        cachedSalt = data.pinSalt;
+        cachedHash = data.pinHash;
 
-        // 3. Zaktualizuj tylko pinHash, reszta pozostaje bez zmian
-        await setDoc(settingsRef, { pinHash: newHash }, { merge: true });
+        // Haszuj wpisany PIN i porównaj
+        const enteredHash = await hashPin(pin, cachedSalt);
 
-        msg.className = 'msg ok';
-        msg.innerHTML = `✅ PIN został zmieniony.<br/><small>Hash: <code>${newHash.slice(0, 16)}…</code></small>`;
-        btn.textContent = '✓ Gotowe';
-        input.value = '';
+        if (enteredHash !== cachedHash) {
+          showMsg(msg1, 'err', '❌ Nieprawidłowy PIN.');
+          verifyBtn.textContent = 'Zweryfikuj PIN';
+          verifyBtn.disabled = false;
+          return;
+        }
+
+        // Sukces – przejście do kroku 2
+        verified = true;
+        clearMsg(msg1);
+        step1.classList.remove('active');
+        step2.classList.add('active');
+        newPin.focus();
       } catch (err) {
-        msg.className = 'msg err';
-        msg.textContent = `❌ Błąd: ${err.message}`;
-        btn.textContent = 'Zmień PIN';
-        btn.disabled = false;
+        showMsg(msg1, 'err', '❌ Błąd: ' + err.message);
+        verifyBtn.textContent = 'Zweryfikuj PIN';
+        verifyBtn.disabled = false;
+      }
+    });
+
+    /* ── Powrót do kroku 1 ───────────────────────────── */
+    backBtn.addEventListener('click', () => {
+      verified = false;
+      step2.classList.remove('active');
+      step1.classList.add('active');
+      clearMsg(msg2);
+      oldPin.value = '';
+      changeBtn.disabled = true;
+      changeBtn.textContent = 'Zmień PIN';
+      oldPin.focus();
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Zweryfikuj PIN';
+    });
+
+    /* ── Walidacja nowego PIN ────────────────────────── */
+    function validateNewPin() {
+      const p1 = newPin.value.trim();
+      const p2 = confirmPin.value.trim();
+      if (p1.length < 4 || p2.length < 4) {
+        changeBtn.disabled = true;
+        return;
+      }
+      if (p1 !== p2) {
+        changeBtn.disabled = true;
+        return;
+      }
+      changeBtn.disabled = false;
+    }
+
+    newPin.addEventListener('input', validateNewPin);
+    confirmPin.addEventListener('input', validateNewPin);
+
+    newPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !changeBtn.disabled) changeBtn.click();
+    });
+    confirmPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !changeBtn.disabled) changeBtn.click();
+    });
+
+    /* ── Zmiana PIN ──────────────────────────────────── */
+    changeBtn.addEventListener('click', async () => {
+      const p1 = newPin.value.trim();
+      const p2 = confirmPin.value.trim();
+
+      if (p1.length < 4) {
+        showMsg(msg2, 'err', 'Nowy PIN musi mieć co najmniej 4 znaki.');
+        return;
+      }
+      if (p1 !== p2) {
+        showMsg(msg2, 'err', 'PIN-y nie są zgodne.');
+        return;
+      }
+      if (!verified || !cachedSalt) {
+        showMsg(msg2, 'err', 'Sesja wygasła – zacznij od nowa.');
+        return;
+      }
+
+      changeBtn.disabled = true;
+      changeBtn.textContent = '⏳ Zapisywanie...';
+      clearMsg(msg2);
+
+      try {
+        // Oblicz hash nowego PIN-u (używamy tej samej soli)
+        const newHash = await hashPin(p1, cachedSalt);
+
+        // Migruj wszystkie ustawienia do nowej ścieżki + zapisz nowy hash
+        const snap = await getDoc(settingsRef);
+        const existing = snap.exists() ? snap.data() : {};
+        await setDoc(settingsRef, {
+          pinHash: newHash,
+          pinSalt: existing.pinSalt || cachedSalt,
+          maxAttempts: existing.maxAttempts ?? 3,
+          lockMinutes: existing.lockMinutes ?? 10
+        });
+
+        showMsg(msg2, 'ok', '✅ PIN został zmieniony pomyślnie.');
+        changeBtn.textContent = '✓ Gotowe';
+        newPin.value = '';
+        confirmPin.value = '';
+      } catch (err) {
+        showMsg(msg2, 'err', '❌ Błąd zapisu: ' + err.message);
+        changeBtn.textContent = 'Zmień PIN';
+        changeBtn.disabled = false;
       }
     });
   </script>

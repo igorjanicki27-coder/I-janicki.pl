@@ -3,7 +3,7 @@
  *
  * Flow:
  *  1. Anonimowe logowanie Firebase (firebase.js)
- *  2. Pobranie hash+ salt z Firestore (firmy_settings/default)
+ *  2. Pobranie hash+ salt z Firestore (firmy_settings/auth, fallback do default)
  *  3. Klient haszuje wpisany PIN (SHA-256)
  *  4. Porównanie hashów
  *  5. Przy 3 błędnych próbach → blokada 10 min (sessionStorage)
@@ -16,7 +16,8 @@ import { ensureAuth, getSetting, setSetting, serverTimestamp } from './firebase.
 
 /* ── Stałe ──────────────────────────────────────────────────── */
 const STORAGE_PREFIX = 'ijanicki_firma_';
-const SETTINGS_DOC = 'firmy_settings/default';
+const SETTINGS_DOC = 'firmy_settings/auth';
+const OLD_SETTINGS_DOC = 'firmy_settings/default';
 
 const DEFAULTS = {
   MAX_ATTEMPTS: 3,
@@ -105,8 +106,18 @@ export async function verifyPin(pin) {
     return { success: false, error: 'Błąd odczytu danych.' };
   }
 
+  // Fallback: jeśli nowa ścieżka nie istnieje, spróbuj starej (migracja)
+  if (!settings || !settings.pinHash) {
+    try {
+      const oldSettings = await getSetting(OLD_SETTINGS_DOC);
+      if (oldSettings && oldSettings.pinHash && oldSettings.pinSalt) {
+        settings = oldSettings;
+      }
+    } catch (_) { /* ignoruj błędy odczytu starej ścieżki */ }
+  }
+
   if (!settings || !settings.pinHash || !settings.pinSalt) {
-    console.error('Brak firmy_settings/default w Firestore');
+    console.error('Brak firmy_settings/auth ani firmy_settings/default w Firestore');
     return { success: false, error: 'Błąd konfiguracji – skontaktuj się z administratorem.' };
   }
 

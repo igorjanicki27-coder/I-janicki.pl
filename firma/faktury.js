@@ -1348,6 +1348,8 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
 } else {
   initSyncIndicator();
   syncFromCloud().then(() => {
+    state = initializeState();
+    restoreContext(state);
     render();
     // Przywróć podgląd faktury po odświeżeniu strony
   try {

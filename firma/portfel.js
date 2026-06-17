@@ -317,5 +317,9 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'przeglad.html';
 } else {
   initSyncIndicator();
-  syncFromCloud().then(() => render());
+  syncFromCloud().then(() => {
+    state = initializeState();
+    restoreContext(state);
+    render();
+  });
 }

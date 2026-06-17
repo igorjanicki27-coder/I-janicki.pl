@@ -1483,5 +1483,12 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
   window.location.href = 'index.html';
 } else {
   initSyncIndicator();
-  syncFromCloud().then(() => render());
+  syncFromCloud().then(() => {
+    // Po synchronizacji z chmury, przeładuj stan z localStorage
+    // (syncFromCloud zapisuje do localStorage, ale nie aktualizuje
+    // lokalnej zmiennej state, przez co render() widział pusty stan)
+    state = initializeState();
+    restoreContext(state);
+    render();
+  });
 }
