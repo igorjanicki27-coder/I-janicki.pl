@@ -66,6 +66,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(invoice.number)} — ${escapeHtml(invoiceName)}</title>
     <style>
+      @page { size: A4; margin: 0; }
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
       body {
@@ -78,22 +79,25 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       .sheet {
         max-width: 960px;
         margin: 28px auto 48px;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
         padding: 40px 48px;
         background: white;
         box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
       }
       /* === HEADER === */
       .inv-header {
-        position: relative;
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: start;
         margin-bottom: 20px;
       }
       .inv-header-left {
-        position: absolute;
-        left: -48px;
-        top: -56px;
+        margin-left: -48px;
+        margin-top: -56px;
+        align-self: start;
+        overflow: visible;
       }
       .inv-header-left img {
         max-height: 260px;
@@ -101,7 +105,6 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         display: block;
       }
       .inv-header-center {
-        flex: 1;
         text-align: center;
       }
       .inv-header-center h1 {
@@ -224,9 +227,11 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       tbody tr:last-child td {
         border-bottom: 0;
       }
+      /* === SPACER === */
+      .spacer { flex: 1; }
       /* === SIGNATURE === */
       .signature-area {
-        margin-top: 60px;
+        margin-top: 30px;
         display: flex;
         justify-content: space-between;
       }
@@ -272,14 +277,27 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         color: #64748b;
       }
       @media print {
-        body { background: white; }
-
-        .sheet { margin: 0; max-width: none; box-shadow: none; padding: 20px 0 0; }
+        body { background: white; padding: 0; margin: 0; }
+        .sheet { margin: 0; max-width: none; box-shadow: none; padding: 15px 20px; min-height: auto; }
+        .spacer { flex: 0; }
       }
       @media (max-width: 800px) {
         .sheet { padding: 24px; }
-        .inv-header { flex-direction: column; gap: 16px; }
-        .inv-header-left, .inv-header-center, .inv-header-right { flex: none; text-align: left; }
+        .inv-header {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .inv-header-left {
+          margin: 0;
+          align-self: center;
+        }
+        .inv-header-left img {
+          max-height: 120px;
+          max-width: 120px;
+        }
+        .inv-header-center { text-align: left; }
+        .inv-header-right { text-align: left; }
         .parties { grid-template-columns: 1fr; }
       }
     </style>
@@ -346,6 +364,8 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         <span>${formatCurrency(subtotal)}</span>
       </div>
 
+      <div class="spacer"></div>
+
       <!-- SIGNATURE -->
       <div class="signature-area">
         <div>Podpis sprzedawcy</div>
@@ -393,7 +413,10 @@ export function openInvoicePreview({ invoice, firm, issuer, onSave, onCancel }) 
 
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'flex:1;width:100%;border:0;background:#eef2f7;';
-  iframe.srcdoc = html;
+  // Blob URL zamiast srcdoc – unikamy 'about:srcdoc' w wydruku
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  iframe.src = blobUrl;
 
   overlay.appendChild(topBar);
   overlay.appendChild(iframe);
@@ -413,6 +436,7 @@ export function openInvoicePreview({ invoice, firm, issuer, onSave, onCancel }) 
 
   const close = () => {
     overlay.remove();
+    URL.revokeObjectURL(blobUrl);
     sessionStorage.removeItem('ijanicki_firma_previewInvoice');
     window.removeEventListener('beforeunload', beforeUnloadHandler);
   };

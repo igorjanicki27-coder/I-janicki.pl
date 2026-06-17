@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Firma – zmiana PIN</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: #061019; color: #ebf4fb;
+      font-family: Inter, system-ui, sans-serif;
+    }
+    .card {
+      background: rgba(10,22,32,0.9);
+      border: 1px solid rgba(132,160,182,0.18);
+      border-radius: 18px; padding: 40px; max-width: 480px;
+      text-align: center; width: 100%;
+    }
+    .card p { margin: 0 0 20px; line-height: 1.6; color: #b0c9db; }
+    input[type="password"] {
+      width: 100%; max-width: 260px; box-sizing: border-box;
+      padding: 14px 18px; border: 1px solid rgba(132,160,182,0.3);
+      border-radius: 12px; background: rgba(255,255,255,0.06);
+      color: #ebf4fb; font-size: 1.2rem; text-align: center;
+      letter-spacing: 4px; outline: none;
+    }
+    input[type="password"]:focus {
+      border-color: #61e5c2; box-shadow: 0 0 0 2px rgba(97,229,194,0.2);
+    }
+    button {
+      padding: 14px 32px; border: 0; border-radius: 12px;
+      font-weight: 700; font-size: 1rem; cursor: pointer;
+      background: linear-gradient(135deg, #61e5c2 0%, #8df1b8 100%);
+      color: #06221d; margin-top: 16px;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { margin-top: 16px; font-size: 0.85rem; line-height: 1.6; }
+    .msg.ok { color: #61e5c2; }
+    .msg.err { color: #f46f81; }
+    code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔑 Zmiana PIN</h2>
+    <p>Wpisz nowy PIN (4–10 cyfr), który będzie obowiązywał przy logowaniu.</p>
+    <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="••••" autocomplete="off" />
+    <br/>
+    <button id="changeBtn" disabled>Zmień PIN</button>
+    <div id="msg" class="msg"></div>
+  </div>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+    import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCUN0W7Cqg19ON9v4HKPwjUZP8jE2S2-uA",
+      authDomain: "ij-firma.firebaseapp.com",
+      projectId: "ij-firma",
+      storageBucket: "ij-firma.firebasestorage.app",
+      messagingSenderId: "916883889966",
+      appId: "1:916883889966:web:bae9bb20f1610c6593e2fa"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const settingsRef = doc(db, 'firmy_settings', 'default');
+
+    const input = document.getElementById('pinInput');
+    const btn = document.getElementById('changeBtn');
+    const msg = document.getElementById('msg');
+
+    // Włącz przycisk dopiero po wpisaniu min. 4 znaków
+    input.addEventListener('input', () => {
+      btn.disabled = input.value.trim().length < 4;
+    });
+
+    // Enter = kliknij przycisk
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !btn.disabled) btn.click();
+    });
+
+    btn.addEventListener('click', async () => {
+      const newPin = input.value.trim();
+      if (newPin.length < 4) {
+        msg.className = 'msg err';
+        msg.textContent = 'PIN musi mieć co najmniej 4 znaki.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Zapisywanie...';
+      msg.className = 'msg';
+      msg.textContent = '';
+
+      try {
+        // 1. Pobierz sól z Firestore
+        const snap = await getDoc(settingsRef);
+        const data = snap.exists() ? snap.data() : {};
+        const salt = data.pinSalt || '4e9657649578439d8c23bcea2a0ebc6b';
+
+        // 2. Oblicz hash SHA-256 (Web Crypto API)
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(`${newPin}:${salt}`));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const newHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // 3. Zachowaj pozostałe ustawienia i zaktualizuj tylko pinHash
+        const updateData = {
+          ...(data.maxAttempts !== undefined ? { maxAttempts: data.maxAttempts } : { maxAttempts: 5 }),
+          ...(data.lockMinutes !== undefined ? { lockMinutes: data.lockMinutes } : { lockMinutes: 30 }),
+          pinSalt: salt,
+          pinHash: newHash,
+        };
+        await setDoc(settingsRef, updateData, { merge: true });
+
+        msg.className = 'msg ok';
+        msg.innerHTML = `✅ PIN został zmieniony.<br/><small>Hash: <code>${newHash.slice(0, 16)}…</code></small>`;
+        btn.textContent = '✓ Gotowe';
+        input.value = '';
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = `❌ Błąd: ${err.message}`;
+        btn.textContent = 'Zmien PIN';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
