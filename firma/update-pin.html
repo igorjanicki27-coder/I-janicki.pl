@@ -39,6 +39,7 @@
     .msg { margin-top: 16px; font-size: 0.85rem; line-height: 1.6; }
     .msg.ok { color: #61e5c2; }
     .msg.err { color: #f46f81; }
+    .msg.wait { color: #b0c9db; }
     code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
   </style>
 </head>
@@ -52,25 +53,51 @@
     <div id="msg" class="msg"></div>
   </div>
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-    import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+    // --- Konfiguracja Firebase (taka sama jak w firebase.js) ---
     const firebaseConfig = {
-      apiKey: "AIzaSyCUN0W7Cqg19ON9v4HKPwjUZP8jE2S2-uA",
-      authDomain: "ij-firma.firebaseapp.com",
-      projectId: "ij-firma",
-      storageBucket: "ij-firma.firebasestorage.app",
-      messagingSenderId: "916883889966",
-      appId: "1:916883889966:web:bae9bb20f1610c6593e2fa"
+      apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
+      authDomain: 'i-janicki.firebaseapp.com',
+      projectId: 'i-janicki',
+      storageBucket: 'i-janicki.firebasestorage.app',
+      messagingSenderId: '745361888690',
+      appId: '1:745361888690:web:1af2df4ddf8fe7b4d600ab'
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app = getApps()[0] ?? initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
     const settingsRef = doc(db, 'firmy_settings', 'default');
 
     const input = document.getElementById('pinInput');
     const btn = document.getElementById('changeBtn');
     const msg = document.getElementById('msg');
+
+    // --- Zaloguj anonimowo przy starcie ---
+    (async function init() {
+      msg.className = 'msg wait';
+      msg.textContent = '⌛ Łączenie z Firebase...';
+      try {
+        await new Promise((resolve, reject) => {
+          if (auth.currentUser) return resolve(auth.currentUser);
+          const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe();
+            if (user) return resolve(user);
+            signInAnonymously(auth)
+              .then((cred) => resolve(cred.user))
+              .catch(reject);
+          });
+        });
+        msg.textContent = '';
+        msg.className = 'msg';
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = '❌ Błąd logowania do Firebase: ' + err.message;
+      }
+    })();
 
     // Włącz przycisk dopiero po wpisaniu min. 4 znaków
     input.addEventListener('input', () => {
@@ -99,7 +126,11 @@
         // 1. Pobierz sól z Firestore
         const snap = await getDoc(settingsRef);
         const data = snap.exists() ? snap.data() : {};
-        const salt = data.pinSalt || '4e9657649578439d8c23bcea2a0ebc6b';
+        const salt = data.pinSalt;
+
+        if (!salt) {
+          throw new Error('Brak klucza pinSalt w Firestore. Najpierw uruchom setup.html.');
+        }
 
         // 2. Oblicz hash SHA-256 (Web Crypto API)
         const encoder = new TextEncoder();
@@ -107,14 +138,8 @@
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const newHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // 3. Zachowaj pozostałe ustawienia i zaktualizuj tylko pinHash
-        const updateData = {
-          ...(data.maxAttempts !== undefined ? { maxAttempts: data.maxAttempts } : { maxAttempts: 5 }),
-          ...(data.lockMinutes !== undefined ? { lockMinutes: data.lockMinutes } : { lockMinutes: 30 }),
-          pinSalt: salt,
-          pinHash: newHash,
-        };
-        await setDoc(settingsRef, updateData, { merge: true });
+        // 3. Zaktualizuj tylko pinHash, reszta pozostaje bez zmian
+        await setDoc(settingsRef, { pinHash: newHash }, { merge: true });
 
         msg.className = 'msg ok';
         msg.innerHTML = `✅ PIN został zmieniony.<br/><small>Hash: <code>${newHash.slice(0, 16)}…</code></small>`;
@@ -123,7 +148,7 @@
       } catch (err) {
         msg.className = 'msg err';
         msg.textContent = `❌ Błąd: ${err.message}`;
-        btn.textContent = 'Zmien PIN';
+        btn.textContent = 'Zmień PIN';
         btn.disabled = false;
       }
     });
