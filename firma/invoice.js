@@ -84,15 +84,16 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       }
       /* === HEADER === */
       .inv-header {
+        position: relative;
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         margin-bottom: 20px;
       }
       .inv-header-left {
-        flex: 0 0 220px;
-        margin-left: -48px;
-        margin-top: -56px;
+        position: absolute;
+        left: -48px;
+        top: -56px;
       }
       .inv-header-left img {
         max-height: 260px;
@@ -104,7 +105,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         text-align: center;
       }
       .inv-header-center h1 {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
         margin: 0 0 4px;
         letter-spacing: 0.04em;
@@ -223,6 +224,20 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       tbody tr:last-child td {
         border-bottom: 0;
       }
+      /* === SIGNATURE === */
+      .signature-area {
+        margin-top: 60px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .signature-area > div {
+        width: 180px;
+        border-top: 1px solid #94a3b8;
+        padding-top: 6px;
+        font-size: 11px;
+        color: #94a3b8;
+        text-align: center;
+      }
       /* === TOTAL === */
       .total-row {
         display: flex;
@@ -329,6 +344,12 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       <div class="total-row">
         <span class="total-label">Razem</span>
         <span>${formatCurrency(subtotal)}</span>
+      </div>
+
+      <!-- SIGNATURE -->
+      <div class="signature-area">
+        <div>Podpis sprzedawcy</div>
+        <div>Podpis nabywcy</div>
       </div>
 
       <!-- NOTES -->
