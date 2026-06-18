@@ -74,16 +74,16 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         background: #eef2f7;
         color: #101827;
         font-family: Inter, Arial, sans-serif;
+        padding: 24px 0;
       }
 
       .sheet {
-        width: 793px;
-        max-width: 100%;
-        margin: 0 auto;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto 24px;
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
-        padding: 40px 48px;
+        padding: 14mm 14mm 10mm;
         background: white;
         box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
       }
@@ -274,18 +274,28 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         margin-top: 6px;
         padding-top: 10px;
         border-top: 1px solid #dbe4ef;
-        font-size: 10px;
-        line-height: 1.5;
+        margin-left: -4mm;
+        margin-right: -4mm;
+        font-size: 8.25px;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
         color: #64748b;
         flex-shrink: 0;
+        white-space: nowrap;
+        text-align: center;
       }
       @media print {
         body { background: white; padding: 0; margin: 0; }
-        .sheet { width: auto; max-width: none; margin: 0; box-shadow: none; padding: 15px 20px; min-height: auto; }
-        .spacer { flex: 0; }
+        .sheet { width: auto; min-height: 297mm; margin: 0; box-shadow: none; padding: 14mm 14mm 10mm; }
       }
       @media (max-width: 800px) {
-        .sheet { padding: 24px; }
+        body { padding: 0; }
+        .sheet {
+          width: auto;
+          min-height: auto;
+          margin: 0;
+          padding: 24px;
+        }
         .inv-header {
           display: flex;
           flex-direction: column;
@@ -302,6 +312,14 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         .inv-header-center { text-align: left; }
         .inv-header-right { text-align: left; }
         .parties { grid-template-columns: 1fr; }
+        .footnote {
+          margin-left: 0;
+          margin-right: 0;
+          font-size: 10px;
+          line-height: 1.5;
+          white-space: normal;
+          text-align: left;
+        }
       }
     </style>
   </head>

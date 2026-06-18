@@ -1974,10 +1974,13 @@ svg {
   align-items: center;
   gap: 6px 16px;
 }
-.checkbox-row label {
-  display: flex;
+.checkbox-opt {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+}
+.checkbox-opt label {
   cursor: pointer;
   user-select: none;
   font-size: 0.92rem;
