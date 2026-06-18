@@ -1174,7 +1174,8 @@ function labeledInput({ name, label, type = 'text', value = '', placeholder = ''
         value="${escapeHtml(value ?? '')}"
         placeholder="${escapeHtml(placeholder)}"
         ${required ? 'required' : ''}
-        ${type === 'number' ? `step="${step}" ${min !== '' ? `min="${min}"` : ''}` : ''}
+        ${min !== '' ? `min="${min}"` : ''}
+        ${type === 'number' ? `step="${step}"` : ''}
       />
     </label>
   `;

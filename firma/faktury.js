@@ -539,6 +539,13 @@ function openInvoiceEdit(invoice) {
 function openOwnInvoiceStep2() {
   if (!firm) return;
   const issueDate = new Date().toISOString().slice(0, 10);
+  const currentYear = issueDate.slice(0, 4);
+  let minDate = '';
+  if (state.invoiceCounterDates?.[currentYear]) {
+    const nextDay = new Date(state.invoiceCounterDates[currentYear]);
+    nextDay.setDate(nextDay.getDate() + 1);
+    minDate = nextDay.toISOString().slice(0, 10);
+  }
   const { months, selectedMonth: selMonth } = getInvoiceMonthOptions();
 
   openModal(
@@ -547,7 +554,7 @@ function openOwnInvoiceStep2() {
       <form id="ownInvoiceStep2Form" class="form-grid form-grid--single">
         <div class="form-row">
           ${labeledInput({ name: 'title', label: 'Opis (nazwa) faktury', value: 'Uslugi marketingowe - ' + monthLabel(selMonth), required: true })}
-          ${labeledInput({ name: 'issueDate', label: 'Data wystawienia', type: 'date', value: issueDate, required: true })}
+          ${labeledInput({ name: 'issueDate', label: 'Data wystawienia', type: 'date', value: issueDate, required: true, min: minDate })}
         </div>
         <div class="form-row">
           ${labeledInput({ name: 'vatMode', label: 'Typ faktury', type: 'select', value: 'zw', options: VAT_OPTIONS })}
@@ -637,12 +644,10 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
           <span>Uwagi</span>
           <textarea name="notes" rows="2">${isEdit ? escapeHtml(existingInvoice.notes || '') : ''}</textarea>
         </label>
-        <label class="field checkbox-row field-span-2">
-          <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
-          <span>Nie odejmuj od budżetu</span>
-          <input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
-          <span>Pomiń w rozliczeniach</span>
-        </label>
+        <div class="field checkbox-row field-span-2" id="ownInvoiceCheckboxes">
+          <label><input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} /> <span>Nie odejmuj od budżetu</span></label>
+          <label><input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} /> <span>Pomiń w rozliczeniach</span></label>
+        </div>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Wystaw fakture')}
       </form>
     `,
@@ -650,6 +655,15 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
   );
 
   const itemsContainer = document.getElementById('itemsContainer');
+
+  // Auto-check: "Pomiń w rozliczeniach" → "Nie odejmuj od budżetu"
+  const ownSkipAccounting = document.querySelector('#ownInvoiceCheckboxes [name="skipAccounting"]');
+  const ownSkipBudget = document.querySelector('#ownInvoiceCheckboxes [name="skipBudget"]');
+  if (ownSkipAccounting && ownSkipBudget) {
+    ownSkipAccounting.addEventListener('change', () => {
+      if (ownSkipAccounting.checked) ownSkipBudget.checked = true;
+    });
+  }
 
   function refreshItemsUI() {
     itemsContainer.innerHTML = renderItems();
@@ -852,12 +866,10 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
           <span>Zalacznik (PDF lub obraz, do 1 MB)</span>
           <input type="file" name="file" accept=".pdf,image/*" />
         </label>`}
-        <label class="field checkbox-row field-span-2">
-          <input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
-          <span>Nie odejmuj od budżetu</span>
-          <input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
-          <span>Pomiń w rozliczeniach</span>
-        </label>
+        <div class="field checkbox-row field-span-2" id="extInvoiceCheckboxes">
+          <label><input type="checkbox" name="skipBudget" value="1" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} /> <span>Nie odejmuj od budżetu</span></label>
+          <label><input type="checkbox" name="skipAccounting" value="1" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} /> <span>Pomiń w rozliczeniach</span></label>
+        </div>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Dodaj fakture')}
       </form>
     `,
@@ -865,6 +877,16 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
   );
 
   const form = document.getElementById('extInvoiceStep3');
+
+  // Auto-check: "Pomiń w rozliczeniach" → "Nie odejmuj od budżetu"
+  const extSkipAccounting = document.querySelector('#extInvoiceCheckboxes [name="skipAccounting"]');
+  const extSkipBudget = document.querySelector('#extInvoiceCheckboxes [name="skipBudget"]');
+  if (extSkipAccounting && extSkipBudget) {
+    extSkipAccounting.addEventListener('change', () => {
+      if (extSkipAccounting.checked) extSkipBudget.checked = true;
+    });
+  }
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(form);
