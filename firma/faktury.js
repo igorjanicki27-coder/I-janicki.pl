@@ -536,6 +536,44 @@ function openInvoiceEdit(invoice) {
   }
 }
 
+function bindInvoiceCheckboxes(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const skipBudget = container.querySelector('[name="skipBudget"]');
+  const skipAccounting = container.querySelector('[name="skipAccounting"]');
+  if (!skipBudget || !skipAccounting) return;
+
+  const syncState = () => {
+    if (skipAccounting.checked) skipBudget.checked = true;
+    const budgetOption = skipBudget.closest('.checkbox-opt');
+    budgetOption?.classList.toggle('is-locked', skipAccounting.checked);
+    skipBudget.setAttribute('aria-checked', String(skipBudget.checked));
+  };
+
+  container.addEventListener('change', (event) => {
+    const target = event.target;
+    if (target !== skipBudget && target !== skipAccounting) return;
+
+    if (target === skipBudget && skipAccounting.checked && !skipBudget.checked) {
+      skipBudget.checked = true;
+    }
+    syncState();
+  });
+
+  container.addEventListener('click', (event) => {
+    const option = event.target.closest('.checkbox-opt');
+    if (!option || !option.contains(skipBudget)) return;
+    if (skipAccounting.checked && event.target !== skipAccounting) {
+      event.preventDefault();
+      skipBudget.checked = true;
+      syncState();
+    }
+  });
+
+  syncState();
+}
+
 function openOwnInvoiceStep2() {
   if (!firm) return;
   const issueDate = new Date().toISOString().slice(0, 10);
@@ -645,14 +683,14 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
           <textarea name="notes" rows="2">${isEdit ? escapeHtml(existingInvoice.notes || '') : ''}</textarea>
         </label>
         <div class="field checkbox-row field-span-2" id="ownInvoiceCheckboxes">
-          <span class="checkbox-opt">
+          <label class="checkbox-opt">
             <input type="checkbox" name="skipBudget" value="1" id="skipBudgetOwn" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
-            <label for="skipBudgetOwn">Nie odejmuj od budżetu</label>
-          </span>
-          <span class="checkbox-opt">
+            <span>Nie odejmuj od budżetu</span>
+          </label>
+          <label class="checkbox-opt">
             <input type="checkbox" name="skipAccounting" value="1" id="skipAccountingOwn" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
-            <label for="skipAccountingOwn">Pomiń w rozliczeniach</label>
-          </span>
+            <span>Pomiń w rozliczeniach</span>
+          </label>
         </div>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Wystaw fakture')}
       </form>
@@ -661,15 +699,7 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
   );
 
   const itemsContainer = document.getElementById('itemsContainer');
-
-  // Auto-check: "Pomiń w rozliczeniach" → "Nie odejmuj od budżetu"
-  const ownSkipAccounting = document.querySelector('#ownInvoiceCheckboxes [name="skipAccounting"]');
-  const ownSkipBudget = document.querySelector('#ownInvoiceCheckboxes [name="skipBudget"]');
-  if (ownSkipAccounting && ownSkipBudget) {
-    ownSkipAccounting.addEventListener('change', () => {
-      if (ownSkipAccounting.checked) ownSkipBudget.checked = true;
-    });
-  }
+  bindInvoiceCheckboxes('ownInvoiceCheckboxes');
 
   function refreshItemsUI() {
     itemsContainer.innerHTML = renderItems();
@@ -730,8 +760,8 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
     const total = itemsData.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
     const formData = new FormData(form);
     const notes = String(formData.get('notes') || '').trim();
-    const subtractFromBudget = !formData.get('skipBudget');
     const skipAccounting = !!formData.get('skipAccounting');
+    const subtractFromBudget = skipAccounting ? false : !formData.get('skipBudget');
 
     if (isEdit) {
       // Tryb edycji – aktualizuj istniejącą fakturę
@@ -873,14 +903,14 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
           <input type="file" name="file" accept=".pdf,image/*" />
         </label>`}
         <div class="field checkbox-row field-span-2" id="extInvoiceCheckboxes">
-          <span class="checkbox-opt">
+          <label class="checkbox-opt">
             <input type="checkbox" name="skipBudget" value="1" id="skipBudgetExt" ${isEdit && existingInvoice.subtractFromBudget === false ? 'checked' : ''} />
-            <label for="skipBudgetExt">Nie odejmuj od budżetu</label>
-          </span>
-          <span class="checkbox-opt">
+            <span>Nie odejmuj od budżetu</span>
+          </label>
+          <label class="checkbox-opt">
             <input type="checkbox" name="skipAccounting" value="1" id="skipAccountingExt" ${isEdit && existingInvoice.skipAccounting ? 'checked' : ''} />
-            <label for="skipAccountingExt">Pomiń w rozliczeniach</label>
-          </span>
+            <span>Pomiń w rozliczeniach</span>
+          </label>
         </div>
         ${modalActions(isEdit ? 'Zapisz zmiany' : 'Dodaj fakture')}
       </form>
@@ -889,15 +919,7 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
   );
 
   const form = document.getElementById('extInvoiceStep3');
-
-  // Auto-check: "Pomiń w rozliczeniach" → "Nie odejmuj od budżetu"
-  const extSkipAccounting = document.querySelector('#extInvoiceCheckboxes [name="skipAccounting"]');
-  const extSkipBudget = document.querySelector('#extInvoiceCheckboxes [name="skipBudget"]');
-  if (extSkipAccounting && extSkipBudget) {
-    extSkipAccounting.addEventListener('change', () => {
-      if (extSkipAccounting.checked) extSkipBudget.checked = true;
-    });
-  }
+  bindInvoiceCheckboxes('extInvoiceCheckboxes');
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -939,8 +961,8 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
       existingInvoice.issueDate = step2Data.issueDate;
       existingInvoice.saleDate = step2Data.issueDate;
       existingInvoice.title = step2Data.title;
-      existingInvoice.subtractFromBudget = !data.get('skipBudget');
       existingInvoice.skipAccounting = !!data.get('skipAccounting');
+      existingInvoice.subtractFromBudget = existingInvoice.skipAccounting ? false : !data.get('skipBudget');
 
       // Dolacz nowy zalacznik jesli dodano
       if (file) {
@@ -982,8 +1004,8 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
         vendor: '',
         payer: 'my_funds',
         category: 'other',
-        subtractFromBudget: !data.get('skipBudget'),
         skipAccounting: !!data.get('skipAccounting'),
+        subtractFromBudget: !!data.get('skipAccounting') ? false : !data.get('skipBudget'),
         notes: '',
         amount,
         items: [],

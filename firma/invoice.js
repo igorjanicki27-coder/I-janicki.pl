@@ -71,16 +71,20 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #eef2f7;
+        background: #dbe3ee;
         color: #101827;
         font-family: Inter, Arial, sans-serif;
-        padding: 24px 0;
+      }
+
+      .page-stage {
+        min-height: 100vh;
+        padding: 24px 0 40px;
       }
 
       .sheet {
         width: 210mm;
         min-height: 297mm;
-        margin: 0 auto 24px;
+        margin: 0 auto;
         display: flex;
         flex-direction: column;
         padding: 14mm 14mm 10mm;
@@ -228,8 +232,9 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       tbody tr:last-child td {
         border-bottom: 0;
       }
-      /* === SPACER === */
-      .spacer { flex: 1; }
+      .invoice-bottom {
+        margin-top: auto;
+      }
       /* === SIGNATURE === */
       .signature-area {
         margin-top: 10px;
@@ -274,22 +279,23 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         margin-top: 6px;
         padding-top: 10px;
         border-top: 1px solid #dbe4ef;
-        margin-left: -4mm;
-        margin-right: -4mm;
-        font-size: 8.25px;
-        line-height: 1.2;
-        letter-spacing: -0.01em;
+        margin-left: -2mm;
+        margin-right: -2mm;
+        font-size: 8.2px;
+        line-height: 1.15;
+        letter-spacing: -0.015em;
         color: #64748b;
         flex-shrink: 0;
         white-space: nowrap;
         text-align: center;
       }
       @media print {
-        body { background: white; padding: 0; margin: 0; }
-        .sheet { width: auto; min-height: 297mm; margin: 0; box-shadow: none; padding: 14mm 14mm 10mm; }
+        body { background: white; }
+        .page-stage { min-height: auto; padding: 0; }
+        .sheet { box-shadow: none; }
       }
       @media (max-width: 800px) {
-        body { padding: 0; }
+        .page-stage { min-height: auto; padding: 0; }
         .sheet {
           width: auto;
           min-height: auto;
@@ -312,6 +318,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         .inv-header-center { text-align: left; }
         .inv-header-right { text-align: left; }
         .parties { grid-template-columns: 1fr; }
+        .invoice-bottom { margin-top: 24px; }
         .footnote {
           margin-left: 0;
           margin-right: 0;
@@ -324,6 +331,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
     </style>
   </head>
   <body>
+    <div class="page-stage">
     <section class="sheet">
       <!-- HEADER -->
       <div class="inv-header">
@@ -380,31 +388,32 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       </div>
 
       <!-- TOTAL -->
-      <div class="total-row">
-        <span class="total-label">Razem</span>
-        <span>${formatCurrency(subtotal)}</span>
-      </div>
+      <div class="invoice-bottom">
+        <div class="total-row">
+          <span class="total-label">Razem</span>
+          <span>${formatCurrency(subtotal)}</span>
+        </div>
 
-      <!-- NOTES -->
-      ${invoice.notes ? `
-      <div class="notes-block">
-        ${escapeHtml(invoice.notes)}
-      </div>
-      ` : ''}
+        <!-- NOTES -->
+        ${invoice.notes ? `
+        <div class="notes-block">
+          ${escapeHtml(invoice.notes)}
+        </div>
+        ` : ''}
 
-      <div class="spacer"></div>
+        <!-- SIGNATURE -->
+        <div class="signature-area">
+          <div>Podpis sprzedawcy</div>
+          <div>Podpis nabywcy</div>
+        </div>
 
-      <!-- SIGNATURE -->
-      <div class="signature-area">
-        <div>Podpis sprzedawcy</div>
-        <div>Podpis nabywcy</div>
-      </div>
-
-      <!-- FOOTER -->
-      <div class="footnote">
-        ${escapeHtml(footerNote)}
+        <!-- FOOTER -->
+        <div class="footnote">
+          ${escapeHtml(footerNote)}
+        </div>
       </div>
     </section>
+    </div>
   </body>
   </html>`;
 }
