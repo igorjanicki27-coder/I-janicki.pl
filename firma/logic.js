@@ -196,6 +196,7 @@ export function getMonthFinancialEntries(firm, month) {
     }),
     ...externalInvoices
       .filter((invoice) => {
+        if (invoice.skipAccounting) return false;
         if (invoice.status === 'cancelled') return false;
         if (invoice.subtractFromBudget !== false) return true;
         return Boolean(invoice.paidBy);
@@ -226,7 +227,7 @@ export function getMonthFinancialEntries(firm, month) {
       return entryMonth === month && (!entry.linkedInvoiceId || !invoiceMap.has(entry.linkedInvoiceId));
     }),
     ...ownInvoices
-      .filter((invoice) => invoice.status !== 'cancelled' && invoice.paidBy === 'client')
+      .filter((invoice) => !invoice.skipAccounting && invoice.status !== 'cancelled' && invoice.paidBy === 'client')
       .map((invoice) => ({
         id: `invoice-income-${invoice.id}`,
         type: 'income',

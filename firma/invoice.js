@@ -235,12 +235,17 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       .sheet-spacer {
         flex: 1;
       }
+      .page-bottom {
+        flex-shrink: 0;
+      }
       /* === SIGNATURE === */
       .signature-area {
         margin-top: 10px;
         display: flex;
         justify-content: space-between;
         flex-shrink: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
       .signature-area > div {
         width: 180px;
@@ -288,11 +293,26 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         flex-shrink: 0;
         white-space: nowrap;
         text-align: center;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
       @media print {
         body { background: white; }
         .page-stage { min-height: auto; padding: 0; }
-        .sheet { box-shadow: none; }
+        .sheet {
+          position: relative;
+          min-height: 297mm;
+          padding-bottom: 32mm;
+          box-shadow: none;
+          overflow: hidden;
+        }
+        .sheet-spacer { display: none; }
+        .page-bottom {
+          position: absolute;
+          left: 14mm;
+          right: 14mm;
+          bottom: 10mm;
+        }
       }
       @media (max-width: 800px) {
         .page-stage { min-height: auto; padding: 0; }
@@ -401,15 +421,17 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
 
       <div class="sheet-spacer"></div>
 
-      <!-- SIGNATURE -->
-      <div class="signature-area">
-        <div>Podpis sprzedawcy</div>
-        <div>Podpis nabywcy</div>
-      </div>
+      <div class="page-bottom">
+        <!-- SIGNATURE -->
+        <div class="signature-area">
+          <div>Podpis sprzedawcy</div>
+          <div>Podpis nabywcy</div>
+        </div>
 
-      <!-- FOOTER -->
-      <div class="footnote">
-        ${escapeHtml(footerNote)}
+        <!-- FOOTER -->
+        <div class="footnote">
+          ${escapeHtml(footerNote)}
+        </div>
       </div>
     </section>
     </div>
