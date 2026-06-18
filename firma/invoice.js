@@ -66,7 +66,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(invoice.number)} — ${escapeHtml(invoiceName)}</title>
     <style>
-      @page { size: A4; margin: 0; }
+      @page { size: A4; margin: 5mm; }
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
       body {
@@ -87,7 +87,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        padding: 14mm 14mm 10mm;
+        padding: 20mm 22mm 18mm;
         background: white;
         box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
       }
@@ -284,8 +284,8 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         margin-top: 6px;
         padding-top: 10px;
         border-top: 1px solid #dbe4ef;
-        margin-left: -2mm;
-        margin-right: -2mm;
+        margin-left: 0;
+        margin-right: 0;
         font-size: 8.2px;
         line-height: 1.15;
         letter-spacing: -0.015em;
@@ -297,21 +297,33 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         page-break-inside: avoid;
       }
       @media print {
+        @page { size: A4; margin: 5mm; }
         body { background: white; }
-        .page-stage { min-height: auto; padding: 0; }
+        .page-stage { min-height: auto; padding: 0; margin: 0; }
         .sheet {
-          position: relative;
-          min-height: 297mm;
-          padding-bottom: 32mm;
+          width: 210mm;
+          height: 297mm;
+          max-height: 297mm;
+          margin: 0 auto;
+          padding: 20mm 22mm 18mm;
           box-shadow: none;
           overflow: hidden;
+          page-break-after: avoid;
+          page-break-inside: avoid;
         }
-        .sheet-spacer { display: none; }
+        /* Spacer wypycha stopkę na dół – naturalny flex, bez absolutnego pozycjonowania */
+        .sheet-spacer { display: block; flex: 1 1 auto; }
         .page-bottom {
-          position: absolute;
-          left: 14mm;
-          right: 14mm;
-          bottom: 10mm;
+          position: static;
+          flex-shrink: 0;
+        }
+        .signature-area {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .footnote {
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
       }
       @media (max-width: 800px) {
