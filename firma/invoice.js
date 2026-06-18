@@ -232,8 +232,8 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       tbody tr:last-child td {
         border-bottom: 0;
       }
-      .invoice-bottom {
-        margin-top: auto;
+      .sheet-spacer {
+        flex: 1;
       }
       /* === SIGNATURE === */
       .signature-area {
@@ -318,7 +318,6 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         .inv-header-center { text-align: left; }
         .inv-header-right { text-align: left; }
         .parties { grid-template-columns: 1fr; }
-        .invoice-bottom { margin-top: 24px; }
         .footnote {
           margin-left: 0;
           margin-right: 0;
@@ -388,29 +387,29 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       </div>
 
       <!-- TOTAL -->
-      <div class="invoice-bottom">
-        <div class="total-row">
-          <span class="total-label">Razem</span>
-          <span>${formatCurrency(subtotal)}</span>
-        </div>
+      <div class="total-row">
+        <span class="total-label">Razem</span>
+        <span>${formatCurrency(subtotal)}</span>
+      </div>
 
-        <!-- NOTES -->
-        ${invoice.notes ? `
-        <div class="notes-block">
-          ${escapeHtml(invoice.notes)}
-        </div>
-        ` : ''}
+      <!-- NOTES -->
+      ${invoice.notes ? `
+      <div class="notes-block">
+        ${escapeHtml(invoice.notes)}
+      </div>
+      ` : ''}
 
-        <!-- SIGNATURE -->
-        <div class="signature-area">
-          <div>Podpis sprzedawcy</div>
-          <div>Podpis nabywcy</div>
-        </div>
+      <div class="sheet-spacer"></div>
 
-        <!-- FOOTER -->
-        <div class="footnote">
-          ${escapeHtml(footerNote)}
-        </div>
+      <!-- SIGNATURE -->
+      <div class="signature-area">
+        <div>Podpis sprzedawcy</div>
+        <div>Podpis nabywcy</div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="footnote">
+        ${escapeHtml(footerNote)}
       </div>
     </section>
     </div>
