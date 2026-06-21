@@ -348,9 +348,9 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
           margin-top: -12px;
         }
         .inv-header-left img {
-          left: -8px;
-          top: -3px;
-          width: 128px;
+          left: -23px;
+          top: -47px;
+          width: 240px;
           max-width: none;
           max-height: none;
         }
