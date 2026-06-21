@@ -301,41 +301,95 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         html,
         body {
           width: 210mm;
-          min-height: 0;
+          height: 297mm;
+          min-height: 297mm;
+          max-height: 297mm;
+          overflow: hidden;
         }
         body { background: white; }
         .page-stage {
           width: 210mm;
-          min-height: 0;
+          height: 297mm;
+          min-height: 297mm;
+          max-height: 297mm;
           padding: 0;
           margin: 0;
           overflow: hidden;
         }
         .sheet {
+          position: relative;
           width: 210mm;
-          min-height: 0;
-          height: 296mm;
-          max-height: 296mm;
+          min-height: 297mm;
+          height: 297mm;
+          max-height: 297mm;
           margin: 0;
-          padding: 20mm 22mm 18mm;
+          padding: 15mm 18mm 34mm;
           box-shadow: none;
-          overflow: hidden;
+          overflow: visible;
           break-after: avoid;
           page-break-after: avoid;
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* Spacer wypycha stopkę na dół – naturalny flex, bez absolutnego pozycjonowania */
-        .sheet-spacer { display: block; flex: 1 1 auto; }
+        .inv-header {
+          margin-bottom: 12px;
+        }
+        .inv-header-left {
+          margin-left: -18px;
+          margin-top: -22px;
+        }
+        .inv-header-left img {
+          max-height: 150px;
+          max-width: 150px;
+        }
+        .parties {
+          gap: 16px;
+          margin-bottom: 12px;
+        }
+        .party {
+          padding: 16px 16px;
+          line-height: 1.45;
+        }
+        .items-box {
+          padding: 12px 14px;
+          margin-bottom: 8px;
+        }
+        thead th {
+          padding: 8px 8px;
+        }
+        tbody td {
+          padding: 10px 8px;
+        }
+        .total-row {
+          margin-top: 14px;
+          padding-top: 12px;
+        }
+        .notes-block {
+          margin-top: 12px;
+          padding-top: 10px;
+        }
+        .sheet-spacer { display: none; }
         .page-bottom {
-          position: static;
+          position: absolute;
+          left: 18mm;
+          right: 18mm;
+          bottom: 12mm;
           flex-shrink: 0;
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
         .signature-area {
+          margin-top: 0;
           break-inside: avoid;
           page-break-inside: avoid;
         }
         .footnote {
+          margin-top: 6mm;
+          padding-top: 3mm;
+          font-size: 8px;
+          line-height: 1.25;
+          letter-spacing: 0;
+          white-space: normal;
           break-inside: avoid;
           page-break-inside: avoid;
         }
