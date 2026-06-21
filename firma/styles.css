@@ -1695,6 +1695,81 @@ svg {
   padding: 8px 12px;
 }
 
+.invoice-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invoice-detail-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.invoice-detail-number {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.invoice-detail-title {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.invoice-detail-meta {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.invoice-detail-attachments {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.invoice-detail-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-detail-section-head strong {
+  font-size: 0.95rem;
+}
+
+.invoice-detail-section-head span {
+  color: var(--text-dim);
+  font-size: 0.84rem;
+}
+
+.invoice-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.invoice-attachment-pill {
+  min-height: 38px;
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.invoice-attachment-pill .icon {
+  flex: 0 0 auto;
+}
+
 .empty-screen {
   display: grid;
   gap: 20px;
@@ -2247,6 +2322,20 @@ svg {
   .topbar,
   .app-shell {
     padding-inline: 18px;
+  }
+
+  .invoice-detail-header {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-detail-title,
+  .invoice-detail-meta {
+    text-align: left;
+  }
+
+  .invoice-detail-section-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .form-grid {

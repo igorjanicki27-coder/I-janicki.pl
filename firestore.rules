@@ -413,6 +413,42 @@ service cloud.firestore {
       allow create, update, delete: if isFirmyAdmin();
     }
 
+    match /attachments/{attachmentId} {
+      allow get, list: if isFirmyAdmin();
+      allow create, update: if isFirmyAdmin()
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'name',
+          'type',
+          'size',
+          'chunkCount',
+          'createdAt'
+        ])
+        && request.resource.data.id == attachmentId
+        && request.resource.data.name is string
+        && request.resource.data.type is string
+        && request.resource.data.size is int
+        && request.resource.data.size > 0
+        && request.resource.data.size <= 5 * 1024 * 1024
+        && request.resource.data.chunkCount is int
+        && request.resource.data.chunkCount >= 1
+        && request.resource.data.chunkCount <= 8
+        && request.resource.data.createdAt is string;
+      allow delete: if isFirmyAdmin();
+
+      match /chunks/{chunkId} {
+        allow get, list: if isFirmyAdmin();
+        allow create, update: if isFirmyAdmin()
+          && request.resource.data.keys().hasOnly(['index', 'data'])
+          && request.resource.data.index is int
+          && request.resource.data.index >= 0
+          && request.resource.data.index < 8
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 900 * 1024;
+        allow delete: if isFirmyAdmin();
+      }
+    }
+
     match /firmy_clients/{clientId} {
       allow get: if isFirmyAdmin() || isFirmyClientFor(clientId);
       allow list: if isFirmyAdmin();

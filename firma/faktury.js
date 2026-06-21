@@ -50,6 +50,9 @@ const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 
+const ATTACHMENT_ACCEPT = '.pdf,.zip,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,image/*,application/zip,application/x-zip-compressed';
+const ATTACHMENT_HELP = `PDF, zdjęcie lub ZIP, do ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB`;
+
 // Back button — clear firm context and return to firm list
 document.querySelector('.back-to-company')?.addEventListener('click', () => {
   sessionStorage.removeItem('ijanicki_firma_activeFirm');
@@ -578,9 +581,9 @@ function bindInvoiceCheckboxes(containerId) {
   syncState();
 }
 
-function openOwnInvoiceStep2() {
+function openOwnInvoiceStep2(prefill = null) {
   if (!firm) return;
-  const issueDate = new Date().toISOString().slice(0, 10);
+  const issueDate = prefill?.issueDate || new Date().toISOString().slice(0, 10);
   const currentYear = issueDate.slice(0, 4);
   let minDate = '';
   if (state.invoiceCounterDates?.[currentYear]) {
@@ -589,18 +592,19 @@ function openOwnInvoiceStep2() {
     minDate = nextDay.toISOString().slice(0, 10);
   }
   const { months, selectedMonth: selMonth } = getInvoiceMonthOptions();
+  const selectedMonth = prefill?.month || selMonth;
 
   openModal(
     'Nowa faktura własna – dane',
     `
       <form id="ownInvoiceStep2Form" class="form-grid form-grid--single">
         <div class="form-row">
-          ${labeledInput({ name: 'title', label: 'Opis (nazwa) faktury', value: 'Uslugi marketingowe - ' + monthLabel(selMonth), required: true })}
+          ${labeledInput({ name: 'title', label: 'Opis (nazwa) faktury', value: prefill?.title || 'Uslugi marketingowe - ' + monthLabel(selectedMonth), required: true })}
           ${labeledInput({ name: 'issueDate', label: 'Data wystawienia', type: 'date', value: issueDate, required: true, min: minDate })}
         </div>
         <div class="form-row">
-          ${labeledInput({ name: 'vatMode', label: 'Typ faktury', type: 'select', value: 'zw', options: VAT_OPTIONS })}
-          ${labeledInput({ name: 'month', label: 'Okres rozliczeniowy', type: 'select', value: selMonth, options: months.map((m) => ({ value: m, label: monthLabel(m) })) })}
+          ${labeledInput({ name: 'vatMode', label: 'Typ faktury', type: 'select', value: prefill?.vatMode || 'zw', options: VAT_OPTIONS })}
+          ${labeledInput({ name: 'month', label: 'Okres rozliczeniowy', type: 'select', value: selectedMonth, options: months.map((m) => ({ value: m, label: monthLabel(m) })) })}
         </div>
         ${modalActions('Dalej →')}
       </form>
@@ -696,7 +700,15 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
             <span>Pomiń w rozliczeniach</span>
           </label>
         </div>
-        ${modalActions(isEdit ? 'Zapisz zmiany' : 'Wystaw fakture')}
+        ${isEdit ? modalActions('Zapisz zmiany') : `
+          <div class="modal-actions is-split">
+            <button class="ghost-button" type="button" data-action="back-own-invoice-step2">Cofnij</button>
+            <div class="modal-actions-group">
+              <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
+              <button class="primary-button" type="submit">Wystaw fakture</button>
+            </div>
+          </div>
+        `}
       </form>
     `,
     { wide: true }
@@ -748,6 +760,12 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
   });
 
   const form = document.getElementById('ownInvoiceStep3Form');
+  form.querySelector('[data-action="back-own-invoice-step2"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openOwnInvoiceStep2(step2Data);
+  });
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const itemsData = items.filter((it) => parseFloat(it.unitPrice) > 0).map((it) => ({
@@ -859,19 +877,20 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
   });
 }
 
-function openExternalInvoiceStep2() {
+function openExternalInvoiceStep2(prefill = null) {
   if (!firm) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = prefill?.issueDate || new Date().toISOString().slice(0, 10);
   const { months, selectedMonth: selMonth } = getInvoiceMonthOptions();
+  const selectedMonth = prefill?.month || selMonth;
 
   openModal(
     'Dodaj fakture cudza – dane',
     `
       <form id="extInvoiceStep2" class="form-grid form-grid--single">
         <div class="form-row form-row--3cols">
-          ${labeledInput({ name: 'title', label: 'Opis (nazwa) faktury', value: '', required: true })}
+          ${labeledInput({ name: 'title', label: 'Opis (nazwa) faktury', value: prefill?.title || '', required: true })}
           ${labeledInput({ name: 'issueDate', label: 'Data wystawienia', type: 'date', value: today, required: true })}
-          ${labeledInput({ name: 'month', label: 'Okres rozliczeniowy', type: 'select', value: selMonth, options: months.map((m) => ({ value: m, label: monthLabel(m) })) })}
+          ${labeledInput({ name: 'month', label: 'Okres rozliczeniowy', type: 'select', value: selectedMonth, options: months.map((m) => ({ value: m, label: monthLabel(m) })) })}
         </div>
         <p class="form-hint">Firma: <strong>${escapeHtml(firm.name)}</strong> (automatycznie)</p>
         ${modalActions('Dalej →')}
@@ -903,8 +922,8 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
           ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: isEdit ? existingInvoice.amount : '', min: '0', step: '0.01', required: true })}
         </div>
         ${isEdit ? '' : `<label class="field">
-          <span>Zalacznik (PDF lub obraz, do 1 MB)</span>
-          <input type="file" name="file" accept=".pdf,image/*" />
+          <span>Załącznik (${ATTACHMENT_HELP})</span>
+          <input type="file" name="file" accept="${ATTACHMENT_ACCEPT}" />
         </label>`}
         <div class="field checkbox-row field-span-2" id="extInvoiceCheckboxes">
           <label class="checkbox-opt">
@@ -916,7 +935,15 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
             <span>Pomiń w rozliczeniach</span>
           </label>
         </div>
-        ${modalActions(isEdit ? 'Zapisz zmiany' : 'Dodaj fakture')}
+        ${isEdit ? modalActions('Zapisz zmiany') : `
+          <div class="modal-actions is-split">
+            <button class="ghost-button" type="button" data-action="back-external-invoice-step2">Cofnij</button>
+            <div class="modal-actions-group">
+              <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
+              <button class="primary-button" type="submit">Dodaj fakture</button>
+            </div>
+          </div>
+        `}
       </form>
     `,
     { wide: true }
@@ -924,6 +951,11 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
 
   const form = document.getElementById('extInvoiceStep3');
   bindInvoiceCheckboxes('extInvoiceCheckboxes');
+  form.querySelector('[data-action="back-external-invoice-step2"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openExternalInvoiceStep2(step2Data);
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -939,21 +971,26 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
     const file = form.querySelector('[name="file"]').files?.[0] || null;
     const attachmentIds = [];
 
-    if (file) {
+    if (file && !isEdit) {
       if (file.size > MAX_ATTACHMENT_BYTES) {
         window.alert(`Plik jest większy niż ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB (limit dla załączników).`);
         return;
       }
       const attachmentId = uid();
-      await storeAttachment({
-        id: attachmentId,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastModified: file.lastModified,
-        blob: file,
-        createdAt: new Date().toISOString(),
-      });
+      try {
+        await storeAttachment({
+          id: attachmentId,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified,
+          blob: file,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        window.alert('Nie udało się zapisać załącznika. Spróbuj ponownie po odświeżeniu strony.');
+        return;
+      }
       attachmentIds.push(attachmentId);
     }
 
@@ -970,16 +1007,25 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
 
       // Dolacz nowy zalacznik jesli dodano
       if (file) {
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+          window.alert(`Plik jest większy niż ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB (limit dla załączników).`);
+          return;
+        }
         const attachmentId = uid();
-        await storeAttachment({
-          id: attachmentId,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          lastModified: file.lastModified,
-          blob: file,
-          createdAt: new Date().toISOString(),
-        });
+        try {
+          await storeAttachment({
+            id: attachmentId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            lastModified: file.lastModified,
+            blob: file,
+            createdAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          window.alert('Nie udało się zapisać załącznika. Spróbuj ponownie po odświeżeniu strony.');
+          return;
+        }
         if (!existingInvoice.attachmentIds) existingInvoice.attachmentIds = [];
         existingInvoice.attachmentIds.push(attachmentId);
       }
@@ -1167,33 +1213,41 @@ function openInvoiceDetailModal(invoice) {
         </tfoot>
       </table>`;
 
+  const attachmentsHtml = invoice.attachmentIds?.length ? `
+    <section class="invoice-detail-attachments">
+      <div class="invoice-detail-section-head">
+        <strong>Załączniki</strong>
+        <span>${invoice.attachmentIds.length} ${invoice.attachmentIds.length === 1 ? 'plik' : 'pliki'}</span>
+      </div>
+      <div class="invoice-attachment-list">
+        ${invoice.attachmentIds.map((aid, i) => `
+          <button class="attachment-pill invoice-attachment-pill" type="button" data-action="open-attachment" data-attachment-id="${aid}">
+            ${icon('file')}
+            <span>Załącznik ${i + 1}</span>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  ` : '';
+
   const html = `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <div>
+    <div class="invoice-detail-stack">
+      <div class="invoice-detail-header">
+        <div class="invoice-detail-number">
           <strong>${escapeHtml(invoice.number || '-')}</strong>
-          <span class="kind-badge kind-${invoice.kind}" style="margin-left:8px">${kindLabel}</span>
+          <span class="kind-badge kind-${invoice.kind}">${kindLabel}</span>
         </div>
-        <div style="font-size:13px;color:var(--text-dim)">
+        <div class="invoice-detail-title">
           ${escapeHtml(invoice.title || '')}
           ${invoice.kind === 'external' && invoice.vendor ? '&middot; ' + escapeHtml(invoice.vendor) : ''}
         </div>
-        <div style="font-size:13px;color:var(--text-dim)">
+        <div class="invoice-detail-meta">
           ${formatDate(invoice.issueDate)} &middot; ${paidLabel}
           ${budgetLabel ? '&middot; ' + budgetLabel : ''}
         </div>
       </div>
       ${itemsHtml}
-      ${invoice.attachmentIds?.length ? `
-        <div style="border-top:1px solid var(--border);padding-top:8px">
-          <strong style="font-size:13px;color:var(--text-dim)">Zalaczniki:</strong>
-          ${invoice.attachmentIds.map((aid, i) => `
-            <button class="table-action-btn" type="button" data-action="open-attachment" data-attachment-id="${aid}" style="margin-left:8px;margin-top:4px">
-              ${icon('file')} Zalacznik ${i + 1}
-            </button>
-          `).join('')}
-        </div>
-      ` : ''}
+      ${attachmentsHtml}
       ${invoice.notes ? `<div style="border-top:1px solid var(--border);padding-top:8px;font-size:13px;color:var(--text-dim)"><strong>Notatki:</strong> ${escapeHtml(invoice.notes)}</div>` : ''}
     </div>
   `;

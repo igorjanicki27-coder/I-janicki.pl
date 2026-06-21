@@ -10,6 +10,9 @@
     "ignore": [
       "firebase.json",
       "**/.*",
+      ".git/**",
+      "firebase-debug.log",
+      ".firebase/**",
       "**/node_modules/**",
       "i-JANEK/**",
       "postcss.config.js",
