@@ -27,7 +27,7 @@ import {
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
 } from './storage.js?v=12';
-import { openInvoicePreview } from './invoice.js?v=20';
+import { openInvoicePreview } from './invoice.js?v=21';
 
 const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');

@@ -108,6 +108,8 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         max-height: 260px;
         max-width: 260px;
         display: block;
+        transform: scale(2);
+        transform-origin: top left;
       }
       .inv-header-center {
         text-align: center;

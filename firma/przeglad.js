@@ -50,7 +50,7 @@ import {
   restoreContext,
   initSyncIndicator,
 } from './core.js?v=17';
-import { openInvoicePreview } from './invoice.js?v=20';
+import { openInvoicePreview } from './invoice.js?v=21';
 
 // --- State ---
 let state = initializeState();
