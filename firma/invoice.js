@@ -110,7 +110,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       .inv-header-left img {
         position: absolute;
         left: -12px;
-        top: -67px;
+        top: -6px;
         width: 280px;
         max-width: none;
         max-height: none;
@@ -349,7 +349,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         }
         .inv-header-left img {
           left: -8px;
-          top: -20px;
+          top: -3px;
           width: 128px;
           max-width: none;
           max-height: none;
