@@ -16,7 +16,7 @@ import {
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=18';
+} from './storage.js?v=19';
 import {
   icon,
   escapeHtml,
@@ -38,7 +38,7 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=18';
+} from './core.js?v=19';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---

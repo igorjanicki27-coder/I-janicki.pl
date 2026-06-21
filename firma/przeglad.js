@@ -23,7 +23,7 @@ import {
   getAttachment,
   loadState,
   syncFromCloud,
-} from './storage.js?v=18';
+} from './storage.js?v=19';
 import {
   icon,
   escapeHtml,
@@ -49,7 +49,7 @@ import {
   navigateTo,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=18';
+} from './core.js?v=19';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---

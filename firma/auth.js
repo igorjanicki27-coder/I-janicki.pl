@@ -12,7 +12,7 @@
  * PIN jest przechowywany w Firestore wyłącznie jako hash SHA-256 + sól.
  */
 
-import { ensureAuth, getSetting, setSetting, serverTimestamp } from './firebase.js';
+import { ensureAuth, getSetting, setSetting, serverTimestamp } from './firebase.js?v=19';
 
 /* ── Stałe ──────────────────────────────────────────────────── */
 const STORAGE_PREFIX = 'ijanicki_firma_';

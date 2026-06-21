@@ -13,6 +13,7 @@ import {
   onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   collection,
@@ -37,7 +38,17 @@ const firebaseConfig = {
 /* ── Singleton ───────────────────────────────────────────────── */
 const app = getApps()[0] ?? initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false,
+    });
+  } catch (error) {
+    console.warn('Firestore long polling init fallback:', error);
+    return getFirestore(app);
+  }
+})();
 
 /* ── Auth helpers ──────────────────────────────────────────── */
 

@@ -11,7 +11,7 @@ import {
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=18';
+} from './storage.js?v=19';
 import {
   icon,
   escapeHtml,
@@ -30,7 +30,7 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=18';
+} from './core.js?v=19';
 
 let state = initializeState();
 restoreContext(state);
