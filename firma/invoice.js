@@ -297,18 +297,32 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         page-break-inside: avoid;
       }
       @media print {
-        @page { size: A4; margin: 5mm; }
+        @page { size: A4; margin: 0; }
+        html,
+        body {
+          width: 210mm;
+          min-height: 0;
+        }
         body { background: white; }
-        .page-stage { min-height: auto; padding: 0; margin: 0; }
+        .page-stage {
+          width: 210mm;
+          min-height: 0;
+          padding: 0;
+          margin: 0;
+          overflow: hidden;
+        }
         .sheet {
           width: 210mm;
-          height: 297mm;
-          max-height: 297mm;
-          margin: 0 auto;
+          min-height: 0;
+          height: 296mm;
+          max-height: 296mm;
+          margin: 0;
           padding: 20mm 22mm 18mm;
           box-shadow: none;
           overflow: hidden;
+          break-after: avoid;
           page-break-after: avoid;
+          break-inside: avoid;
           page-break-inside: avoid;
         }
         /* Spacer wypycha stopkę na dół – naturalny flex, bez absolutnego pozycjonowania */
