@@ -109,9 +109,9 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
       }
       .inv-header-left img {
         position: absolute;
-        left: -16px;
-        top: -77px;
-        width: 330px;
+        left: -12px;
+        top: -67px;
+        width: 280px;
         max-width: none;
         max-height: none;
         display: block;
@@ -348,9 +348,9 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
           margin-top: -12px;
         }
         .inv-header-left img {
-          left: -9px;
-          top: -24px;
-          width: 150px;
+          left: -8px;
+          top: -20px;
+          width: 128px;
           max-width: none;
           max-height: none;
         }

@@ -50,11 +50,12 @@ import {
   restoreContext,
   initSyncIndicator,
 } from './core.js?v=17';
-import { openInvoicePreview } from './invoice.js?v=23';
+import { openInvoicePreview } from './invoice.js?v=24';
 
 // --- State ---
 let state = initializeState();
-restoreContext(state);
+const shouldRestoreFirmContext = shouldRestoreOverviewContext();
+applyOverviewEntryContext(state);
 state.ui.activeTab = 'overview';
 // Gdy nie ma wybranej firmy, zawsze pokazuj liste firm (nigdy 'Moje faktury')
 if (!state.ui.selectedFirmId) {
@@ -67,10 +68,43 @@ const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 
+function shouldRestoreOverviewContext() {
+  const navEntry = performance.getEntriesByType('navigation')[0];
+  if (navEntry?.type === 'reload') {
+    return Boolean(sessionStorage.getItem('ijanicki_firma_activeFirm'));
+  }
+
+  if (!document.referrer) return false;
+
+  try {
+    const referrer = new URL(document.referrer);
+    if (referrer.origin !== window.location.origin) return false;
+    return /\/firma\/(faktury|portfel)\.html$/.test(referrer.pathname);
+  } catch (_) {
+    return false;
+  }
+}
+
+function applyOverviewEntryContext(nextState) {
+  if (shouldRestoreFirmContext) {
+    restoreContext(nextState);
+    return;
+  }
+
+  sessionStorage.removeItem('ijanicki_firma_activeFirm');
+  sessionStorage.removeItem('ijanicki_firma_activeMonth');
+  sessionStorage.removeItem('ijanicki_firma_activeTab');
+  nextState.ui.selectedFirmId = null;
+  nextState.ui.selectedMonth = null;
+  nextState.ui.activeTab = 'overview';
+  nextState.ui.activeGlobalTab = 'firms';
+}
+
 // Back button — clear firm context and reload to show firm list
 document.querySelector('.back-to-company')?.addEventListener('click', () => {
   sessionStorage.removeItem('ijanicki_firma_activeFirm');
   sessionStorage.removeItem('ijanicki_firma_activeMonth');
+  sessionStorage.removeItem('ijanicki_firma_activeTab');
   state.ui.selectedFirmId = null;
   state.ui.activeGlobalTab = 'firms';
   persistState(state);
@@ -1488,7 +1522,7 @@ if (sessionStorage.getItem('ijanicki_firma_loggedIn') !== 'true') {
     // (syncFromCloud zapisuje do localStorage, ale nie aktualizuje
     // lokalnej zmiennej state, przez co render() widział pusty stan)
     state = initializeState();
-    restoreContext(state);
+    applyOverviewEntryContext(state);
     render();
   });
 }
