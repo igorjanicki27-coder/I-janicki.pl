@@ -99,17 +99,22 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         margin-bottom: 20px;
       }
       .inv-header-left {
+        position: relative;
+        width: 260px;
+        height: 44px;
         margin-left: -48px;
         margin-top: -56px;
         align-self: start;
         overflow: visible;
       }
       .inv-header-left img {
-        max-height: 260px;
-        max-width: 260px;
+        position: absolute;
+        left: -19px;
+        top: -91px;
+        width: 390px;
+        max-width: none;
+        max-height: none;
         display: block;
-        transform: scale(2);
-        transform-origin: top left;
       }
       .inv-header-center {
         text-align: center;
@@ -337,12 +342,17 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
           margin-bottom: 8px;
         }
         .inv-header-left {
+          width: 118px;
+          height: 24px;
           margin-left: -10px;
           margin-top: -12px;
         }
         .inv-header-left img {
-          max-height: 118px;
-          max-width: 118px;
+          left: -11px;
+          top: -28px;
+          width: 177px;
+          max-width: none;
+          max-height: none;
         }
         .inv-header-center h1 { font-size: 12px; }
         .inv-header-center .inv-number { font-size: 16px; }
