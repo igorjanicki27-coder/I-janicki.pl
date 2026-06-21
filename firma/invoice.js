@@ -66,7 +66,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(invoice.number)} — ${escapeHtml(invoiceName)}</title>
     <style>
-      @page { size: A4; margin: 5mm; }
+      @page { size: auto; margin: 0; }
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
       body {
@@ -297,33 +297,33 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
         page-break-inside: avoid;
       }
       @media print {
-        @page { size: A4; margin: 0; }
+        @page { size: auto; margin: 0; }
         html,
         body {
-          width: 210mm;
-          height: 297mm;
-          min-height: 297mm;
-          max-height: 297mm;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          max-height: none;
           overflow: hidden;
         }
         body { background: white; }
         .page-stage {
-          width: 210mm;
-          height: 297mm;
-          min-height: 297mm;
-          max-height: 297mm;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          max-height: none;
           padding: 0;
           margin: 0;
           overflow: hidden;
         }
         .sheet {
           position: relative;
-          width: 210mm;
-          min-height: 297mm;
-          height: 297mm;
-          max-height: 297mm;
+          width: 100%;
+          min-height: 0;
+          height: 100%;
+          max-height: none;
           margin: 0;
-          padding: 15mm 18mm 34mm;
+          padding: 11mm 14mm 30mm;
           box-shadow: none;
           overflow: visible;
           break-after: avoid;
@@ -332,62 +332,90 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
           page-break-inside: avoid;
         }
         .inv-header {
-          margin-bottom: 12px;
-        }
-        .inv-header-left {
-          margin-left: -18px;
-          margin-top: -22px;
-        }
-        .inv-header-left img {
-          max-height: 150px;
-          max-width: 150px;
-        }
-        .parties {
-          gap: 16px;
-          margin-bottom: 12px;
-        }
-        .party {
-          padding: 16px 16px;
-          line-height: 1.45;
-        }
-        .items-box {
-          padding: 12px 14px;
           margin-bottom: 8px;
         }
+        .inv-header-left {
+          margin-left: -10px;
+          margin-top: -12px;
+        }
+        .inv-header-left img {
+          max-height: 118px;
+          max-width: 118px;
+        }
+        .inv-header-center h1 { font-size: 12px; }
+        .inv-header-center .inv-number { font-size: 16px; }
+        .inv-header-right { font-size: 10px; }
+        .parties {
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+        .party {
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-size: 11px;
+          line-height: 1.28;
+        }
+        .party > strong {
+          font-size: 9px;
+          margin-bottom: 6px;
+        }
+        .party .party-name {
+          font-size: 12px;
+          margin-bottom: 5px;
+          padding-bottom: 5px;
+        }
+        .party .party-sep {
+          margin-top: 5px;
+          padding-top: 5px;
+        }
+        .party .party-detail {
+          font-size: 10px;
+        }
+        .items-box {
+          padding: 8px 10px;
+          margin-bottom: 6px;
+          border-radius: 8px;
+        }
         thead th {
-          padding: 8px 8px;
+          padding: 6px 6px;
+          font-size: 9px;
         }
         tbody td {
-          padding: 10px 8px;
+          padding: 7px 6px;
+          font-size: 10px;
         }
         .total-row {
-          margin-top: 14px;
-          padding-top: 12px;
+          margin-top: 8px;
+          padding-top: 8px;
+          font-size: 14px;
         }
         .notes-block {
-          margin-top: 12px;
-          padding-top: 10px;
+          margin-top: 8px;
+          padding-top: 8px;
+          font-size: 10px;
+          line-height: 1.35;
         }
         .sheet-spacer { display: none; }
         .page-bottom {
           position: absolute;
-          left: 18mm;
-          right: 18mm;
-          bottom: 12mm;
+          left: 14mm;
+          right: 14mm;
+          bottom: 8mm;
           flex-shrink: 0;
           break-inside: avoid;
           page-break-inside: avoid;
         }
         .signature-area {
           margin-top: 0;
+          min-height: 16mm;
           break-inside: avoid;
           page-break-inside: avoid;
         }
         .footnote {
-          margin-top: 6mm;
-          padding-top: 3mm;
-          font-size: 8px;
-          line-height: 1.25;
+          margin-top: 3mm;
+          padding-top: 2mm;
+          font-size: 7px;
+          line-height: 1.18;
           letter-spacing: 0;
           white-space: normal;
           break-inside: avoid;
