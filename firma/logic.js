@@ -186,17 +186,27 @@ export function getOrderedMonths(firm) {
 export function getMonthFinancialEntries(firm, month) {
   const invoices = firm.invoices || [];
   const invoiceMap = new Map(invoices.map((invoice) => [invoice.id, invoice]));
-  const ownInvoices = invoices.filter((invoice) => invoice.kind === 'own' && getInvoiceMonthKey(invoice) === month);
-  const externalInvoices = invoices.filter((invoice) => invoice.kind === 'external' && getInvoiceMonthKey(invoice) === month);
+  const ownInvoices = invoices.filter((invoice) =>
+    invoice.kind === 'own'
+    && !invoice.skipAccounting
+    && getInvoiceMonthKey(invoice) === month
+  );
+  const externalInvoices = invoices.filter((invoice) =>
+    invoice.kind === 'external'
+    && !invoice.skipAccounting
+    && getInvoiceMonthKey(invoice) === month
+  );
 
   const expenses = [
     ...(firm.expenses || []).filter((expense) => {
       const expenseMonth = expense.month || monthFromDate(expense.date);
-      return expenseMonth === month && (!expense.linkedInvoiceId || !invoiceMap.has(expense.linkedInvoiceId));
+      const linkedInvoice = expense.linkedInvoiceId ? invoiceMap.get(expense.linkedInvoiceId) : null;
+      return expenseMonth === month
+        && !linkedInvoice?.skipAccounting
+        && (!expense.linkedInvoiceId || !invoiceMap.has(expense.linkedInvoiceId));
     }),
     ...externalInvoices
       .filter((invoice) => {
-        if (invoice.skipAccounting) return false;
         if (invoice.status === 'cancelled') return false;
         if (invoice.subtractFromBudget !== false) return true;
         return Boolean(invoice.paidBy);
@@ -224,10 +234,13 @@ export function getMonthFinancialEntries(firm, month) {
   const walletEntries = [
     ...(firm.walletEntries || []).filter((entry) => {
       const entryMonth = getWalletEntryMonth(entry);
-      return entryMonth === month && (!entry.linkedInvoiceId || !invoiceMap.has(entry.linkedInvoiceId));
+      const linkedInvoice = entry.linkedInvoiceId ? invoiceMap.get(entry.linkedInvoiceId) : null;
+      return entryMonth === month
+        && !linkedInvoice?.skipAccounting
+        && (!entry.linkedInvoiceId || !invoiceMap.has(entry.linkedInvoiceId));
     }),
     ...ownInvoices
-      .filter((invoice) => !invoice.skipAccounting && invoice.status !== 'cancelled' && invoice.paidBy === 'client')
+      .filter((invoice) => invoice.status !== 'cancelled' && invoice.paidBy === 'client')
       .map((invoice) => ({
         id: `invoice-income-${invoice.id}`,
         type: 'income',

@@ -241,6 +241,7 @@ function normalizeFirm(firm) {
       vendor: invoice.vendor || '',
       payer: invoice.payer || null,
       category: invoice.category || null,
+      skipAccounting: invoice.skipAccounting === true,
       subtractFromBudget: invoice.subtractFromBudget !== false,
       attachmentIds: ensureArray(invoice.attachmentIds),
       createdAt: invoice.createdAt || now,

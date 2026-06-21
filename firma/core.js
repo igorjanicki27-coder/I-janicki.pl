@@ -11,7 +11,7 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=17';
+} from './logic.js?v=18';
 import {
   createEmptyState,
   loadState,
@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=17';
+} from './storage.js?v=18';
 
 // --- Icons ---
 export function icon(name) {

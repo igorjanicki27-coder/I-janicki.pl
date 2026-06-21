@@ -9,14 +9,14 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=17';
+} from './logic.js?v=18';
 import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=17';
+} from './storage.js?v=18';
 import {
   icon,
   escapeHtml,
@@ -38,7 +38,7 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=17';
+} from './core.js?v=18';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -254,7 +254,11 @@ function renderInvoiceRow(invoice, index, showActions = false) {
   const kindLabel = invoice.kind === 'own' ? 'W' : 'Z';
   const kindTitle = invoice.kind === 'own' ? 'Wewnetrzna (wystawiona dla klienta)' : 'Zewnetrzna (dokument kosztowy)';
   const paid = invoice.paidBy === 'me' || invoice.paidBy === 'client';
-  const budgetFlag = invoice.subtractFromBudget === false ? '<span class="table-subline">Nie odejmuje od budżetu</span>' : '';
+  const budgetFlag = invoice.skipAccounting
+    ? '<span class="table-subline">Pominięta w rozliczeniach</span>'
+    : invoice.subtractFromBudget === false
+      ? '<span class="table-subline">Nie odejmuje od budżetu</span>'
+      : '';
   return `
     <tr data-id="${invoice.id}">
       <td class="col-lp">${index + 1}</td>
@@ -1127,7 +1131,11 @@ function openInvoiceDetailModal(invoice) {
   const items = invoice.items || [];
   const kindLabel = invoice.kind === 'own' ? 'Wlasna' : 'Zewnetrzna';
   const paidLabel = invoice.paidBy === 'me' ? 'Oplacilem ja' : invoice.paidBy === 'client' ? 'Oplacil klient' : 'Nieoplacona';
-  const budgetLabel = invoice.subtractFromBudget === false ? 'Nie odejmuje od budżetu' : 'Odejmuje od budżetu';
+  const budgetLabel = invoice.skipAccounting
+    ? 'Pominięta w rozliczeniach'
+    : invoice.subtractFromBudget === false
+      ? 'Nie odejmuje od budżetu'
+      : 'Odejmuje od budżetu';
   const itemsHtml = items.length === 0
     ? '<p style="text-align:center;color:var(--text-dim);padding:12px">Brak pozycji.</p>'
     : `<table class="data-table" style="margin:0">
