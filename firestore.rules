@@ -464,6 +464,16 @@ service cloud.firestore {
         allow get, list: if isFirmyAdmin() || isFirmyClientFor(clientId);
         allow create, update, delete: if isFirmyAdmin();
       }
+
+      match /post_tabs/{tabId} {
+        allow get, list: if isFirmyAdmin() || isFirmyClientFor(clientId);
+        allow create, update, delete: if isFirmyAdmin();
+      }
+
+      match /posts/{postId} {
+        allow get, list: if isFirmyAdmin() || isFirmyClientFor(clientId);
+        allow create, update, delete: if isFirmyAdmin();
+      }
     }
 
     match /stats_settings/{settingId} {

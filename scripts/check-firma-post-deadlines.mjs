@@ -4,6 +4,7 @@ const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON 
 const WEB3FORMS_ACCESS_KEY = process.env.WEB3FORMS_ACCESS_KEY || 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
 const REMINDER_EMAIL = process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com';
 const STATE_DOC = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/firmy_settings/state`;
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 function warsawTodayKey() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -197,6 +198,68 @@ async function loadState(idToken) {
   return JSON.parse(doc.fields?.state?.stringValue || '{}');
 }
 
+function fromFirestoreValue(value) {
+  if (!value) return null;
+  if ('stringValue' in value) return value.stringValue;
+  if ('integerValue' in value) return Number(value.integerValue);
+  if ('doubleValue' in value) return Number(value.doubleValue);
+  if ('booleanValue' in value) return Boolean(value.booleanValue);
+  if ('timestampValue' in value) return value.timestampValue;
+  if ('arrayValue' in value) return (value.arrayValue.values || []).map(fromFirestoreValue);
+  if ('mapValue' in value) return fromFirestoreFields(value.mapValue.fields || {});
+  return null;
+}
+
+function fromFirestoreFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, fromFirestoreValue(value)]));
+}
+
+function toStringArrayValue(values) {
+  return {
+    arrayValue: {
+      values: values.map((value) => ({ stringValue: String(value) })),
+    },
+  };
+}
+
+async function listDocs(idToken, path) {
+  const url = `${FIRESTORE_BASE}/${path}`;
+  const data = await requestJson(url, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  }).catch((error) => {
+    if (String(error.message || '').includes('404')) return { documents: [] };
+    throw error;
+  });
+  return (data.documents || []).map((doc) => ({
+    id: doc.name.split('/').pop(),
+    ...fromFirestoreFields(doc.fields || {}),
+  }));
+}
+
+async function getFirmDoc(idToken, firmId) {
+  const data = await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  }).catch((error) => {
+    if (String(error.message || '').includes('404')) return null;
+    throw error;
+  });
+  return data ? fromFirestoreFields(data.fields || {}) : {};
+}
+
+async function loadFirmPostCollections(idToken, firm) {
+  const [firmDoc, tabs, posts] = await Promise.all([
+    getFirmDoc(idToken, firm.id),
+    listDocs(idToken, `firmy_clients/${firm.id}/post_tabs`),
+    listDocs(idToken, `firmy_clients/${firm.id}/posts`),
+  ]);
+  return {
+    ...firm,
+    postReminderKeys: Array.isArray(firmDoc.postReminderKeys) ? firmDoc.postReminderKeys : [],
+    postTabs: tabs.length ? tabs : (firm.postTabs || []),
+    posts: posts.length ? posts : (firm.posts || []),
+  };
+}
+
 async function saveState(idToken, state) {
   const updatedAt = new Date().toISOString();
   state.updatedAt = updatedAt;
@@ -243,16 +306,22 @@ async function sendReminderEmail(reminder) {
   }
 }
 
-function markReminderSent(state, firmId, reminderKey) {
-  for (const firm of state.firms || []) {
-    if (firm.id !== firmId) continue;
-    firm.postReminderKeys = Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : [];
-    if (!firm.postReminderKeys.includes(reminderKey)) {
-      firm.postReminderKeys.push(reminderKey);
-      firm.updatedAt = new Date().toISOString();
-    }
-    return;
-  }
+async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
+  const nextKeys = Array.from(new Set([...(existingKeys || []), reminderKey]));
+  await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}?updateMask.fieldPaths=postReminderKeys&updateMask.fieldPaths=updatedAt`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fields: {
+        postReminderKeys: toStringArrayValue(nextKeys),
+        updatedAt: { stringValue: new Date().toISOString() },
+      },
+    }),
+  });
+  return nextKeys;
 }
 
 async function main() {
@@ -263,7 +332,8 @@ async function main() {
   }
 
   const state = await loadState(auth.idToken);
-  const reminders = findDueReminders(state);
+  const firms = await Promise.all((state.firms || []).map((firm) => loadFirmPostCollections(auth.idToken, firm)));
+  const reminders = findDueReminders({ firms });
 
   if (!reminders.length) {
     console.log('No overdue post tabs found.');
@@ -283,11 +353,11 @@ async function main() {
 
   if (!sent.length) return;
 
-  const freshState = await loadState(auth.idToken);
   for (const item of sent) {
-    markReminderSent(freshState, item.firmId, item.reminderKey);
+    const firm = firms.find((candidate) => candidate.id === item.firmId);
+    const nextKeys = await markReminderSent(auth.idToken, item.firmId, firm?.postReminderKeys || [], item.reminderKey);
+    if (firm) firm.postReminderKeys = nextKeys;
   }
-  await saveState(auth.idToken, freshState);
 }
 
 main().catch((error) => {

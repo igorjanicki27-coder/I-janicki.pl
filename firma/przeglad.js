@@ -27,6 +27,15 @@ import {
   flushSync,
 } from './storage.js?v=20';
 import {
+  deletePost as deletePostDoc,
+  deletePostTab as deletePostTabDoc,
+  loadFirmPostCollections,
+  savePost as savePostDoc,
+  savePosts as savePostDocs,
+  savePostTab as savePostTabDoc,
+  savePostTabs as savePostTabDocs,
+} from './post-storage.js?v=1';
+import {
   icon,
   escapeHtml,
   firmDisplayName,
@@ -72,6 +81,7 @@ const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 let postSearchTimer = null;
+const postCollectionStatus = new Map();
 
 function shouldRestoreOverviewContext() {
   const navEntry = performance.getEntriesByType('navigation')[0];
@@ -159,6 +169,30 @@ function firmMonthsOptions(firm) {
 
 function findBalanceEntry(id) {
   return getSelectedFirm(state)?.balanceEntries.find((item) => item.id === id) || null;
+}
+
+function ensureFirmPostCollectionsLoaded(firm) {
+  if (!firm?.id) return false;
+  const status = postCollectionStatus.get(firm.id);
+  if (status === 'loaded') return true;
+  if (status === 'loading') return false;
+
+  postCollectionStatus.set(firm.id, 'loading');
+  loadFirmPostCollections(firm)
+    .then(({ tabs, posts }) => {
+      firm.postTabs = tabs;
+      firm.posts = posts;
+      firm.postReminderKeys = [];
+      postCollectionStatus.set(firm.id, 'loaded');
+      persistAndFlush();
+      render();
+    })
+    .catch((error) => {
+      console.error('Nie udało się wczytać postów z Firestore:', error);
+      postCollectionStatus.set(firm.id, 'error');
+      render();
+    });
+  return false;
 }
 
 const POST_FREQUENCY_OPTIONS = [
@@ -1094,6 +1128,25 @@ function renderPostCard(firm, post) {
 }
 
 function renderPostsPage(firm) {
+  if (!ensureFirmPostCollectionsLoaded(firm)) {
+    const status = postCollectionStatus.get(firm.id);
+    return `
+      <div class="firm-detail-page posts-page">
+        <section class="section-band posts-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Posty</p>
+              <h3>${status === 'error' ? 'Nie udało się wczytać danych' : 'Ładowanie danych postów'}</h3>
+            </div>
+          </div>
+          <div class="empty-block">
+            <p>${status === 'error' ? 'Sprawdź połączenie z Firestore i uprawnienia.' : 'Pobieram podzakładki i wpisy z osobnych kolekcji Firestore.'}</p>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   const activeTabId = ensurePostTabSelection(firm);
   const tabs = firm.postTabs || [];
   const activeTab = tabs.find((tab) => tab.id === activeTabId) || null;
@@ -1188,9 +1241,10 @@ function openPostTabModal(existing = null) {
     </form>
   `);
 
-  document.getElementById('deletePostTabButton')?.addEventListener('click', () => {
+  document.getElementById('deletePostTabButton')?.addEventListener('click', async () => {
     if (!existing) return;
     if (!confirm(`Usunac podzakladke "${existing.name}" razem ze wszystkimi wpisami?`)) return;
+    await deletePostTabDoc(firm, existing.id);
     firm.postTabs = (firm.postTabs || []).filter((tab) => tab.id !== existing.id);
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== existing.id);
     firm.updatedAt = new Date().toISOString();
@@ -1200,7 +1254,7 @@ function openPostTabModal(existing = null) {
     render();
   });
 
-  document.getElementById('postTabForm').addEventListener('submit', (event) => {
+  document.getElementById('postTabForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const now = new Date().toISOString();
@@ -1212,6 +1266,7 @@ function openPostTabModal(existing = null) {
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
+    await savePostTabDoc(firm, tab);
     firm.postTabs = [
       ...(firm.postTabs || []).filter((item) => item.id !== tab.id),
       tab,
@@ -1279,7 +1334,7 @@ function openPostModal(existing = null, template = null) {
   form.querySelector('[name="title"]')?.addEventListener('input', updateSimilarPreview);
   form.querySelector('[name="keywords"]')?.addEventListener('input', updateSimilarPreview);
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(form);
     const now = new Date().toISOString();
@@ -1300,6 +1355,7 @@ function openPostModal(existing = null, template = null) {
       return;
     }
 
+    await savePostDoc(firm, post);
     firm.posts = [
       ...(firm.posts || []).filter((item) => item.id !== post.id),
       post,
@@ -1478,7 +1534,7 @@ function rowsToPostImport(records) {
   });
 }
 
-function importPostRows(importRows) {
+async function importPostRows(importRows) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
   const now = new Date().toISOString();
@@ -1523,6 +1579,8 @@ function importPostRows(importRows) {
   }
 
   firm.updatedAt = now;
+  await savePostTabDocs(firm, firm.postTabs || []);
+  await savePostDocs(firm, firm.posts || []);
   persistAndFlush();
   render();
   alert(`Import zakonczony. Dodano wpisow: ${imported}.`);
@@ -1538,14 +1596,14 @@ async function importPostsFile() {
     const ext = file.name.split('.').pop().toLowerCase();
     try {
       if (ext === 'csv') {
-        importPostRows(rowsToPostImport(parseCsv(await file.text())));
+        await importPostRows(rowsToPostImport(parseCsv(await file.text())));
         return;
       }
       if (ext === 'xls') {
         const html = await file.text();
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const records = [...doc.querySelectorAll('tr')].map((tr) => [...tr.children].map((td) => td.textContent || ''));
-        importPostRows(rowsToPostImport(records));
+        await importPostRows(rowsToPostImport(records));
         return;
       }
       const XLSX = await loadXlsxLibrary();
@@ -1553,7 +1611,7 @@ async function importPostsFile() {
       const workbook = XLSX.read(buffer, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-      importPostRows(rows.map((row) => {
+      await importPostRows(rows.map((row) => {
         const normalized = {};
         Object.keys(row).forEach((key) => {
           normalized[String(key).trim().toLowerCase()] = row[key];
@@ -1951,7 +2009,7 @@ function openWalletIncomeModal(existing) {
 }
 
 // --- Event Handling ---
-function handleClick(event) {
+async function handleClick(event) {
   if (event.target instanceof HTMLElement && event.target.classList.contains('modal-overlay')) {
     closeModal();
     return;
@@ -2140,6 +2198,7 @@ function handleClick(event) {
     const tab = findPostTab(target.dataset.id);
     if (!firm || !tab) return;
     if (!confirm(`Usunac podzakladke "${tab.name}" razem ze wszystkimi wpisami?`)) return;
+    await deletePostTabDoc(firm, tab.id);
     firm.postTabs = (firm.postTabs || []).filter((item) => item.id !== tab.id);
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== tab.id);
     firm.updatedAt = new Date().toISOString();
@@ -2159,11 +2218,13 @@ function handleClick(event) {
     }
     post.updatedAt = new Date().toISOString();
     firm.updatedAt = post.updatedAt;
+    await savePostDoc(firm, post);
     persistAndFlush();
     return render();
   }
   if (action === 'delete-post') {
     if (!firm || !confirm('Usunac ten wpis?')) return;
+    await deletePostDoc(firm, target.dataset.id);
     firm.posts = (firm.posts || []).filter((post) => post.id !== target.dataset.id);
     firm.updatedAt = new Date().toISOString();
     persistAndFlush();

@@ -325,6 +325,21 @@ export function loadState() {
   }
 }
 
+function stripPostCollections(input) {
+  return {
+    ...input,
+    firms: ensureArray(input.firms).map((firm) => {
+      const {
+        postTabs,
+        posts,
+        postReminderKeys,
+        ...rest
+      } = firm;
+      return rest;
+    }),
+  };
+}
+
 /**
  * Zapisuje stan natychmiast do localStorage,
  * a synchronizację z Firestore kolejkuje w tle (z retry).
@@ -334,9 +349,10 @@ export function saveState(state) {
     ...state,
     updatedAt: currentIso(),
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  const serializable = stripPostCollections(normalized);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
   // Kolejkuj synchronizację z Firestore (z debounce i retry)
-  scheduleFirestoreSync(normalized);
+  scheduleFirestoreSync(serializable);
   return normalized;
 }
 
