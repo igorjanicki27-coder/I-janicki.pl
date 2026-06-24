@@ -200,6 +200,13 @@ function normalizeFirm(firm) {
       note: month.note || '',
       updatedAt: month.updatedAt || now,
     })),
+    adBudgetEntries: ensureArray(firm.adBudgetEntries).map((entry) => ({
+      id: entry.id,
+      date: entry.date || now.slice(0, 10),
+      amount: Number(entry.amount || 0),
+      description: entry.description || '',
+      createdAt: entry.createdAt || now,
+    })),
     balanceEntries: balanceEntries.map((entry) => ({
       id: entry.id,
       date: entry.date || now.slice(0, 10),

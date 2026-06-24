@@ -18,14 +18,14 @@ import {
   uid,
   VAT_OPTIONS,
   addDays,
-} from './logic.js?v=18';
+} from './logic.js?v=19';
 import {
   deleteAttachment,
   getAttachment,
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=20';
+} from './storage.js?v=21';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -60,7 +60,7 @@ import {
   navigateTo,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=20';
+} from './core.js?v=21';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -170,6 +170,10 @@ function firmMonthsOptions(firm) {
 
 function findBalanceEntry(id) {
   return getSelectedFirm(state)?.balanceEntries.find((item) => item.id === id) || null;
+}
+
+function findAdBudgetEntry(id) {
+  return getSelectedFirm(state)?.adBudgetEntries?.find((item) => item.id === id) || null;
 }
 
 function ensureFirmPostCollectionsLoaded(firm) {
@@ -641,10 +645,11 @@ function renderFlowBar(label, amount, percent, tone, note = '') {
   `;
 }
 
-function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInjection, expenses, adBalance }) {
+function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInjection, adOnlyBudget, expenses, adBalance }) {
   const positiveCarry = Math.max(0, carryIn || 0);
   const carryDebt = Math.max(0, -(carryIn || 0));
-  const availablePool = roundCurrency(positiveCarry + (adInjection || 0));
+  const adOnly = roundCurrency(adOnlyBudget || 0);
+  const availablePool = roundCurrency(positiveCarry + (adInjection || 0) + adOnly);
   const spent = roundCurrency(expenses || 0);
   const remaining = roundCurrency(Math.max(0, adBalance || 0));
   const overrun = roundCurrency(Math.max(0, -(adBalance || 0)));
@@ -670,6 +675,7 @@ function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInje
       <div class="overview-panel-grid">
         <div class="flow-chart">
           ${renderFlowBar('Pula reklamowa z tego miesiąca', adInjection || 0, availablePool > 0 ? ((adInjection || 0) / baseForPercent) * 100 : 0, 'cyan', 'Budżet po odjęciu Twojego wynagrodzenia')}
+          ${adOnly > 0 ? renderFlowBar('Budżet poza okresem', adOnly, availablePool > 0 ? (adOnly / baseForPercent) * 100 : 0, 'emerald', 'Dodatkowy budżet bez naliczania wynagrodzenia') : ''}
           ${positiveCarry > 0 ? renderFlowBar('Przeniesione z poprzednich miesięcy', positiveCarry, availablePool > 0 ? (positiveCarry / baseForPercent) * 100 : 0, 'slate', 'Dodatkowe środki dostępne od startu') : ''}
           ${carryDebt > 0 ? renderFlowBar('Minus z poprzednich miesięcy', carryDebt, availablePool > 0 ? (Math.min(carryDebt, availablePool) / baseForPercent) * 100 : 0, 'rose', 'Ta kwota zmniejszyła obecną pulę reklamową') : ''}
           ${renderFlowBar('Wydatki budżetowe', spent, spentPercent, 'amber', availablePool > 0 ? `Wykorzystano ${Math.round(spentPercent)}% dostępnej puli reklamowej.` : 'Brak aktywnej puli reklamowej w tym zakresie.')}
@@ -687,7 +693,7 @@ function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInje
   `;
 }
 
-function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation }) {
+function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation, adOnlyBudget }) {
   return `
     <section class="section-band overview-panel">
       <div class="panel-head">
@@ -701,6 +707,11 @@ function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid,
           <span>Twoje wynagrodzenie</span>
           <strong>${formatCurrency(compensation || 0)}</strong>
         </div>
+        ${(adOnlyBudget || 0) > 0 ? `
+        <div class="overview-detail-row is-strong">
+          <span>Budżet poza okresem</span>
+          <strong>${formatCurrency(adOnlyBudget)}</strong>
+        </div>` : ''}
         <div class="overview-detail-row">
           <span>Wpłaty klienta do Ciebie</span>
           <strong>${formatCurrency(paymentsReceived || 0)}</strong>
@@ -718,6 +729,54 @@ function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid,
           <strong>${formatCurrency(reserved || 0)}</strong>
         </div>
       </div>
+    </section>
+  `;
+}
+
+function renderAdBudgetEntriesPanel(firm) {
+  const entries = [...(firm.adBudgetEntries || [])]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = roundCurrency(entries.reduce((acc, entry) => acc + Number(entry.amount || 0), 0));
+
+  return `
+    <section class="section-band overview-panel">
+      <div class="panel-head space-between">
+        <div>
+          <p class="eyebrow">Bez okresu</p>
+          <h3>Budżet poza okresem</h3>
+          <p class="table-note">Suma: <strong>${formatCurrency(total)}</strong></p>
+        </div>
+        <button class="ghost-button" type="button" data-action="add-ad-budget">${icon('plus')}Dodaj budżet</button>
+      </div>
+      ${entries.length === 0 ? `
+        <div class="empty-block"><p>Brak dodatkowego budżetu bez wynagrodzenia.</p></div>
+      ` : `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Opis</th>
+                <th>Kwota</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map((entry) => `
+                <tr>
+                  <td>${formatDate(entry.date)}</td>
+                  <td>${escapeHtml(entry.description || '-')}</td>
+                  <td class="tone-mint">${formatCurrency(entry.amount)}</td>
+                  <td class="table-actions">
+                    <button class="mini-button" type="button" data-action="edit-ad-budget" data-id="${entry.id}">${icon('edit')}</button>
+                    <button class="mini-button tone-danger" type="button" data-action="delete-ad-budget" data-id="${entry.id}">${icon('trash')}</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
     </section>
   `;
 }
@@ -766,8 +825,11 @@ function renderTrendChart(ledger, selectedMonth) {
 }
 
 function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
-  const settlement = getSettlementMeta(monthRow.settlementNetChange);
-  const adBalance = roundCurrency(monthRow.adEndingBalance || 0);
+  const adOnlyBudget = selectedMonth === ledger.rows[0]?.month
+    ? (ledger.totals.totalAdOnlyBudget || 0)
+    : 0;
+  const settlement = getSettlementMeta(roundCurrency((monthRow.settlementNetChange || 0) + adOnlyBudget));
+  const adBalance = roundCurrency((monthRow.adEndingBalance || 0) + adOnlyBudget);
   const monthEntries = getMonthFinancialEntries(firm, selectedMonth);
   const expensePreview = [...monthEntries.expenses]
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -780,7 +842,7 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
         title: monthLabel(selectedMonth),
         settlement,
         adBalance,
-        budget: monthRow.budget,
+        budget: roundCurrency((monthRow.budget || 0) + adOnlyBudget),
         expenses: monthRow.expensesTotal || 0,
         payments: monthRow.paymentsReceived || 0,
       })}
@@ -793,6 +855,7 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             carryIn: monthRow.adCarryIn || 0,
             compensation: monthRow.compensation || 0,
             adInjection: monthRow.adInjection || 0,
+            adOnlyBudget,
             expenses: monthRow.expensesTotal || 0,
             adBalance,
           })}
@@ -804,6 +867,7 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             ownPaid: monthRow.ownPaidExpenses || 0,
             reserved: monthRow.reservedBudgetExpenses || 0,
             compensation: monthRow.compensation || 0,
+            adOnlyBudget,
           })}
         </div>
         <div class="overview-side-column">
@@ -851,6 +915,46 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
         `}
       </section>
     </div>
+  `;
+}
+
+function renderFirmContextHeader(firm, ledger, selectedMonth) {
+  const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
+  const unpaidCount = (firm.invoices || []).filter((invoice) => invoice.status !== 'cancelled' && !invoice.paidBy).length;
+  const selectedLabel = selectedMonth === '__all__'
+    ? 'Razem'
+    : selectedMonth === '__year__'
+      ? 'Ten rok'
+      : selectedMonth === '__quarter__'
+        ? 'Ten kwartał'
+        : monthLabel(selectedMonth);
+  const contactParts = [
+    firm.nip ? `NIP ${firm.nip}` : '',
+    firm.email || '',
+    firm.phone || '',
+  ].filter(Boolean);
+
+  return `
+    <section class="firm-context-header">
+      <div class="firm-context-main">
+        <button class="ghost-button compact-button" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
+        <div>
+          <h2>${escapeHtml(firmDisplayName(firm))}</h2>
+          <p>${escapeHtml(contactParts.join(' · ') || 'Brak danych kontaktowych')}</p>
+        </div>
+      </div>
+      <div class="firm-context-stats">
+        <span><strong>${ledger.rows.length}</strong> okresów</span>
+        <span><strong>${unpaidCount}</strong> nieopłacone</span>
+        <span><strong>${formatCurrency(settlement.amount)}</strong> ${settlement.shortLabel.toLowerCase()}</span>
+        <span>${escapeHtml(selectedLabel)}</span>
+      </div>
+      <div class="firm-context-actions">
+        <button class="ghost-button compact-button" type="button" data-action="edit-firm">${icon('edit')}Edytuj</button>
+        <button class="ghost-button compact-button" type="button" data-action="issue-invoice">${icon('file')}Faktura</button>
+        <button class="primary-button compact-button" type="button" data-action="add-month">${icon('plus')}Miesiąc</button>
+      </div>
+    </section>
   `;
 }
 
@@ -950,6 +1054,7 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
             carryIn: scope.adCarryIn || 0,
             compensation: scope.totalCompensation || 0,
             adInjection: scope.totalAdInjection || 0,
+            adOnlyBudget: scope.adOnlyBudget || 0,
             expenses: scope.totalExpenses || 0,
             adBalance,
           })}
@@ -961,6 +1066,7 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
             ownPaid: scope.totalOwnPaidExpenses || 0,
             reserved: 0,
             compensation: scope.totalCompensation || 0,
+            adOnlyBudget: scope.adOnlyBudget || 0,
           })}
         </div>
         <div class="overview-side-column">
@@ -1089,14 +1195,19 @@ function renderFirmDetail() {
   return `
     <div class="firm-detail-page">
       <section class="main-area">
+        ${renderFirmContextHeader(firm, ledger, selectedMonth)}
         ${renderOverview(firm, ledger, selectedMonth, monthRow)}
+        ${renderAdBudgetEntriesPanel(firm)}
         <section class="section-band overview-panel">
           <div class="panel-head space-between">
             <div>
               <p class="eyebrow">Historia miesięcy</p>
               <h3>Wszystkie okresy rozliczeniowe</h3>
             </div>
-            <button class="primary-button" type="button" data-action="add-month">${icon('plus')}Dodaj miesiąc</button>
+            <div class="panel-actions">
+              <button class="ghost-button" type="button" data-action="add-ad-budget">${icon('plus')}Budżet poza okresem</button>
+              <button class="primary-button" type="button" data-action="add-month">${icon('plus')}Dodaj miesiąc</button>
+            </div>
           </div>
           ${renderMonthList(ledger, selectedMonth)}
         </section>
@@ -1713,6 +1824,7 @@ function openFirmModal(firm = null) {
       phone: String(data.get('phone') || '').trim(),
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
+      adBudgetEntries: firm?.adBudgetEntries || [],
       balanceEntries: firm?.balanceEntries || [],
       walletEntries: firm?.walletEntries || [],
       expenses: firm?.expenses || [],
@@ -1998,6 +2110,54 @@ function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
   });
 }
 
+function openAdBudgetEntryModal(existing = null) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+
+  openModal(
+    existing ? 'Edytuj budżet poza okresem' : 'Dodaj budżet poza okresem',
+    `
+      <form id="adBudgetForm" class="form-grid">
+        ${labeledInput({ name: 'date', label: 'Data', type: 'date', value: existing?.date || new Date().toISOString().slice(0, 10), required: true })}
+        ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: existing?.amount ?? '', min: '0', required: true })}
+        <div class="field field-span-2">
+          <span>Opis</span>
+          <input type="text" name="description" value="${escapeHtml(existing?.description || '')}" placeholder="Np. dodatkowy budżet reklamowy bez wynagrodzenia" required />
+        </div>
+        ${modalActions(existing ? 'Zapisz budżet' : 'Dodaj budżet')}
+      </form>
+    `
+  );
+
+  const form = document.getElementById('adBudgetForm');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const amount = roundCurrency(data.get('amount'));
+    if (amount <= 0) {
+      window.alert('Podaj kwotę większą od 0.');
+      return;
+    }
+
+    const entry = {
+      id: existing?.id || uid(),
+      date: String(data.get('date')),
+      amount,
+      description: String(data.get('description') || '').trim(),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
+
+    firm.adBudgetEntries = [
+      ...(firm.adBudgetEntries || []).filter((item) => item.id !== entry.id),
+      entry,
+    ].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    closeModal();
+    render();
+  });
+}
+
 function openWalletIncomeModal(existing) {
   existing = existing || null;
   var firm = getSelectedFirm(state);
@@ -2067,6 +2227,17 @@ async function handleClick(event) {
   if (action === 'close-modal') return closeModal();
   if (action === 'add-firm') return openFirmModal();
   if (action === 'edit-firm') return openFirmModal(firm);
+  if (action === 'back-to-list') {
+    sessionStorage.removeItem('ijanicki_firma_activeFirm');
+    sessionStorage.removeItem('ijanicki_firma_activeMonth');
+    sessionStorage.removeItem('ijanicki_firma_activeTab');
+    state.ui.selectedFirmId = null;
+    state.ui.selectedMonth = null;
+    state.ui.activeTab = 'overview';
+    state.ui.activeGlobalTab = 'firms';
+    persist();
+    return render();
+  }
   if (action === 'switch-firm-tab') {
     state.ui.activeTab = target.dataset.tab || 'overview';
     persist();
@@ -2204,6 +2375,15 @@ async function handleClick(event) {
   if (action === 'add-balance-plus') return openBalanceEntryModal(null, 'plus');
   if (action === 'add-balance-minus') return openBalanceEntryModal(null, 'minus');
   if (action === 'edit-balance') return openBalanceEntryModal(findBalanceEntry(target.dataset.id));
+  if (action === 'add-ad-budget') return openAdBudgetEntryModal();
+  if (action === 'edit-ad-budget') return openAdBudgetEntryModal(findAdBudgetEntry(target.dataset.id));
+  if (action === 'delete-ad-budget') {
+    if (!firm || !window.confirm('Usunac ten budzet poza okresem?')) return;
+    firm.adBudgetEntries = (firm.adBudgetEntries || []).filter((item) => item.id !== target.dataset.id);
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    return render();
+  }
   if (action === 'delete-balance') {
     if (!firm || !window.confirm('Usunac te zmiane salda?')) return;
     firm.balanceEntries = firm.balanceEntries.filter((item) => item.id !== target.dataset.id);
@@ -2299,37 +2479,13 @@ function render() {
     } else if (state.ui.activeGlobalTab === 'my-invoices') {
       state.ui.selectedFirmId = null;
       root.innerHTML = renderAllOwnInvoices();
-      // Globalny topbar: Klienci | Moje faktury
-      const topbar = document.getElementById('topbarContent');
-      if (topbar) {
-        topbar.innerHTML = '<div class="topbar-grid">' +
-          '<div class="topbar-grid-left">' +
-            '<div class="tab-row">' +
-              '<button class="tab-button" type="button" data-action="switch-global-tab" data-tab="firms">Klienci</button>' +
-              '<button class="tab-button is-active" type="button">Moje faktury</button>' +
-            '</div>' +
-          '</div>' +
-          '<div class="topbar-grid-center"></div>' +
-          '<div class="topbar-grid-right"></div>' +
-        '</div>';
-      }
+      updateTopbar(state, state.ui.activeTab || 'overview');
+      document.querySelector('[data-action="switch-global-tab"][data-tab="firms"]')?.classList.remove('is-active');
+      document.querySelector('[data-action="switch-global-tab"][data-tab="my-invoices"]')?.classList.add('is-active');
     } else {
       state.ui.selectedFirmId = null;
       root.innerHTML = renderFirmList(state);
-      // Globalny topbar: Klienci | Moje faktury
-      const topbar = document.getElementById('topbarContent');
-      if (topbar) {
-        topbar.innerHTML = '<div class="topbar-grid">' +
-          '<div class="topbar-grid-left">' +
-            '<div class="tab-row">' +
-              '<button class="tab-button is-active" type="button">Klienci</button>' +
-              '<button class="tab-button" type="button" data-action="switch-global-tab" data-tab="my-invoices">Moje faktury</button>' +
-            '</div>' +
-          '</div>' +
-          '<div class="topbar-grid-center"></div>' +
-          '<div class="topbar-grid-right"></div>' +
-        '</div>';
-      }
+      updateTopbar(state, state.ui.activeTab || 'overview');
     }
   } catch (e) {
     root.innerHTML = `

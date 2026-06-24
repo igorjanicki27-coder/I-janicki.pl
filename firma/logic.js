@@ -145,6 +145,18 @@ function sum(values) {
   return roundCurrency(values.reduce((acc, value) => acc + Number(value || 0), 0));
 }
 
+function getAdBudgetEntries(firm) {
+  return (firm.adBudgetEntries || [])
+    .map((entry) => ({
+      id: entry.id,
+      date: entry.date || currentMonthKey() + '-01',
+      amount: roundCurrency(entry.amount || 0),
+      description: entry.description || '',
+      createdAt: entry.createdAt || null,
+    }))
+    .filter((entry) => entry.amount > 0);
+}
+
 function getMonthConfigMap(firm) {
   const map = new Map();
   for (const item of firm.months || []) {
@@ -267,6 +279,8 @@ export function getMonthFinancialEntries(firm, month) {
 export function calculateFirmLedger(firm) {
   const months = getOrderedMonths(firm);
   const monthConfigMap = getMonthConfigMap(firm);
+  const adBudgetEntries = getAdBudgetEntries(firm);
+  const totalAdOnlyBudget = sum(adBudgetEntries.map((entry) => entry.amount));
 
   // Przetwarzaj w kolejności chronologicznej (od najstarszego),
   // aby carry-over (niewykorzystane środki) przenosił się poprawnie do przodu
@@ -401,7 +415,8 @@ export function calculateFirmLedger(firm) {
   // tak jak oczekują pozostałe części UI (dropdown miesięcy itp.)
   const rows = rowsAsc.reverse();
 
-  const totalBudget = sum(rows.map((row) => row.budget));
+  const monthlyBudgetTotal = sum(rows.map((row) => row.budget));
+  const totalBudget = roundCurrency(monthlyBudgetTotal + totalAdOnlyBudget);
   const totalCompensation = sum(rows.map((row) => row.compensation));
   const totalBalanceAdded = sum(rows.map((row) => row.balanceAdded));
   const totalBalanceRemoved = sum(rows.map((row) => row.balanceRemoved));
@@ -413,16 +428,20 @@ export function calculateFirmLedger(firm) {
   const totalWalletIncome = sum(rows.map((row) => row.walletIncome));
   const totalWalletExpenses = sum(rows.map((row) => row.walletExpenses));
   const totalWalletNet = sum(rows.map((row) => row.walletNet));
-  const totalSettlementNet = sum(rows.map((row) => row.settlementNetChange));
+  const monthlySettlementNet = sum(rows.map((row) => row.settlementNetChange));
+  const totalSettlementNet = roundCurrency(monthlySettlementNet + totalAdOnlyBudget);
   const totalPaymentsReceived = sum(rows.map((row) => row.paymentsReceived));
-  const adBalance = rows[0]?.adEndingBalance || 0;
-  const walletBalance = rows[0]?.settlementEndingBalance || 0;
+  const adBalance = roundCurrency((rows[0]?.adEndingBalance || 0) + totalAdOnlyBudget);
+  const walletBalance = roundCurrency((rows[0]?.settlementEndingBalance || 0) + totalAdOnlyBudget);
 
   return {
     months,
     rows,
+    adBudgetEntries,
     totals: {
       totalBudget,
+      monthlyBudgetTotal,
+      totalAdOnlyBudget,
       totalCompensation,
       totalBalanceAdded,
       totalBalanceRemoved,
@@ -481,8 +500,13 @@ export function summarizeLedgerScope(ledger, selectedMonth, referenceDate = new 
   const rows = (ledger?.rows || []).filter((row) => scopeMonths.includes(row.month));
   const newestRow = rows[0] || null;
   const oldestRow = rows.at(-1) || null;
+  const latestMonth = ledger?.rows?.[0]?.month || null;
+  const includeAdOnlyBudget = !selectedMonth
+    || selectedMonth === '__all__'
+    || selectedMonth === latestMonth;
+  const adOnlyBudget = includeAdOnlyBudget ? (ledger?.totals?.totalAdOnlyBudget || 0) : 0;
 
-  const totalBudget = sum(rows.map((row) => row.budget));
+  const totalBudget = roundCurrency(sum(rows.map((row) => row.budget)) + adOnlyBudget);
   const totalCompensation = sum(rows.map((row) => row.compensation));
   const totalAdInjection = sum(rows.map((row) => row.adInjection));
   const totalExpenses = sum(rows.map((row) => row.expensesTotal));
@@ -491,9 +515,9 @@ export function summarizeLedgerScope(ledger, selectedMonth, referenceDate = new 
   const totalClientBudgetPaidExpenses = sum(rows.map((row) => row.clientBudgetPaidExpenses || 0));
   const totalPaymentsReceived = sum(rows.map((row) => row.paymentsReceived));
   const totalBalanceNet = sum(rows.map((row) => row.balanceNet));
-  const totalSettlementNet = sum(rows.map((row) => row.settlementNetChange));
+  const totalSettlementNet = roundCurrency(sum(rows.map((row) => row.settlementNetChange)) + adOnlyBudget);
   const adCarryIn = oldestRow?.adCarryIn || 0;
-  const adBalance = roundCurrency(adCarryIn + totalAdInjection - totalExpenses);
+  const adBalance = roundCurrency(adCarryIn + totalAdInjection + adOnlyBudget - totalExpenses);
   const settlementBalance = roundCurrency(
     totalBudget + totalBalanceNet - totalPaymentsReceived - totalClientBudgetPaidExpenses
   );
@@ -505,6 +529,7 @@ export function summarizeLedgerScope(ledger, selectedMonth, referenceDate = new 
     newestRow,
     oldestRow,
     totalBudget,
+    adOnlyBudget,
     totalCompensation,
     totalAdInjection,
     totalExpenses,

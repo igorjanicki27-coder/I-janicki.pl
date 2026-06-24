@@ -11,7 +11,7 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=18';
+} from './logic.js?v=19';
 import {
   createEmptyState,
   loadState,
@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=20';
+} from './storage.js?v=21';
 
 // --- Icons ---
 export function icon(name) {
@@ -159,6 +159,19 @@ export function getSettlementMeta(value) {
     badgeClass: 'is-positive',
     textClass: '',
   };
+}
+
+function countUnpaidInvoices(firm) {
+  return (firm.invoices || []).filter((invoice) => invoice.status !== 'cancelled' && !invoice.paidBy).length;
+}
+
+function firmContactSummary(firm) {
+  const parts = [
+    firm.nip ? `NIP ${firm.nip}` : '',
+    firm.email || '',
+    firm.phone || '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'Brak danych kontaktowych';
 }
 
 // --- Modal helpers ---
@@ -346,7 +359,25 @@ export function updateTopbar(state, activeTab) {
 
   const firm = state.firms.find((item) => item.id === state.ui.selectedFirmId) || null;
   if (!firm || !state.ui.selectedFirmId) {
-    container.innerHTML = '';
+    container.innerHTML = `
+      <div class="topbar-grid topbar-grid-global">
+        <div class="topbar-grid-left">
+          <div class="topbar-title">
+            <strong>Firma</strong>
+            <span>${state.firms.length} ${state.firms.length === 1 ? 'klient' : 'klientów'}</span>
+          </div>
+        </div>
+        <div class="topbar-grid-center">
+          <div class="tab-row">
+            <button class="tab-button is-active" type="button" data-action="switch-global-tab" data-tab="firms">Klienci</button>
+            <button class="tab-button" type="button" data-action="switch-global-tab" data-tab="my-invoices">Moje faktury</button>
+          </div>
+        </div>
+        <div class="topbar-grid-right">
+          <button class="primary-button compact-button" type="button" data-action="add-firm">${icon('plus')}Dodaj firmę</button>
+        </div>
+      </div>
+    `;
     return;
   }
 
@@ -361,6 +392,7 @@ export function updateTopbar(state, activeTab) {
   container.innerHTML = `
     <div class="topbar-grid">
       <div class="topbar-grid-left">
+        <button class="ghost-button compact-button back-inline" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
           <a class="tab-button ${activeTab === 'invoices' ? 'is-active' : ''}" href="faktury.html">Faktury</a>
@@ -407,12 +439,17 @@ export function updateTopbar(state, activeTab) {
 
 // --- Firm List (shared by przeglad and other pages) ---
 export function renderFirmList(state) {
+  const totalUnpaid = state.firms.reduce((acc, firm) => acc + countUnpaidInvoices(firm), 0);
   return `
     <div class="firm-list-page">
       <div class="list-page-head">
         <div>
-          <p class="eyebrow">Firma</p>
           <h1>Klienci</h1>
+          <p class="list-page-lead">Wybierz klienta, żeby przejść do budżetów, faktur, rozrachunku i postów.</p>
+        </div>
+        <div class="list-summary">
+          <span><strong>${state.firms.length}</strong> klientów</span>
+          <span><strong>${totalUnpaid}</strong> nieopłaconych faktur</span>
         </div>
       </div>
 
@@ -426,6 +463,8 @@ export function renderFirmList(state) {
           ${state.firms.map((firm) => {
             const ledger = calculateFirmLedger(firm);
             const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
+            const unpaidCount = countUnpaidInvoices(firm);
+            const latestMonth = ledger.rows[0]?.label || 'Brak miesięcy';
             return `
             <div class="firm-card tile-card" data-action="select-firm" data-id="${firm.id}" tabindex="0" role="button">
               <div class="tile-card-top">
@@ -443,9 +482,12 @@ export function renderFirmList(state) {
                 </span>
               </div>
               <div class="firm-contact-line">
-                ${(firm.address1 || firm.address) ? `<span class="firm-address">${escapeHtml(firm.address1 || firm.address)}</span>` : ''}
-                ${firm.address2 ? `<span class="firm-address">${escapeHtml(firm.address2)}</span>` : ''}
-                ${firm.phone ? `<span class="firm-phone">${escapeHtml(firm.phone)}</span>` : ''}
+                <span>${escapeHtml(firmContactSummary(firm))}</span>
+              </div>
+              <div class="firm-card-metrics">
+                <span><strong>${ledger.rows.length}</strong> okresów</span>
+                <span><strong>${unpaidCount}</strong> nieopłacone</span>
+                <span>${escapeHtml(latestMonth)}</span>
               </div>
               <div class="tile-card-balance ${settlement.badgeClass}">
                 <span class="balance-label">${settlement.shortLabel}</span>

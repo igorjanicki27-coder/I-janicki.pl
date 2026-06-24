@@ -9,14 +9,14 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=18';
+} from './logic.js?v=19';
 import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=19';
+} from './storage.js?v=21';
 import {
   icon,
   escapeHtml,
@@ -38,7 +38,7 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=19';
+} from './core.js?v=21';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---

@@ -17,7 +17,7 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=18';
+} from './logic.js?v=19';
 import {
   createEmptyState,
   deleteAttachment,
@@ -26,7 +26,7 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=19';
+} from './storage.js?v=21';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 const root = document.getElementById('app');
@@ -1243,6 +1243,7 @@ function openFirmModal(firm = null) {
       phone: String(data.get('phone') || '').trim(),
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
+      adBudgetEntries: firm?.adBudgetEntries || [],
       balanceEntries: firm?.balanceEntries || [],
       walletEntries: firm?.walletEntries || [],
       expenses: firm?.expenses || [],

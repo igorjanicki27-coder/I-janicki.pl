@@ -7,11 +7,11 @@ import {
   monthLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=18';
+} from './logic.js?v=19';
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=19';
+} from './storage.js?v=21';
 import {
   icon,
   escapeHtml,
@@ -30,7 +30,7 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=19';
+} from './core.js?v=21';
 
 let state = initializeState();
 restoreContext(state);
