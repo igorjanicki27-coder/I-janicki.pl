@@ -17,13 +17,14 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
+  addDays,
 } from './logic.js?v=18';
 import {
   deleteAttachment,
   getAttachment,
   loadState,
   syncFromCloud,
-} from './storage.js?v=19';
+} from './storage.js?v=20';
 import {
   icon,
   escapeHtml,
@@ -49,14 +50,16 @@ import {
   navigateTo,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=19';
+} from './core.js?v=20';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
 let state = initializeState();
 const shouldRestoreFirmContext = shouldRestoreOverviewContext();
 applyOverviewEntryContext(state);
-state.ui.activeTab = 'overview';
+if (!['overview', 'posts'].includes(state.ui.activeTab)) {
+  state.ui.activeTab = 'overview';
+}
 // Gdy nie ma wybranej firmy, zawsze pokazuj liste firm (nigdy 'Moje faktury')
 if (!state.ui.selectedFirmId) {
   state.ui.activeGlobalTab = 'firms';
@@ -67,6 +70,7 @@ if (!state.ui.selectedFirmId) {
 const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
+let postSearchTimer = null;
 
 function shouldRestoreOverviewContext() {
   const navEntry = performance.getEntriesByType('navigation')[0];
@@ -149,6 +153,143 @@ function firmMonthsOptions(firm) {
 
 function findBalanceEntry(id) {
   return getSelectedFirm(state)?.balanceEntries.find((item) => item.id === id) || null;
+}
+
+const POST_FREQUENCY_OPTIONS = [
+  { value: 'weekly', label: 'Raz w tygodniu' },
+  { value: 'biweekly', label: 'Raz na 2 tygodnie' },
+  { value: 'monthly', label: 'Raz w miesiacu' },
+];
+
+const POST_STATUS_OPTIONS = [
+  { value: 'scheduled', label: 'Zaplanowane' },
+  { value: 'published', label: 'Opublikowane' },
+];
+
+const XLSX_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseDateKey(value) {
+  if (!value) return null;
+  const date = new Date(String(value) + 'T00:00:00');
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function dateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addMonthsKey(value, months) {
+  const date = parseDateKey(value);
+  if (!date) return value;
+  const day = date.getDate();
+  date.setMonth(date.getMonth() + months);
+  if (date.getDate() !== day) {
+    date.setDate(0);
+  }
+  return dateKey(date);
+}
+
+function addFrequencyKey(value, frequency) {
+  if (frequency === 'weekly') return addDays(value, 7);
+  if (frequency === 'biweekly') return addDays(value, 14);
+  return addMonthsKey(value, 1);
+}
+
+function postFrequencyLabel(value) {
+  return POST_FREQUENCY_OPTIONS.find((item) => item.value === value)?.label || 'Raz w miesiacu';
+}
+
+function ensurePostTabSelection(firm) {
+  const tabs = firm.postTabs || [];
+  if (!tabs.length) {
+    state.ui.activePostTabId = null;
+    return null;
+  }
+  if (!state.ui.activePostTabId || !tabs.some((tab) => tab.id === state.ui.activePostTabId)) {
+    state.ui.activePostTabId = tabs[0].id;
+  }
+  return state.ui.activePostTabId;
+}
+
+function postsForTab(firm, tabId) {
+  return (firm.posts || [])
+    .filter((post) => post.tabId === tabId)
+    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')));
+}
+
+function latestPublishedPost(firm, tabId) {
+  return postsForTab(firm, tabId)
+    .filter((post) => post.status === 'published')
+    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
+}
+
+function daysBetween(fromKey, toKey) {
+  const from = parseDateKey(fromKey);
+  const to = parseDateKey(toKey);
+  if (!from || !to) return null;
+  return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86400000));
+}
+
+function getPostTabStatus(firm, tab) {
+  const startDate = tab.startDate || todayKey();
+  const lastPost = latestPublishedPost(firm, tab.id);
+  const today = todayKey();
+  let dueDate = startDate;
+
+  if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
+    while (dueDate <= lastPost.publishDate) {
+      dueDate = addFrequencyKey(dueDate, tab.frequency);
+    }
+  }
+
+  return {
+    dueDate,
+    isOverdue: today > dueDate,
+    lastPost,
+    daysSinceLast: lastPost ? daysBetween(lastPost.publishDate, today) : null,
+  };
+}
+
+function splitKeywords(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function postKeywordText(post) {
+  return Array.isArray(post.keywords) ? post.keywords.join(', ') : String(post.keywords || '');
+}
+
+function normalizeTopicText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 2);
+}
+
+function findSimilarPosts(firm, draft, excludeId = null) {
+  const draftTokens = new Set(normalizeTopicText(`${draft.title || ''} ${postKeywordText(draft)}`));
+  if (!draftTokens.size) return [];
+
+  return (firm.posts || [])
+    .filter((post) => post.id !== excludeId)
+    .map((post) => {
+      const tokens = new Set(normalizeTopicText(`${post.title || ''} ${postKeywordText(post)}`));
+      const common = [...draftTokens].filter((token) => tokens.has(token)).length;
+      const score = common / Math.max(1, Math.min(draftTokens.size, tokens.size));
+      return { post, score, common };
+    })
+    .filter((item) => item.common >= 2 || item.score >= 0.45)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
 }
 
 // ---------------------------------------------------------------------------
@@ -863,6 +1004,10 @@ function renderFirmDetail() {
 
   const { ledger, selectedMonth, monthRow } = ensureSelectedMonth(firm, state);
 
+  if (state.ui.activeTab === 'posts') {
+    return renderPostsPage(firm);
+  }
+
   return `
     <div class="firm-detail-page">
       <section class="main-area">
@@ -883,7 +1028,533 @@ function renderFirmDetail() {
   `;
 }
 
+function renderPostTabButton(firm, tab) {
+  const tabStatus = getPostTabStatus(firm, tab);
+  const lastLabel = tabStatus.lastPost
+    ? `Ostatnia publikacja ${tabStatus.daysSinceLast === 0 ? 'dzisiaj' : `${tabStatus.daysSinceLast} dni temu`}`
+    : 'Brak opublikowanych materialow';
+  return `
+    <article class="post-tab-card ${state.ui.activePostTabId === tab.id ? 'is-active' : ''} ${tabStatus.isOverdue ? 'is-overdue' : ''}">
+      <button class="post-tab-main" type="button" data-action="select-post-tab" data-id="${tab.id}">
+        <span class="post-tab-title">${escapeHtml(tab.name)}</span>
+        <span class="post-tab-meta">${postFrequencyLabel(tab.frequency)} od ${formatDate(tab.startDate)}</span>
+        <span class="post-tab-note">${escapeHtml(lastLabel)}</span>
+      </button>
+      <div class="post-tab-actions">
+        <span class="post-due-pill ${tabStatus.isOverdue ? 'is-overdue' : ''}">Termin: ${formatDate(tabStatus.dueDate)}</span>
+        <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${tab.id}" aria-label="Edytuj podzakładkę">${icon('edit')}</button>
+        <button class="icon-button tone-danger" type="button" data-action="delete-post-tab" data-id="${tab.id}" aria-label="Usuń podzakładkę">${icon('trash')}</button>
+      </div>
+    </article>
+  `;
+}
+
+function postMatchesSearch(post, query) {
+  if (!query) return true;
+  const haystack = `${post.title || ''} ${post.content || ''} ${postKeywordText(post)}`.toLowerCase();
+  return haystack.includes(query.toLowerCase());
+}
+
+function renderPostCard(firm, post) {
+  const similar = findSimilarPosts(firm, post, post.id);
+  const preview = String(post.content || '').trim();
+  const shortPreview = preview.length > 30 ? `${preview.slice(0, 30)}...` : preview;
+  return `
+    <article class="post-card">
+      <div class="post-card-top">
+        <div>
+          <span class="status-pill ${post.status === 'published' ? 'is-positive' : 'is-muted'}">${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}</span>
+          <h4>${escapeHtml(post.title || 'Bez tytulu')}</h4>
+        </div>
+        <span class="post-date">${formatDate(post.publishDate)}</span>
+      </div>
+      <p class="post-preview">${escapeHtml(shortPreview || 'Brak tresci.')}</p>
+      ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
+      ${similar.length ? `<p class="post-similar-alert">Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</p>` : ''}
+      <div class="post-card-actions">
+        <button class="ghost-button" type="button" data-action="preview-post" data-id="${post.id}">${icon('eye')}Podgląd</button>
+        <button class="ghost-button" type="button" data-action="copy-post-template" data-id="${post.id}">${icon('file')}Kopiuj</button>
+        <button class="ghost-button" type="button" data-action="edit-post" data-id="${post.id}">${icon('edit')}Edytuj</button>
+        <button class="ghost-button tone-danger" type="button" data-action="delete-post" data-id="${post.id}">${icon('trash')}Usuń</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderPostsPage(firm) {
+  const activeTabId = ensurePostTabSelection(firm);
+  const tabs = firm.postTabs || [];
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) || null;
+  const query = state.ui.postSearch || '';
+  const posts = activeTab ? postsForTab(firm, activeTab.id).filter((post) => postMatchesSearch(post, query)) : [];
+  const overdueTabs = tabs.filter((tab) => getPostTabStatus(firm, tab).isOverdue).length;
+
+  return `
+    <div class="firm-detail-page posts-page">
+      <section class="main-area">
+        <section class="section-band posts-header">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">Posty</p>
+              <h3>${escapeHtml(firmDisplayName(firm))}</h3>
+            </div>
+            <div class="posts-actions">
+              <button class="ghost-button" type="button" data-action="import-posts">${icon('upload')}Import CSV/Excel</button>
+              <button class="ghost-button" type="button" data-action="export-posts-csv">${icon('download')}CSV</button>
+              <button class="primary-button" type="button" data-action="export-posts-excel">${icon('download')}Excel</button>
+            </div>
+          </div>
+          <div class="posts-summary-grid">
+            ${statCard('Podzakladki', String(tabs.length), 'default', 'Osobne dla tej firmy')}
+            ${statCard('Wpisy', String((firm.posts || []).length), 'cyan', 'Opublikowane i zaplanowane')}
+            ${statCard('Po terminie', String(overdueTabs), overdueTabs ? 'rose' : 'emerald', 'Licza sie tylko opublikowane')}
+          </div>
+        </section>
+
+        <section class="section-band posts-panel">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">Podzakladki</p>
+              <h3>Kalendarz publikacji</h3>
+            </div>
+            <button class="primary-button" type="button" data-action="add-post-tab">${icon('plus')}Dodaj podzakładkę</button>
+          </div>
+          ${tabs.length ? `<div class="post-tabs-grid">${tabs.map((tab) => renderPostTabButton(firm, tab)).join('')}</div>` : `
+            <div class="empty-block"><p>Brak podzakładek. Dodaj pierwszą kategorię publikacji.</p></div>
+          `}
+        </section>
+
+        <section class="section-band posts-panel">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">${activeTab ? escapeHtml(activeTab.name) : 'Wpisy'}</p>
+              <h3>Materiały publikacyjne</h3>
+            </div>
+            <div class="posts-actions">
+              <input class="post-search-input" type="search" data-action="filter-post-search" value="${escapeHtml(query)}" placeholder="Szukaj po tytule, treści, słowach..." />
+              <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
+            </div>
+          </div>
+          ${activeTab ? `
+            ${posts.length ? `<div class="post-grid">${posts.map((post) => renderPostCard(firm, post)).join('')}</div>` : `
+              <div class="empty-block"><p>Brak wpisów dla tej podzakładki lub filtra.</p></div>
+            `}
+          ` : `<div class="empty-block"><p>Dodaj podzakładkę, aby zapisywać publikacje.</p></div>`}
+        </section>
+      </section>
+      ${renderFabMenu(activeTab ? 'add-post' : 'add-post-tab')}
+    </div>
+  `;
+}
+
 // --- Modals ---
+
+function findPostTab(id) {
+  return getSelectedFirm(state)?.postTabs.find((tab) => tab.id === id) || null;
+}
+
+function findPost(id) {
+  return getSelectedFirm(state)?.posts.find((post) => post.id === id) || null;
+}
+
+function openPostTabModal(existing = null) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+
+  openModal(existing ? 'Edytuj podzakladke' : 'Dodaj podzakladke', `
+    <form id="postTabForm" class="form-grid">
+      ${labeledInput({ name: 'name', label: 'Nazwa', value: existing?.name || '', placeholder: 'Np. Wpisy Google', required: true })}
+      ${labeledInput({ name: 'frequency', label: 'Czestotliwosc', type: 'select', value: existing?.frequency || 'monthly', options: POST_FREQUENCY_OPTIONS })}
+      ${labeledInput({ name: 'startDate', label: 'Data poczatkowa', type: 'date', value: existing?.startDate || todayKey(), required: true })}
+      <div class="modal-actions ${existing ? 'is-split' : ''}">
+        ${existing ? '<button class="ghost-button tone-danger" type="button" id="deletePostTabButton">Usun z wpisami</button>' : '<span></span>'}
+        <div class="modal-actions-group">
+          <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
+          <button class="primary-button" type="submit">${existing ? 'Zapisz' : 'Dodaj'}</button>
+        </div>
+      </div>
+    </form>
+  `);
+
+  document.getElementById('deletePostTabButton')?.addEventListener('click', () => {
+    if (!existing) return;
+    if (!confirm(`Usunac podzakladke "${existing.name}" razem ze wszystkimi wpisami?`)) return;
+    firm.postTabs = (firm.postTabs || []).filter((tab) => tab.id !== existing.id);
+    firm.posts = (firm.posts || []).filter((post) => post.tabId !== existing.id);
+    firm.updatedAt = new Date().toISOString();
+    state.ui.activePostTabId = firm.postTabs[0]?.id || null;
+    persist();
+    closeModal();
+    render();
+  });
+
+  document.getElementById('postTabForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const now = new Date().toISOString();
+    const tab = {
+      id: existing?.id || uid(),
+      name: String(data.get('name') || '').trim(),
+      frequency: String(data.get('frequency') || 'monthly'),
+      startDate: String(data.get('startDate') || todayKey()),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    firm.postTabs = [
+      ...(firm.postTabs || []).filter((item) => item.id !== tab.id),
+      tab,
+    ];
+    firm.updatedAt = now;
+    state.ui.activePostTabId = tab.id;
+    persist();
+    closeModal();
+    render();
+  });
+}
+
+function renderSimilarWarningHtml(firm, draft, excludeId) {
+  const similar = findSimilarPosts(firm, draft, excludeId);
+  if (!similar.length) return '';
+  return `
+    <div class="similar-topic-box">
+      <strong>Podobne tematy</strong>
+      ${similar.map((item) => `
+        <p>${escapeHtml(item.post.title || 'Bez tytulu')} <span>${formatDate(item.post.publishDate)}</span></p>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openPostModal(existing = null, template = null) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const activeTabId = ensurePostTabSelection(firm);
+  if (!activeTabId) return;
+  const source = existing || template || {};
+
+  openModal(existing ? 'Edytuj wpis' : 'Dodaj wpis', `
+    <form id="postForm" class="form-grid post-form">
+      ${labeledInput({ name: 'tabId', label: 'Podzakladka', type: 'select', value: source.tabId || activeTabId, options: (firm.postTabs || []).map((tab) => ({ value: tab.id, label: tab.name })) })}
+      ${labeledInput({ name: 'status', label: 'Status', type: 'select', value: source.status || 'scheduled', options: POST_STATUS_OPTIONS })}
+      ${labeledInput({ name: 'publishDate', label: 'Data', type: 'date', value: source.publishDate || todayKey(), required: true })}
+      ${labeledInput({ name: 'title', label: 'Tytul', value: source.title || '', required: true })}
+      <label class="field field-span-2">
+        <span>Tresc artykulu</span>
+        <textarea name="content" rows="10" placeholder="Wklej lub opisz tresc materialu">${escapeHtml(source.content || '')}</textarea>
+      </label>
+      <label class="field field-span-2">
+        <span>Slowa kluczowe</span>
+        <input name="keywords" value="${escapeHtml(postKeywordText(source))}" placeholder="fraza 1, fraza 2, fraza 3" />
+      </label>
+      <div id="similarTopicPreview" class="field-span-2">
+        ${renderSimilarWarningHtml(firm, source, existing?.id || null)}
+      </div>
+      ${modalActions(existing ? 'Zapisz wpis' : 'Dodaj wpis')}
+    </form>
+  `);
+
+  const form = document.getElementById('postForm');
+  const preview = document.getElementById('similarTopicPreview');
+
+  const updateSimilarPreview = () => {
+    const data = new FormData(form);
+    const draft = {
+      title: String(data.get('title') || ''),
+      keywords: splitKeywords(data.get('keywords')),
+    };
+    preview.innerHTML = renderSimilarWarningHtml(firm, draft, existing?.id || null);
+  };
+  form.querySelector('[name="title"]')?.addEventListener('input', updateSimilarPreview);
+  form.querySelector('[name="keywords"]')?.addEventListener('input', updateSimilarPreview);
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const now = new Date().toISOString();
+    const post = {
+      id: existing?.id || uid(),
+      tabId: String(data.get('tabId') || activeTabId),
+      status: String(data.get('status') || 'scheduled') === 'published' ? 'published' : 'scheduled',
+      publishDate: String(data.get('publishDate') || todayKey()),
+      title: String(data.get('title') || '').trim(),
+      content: String(data.get('content') || '').trim(),
+      keywords: splitKeywords(data.get('keywords')),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+
+    const similar = findSimilarPosts(firm, post, existing?.id || null);
+    if (similar.length && !confirm(`Znaleziono podobne tematy: ${similar.map((item) => item.post.title || 'Bez tytulu').join(', ')}. Zapisać mimo to?`)) {
+      return;
+    }
+
+    firm.posts = [
+      ...(firm.posts || []).filter((item) => item.id !== post.id),
+      post,
+    ];
+    firm.updatedAt = now;
+    state.ui.activePostTabId = post.tabId;
+    persist();
+    closeModal();
+    render();
+  });
+}
+
+function openPostPreview(post) {
+  if (!post) return;
+  const tab = findPostTab(post.tabId);
+  openModal('Podglad wpisu', `
+    <div class="post-preview-modal">
+      <p class="eyebrow">${escapeHtml(tab?.name || 'Posty')}</p>
+      <h3>${escapeHtml(post.title || 'Bez tytulu')}</h3>
+      <div class="post-preview-meta">
+        <span>${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}</span>
+        <span>${formatDate(post.publishDate)}</span>
+      </div>
+      ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
+      <div class="post-full-content">${escapeHtml(post.content || 'Brak tresci.').replace(/\n/g, '<br>')}</div>
+    </div>
+  `);
+}
+
+function postExportRows(firm) {
+  const tabs = firm.postTabs || [];
+  const rows = [];
+  for (const tab of tabs) {
+    const posts = postsForTab(firm, tab.id);
+    if (!posts.length) {
+      rows.push({
+        podzakladka: tab.name,
+        czestotliwosc: tab.frequency,
+        data_poczatkowa: tab.startDate,
+        status: '',
+        data: '',
+        tytul: '',
+        tresc: '',
+        slowa_kluczowe: '',
+      });
+      continue;
+    }
+    for (const post of posts) {
+      rows.push({
+        podzakladka: tab.name,
+        czestotliwosc: tab.frequency,
+        data_poczatkowa: tab.startDate,
+        status: post.status,
+        data: post.publishDate,
+        tytul: post.title,
+        tresc: post.content,
+        slowa_kluczowe: postKeywordText(post),
+      });
+    }
+  }
+  return rows;
+}
+
+function downloadBlob(filename, content, type) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function csvEscape(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function exportPostsCsv() {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const headers = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'tresc', 'slowa_kluczowe'];
+  const rows = postExportRows(firm);
+  const csv = '\ufeff' + [
+    headers.join(','),
+    ...rows.map((row) => headers.map((key) => csvEscape(row[key])).join(',')),
+  ].join('\n');
+  downloadBlob(`posty-${firmDisplayName(firm) || 'firma'}.csv`, csv, 'text/csv;charset=utf-8');
+}
+
+function exportPostsExcelFallback(firm) {
+  const headers = ['Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'Tresc', 'Slowa kluczowe'];
+  const keys = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'tresc', 'slowa_kluczowe'];
+  const rows = postExportRows(firm);
+  const html = `
+    <html><head><meta charset="utf-8"></head><body>
+      <table>
+        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map((row) => `<tr>${keys.map((key) => `<td>${escapeHtml(row[key])}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </body></html>
+  `;
+  downloadBlob(`posty-${firmDisplayName(firm) || 'firma'}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+}
+
+function loadXlsxLibrary() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = XLSX_CDN_URL;
+    script.async = true;
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function exportPostsExcel() {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  try {
+    const XLSX = await loadXlsxLibrary();
+    const worksheet = XLSX.utils.json_to_sheet(postExportRows(firm));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Posty');
+    XLSX.writeFile(workbook, `posty-${firmDisplayName(firm) || 'firma'}.xlsx`);
+  } catch (err) {
+    console.warn('XLSX export fallback:', err);
+    exportPostsExcelFallback(firm);
+  }
+}
+
+function parseCsv(text) {
+  const headerLine = String(text || '').split(/\r?\n/, 1)[0] || '';
+  const delimiter = (headerLine.match(/;/g) || []).length > (headerLine.match(/,/g) || []).length ? ';' : ',';
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') i += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some((value) => value !== '')) rows.push(row);
+  return rows;
+}
+
+function rowsToPostImport(records) {
+  if (!records.length) return [];
+  const headers = records[0].map((header) => String(header || '').trim().toLowerCase());
+  return records.slice(1).map((row) => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] || '';
+    });
+    return obj;
+  });
+}
+
+function importPostRows(importRows) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const now = new Date().toISOString();
+  const tabByName = new Map((firm.postTabs || []).map((tab) => [tab.name.toLowerCase(), tab]));
+  let imported = 0;
+
+  for (const row of importRows) {
+    const tabName = String(row.podzakladka || row['podzakładka'] || row.category || '').trim();
+    if (!tabName) continue;
+    let tab = tabByName.get(tabName.toLowerCase());
+    if (!tab) {
+      tab = {
+        id: uid(),
+        name: tabName,
+        frequency: String(row.czestotliwosc || row['częstotliwość'] || 'monthly'),
+        startDate: String(row.data_poczatkowa || row['data poczatkowa'] || row['data początkowa'] || todayKey()),
+        createdAt: now,
+        updatedAt: now,
+      };
+      firm.postTabs = [...(firm.postTabs || []), tab];
+      tabByName.set(tab.name.toLowerCase(), tab);
+    }
+
+    const title = String(row.tytul || row['tytuł'] || '').trim();
+    const content = String(row.tresc || row['treść'] || '').trim();
+    if (!title && !content) continue;
+    firm.posts = [
+      ...(firm.posts || []),
+      {
+        id: uid(),
+        tabId: tab.id,
+        status: String(row.status || 'scheduled') === 'published' || String(row.status || '').toLowerCase() === 'opublikowane' ? 'published' : 'scheduled',
+        publishDate: String(row.data || row.date || todayKey()).slice(0, 10),
+        title,
+        content,
+        keywords: splitKeywords(row.slowa_kluczowe || row['slowa kluczowe'] || row['słowa kluczowe'] || row.keywords),
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+    imported += 1;
+  }
+
+  firm.updatedAt = now;
+  persist();
+  render();
+  alert(`Import zakonczony. Dodano wpisow: ${imported}.`);
+}
+
+async function importPostsFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv,.xls,.xlsx';
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    try {
+      if (ext === 'csv') {
+        importPostRows(rowsToPostImport(parseCsv(await file.text())));
+        return;
+      }
+      if (ext === 'xls') {
+        const html = await file.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const records = [...doc.querySelectorAll('tr')].map((tr) => [...tr.children].map((td) => td.textContent || ''));
+        importPostRows(rowsToPostImport(records));
+        return;
+      }
+      const XLSX = await loadXlsxLibrary();
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+      importPostRows(rows.map((row) => {
+        const normalized = {};
+        Object.keys(row).forEach((key) => {
+          normalized[String(key).trim().toLowerCase()] = row[key];
+        });
+        return normalized;
+      }));
+    } catch (err) {
+      console.error(err);
+      alert('Nie udało się zaimportować pliku. Spróbuj CSV albo pliku wyeksportowanego z tej zakładki.');
+    }
+  });
+  input.click();
+}
 
 function openFirmModal(firm = null) {
   openModal(
@@ -933,6 +1604,9 @@ function openFirmModal(firm = null) {
       walletEntries: firm?.walletEntries || [],
       expenses: firm?.expenses || [],
       invoices: firm?.invoices || [],
+      postTabs: firm ? (firm.postTabs || []) : undefined,
+      posts: firm?.posts || [],
+      postReminderKeys: firm?.postReminderKeys || [],
       createdAt: firm?.createdAt || now,
       updatedAt: now,
     };
@@ -1280,6 +1954,12 @@ function handleClick(event) {
   if (action === 'close-modal') return closeModal();
   if (action === 'add-firm') return openFirmModal();
   if (action === 'edit-firm') return openFirmModal(firm);
+  if (action === 'switch-firm-tab') {
+    state.ui.activeTab = target.dataset.tab || 'overview';
+    persist();
+    render();
+    return;
+  }
 
   // Navigation
   if (action === 'nav-faktury') return navigateTo('faktury.html', state);
@@ -1305,6 +1985,8 @@ function handleClick(event) {
   if (action === 'select-firm') {
     state.ui.selectedFirmId = target.dataset.id;
     state.ui.selectedMonth = null;
+    state.ui.activeTab = 'overview';
+    state.ui.activePostTabId = null;
     state.ui.activeMonthTab = 'overview';
     state.ui.activeGlobalTab = 'firms';
     persist();
@@ -1435,6 +2117,53 @@ function handleClick(event) {
     navigateTo('faktury.html', state);
     return;
   }
+  if (action === 'select-post-tab') {
+    state.ui.activePostTabId = target.dataset.id;
+    persist();
+    return render();
+  }
+  if (action === 'add-post-tab') return openPostTabModal();
+  if (action === 'edit-post-tab') return openPostTabModal(findPostTab(target.dataset.id));
+  if (action === 'delete-post-tab') {
+    const tab = findPostTab(target.dataset.id);
+    if (!firm || !tab) return;
+    if (!confirm(`Usunac podzakladke "${tab.name}" razem ze wszystkimi wpisami?`)) return;
+    firm.postTabs = (firm.postTabs || []).filter((item) => item.id !== tab.id);
+    firm.posts = (firm.posts || []).filter((post) => post.tabId !== tab.id);
+    firm.updatedAt = new Date().toISOString();
+    state.ui.activePostTabId = firm.postTabs[0]?.id || null;
+    persist();
+    return render();
+  }
+  if (action === 'add-post') return openPostModal();
+  if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
+  if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
+  if (action === 'copy-post-template') {
+    const source = findPost(target.dataset.id);
+    if (!source) return;
+    return openPostModal(null, {
+      ...source,
+      status: 'scheduled',
+      publishDate: todayKey(),
+      title: source.title ? `Kopia: ${source.title}` : '',
+    });
+  }
+  if (action === 'delete-post') {
+    if (!firm || !confirm('Usunac ten wpis?')) return;
+    firm.posts = (firm.posts || []).filter((post) => post.id !== target.dataset.id);
+    firm.updatedAt = new Date().toISOString();
+    persist();
+    return render();
+  }
+  if (action === 'export-posts-csv') return exportPostsCsv();
+  if (action === 'export-posts-excel') {
+    void exportPostsExcel();
+    return;
+  }
+  if (action === 'import-posts') {
+    void importPostsFile();
+    return;
+  }
 }
 
 // --- Render ---
@@ -1443,7 +2172,7 @@ function render() {
     const firm = getSelectedFirm(state);
     if (firm && state.ui.selectedFirmId) {
       root.innerHTML = renderFirmDetail();
-      updateTopbar(state, 'overview');
+      updateTopbar(state, state.ui.activeTab || 'overview');
     } else if (state.ui.activeGlobalTab === 'my-invoices') {
       state.ui.selectedFirmId = null;
       root.innerHTML = renderAllOwnInvoices();
@@ -1510,6 +2239,24 @@ document.body.addEventListener('change', (event) => {
   state.ui.activeMonthTab = 'overview';
   persist();
   render();
+});
+
+document.body.addEventListener('input', (event) => {
+  const target = event.target.closest('[data-action="filter-post-search"]');
+  if (!target) return;
+  state.ui.postSearch = target.value || '';
+  if (postSearchTimer) clearTimeout(postSearchTimer);
+  postSearchTimer = setTimeout(() => {
+    postSearchTimer = null;
+    persist();
+    render();
+    const input = document.querySelector('[data-action="filter-post-search"]');
+    if (input) {
+      input.focus();
+      const end = String(input.value || '').length;
+      input.setSelectionRange(end, end);
+    }
+  }, 180);
 });
 
 // Sprawdz czy zalogowany

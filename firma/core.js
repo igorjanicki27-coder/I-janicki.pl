@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=19';
+} from './storage.js?v=20';
 
 // --- Icons ---
 export function icon(name) {
@@ -362,9 +362,10 @@ export function updateTopbar(state, activeTab) {
     <div class="topbar-grid">
       <div class="topbar-grid-left">
         <div class="tab-row">
-          <a class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" href="przeglad.html">Przegląd</a>
+          <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
           <a class="tab-button ${activeTab === 'invoices' ? 'is-active' : ''}" href="faktury.html">Faktury</a>
           <a class="tab-button ${activeTab === 'balance' ? 'is-active' : ''}" href="portfel.html">Rozrachunek</a>
+          <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
         </div>
       </div>
       <div class="topbar-grid-center">

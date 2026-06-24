@@ -1,0 +1,33 @@
+name: Firma post reminders
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+      timezone: Europe/Warsaw
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check overdue post tabs
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          WEB3FORMS_ACCESS_KEY: ${{ secrets.WEB3FORMS_ACCESS_KEY }}
+          POST_REMINDER_EMAIL: ${{ secrets.POST_REMINDER_EMAIL }}
+        run: node scripts/check-firma-post-deadlines.mjs

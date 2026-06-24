@@ -121,6 +121,15 @@ function defaultIssuer() {
   };
 }
 
+function defaultPostTabs(now = currentIso()) {
+  const today = now.slice(0, 10);
+  return [
+    { id: 'google-posts', name: 'Wpisy Google', frequency: 'monthly', startDate: today, createdAt: now, updatedAt: now },
+    { id: 'google-articles', name: 'Artykuly w Google', frequency: 'monthly', startDate: today, createdAt: now, updatedAt: now },
+    { id: 'social-media', name: 'Media spolecznosciowe', frequency: 'weekly', startDate: today, createdAt: now, updatedAt: now },
+  ];
+}
+
 export function createEmptyState() {
   return {
     version: 1,
@@ -136,6 +145,8 @@ export function createEmptyState() {
       activeTab: 'overview',
       activeMonthTab: 'overview',
       activeInvoiceTab: 'own',
+      activePostTabId: null,
+      postSearch: '',
     },
     createdAt: currentIso(),
     updatedAt: currentIso(),
@@ -246,6 +257,29 @@ function normalizeFirm(firm) {
       attachmentIds: ensureArray(invoice.attachmentIds),
       createdAt: invoice.createdAt || now,
     })),
+    postTabs: (Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(now)).map((tab) => ({
+      id: tab.id || `post-tab-${now}`,
+      name: tab.name || 'Nowa podzakladka',
+      frequency: ['weekly', 'biweekly', 'monthly'].includes(tab.frequency) ? tab.frequency : 'monthly',
+      startDate: tab.startDate || now.slice(0, 10),
+      createdAt: tab.createdAt || now,
+      updatedAt: tab.updatedAt || now,
+    })),
+    posts: ensureArray(firm.posts).map((post) => ({
+      id: post.id,
+      tabId: post.tabId || '',
+      status: post.status === 'published' ? 'published' : 'scheduled',
+      publishDate: post.publishDate || post.date || now.slice(0, 10),
+      title: post.title || '',
+      content: post.content || '',
+      keywords: Array.isArray(post.keywords)
+        ? post.keywords.map((item) => String(item || '').trim()).filter(Boolean)
+        : String(post.keywords || '').split(',').map((item) => item.trim()).filter(Boolean),
+      reminderKeys: ensureArray(post.reminderKeys),
+      createdAt: post.createdAt || now,
+      updatedAt: post.updatedAt || now,
+    })),
+    postReminderKeys: ensureArray(firm.postReminderKeys),
     createdAt: firm.createdAt || now,
     updatedAt: firm.updatedAt || now,
   };
