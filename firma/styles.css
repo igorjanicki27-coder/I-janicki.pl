@@ -425,6 +425,7 @@ svg {
 
 .primary-button,
 .ghost-button,
+.publish-post-button,
 .tab-button,
 .icon-button,
 .mini-button,
@@ -437,6 +438,7 @@ svg {
 
 .primary-button,
 .ghost-button,
+.publish-post-button,
 .tab-button,
 .mini-button,
 .attachment-pill,
@@ -446,6 +448,7 @@ svg {
 
 .primary-button,
 .ghost-button,
+.publish-post-button,
 .mini-button,
 .attachment-pill {
   display: inline-flex;
@@ -461,6 +464,7 @@ svg {
 
 .primary-button:hover,
 .ghost-button:hover,
+.publish-post-button:hover,
 .tab-button:hover,
 .icon-button:hover,
 .mini-button:hover,
@@ -477,6 +481,16 @@ svg {
   color: var(--text);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.publish-post-button {
+  color: #e8f7ff;
+  background: linear-gradient(135deg, #1d8cff 0%, #27c6d3 100%);
+  border: 1px solid rgba(78, 169, 255, 0.45);
+  box-shadow: 0 10px 24px rgba(29, 140, 255, 0.16);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .icon-button {
@@ -2702,14 +2716,6 @@ svg {
   border-color: rgba(245, 184, 90, 0.32);
 }
 
-.status-toggle {
-  cursor: pointer;
-}
-
-.status-toggle:hover {
-  transform: translateY(-1px);
-}
-
 .post-search-row {
   width: 100%;
 }
@@ -2802,7 +2808,44 @@ svg {
 }
 
 .post-similar-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   grid-column: 1 / -1;
+}
+
+.post-similar-alert span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.post-similar-dismiss {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(245, 184, 90, 0.3);
+  border-radius: 999px;
+  color: #ffe5b8;
+  background: rgba(245, 184, 90, 0.08);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.post-similar-dismiss:hover,
+.post-similar-dismiss:focus-visible {
+  background: rgba(245, 184, 90, 0.18);
+  border-color: rgba(245, 184, 90, 0.55);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.post-similar-dismiss .icon {
+  width: 16px;
+  height: 16px;
 }
 
 .similar-topic-box {

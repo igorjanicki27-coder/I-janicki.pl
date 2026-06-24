@@ -82,6 +82,7 @@ const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 let postSearchTimer = null;
 const postCollectionStatus = new Map();
+const DISMISSED_SIMILAR_ALERTS_STORAGE_KEY = 'ijanicki_firma_dismissed_similar_alerts';
 
 function shouldRestoreOverviewContext() {
   const navEntry = performance.getEntriesByType('navigation')[0];
@@ -335,6 +336,38 @@ function findSimilarPosts(firm, draft, excludeId = null) {
     .filter((item) => item.common >= 2 || item.score >= 0.45)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
+}
+
+function getSimilarAlertKey(post, similar) {
+  const similarSignature = similar
+    .map((item) => `${item.post.id || ''}:${item.post.title || ''}`)
+    .sort()
+    .join('|');
+  return `${post.id || ''}::${similarSignature}`;
+}
+
+function getDismissedSimilarAlerts() {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY) || '{}') || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function isSimilarAlertDismissed(post, similar) {
+  const key = getSimilarAlertKey(post, similar);
+  return Boolean(getDismissedSimilarAlerts()[key]);
+}
+
+function dismissSimilarAlert(key) {
+  if (!key) return;
+  const dismissed = getDismissedSimilarAlerts();
+  dismissed[key] = true;
+  try {
+    localStorage.setItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY, JSON.stringify(dismissed));
+  } catch (_) {
+    // Prefer leaving the UI responsive over failing because local storage is unavailable.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1102,23 +1135,33 @@ function postMatchesSearch(post, query) {
 
 function renderPostCard(firm, post) {
   const similar = findSimilarPosts(firm, post, post.id);
+  const similarAlertKey = similar.length ? getSimilarAlertKey(post, similar) : '';
+  const showSimilarAlert = similar.length && !isSimilarAlertDismissed(post, similar);
   const preview = String(post.content || '').trim();
   const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
   return `
     <article class="post-card">
       <div class="post-card-top">
         <div>
-          <button class="status-pill status-toggle ${post.status === 'published' ? 'is-positive' : 'is-muted'}" type="button" data-action="toggle-post-status" data-id="${post.id}">
+          <span class="status-pill ${post.status === 'published' ? 'is-positive' : 'is-muted'}">
             ${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}
-          </button>
+          </span>
           <h4>${escapeHtml(post.title || 'Bez tytulu')}</h4>
         </div>
         <span class="post-date">${formatDate(post.publishDate)}</span>
       </div>
       <p class="post-preview">${escapeHtml(shortPreview || 'Brak tresci.')}</p>
       ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
-      ${similar.length ? `<p class="post-similar-alert">Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</p>` : ''}
+      ${showSimilarAlert ? `
+        <div class="post-similar-alert" role="status">
+          <span>Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</span>
+          <button class="post-similar-dismiss" type="button" data-action="dismiss-similar-alert" data-alert-key="${escapeHtml(similarAlertKey)}" aria-label="Zamknij powiadomienie o podobnych tematach">
+            ${icon('x-circle')}
+          </button>
+        </div>
+      ` : ''}
       <div class="post-card-actions">
+        ${post.status !== 'published' ? `<button class="publish-post-button" type="button" data-action="publish-post" data-id="${post.id}">${icon('cloud-check')}OPUBLIKUJ</button>` : ''}
         <button class="ghost-button" type="button" data-action="preview-post" data-id="${post.id}">${icon('eye')}Podgląd</button>
         <button class="ghost-button" type="button" data-action="edit-post" data-id="${post.id}">${icon('edit')}Edytuj</button>
         <button class="ghost-button tone-danger" type="button" data-action="delete-post" data-id="${post.id}">${icon('trash')}Usuń</button>
@@ -2209,13 +2252,18 @@ async function handleClick(event) {
   if (action === 'add-post') return openPostModal();
   if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
   if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
-  if (action === 'toggle-post-status') {
+  if (action === 'dismiss-similar-alert') {
+    const key = target.dataset.alertKey;
+    if (!key) return;
+    dismissSimilarAlert(key);
+    return render();
+  }
+  if (action === 'publish-post') {
     const post = findPost(target.dataset.id);
     if (!firm || !post) return;
-    post.status = post.status === 'published' ? 'scheduled' : 'published';
-    if (post.status === 'published') {
-      post.publishDate = todayKey();
-    }
+    if (post.status === 'published') return;
+    post.status = 'published';
+    post.publishDate = todayKey();
     post.updatedAt = new Date().toISOString();
     firm.updatedAt = post.updatedAt;
     await savePostDoc(firm, post);
