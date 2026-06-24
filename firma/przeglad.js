@@ -24,6 +24,7 @@ import {
   getAttachment,
   loadState,
   syncFromCloud,
+  flushSync,
 } from './storage.js?v=20';
 import {
   icon,
@@ -122,6 +123,11 @@ function persist() {
   sessionStorage.setItem('ijanicki_firma_activeMonth', state.ui.selectedMonth || '');
 }
 
+function persistAndFlush() {
+  persist();
+  void flushSync();
+}
+
 // --- Modal helpers ---
 function findMonthConfig(month) {
   return getSelectedFirm(state)?.months.find((item) => item.month === month) || null;
@@ -218,7 +224,12 @@ function ensurePostTabSelection(firm) {
 function postsForTab(firm, tabId) {
   return (firm.posts || [])
     .filter((post) => post.tabId === tabId)
-    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')));
+    .sort((a, b) => {
+      const statusWeight = (post) => post.status === 'scheduled' ? 0 : 1;
+      const statusDiff = statusWeight(a) - statusWeight(b);
+      if (statusDiff !== 0) return statusDiff;
+      return String(b.publishDate || '').localeCompare(String(a.publishDate || ''));
+    });
 }
 
 function latestPublishedPost(firm, tabId) {
@@ -1058,12 +1069,14 @@ function postMatchesSearch(post, query) {
 function renderPostCard(firm, post) {
   const similar = findSimilarPosts(firm, post, post.id);
   const preview = String(post.content || '').trim();
-  const shortPreview = preview.length > 30 ? `${preview.slice(0, 30)}...` : preview;
+  const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
   return `
     <article class="post-card">
       <div class="post-card-top">
         <div>
-          <span class="status-pill ${post.status === 'published' ? 'is-positive' : 'is-muted'}">${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}</span>
+          <button class="status-pill status-toggle ${post.status === 'published' ? 'is-positive' : 'is-muted'}" type="button" data-action="toggle-post-status" data-id="${post.id}">
+            ${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}
+          </button>
           <h4>${escapeHtml(post.title || 'Bez tytulu')}</h4>
         </div>
         <span class="post-date">${formatDate(post.publishDate)}</span>
@@ -1073,7 +1086,6 @@ function renderPostCard(firm, post) {
       ${similar.length ? `<p class="post-similar-alert">Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</p>` : ''}
       <div class="post-card-actions">
         <button class="ghost-button" type="button" data-action="preview-post" data-id="${post.id}">${icon('eye')}Podgląd</button>
-        <button class="ghost-button" type="button" data-action="copy-post-template" data-id="${post.id}">${icon('file')}Kopiuj</button>
         <button class="ghost-button" type="button" data-action="edit-post" data-id="${post.id}">${icon('edit')}Edytuj</button>
         <button class="ghost-button tone-danger" type="button" data-action="delete-post" data-id="${post.id}">${icon('trash')}Usuń</button>
       </div>
@@ -1130,13 +1142,13 @@ function renderPostsPage(firm) {
               <p class="eyebrow">${activeTab ? escapeHtml(activeTab.name) : 'Wpisy'}</p>
               <h3>Materiały publikacyjne</h3>
             </div>
-            <div class="posts-actions">
-              <input class="post-search-input" type="search" data-action="filter-post-search" value="${escapeHtml(query)}" placeholder="Szukaj po tytule, treści, słowach..." />
-              <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
-            </div>
+            <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
+          </div>
+          <div class="post-search-row">
+            <input class="post-search-input" type="search" data-action="filter-post-search" value="${escapeHtml(query)}" placeholder="Szukaj po tytule, treści lub słowach kluczowych..." />
           </div>
           ${activeTab ? `
-            ${posts.length ? `<div class="post-grid">${posts.map((post) => renderPostCard(firm, post)).join('')}</div>` : `
+            ${posts.length ? `<div class="post-list">${posts.map((post) => renderPostCard(firm, post)).join('')}</div>` : `
               <div class="empty-block"><p>Brak wpisów dla tej podzakładki lub filtra.</p></div>
             `}
           ` : `<div class="empty-block"><p>Dodaj podzakładkę, aby zapisywać publikacje.</p></div>`}
@@ -1183,7 +1195,7 @@ function openPostTabModal(existing = null) {
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== existing.id);
     firm.updatedAt = new Date().toISOString();
     state.ui.activePostTabId = firm.postTabs[0]?.id || null;
-    persist();
+    persistAndFlush();
     closeModal();
     render();
   });
@@ -1206,7 +1218,7 @@ function openPostTabModal(existing = null) {
     ];
     firm.updatedAt = now;
     state.ui.activePostTabId = tab.id;
-    persist();
+    persistAndFlush();
     closeModal();
     render();
   });
@@ -1294,7 +1306,7 @@ function openPostModal(existing = null, template = null) {
     ];
     firm.updatedAt = now;
     state.ui.activePostTabId = post.tabId;
-    persist();
+    persistAndFlush();
     closeModal();
     render();
   });
@@ -1511,7 +1523,7 @@ function importPostRows(importRows) {
   }
 
   firm.updatedAt = now;
-  persist();
+  persistAndFlush();
   render();
   alert(`Import zakonczony. Dodano wpisow: ${imported}.`);
 }
@@ -2132,27 +2144,29 @@ function handleClick(event) {
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== tab.id);
     firm.updatedAt = new Date().toISOString();
     state.ui.activePostTabId = firm.postTabs[0]?.id || null;
-    persist();
+    persistAndFlush();
     return render();
   }
   if (action === 'add-post') return openPostModal();
   if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
   if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
-  if (action === 'copy-post-template') {
-    const source = findPost(target.dataset.id);
-    if (!source) return;
-    return openPostModal(null, {
-      ...source,
-      status: 'scheduled',
-      publishDate: todayKey(),
-      title: source.title ? `Kopia: ${source.title}` : '',
-    });
+  if (action === 'toggle-post-status') {
+    const post = findPost(target.dataset.id);
+    if (!firm || !post) return;
+    post.status = post.status === 'published' ? 'scheduled' : 'published';
+    if (post.status === 'published') {
+      post.publishDate = todayKey();
+    }
+    post.updatedAt = new Date().toISOString();
+    firm.updatedAt = post.updatedAt;
+    persistAndFlush();
+    return render();
   }
   if (action === 'delete-post') {
     if (!firm || !confirm('Usunac ten wpis?')) return;
     firm.posts = (firm.posts || []).filter((post) => post.id !== target.dataset.id);
     firm.updatedAt = new Date().toISOString();
-    persist();
+    persistAndFlush();
     return render();
   }
   if (action === 'export-posts-csv') return exportPostsCsv();
@@ -2248,7 +2262,6 @@ document.body.addEventListener('input', (event) => {
   if (postSearchTimer) clearTimeout(postSearchTimer);
   postSearchTimer = setTimeout(() => {
     postSearchTimer = null;
-    persist();
     render();
     const input = document.querySelector('[data-action="filter-post-search"]');
     if (input) {

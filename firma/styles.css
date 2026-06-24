@@ -2577,13 +2577,13 @@ svg {
 /* ======== POSTS ======== */
 .posts-page .main-area {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .posts-header,
 .posts-panel {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .posts-actions {
@@ -2597,19 +2597,33 @@ svg {
 .posts-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
+}
+
+.posts-summary-grid .stat-card {
+  min-height: auto;
+  padding: 12px 14px;
+  gap: 5px;
+}
+
+.posts-summary-grid .stat-value {
+  font-size: 1.35rem;
+}
+
+.posts-summary-grid .stat-note {
+  font-size: 0.72rem;
 }
 
 .post-tabs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
 }
 
 .post-tab-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.035);
@@ -2638,13 +2652,14 @@ svg {
 
 .post-tab-title {
   font-weight: 800;
+  font-size: 0.88rem;
   color: var(--text);
 }
 
 .post-tab-meta,
 .post-tab-note {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   line-height: 1.35;
 }
 
@@ -2687,8 +2702,21 @@ svg {
   border-color: rgba(245, 184, 90, 0.32);
 }
 
+.status-toggle {
+  cursor: pointer;
+}
+
+.status-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.post-search-row {
+  width: 100%;
+}
+
 .post-search-input {
-  min-width: min(320px, 100%);
+  width: 100%;
+  min-width: 0;
   min-height: 40px;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -2697,17 +2725,20 @@ svg {
   background: rgba(255, 255, 255, 0.045);
 }
 
-.post-grid {
+.post-grid,
+.post-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .post-card {
   display: grid;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
   min-width: 0;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.035);
@@ -2718,11 +2749,12 @@ svg {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  grid-column: 1;
 }
 
 .post-card h4 {
-  margin: 8px 0 0;
-  font-size: 1rem;
+  margin: 6px 0 0;
+  font-size: 0.98rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -2734,16 +2766,18 @@ svg {
 }
 
 .post-preview {
-  min-height: 22px;
   margin: 0;
   color: var(--text-soft);
+  font-size: 0.88rem;
   overflow-wrap: anywhere;
+  grid-column: 1;
 }
 
 .keyword-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  grid-column: 1;
 }
 
 .keyword-row span {
@@ -2767,6 +2801,10 @@ svg {
   border: 1px solid rgba(245, 184, 90, 0.28);
 }
 
+.post-similar-alert {
+  grid-column: 1 / -1;
+}
+
 .similar-topic-box {
   display: grid;
   gap: 6px;
@@ -2786,6 +2824,9 @@ svg {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
+  grid-column: 2;
+  grid-row: 1 / span 3;
 }
 
 .post-form textarea[name="content"] {
@@ -2831,6 +2872,16 @@ svg {
   .posts-actions,
   .post-card-actions,
   .post-tab-actions {
+    justify-content: stretch;
+  }
+
+  .post-card {
+    grid-template-columns: 1fr;
+  }
+
+  .post-card-actions {
+    grid-column: 1;
+    grid-row: auto;
     justify-content: stretch;
   }
 
