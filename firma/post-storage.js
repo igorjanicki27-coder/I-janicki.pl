@@ -100,7 +100,7 @@ export async function loadFirmPostCollections(firm) {
       .map((post) => normalizePost({ ...post, firmId: firm.id }));
   } catch (error) {
     if (isPermissionError(error)) {
-      console.warn('Brak uprawnień do subkolekcji postów. Używam danych lokalnych.', error);
+      console.info('Brak uprawnień do subkolekcji postów. Używam danych lokalnych.', error);
       return fallbackPostCollections(firm);
     }
     throw error;
@@ -113,7 +113,7 @@ export async function loadFirmPostCollections(firm) {
       await migrateLegacyPosts(firm, legacyTabs, legacyPosts);
     } catch (error) {
       if (!isPermissionError(error)) throw error;
-      console.warn('Brak uprawnień do migracji postów. Używam danych lokalnych.', error);
+      console.info('Brak uprawnień do migracji postów. Używam danych lokalnych.', error);
     }
     tabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
     posts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
@@ -125,7 +125,7 @@ export async function loadFirmPostCollections(firm) {
       await savePostTabs(firm, tabs);
     } catch (error) {
       if (!isPermissionError(error)) throw error;
-      console.warn('Brak uprawnień do zapisania domyślnych zakładek postów. Używam ich lokalnie.', error);
+      console.info('Brak uprawnień do zapisania domyślnych zakładek postów. Używam ich lokalnie.', error);
     }
   }
 

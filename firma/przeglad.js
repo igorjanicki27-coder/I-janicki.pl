@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=23';
+} from './storage.js?v=24';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=2';
+} from './post-storage.js?v=3';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=25';
+} from './core.js?v=26';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -139,6 +139,26 @@ function persist() {
 function persistAndFlush() {
   persist();
   void flushSync();
+}
+
+function isPostPermissionError(error) {
+  return String(error?.code || '').includes('permission-denied')
+    || String(error?.message || '').toLowerCase().includes('permission')
+    || String(error?.message || '').includes('Missing or insufficient permissions');
+}
+
+async function tryPostCloudWrite(firm, operation, label) {
+  if (!firm?.id || firm.postStorageFallback) return false;
+  try {
+    await operation();
+    return true;
+  } catch (error) {
+    if (!isPostPermissionError(error)) throw error;
+    console.warn(`${label || 'Zapis postów'}: brak uprawnień do Firestore, zapisuję lokalnie.`, error);
+    firm.postStorageFallback = true;
+    postCollectionStatus.set(firm.id, 'error');
+    return false;
+  }
 }
 
 // --- Modal helpers ---
@@ -558,7 +578,7 @@ function renderAllOwnInvoices() {
             }).join('') +
           '</tbody>' +
         '</table>' +
-      '</div>')
+      '</div>') +
     '</div>';
 }
 
@@ -571,11 +591,12 @@ function renderMonthList(ledger, selectedMonth) {
           <tr>
             <th>Miesiąc</th>
             <th>Budżet reklamowy</th>
-            <th>Wydatki</th>
-            <th>Zostało z miesiąca</th>
-            <th>Wpłaty</th>
+            <th>Wydatki reklamowe</th>
+            <th>Saldo reklamy</th>
+            <th>Koszty moje</th>
             <th>Wynagrodzenia</th>
-            <th>Rozrachunek miesiąca</th>
+            <th>Wpłaty</th>
+            <th>Rozrachunek</th>
             <th></th>
           </tr>
         </thead>
@@ -590,14 +611,19 @@ function renderMonthList(ledger, selectedMonth) {
                 </button>
               </td>
               <td data-label="Budżet reklamowy">${formatCurrency(row.budget)}</td>
-              <td data-label="Wydatki">${formatCurrency(row.expensesTotal)}</td>
-              <td data-label="Zostało z miesiąca" class="${row.adCurrentRemaining <= 0 && row.expensesTotal > row.budget ? 'tone-amber' : 'tone-mint'}">${formatCurrency(roundCurrency((row.budget || 0) - (row.expensesTotal || 0)))}</td>
-              <td data-label="Wpłaty">${formatCurrency(row.paymentsReceived || 0)}</td>
+              <td data-label="Wydatki reklamowe">${formatCurrency(row.expensesTotal)}</td>
+              <td data-label="Saldo reklamy">
+                <span class="${row.expensesTotal > row.budget ? 'tone-amber' : 'tone-mint'}">${formatCurrency(roundCurrency((row.budget || 0) - (row.expensesTotal || 0)))}</span>
+                <span class="table-subline">Nie jest rozrachunkiem klienta</span>
+              </td>
+              <td data-label="Koszty moje">${formatCurrency(row.ownPaidExpenses || 0)}</td>
               <td data-label="Wynagrodzenia">${formatCurrency(row.compensation || 0)}</td>
-              <td data-label="Rozrachunek miesiąca">
+              <td data-label="Wpłaty">${formatCurrency(row.paymentsReceived || 0)}</td>
+              <td data-label="Rozrachunek">
                 <div class="settlement-cell">
                   <strong class="${settlement.textClass}">${settlement.shortLabel}</strong>
                   <span class="table-subline">${formatCurrency(settlement.amount)}</span>
+                  <span class="table-subline">Koszty moje ${formatCurrency(row.ownPaidExpenses || 0)} + wynagrodzenia ${formatCurrency(row.compensation || 0)} - wpłaty ${formatCurrency(row.paymentsReceived || 0)}</span>
                 </div>
               </td>
               <td data-label="Akcje" class="table-actions">
@@ -1607,7 +1633,7 @@ function openPostTabModal(existing = null) {
   document.getElementById('deletePostTabButton')?.addEventListener('click', async () => {
     if (!existing) return;
     if (!confirm(`Usunac podzakladke "${existing.name}" razem ze wszystkimi wpisami?`)) return;
-    await deletePostTabDoc(firm, existing.id);
+    await tryPostCloudWrite(firm, () => deletePostTabDoc(firm, existing.id), 'Usuwanie podzakładki postów');
     firm.postTabs = (firm.postTabs || []).filter((tab) => tab.id !== existing.id);
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== existing.id);
     firm.updatedAt = new Date().toISOString();
@@ -1629,7 +1655,7 @@ function openPostTabModal(existing = null) {
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
-    await savePostTabDoc(firm, tab);
+    await tryPostCloudWrite(firm, () => savePostTabDoc(firm, tab), 'Zapis podzakładki postów');
     firm.postTabs = [
       ...(firm.postTabs || []).filter((item) => item.id !== tab.id),
       tab,
@@ -1718,7 +1744,7 @@ function openPostModal(existing = null, template = null) {
       return;
     }
 
-    await savePostDoc(firm, post);
+    await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Zapis wpisu');
     firm.posts = [
       ...(firm.posts || []).filter((item) => item.id !== post.id),
       post,
@@ -1942,8 +1968,10 @@ async function importPostRows(importRows) {
   }
 
   firm.updatedAt = now;
-  await savePostTabDocs(firm, firm.postTabs || []);
-  await savePostDocs(firm, firm.posts || []);
+  await tryPostCloudWrite(firm, async () => {
+    await savePostTabDocs(firm, firm.postTabs || []);
+    await savePostDocs(firm, firm.posts || []);
+  }, 'Import postów');
   persistAndFlush();
   render();
   alert(`Import zakonczony. Dodano wpisow: ${imported}.`);
@@ -2859,7 +2887,7 @@ async function handleClick(event) {
     const tab = findPostTab(target.dataset.id);
     if (!firm || !tab) return;
     if (!confirm(`Usunac podzakladke "${tab.name}" razem ze wszystkimi wpisami?`)) return;
-    await deletePostTabDoc(firm, tab.id);
+    await tryPostCloudWrite(firm, () => deletePostTabDoc(firm, tab.id), 'Usuwanie podzakładki postów');
     firm.postTabs = (firm.postTabs || []).filter((item) => item.id !== tab.id);
     firm.posts = (firm.posts || []).filter((post) => post.tabId !== tab.id);
     firm.updatedAt = new Date().toISOString();
@@ -2884,13 +2912,13 @@ async function handleClick(event) {
     post.publishDate = todayKey();
     post.updatedAt = new Date().toISOString();
     firm.updatedAt = post.updatedAt;
-    await savePostDoc(firm, post);
+    await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Publikacja wpisu');
     persistAndFlush();
     return render();
   }
   if (action === 'delete-post') {
     if (!firm || !confirm('Usunac ten wpis?')) return;
-    await deletePostDoc(firm, target.dataset.id);
+    await tryPostCloudWrite(firm, () => deletePostDoc(firm, target.dataset.id), 'Usuwanie wpisu');
     firm.posts = (firm.posts || []).filter((post) => post.id !== target.dataset.id);
     firm.updatedAt = new Date().toISOString();
     persistAndFlush();

@@ -353,6 +353,7 @@ function stripPostCollections(input) {
   return {
     ...input,
     firms: ensureArray(input.firms).map((firm) => {
+      if (firm.postStorageFallback) return firm;
       const {
         postTabs,
         posts,

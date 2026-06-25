@@ -26,7 +26,7 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=23';
+} from './storage.js?v=24';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 const root = document.getElementById('app');

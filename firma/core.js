@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=23';
+} from './storage.js?v=24';
 
 // --- Icons ---
 export function icon(name) {
@@ -411,17 +411,19 @@ export function updateTopbar(state, activeTab) {
         <button class="ghost-button compact-button back-inline" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
-          <label class="finance-picker ${financeValue ? 'is-active' : ''}">
-            <span>Finanse</span>
-            <select data-action="finance-nav" aria-label="Finanse">
-              <option value="" ${financeValue ? '' : 'selected'}>Finanse</option>
-              <option value="invoices" ${financeValue === 'invoices' ? 'selected' : ''}>Faktury</option>
-              <option value="balance" ${financeValue === 'balance' ? 'selected' : ''}>Rozrachunek</option>
-              <option value="compensation" ${financeValue === 'compensation' ? 'selected' : ''}>Wynagrodzenia</option>
-            </select>
-          </label>
           <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
         </div>
+      </div>
+      <div class="topbar-finance">
+        <label class="finance-picker ${financeValue ? 'is-active' : ''}">
+          <span>Finanse</span>
+          <select data-action="finance-nav" aria-label="Finanse">
+            <option value="" ${financeValue ? '' : 'selected'}>Finanse</option>
+            <option value="invoices" ${financeValue === 'invoices' ? 'selected' : ''}>Faktury</option>
+            <option value="balance" ${financeValue === 'balance' ? 'selected' : ''}>Rozrachunek</option>
+            <option value="compensation" ${financeValue === 'compensation' ? 'selected' : ''}>Wynagrodzenia</option>
+          </select>
+        </label>
       </div>
       <div class="topbar-spacer"></div>
       <div class="topbar-metrics">
