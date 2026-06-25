@@ -380,22 +380,16 @@ export function updateTopbar(state, activeTab) {
   const firm = state.firms.find((item) => item.id === state.ui.selectedFirmId) || null;
   if (!firm || !state.ui.selectedFirmId) {
     container.innerHTML = `
-      <div class="topbar-grid topbar-grid-global">
-        <div class="topbar-grid-left">
-          <div class="topbar-title">
-            <strong>Firma</strong>
-            <span>${state.firms.length} ${state.firms.length === 1 ? 'klient' : 'klientów'}</span>
-          </div>
+      <div class="topbar-global-compact">
+        <div class="topbar-title">
+          <strong>Firma</strong>
+          <span>${state.firms.length} ${state.firms.length === 1 ? 'klient' : 'klientów'}</span>
         </div>
-        <div class="topbar-grid-center">
-          <div class="tab-row">
-            <button class="tab-button is-active" type="button" data-action="switch-global-tab" data-tab="firms">Klienci</button>
-            <button class="tab-button" type="button" data-action="switch-global-tab" data-tab="my-invoices">Moje faktury</button>
-          </div>
+        <div class="tab-row">
+          <button class="tab-button is-active" type="button" data-action="switch-global-tab" data-tab="firms">Klienci</button>
+          <button class="tab-button" type="button" data-action="switch-global-tab" data-tab="my-invoices">Moje faktury</button>
         </div>
-        <div class="topbar-grid-right">
-          <button class="primary-button compact-button" type="button" data-action="add-firm">${icon('plus')}Dodaj firmę</button>
-        </div>
+        <button class="primary-button compact-button" type="button" data-action="add-firm">${icon('plus')}Dodaj firmę</button>
       </div>
     `;
     return;
@@ -407,6 +401,9 @@ export function updateTopbar(state, activeTab) {
   const { ledger, selectedMonth } = ensureSelectedMonth(firm, state);
   const availableBalance = ledger.totals.adBalance || 0;
   const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
+  const financeValue = activeTab === 'invoices' || activeTab === 'balance' || activeTab === 'compensation'
+    ? activeTab
+    : '';
 
   container.innerHTML = `
     <div class="topbar-compact">
@@ -414,9 +411,15 @@ export function updateTopbar(state, activeTab) {
         <button class="ghost-button compact-button back-inline" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
-          <a class="tab-button ${activeTab === 'invoices' ? 'is-active' : ''}" href="faktury.html">Faktury</a>
-          <a class="tab-button ${activeTab === 'balance' ? 'is-active' : ''}" href="portfel.html">Rozrachunek</a>
-          <button class="tab-button ${activeTab === 'compensation' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="compensation">Wynagrodzenia</button>
+          <label class="finance-picker ${financeValue ? 'is-active' : ''}">
+            <span>Finanse</span>
+            <select data-action="finance-nav" aria-label="Finanse">
+              <option value="" ${financeValue ? '' : 'selected'}>Finanse</option>
+              <option value="invoices" ${financeValue === 'invoices' ? 'selected' : ''}>Faktury</option>
+              <option value="balance" ${financeValue === 'balance' ? 'selected' : ''}>Rozrachunek</option>
+              <option value="compensation" ${financeValue === 'compensation' ? 'selected' : ''}>Wynagrodzenia</option>
+            </select>
+          </label>
           <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
         </div>
       </div>

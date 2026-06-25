@@ -39,7 +39,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=24';
+} from './core.js?v=25';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -1749,6 +1749,19 @@ document.body.addEventListener('click', (event) => {
 });
 
 document.body.addEventListener('change', (event) => {
+  const financeTarget = event.target.closest('[data-action="finance-nav"]');
+  if (financeTarget) {
+    const value = financeTarget.value || '';
+    if (value === 'invoices') return;
+    if (value === 'balance') return navigateTo('portfel.html', state);
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      return navigateTo('przeglad.html', state);
+    }
+    return;
+  }
+
   const target = event.target.closest('[data-action="select-month-dropdown"]');
   if (!target) return;
   if (!firm) return;

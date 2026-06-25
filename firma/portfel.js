@@ -32,7 +32,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=24';
+} from './core.js?v=25';
 
 let state = initializeState();
 restoreContext(state);
@@ -324,6 +324,19 @@ function render() {
 document.body.addEventListener('click', handleClick);
 
 document.body.addEventListener('change', function(event) {
+  var financeTarget = event.target.closest('[data-action="finance-nav"]');
+  if (financeTarget) {
+    var value = financeTarget.value || '';
+    if (value === 'invoices') return navigateTo('faktury.html', state);
+    if (value === 'balance') return;
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      return navigateTo('przeglad.html', state);
+    }
+    return;
+  }
+
   var target = event.target.closest('[data-action="select-month-dropdown"]');
   if (!target) return;
   if (!firm) return;

@@ -26,6 +26,12 @@ function ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function isPermissionError(error) {
+  return String(error?.code || '').includes('permission-denied')
+    || String(error?.message || '').toLowerCase().includes('permission')
+    || String(error?.message || '').includes('Missing or insufficient permissions');
+}
+
 function normalizeTab(tab, now = currentIso()) {
   return {
     id: tab.id,
@@ -67,30 +73,60 @@ async function ensureFirmPostDoc(firm) {
   }, { merge: true });
 }
 
+function fallbackPostCollections(firm) {
+  const tabs = ensureArray(firm.postTabs);
+  const posts = ensureArray(firm.posts);
+  return {
+    tabs: (tabs.length ? tabs : defaultPostTabs()).map((tab) => normalizeTab({ ...tab, firmId: firm.id })),
+    posts: posts.map((post) => normalizePost({ ...post, firmId: firm.id })),
+    fallback: true,
+  };
+}
+
 async function loadCollection(pathSegments) {
   const snap = await getDocs(collection(db, ...pathSegments));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }));
 }
 
 export async function loadFirmPostCollections(firm) {
-  await ensureFirmPostDoc(firm);
+  await ensureAuth();
 
-  let tabs = (await loadCollection(['firmy_clients', firm.id, 'post_tabs']))
-    .map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
-  let posts = (await loadCollection(['firmy_clients', firm.id, 'posts']))
-    .map((post) => normalizePost({ ...post, firmId: firm.id }));
+  let tabs;
+  let posts;
+  try {
+    tabs = (await loadCollection(['firmy_clients', firm.id, 'post_tabs']))
+      .map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
+    posts = (await loadCollection(['firmy_clients', firm.id, 'posts']))
+      .map((post) => normalizePost({ ...post, firmId: firm.id }));
+  } catch (error) {
+    if (isPermissionError(error)) {
+      console.warn('Brak uprawnień do subkolekcji postów. Używam danych lokalnych.', error);
+      return fallbackPostCollections(firm);
+    }
+    throw error;
+  }
 
   const legacyTabs = ensureArray(firm.postTabs);
   const legacyPosts = ensureArray(firm.posts);
   if (!tabs.length && legacyTabs.length) {
-    await migrateLegacyPosts(firm, legacyTabs, legacyPosts);
+    try {
+      await migrateLegacyPosts(firm, legacyTabs, legacyPosts);
+    } catch (error) {
+      if (!isPermissionError(error)) throw error;
+      console.warn('Brak uprawnień do migracji postów. Używam danych lokalnych.', error);
+    }
     tabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
     posts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
   }
 
   if (!tabs.length) {
     tabs = defaultPostTabs().map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
-    await savePostTabs(firm, tabs);
+    try {
+      await savePostTabs(firm, tabs);
+    } catch (error) {
+      if (!isPermissionError(error)) throw error;
+      console.warn('Brak uprawnień do zapisania domyślnych zakładek postów. Używam ich lokalnie.', error);
+    }
   }
 
   return { tabs, posts };

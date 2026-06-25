@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=1';
+} from './post-storage.js?v=2';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=24';
+} from './core.js?v=25';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -187,19 +187,32 @@ function ensureFirmPostCollectionsLoaded(firm) {
   const status = postCollectionStatus.get(firm.id);
   if (status === 'loaded') return true;
   if (status === 'loading') return false;
+  if (status === 'error') return true;
 
   postCollectionStatus.set(firm.id, 'loading');
   loadFirmPostCollections(firm)
-    .then(({ tabs, posts }) => {
+    .then(({ tabs, posts, fallback }) => {
       firm.postTabs = tabs;
       firm.posts = posts;
       firm.postReminderKeys = [];
       postCollectionStatus.set(firm.id, 'loaded');
+      if (fallback) {
+        firm.postStorageFallback = true;
+      } else {
+        delete firm.postStorageFallback;
+      }
       persistAndFlush();
       render();
     })
     .catch((error) => {
       console.error('Nie udało się wczytać postów z Firestore:', error);
+      firm.postTabs = (firm.postTabs || []).length ? firm.postTabs : [
+        { id: 'google-posts', name: 'Wpisy Google', frequency: 'monthly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'google-articles', name: 'Artykuly w Google', frequency: 'monthly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'social-media', name: 'Media spolecznosciowe', frequency: 'weekly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      ];
+      firm.posts = firm.posts || [];
+      firm.postStorageFallback = true;
       postCollectionStatus.set(firm.id, 'error');
       render();
     });
@@ -559,8 +572,10 @@ function renderMonthList(ledger, selectedMonth) {
             <th>Miesiąc</th>
             <th>Budżet reklamowy</th>
             <th>Wydatki</th>
-            <th>Dostępne na reklamę</th>
-            <th>Rozrachunek</th>
+            <th>Zostało z miesiąca</th>
+            <th>Wpłaty</th>
+            <th>Wynagrodzenia</th>
+            <th>Rozrachunek miesiąca</th>
             <th></th>
           </tr>
         </thead>
@@ -576,8 +591,10 @@ function renderMonthList(ledger, selectedMonth) {
               </td>
               <td data-label="Budżet reklamowy">${formatCurrency(row.budget)}</td>
               <td data-label="Wydatki">${formatCurrency(row.expensesTotal)}</td>
-              <td data-label="Dostępne" class="${row.adEndingBalance < 0 ? 'tone-amber' : 'tone-mint'}">${formatCurrency(row.adEndingBalance)}</td>
-              <td data-label="Rozrachunek">
+              <td data-label="Zostało z miesiąca" class="${row.adCurrentRemaining <= 0 && row.expensesTotal > row.budget ? 'tone-amber' : 'tone-mint'}">${formatCurrency(roundCurrency((row.budget || 0) - (row.expensesTotal || 0)))}</td>
+              <td data-label="Wpłaty">${formatCurrency(row.paymentsReceived || 0)}</td>
+              <td data-label="Wynagrodzenia">${formatCurrency(row.compensation || 0)}</td>
+              <td data-label="Rozrachunek miesiąca">
                 <div class="settlement-cell">
                   <strong class="${settlement.textClass}">${settlement.shortLabel}</strong>
                   <span class="table-subline">${formatCurrency(settlement.amount)}</span>
@@ -631,6 +648,21 @@ function renderOverviewHero({ eyebrow, title, settlement, adBalance, budget, exp
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderOverviewSummaryLine({ ledger, selectedMonth, budget, expenses, payments }) {
+  return `
+    <div class="overview-summary-line">
+      <div class="overview-summary-chart">
+        ${renderTrendChart(ledger, selectedMonth)}
+      </div>
+      <div class="overview-summary-stats">
+        ${statCard('Budżet reklamowy', formatCurrency(budget), 'cyan', 'Suma budżetów w tym widoku')}
+        ${statCard('Wydatki budżetowe', formatCurrency(expenses), 'amber', 'Koszty odejmowane od budżetu reklamowego')}
+        ${statCard('Wpłaty klienta', formatCurrency(payments), 'emerald', 'Ręczne wpłaty klienta do rozrachunku')}
+      </div>
+    </div>
   `;
 }
 
@@ -917,11 +949,11 @@ function renderCompensationPage(firm, ledger, selectedMonth) {
             </div>
             <button class="primary-button" type="button" data-action="add-compensation">${icon('plus')}Dodaj wynagrodzenie</button>
           </div>
-          <div class="stats-grid stats-grid-4">
-            ${statCard('Do obciążenia klienta', formatCurrency(total), 'rose', 'Suma ręcznie dodanych wynagrodzeń w tym zakresie')}
-            ${statCard('Sugestia ze starych %', formatCurrency(ledger.totals.totalSuggestedCompensation || 0), 'default', 'Tylko informacyjnie, nie nalicza się automatycznie')}
-            ${statCard('Liczba pozycji', String(entries.length), 'cyan', 'Ręcznie wpisane wynagrodzenia')}
-            ${statCard('Widok', escapeHtml(periodLabel), 'default', 'Zmienisz go selektorem okresu w nagłówku')}
+          <div class="compensation-summary">
+            <article class="compensation-total-card">
+              <span>Suma wynagrodzeń</span>
+              <strong>${formatCurrency(total)}</strong>
+            </article>
           </div>
         </section>
         <section class="section-band overview-panel">
@@ -1020,18 +1052,15 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
 
   return `
     <div class="overview-stack">
-      ${renderOverviewHero({
-        eyebrow: 'Najważniejsze teraz',
-        title: monthLabel(selectedMonth),
-        settlement,
-        adBalance,
+      ${renderOverviewSummaryLine({
+        ledger,
+        selectedMonth,
         budget: roundCurrency((monthRow.budget || 0) + adOnlyBudget),
         expenses: monthRow.expensesTotal || 0,
         payments: monthRow.paymentsReceived || 0,
       })}
 
-      <div class="overview-main-grid">
-        <div class="overview-main-column">
+      <div class="overview-analysis-grid">
           ${renderBudgetFlowSection({
             title: 'Jak rozszedł się budżet tego miesiąca',
             eyebrow: 'Budżet i wykorzystanie',
@@ -1054,10 +1083,6 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             unpaidOwnInvoices: monthRow.unpaidOwnInvoices || 0,
             balanceNet: monthRow.balanceNet || 0,
           })}
-        </div>
-        <div class="overview-side-column">
-          ${renderTrendChart(ledger, selectedMonth)}
-        </div>
       </div>
 
       <section class="section-band overview-panel">
@@ -1113,11 +1138,6 @@ function renderFirmContextHeader(firm, ledger, selectedMonth) {
       : selectedMonth === '__quarter__'
         ? 'Ten kwartał'
         : monthLabel(selectedMonth);
-  const contactParts = [
-    firm.nip ? `NIP ${firm.nip}` : '',
-    firm.email || '',
-    firm.phone || '',
-  ].filter(Boolean);
 
   return `
     <section class="firm-context-header">
@@ -1125,7 +1145,6 @@ function renderFirmContextHeader(firm, ledger, selectedMonth) {
         <button class="ghost-button compact-button" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
         <div>
           <h2>${escapeHtml(firmDisplayName(firm))}</h2>
-          <p>${escapeHtml(contactParts.join(' · ') || 'Brak danych kontaktowych')}</p>
         </div>
       </div>
       <div class="firm-context-stats">
@@ -1221,18 +1240,15 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
 
   return `
     <div class="overview-stack">
-      ${renderOverviewHero({
-        eyebrow,
-        title,
-        settlement,
-        adBalance,
+      ${renderOverviewSummaryLine({
+        ledger,
+        selectedMonth: null,
         budget: scope.totalBudget,
         expenses: scope.totalExpenses,
         payments: scope.totalPaymentsReceived,
       })}
 
-      <div class="overview-main-grid">
-        <div class="overview-main-column">
+      <div class="overview-analysis-grid">
           ${renderBudgetFlowSection({
             title: 'Budżet reklamowy w tym zakresie',
             eyebrow: 'Budżet i wykorzystanie',
@@ -1255,10 +1271,6 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
             unpaidOwnInvoices: scope.totalUnpaidOwnInvoices || 0,
             balanceNet: scope.totalBalanceNet || 0,
           })}
-        </div>
-        <div class="overview-side-column">
-          ${renderTrendChart(ledger, null)}
-        </div>
       </div>
     </div>
   `;
@@ -1502,6 +1514,12 @@ function renderPostsPage(firm) {
   return `
     <div class="firm-detail-page posts-page">
       <section class="main-area">
+        ${firm.postStorageFallback ? `
+          <section class="section-band posts-panel post-storage-warning">
+            <strong>Posty działają w trybie lokalnym</strong>
+            <span>Firestore odmówił dostępu do subkolekcji postów. Widok korzysta z danych zapisanych w stanie klienta.</span>
+          </section>
+        ` : ''}
         <section class="section-band posts-header">
           <div class="panel-head space-between">
             <div>
@@ -2929,6 +2947,19 @@ document.body.addEventListener('click', function(event) {
 });
 
 document.body.addEventListener('change', (event) => {
+  const financeTarget = event.target.closest('[data-action="finance-nav"]');
+  if (financeTarget) {
+    const value = financeTarget.value || '';
+    if (value === 'invoices') return navigateTo('faktury.html', state);
+    if (value === 'balance') return navigateTo('portfel.html', state);
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      render();
+    }
+    return;
+  }
+
   const target = event.target.closest('[data-action="select-month-dropdown"]');
   if (!target) return;
   const firm = getSelectedFirm(state);
