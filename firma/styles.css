@@ -3899,3 +3899,143 @@ body {
     content: '';
   }
 }
+
+/* ---- Firma topbar: flat compact layout ---- */
+.topbar {
+  min-height: 0 !important;
+  padding: 7px 16px !important;
+}
+
+.topbar-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.topbar-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-spacer {
+  flex: 1 1 18px;
+  min-width: 8px;
+}
+
+.topbar-metrics,
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.topbar-compact .tab-row {
+  width: auto;
+  max-width: min(48vw, 760px);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  border-radius: 8px;
+}
+
+.topbar-compact .tab-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.topbar-compact .compact-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+}
+
+.topbar-compact .saldo-badge,
+.topbar-compact .do-wydania-badge {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.topbar-compact .saldo-label,
+.topbar-compact .do-wydania-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.topbar-compact .saldo-value,
+.topbar-compact .do-wydania-value {
+  font-size: 0.86rem;
+}
+
+.topbar-compact .sync-indicator {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+.topbar-compact .month-picker {
+  min-width: 124px;
+}
+
+.topbar-compact .month-picker select {
+  min-height: 30px;
+  padding: 5px 30px 5px 10px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  background-position: right 10px center;
+}
+
+@media (max-width: 1180px) {
+  .topbar-compact {
+    flex-wrap: wrap;
+  }
+
+  .topbar-nav {
+    flex: 1 1 100%;
+  }
+
+  .topbar-compact .tab-row {
+    max-width: none;
+  }
+
+  .topbar-spacer {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    padding: 6px 10px !important;
+  }
+
+  .topbar-metrics {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .topbar-controls {
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+}

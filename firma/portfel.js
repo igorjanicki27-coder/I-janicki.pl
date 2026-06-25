@@ -28,10 +28,11 @@ import {
   updateTopbar,
   renderFabMenu,
   openEditMonthPicker,
+  navigateTo,
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=23';
+} from './core.js?v=24';
 
 let state = initializeState();
 restoreContext(state);

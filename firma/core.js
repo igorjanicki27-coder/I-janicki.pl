@@ -409,8 +409,8 @@ export function updateTopbar(state, activeTab) {
   const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
 
   container.innerHTML = `
-    <div class="topbar-grid">
-      <div class="topbar-grid-left">
+    <div class="topbar-compact">
+      <div class="topbar-nav">
         <button class="ghost-button compact-button back-inline" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
@@ -420,38 +420,35 @@ export function updateTopbar(state, activeTab) {
           <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
         </div>
       </div>
-      <div class="topbar-grid-center">
-        <div class="topbar-badges">
-          <div class="saldo-badge ${settlement.badgeClass}">
-            <span class="saldo-label">${settlement.shortLabel}</span>
-            <strong class="saldo-value">${formatCurrency(settlement.amount)}</strong>
-          </div>
-          <div class="do-wydania-badge ${availableBalance < 0 ? 'is-negative' : 'is-positive'}">
-            <span class="do-wydania-label">Dostępne na reklamę</span>
-            <strong class="do-wydania-value">${formatCurrency(availableBalance)}</strong>
-          </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-metrics">
+        <div class="saldo-badge ${settlement.badgeClass}">
+          <span class="saldo-label">${settlement.shortLabel}</span>
+          <strong class="saldo-value">${formatCurrency(settlement.amount)}</strong>
+        </div>
+        <div class="do-wydania-badge ${availableBalance < 0 ? 'is-negative' : 'is-positive'}">
+          <span class="do-wydania-label">Reklama</span>
+          <strong class="do-wydania-value">${formatCurrency(availableBalance)}</strong>
         </div>
       </div>
-      <div class="topbar-grid-right">
-        <div class="topbar-right-group">
-          ${renderSyncIndicator()}
-          ${ledger.rows.length > 0 ? `
-          <div class="month-picker">
-            <select data-action="select-month-dropdown" aria-label="Wybierz miesiąc">
-              <option value="__all__" ${selectedMonth === '__all__' ? 'selected' : ''}>Razem</option>
-              <option value="__year__" ${selectedMonth === '__year__' ? 'selected' : ''}>Ten rok</option>
-              <option value="__quarter__" ${selectedMonth === '__quarter__' ? 'selected' : ''}>Ten kwartał</option>
-              <option disabled class="month-separator">───</option>
-              ${ledger.rows.map((row) => `
-                <option value="${row.month}" ${row.month === selectedMonth ? 'selected' : ''}>
-                  ${row.label}
-                </option>
-              `).join('')}
-              <option disabled class="month-separator">───</option>
-            </select>
-          </div>
-        ` : ''}
+      <div class="topbar-controls">
+        ${renderSyncIndicator()}
+        ${ledger.rows.length > 0 ? `
+        <div class="month-picker">
+          <select data-action="select-month-dropdown" aria-label="Wybierz miesiąc">
+            <option value="__all__" ${selectedMonth === '__all__' ? 'selected' : ''}>Razem</option>
+            <option value="__year__" ${selectedMonth === '__year__' ? 'selected' : ''}>Ten rok</option>
+            <option value="__quarter__" ${selectedMonth === '__quarter__' ? 'selected' : ''}>Ten kwartał</option>
+            <option disabled class="month-separator">───</option>
+            ${ledger.rows.map((row) => `
+              <option value="${row.month}" ${row.month === selectedMonth ? 'selected' : ''}>
+                ${row.label}
+              </option>
+            `).join('')}
+            <option disabled class="month-separator">───</option>
+          </select>
         </div>
+      ` : ''}
       </div>
     </div>
   `;
