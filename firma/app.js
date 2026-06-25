@@ -17,7 +17,7 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=19';
+} from './logic.js?v=21';
 import {
   createEmptyState,
   deleteAttachment,
@@ -26,7 +26,7 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=21';
+} from './storage.js?v=23';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 const root = document.getElementById('app');

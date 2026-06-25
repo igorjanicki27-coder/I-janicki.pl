@@ -7,11 +7,11 @@ import {
   monthLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=19';
+} from './logic.js?v=21';
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=21';
+} from './storage.js?v=23';
 import {
   icon,
   escapeHtml,
@@ -30,7 +30,8 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=21';
+  appendFirmHistory,
+} from './core.js?v=23';
 
 let state = initializeState();
 restoreContext(state);
@@ -83,12 +84,12 @@ function collectPaymentEntries(ledger, selectedMonth) {
 function buildIncomeRow(entry, index) {
   const sourceLabel = entry.source === 'invoice' ? 'Faktura' : 'Ręcznie';
   return '<tr>'
-    + '<td>' + (index + 1) + '</td>'
-    + '<td>' + formatDate(entry.date) + '</td>'
-    + '<td>' + escapeHtml(entry.title || '-') + '</td>'
-    + '<td class="tone-mint">' + formatCurrency(entry.amount) + '</td>'
-    + '<td>' + sourceLabel + '</td>'
-    + '<td class="table-actions">'
+    + '<td data-label="Lp.">' + (index + 1) + '</td>'
+    + '<td data-label="Data">' + formatDate(entry.date) + '</td>'
+    + '<td data-label="Opis">' + escapeHtml(entry.title || '-') + '</td>'
+    + '<td data-label="Kwota" class="tone-mint">' + formatCurrency(entry.amount) + '</td>'
+    + '<td data-label="Źródło">' + sourceLabel + '</td>'
+    + '<td data-label="Akcje" class="table-actions">'
     + (entry.source === 'invoice'
       ? '<span class="table-subline">Z faktury</span>'
       : '<button class="table-action-btn tone-danger" type="button" data-action="delete-wallet-entry" data-id="' + entry.id + '">' + icon('trash') + '</button>')
@@ -122,7 +123,7 @@ function renderBalance() {
     for (var i = 0; i < incomes.length; i++) {
       rows += buildIncomeRow(incomes[i], i);
     }
-    incomeRows = '<div class="table-wrap"><table class="data-table">'
+    incomeRows = '<div class="table-wrap responsive-table-wrap"><table class="data-table responsive-table">'
       + '<thead><tr>'
       + '<th>Lp.</th><th>Data</th><th>Opis</th><th>Kwota</th><th>Źródło</th><th></th>'
       + '</tr></thead><tbody>'
@@ -220,6 +221,13 @@ function openWalletIncomeModal(existing) {
       entry,
     ].sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: existing ? 'edit' : 'create',
+      title: existing ? 'Zmieniono wpłatę klienta' : 'Dodano wpłatę klienta',
+      amount: entry.amount,
+      meta: { period: monthLabel(entry.period) },
+    });
     persist();
     closeModal();
     render();
@@ -251,6 +259,11 @@ function handleClick(event) {
   var action = target.dataset.action;
 
   if (action === 'close-modal') return closeModal();
+  if (action === 'switch-firm-tab') {
+    state.ui.activeTab = target.dataset.tab || 'overview';
+    persist();
+    return navigateTo('przeglad.html', state);
+  }
   if (action === 'nav-portfel') return;
   if (action === 'nav-faktury') return navigateTo('faktury.html', state);
 
@@ -261,8 +274,16 @@ function handleClick(event) {
   }
   if (action === 'delete-wallet-entry') {
     if (!firm || !window.confirm('Usunac te wplate klienta?')) return;
+    var removed = (firm.walletEntries || []).find(function(item) { return item.id === target.dataset.id; });
     firm.walletEntries = (firm.walletEntries || []).filter(function(item) { return item.id !== target.dataset.id; });
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: 'delete',
+      title: 'Usunięto wpłatę klienta',
+      amount: removed ? removed.amount : 0,
+      meta: { period: removed && removed.period ? monthLabel(removed.period) : '' },
+    });
     persist();
     return render();
   }

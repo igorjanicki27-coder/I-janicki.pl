@@ -9,14 +9,14 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=19';
+} from './logic.js?v=21';
 import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=21';
+} from './storage.js?v=23';
 import {
   icon,
   escapeHtml,
@@ -38,7 +38,8 @@ import {
   openEditMonthPicker,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=21';
+  appendFirmHistory,
+} from './core.js?v=23';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -264,20 +265,20 @@ function renderInvoiceRow(invoice, index, showActions = false) {
       : '';
   return `
     <tr data-id="${invoice.id}">
-      <td class="col-lp">${index + 1}</td>
-      <td class="col-date">${formatDate(invoice.issueDate)}</td>
-      <td class="col-title">
+      <td class="col-lp" data-label="Lp.">${index + 1}</td>
+      <td class="col-date" data-label="Data">${formatDate(invoice.issueDate)}</td>
+      <td class="col-title" data-label="Tytuł">
         <strong>${escapeHtml(invoice.title || invoice.vendor || invoice.number || '-')}</strong>
         ${invoice.kind === 'external' && invoice.vendor ? `<span class="table-subline">${escapeHtml(invoice.vendor)}</span>` : ''}
         ${budgetFlag}
       </td>
-      <td class="col-number">${escapeHtml(invoice.number || '-')}</td>
-      <td class="col-amount">${formatCurrency(invoice.amount)}</td>
-      <td class="col-kind">
+      <td class="col-number" data-label="Nr FV">${escapeHtml(invoice.number || '-')}</td>
+      <td class="col-amount" data-label="Kwota">${formatCurrency(invoice.amount)}</td>
+      <td class="col-kind" data-label="Typ">
         <span class="kind-badge kind-${invoice.kind}" title="${escapeHtml(kindTitle)}">${kindLabel}</span>
       </td>
       ${!showActions ? '' : paid ? `
-        <td class="col-actions">
+        <td class="col-actions" data-label="Akcje">
           <div class="actions-dropdown">
             <button class="mini-button actions-toggle" type="button" data-action="toggle-actions" data-id="${invoice.id}" title="Akcje">⋯</button>
             <div class="actions-menu" data-actions-menu="${invoice.id}">
@@ -291,7 +292,7 @@ function renderInvoiceRow(invoice, index, showActions = false) {
           </div>
         </td>
       ` : `
-        <td class="col-actions">
+        <td class="col-actions" data-label="Akcje">
           <div class="actions-dropdown">
             <button class="mini-button actions-toggle" type="button" data-action="toggle-actions" data-id="${invoice.id}" title="Akcje">⋯</button>
             <div class="actions-menu" data-actions-menu="${invoice.id}">
@@ -311,7 +312,7 @@ function renderInvoiceRow(invoice, index, showActions = false) {
   `;
 }
 
-function renderInvoiceTable(invoices, emptyMessage, showActions = false) {
+function renderInvoiceTable(invoices, emptyMessage, showActions = false, groupByMonth = false) {
   if (invoices.length === 0) {
     return `
       <div class="empty-block compact">
@@ -334,7 +335,17 @@ function renderInvoiceTable(invoices, emptyMessage, showActions = false) {
           </tr>
         </thead>
         <tbody>
-          ${invoices.map((invoice, index) => renderInvoiceRow(invoice, index, showActions)).join('')}
+          ${(() => {
+            let currentMonth = '';
+            return invoices.map((invoice, index) => {
+              const month = getInvoiceMonthKey(invoice);
+              const separator = groupByMonth && month !== currentMonth
+                ? `<tr class="month-separator-row"><td colspan="7">${monthLabel(month)}</td></tr>`
+                : '';
+              currentMonth = month;
+              return separator + renderInvoiceRow(invoice, index, showActions);
+            }).join('');
+          })()}
         </tbody>
       </table>
     </div>
@@ -373,6 +384,32 @@ function monthLabelSafe(value) {
   return monthLabel(value);
 }
 
+function invoiceStatusFilterLabel(value) {
+  if (value === 'unpaid') return 'Do zapłaty';
+  if (value === 'paid') return 'Opłacone';
+  return 'Wszystko';
+}
+
+function renderInvoiceStatusFilter(active) {
+  const options = [
+    { value: 'all', label: 'Wszystko' },
+    { value: 'unpaid', label: 'Do zapłaty' },
+    { value: 'paid', label: 'Opłacone' },
+  ];
+  return `
+    <div class="segmented-filter" role="group" aria-label="Filtr statusu faktur">
+      ${options.map((option) => `
+        <button
+          class="segmented-filter-button ${active === option.value ? 'is-active' : ''}"
+          type="button"
+          data-action="set-invoice-status-filter"
+          data-filter="${option.value}"
+        >${option.label}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
 function filterInvoicesByMonth(invoices, selectedMonth) {
   const ledger = calculateFirmLedger(firm);
   const scopeMonths = new Set(getScopeMonthKeys(ledger, selectedMonth));
@@ -402,6 +439,7 @@ function getInvoiceMonthOptions() {
 
 function renderInvoices() {
   const selectedMonth = state.ui.selectedMonth;
+  const statusFilter = state.ui.invoiceStatusFilter || 'all';
   let allInvoices = [...firm.invoices];
   allInvoices = filterInvoicesByMonth(allInvoices, selectedMonth);
   allInvoices.sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
@@ -435,24 +473,32 @@ function renderInvoices() {
         </div>
       </div>
 
+      <div class="invoice-filter-row">
+        <div>
+          <p class="eyebrow">Status</p>
+          <h4>${invoiceStatusFilterLabel(statusFilter)}</h4>
+        </div>
+        ${renderInvoiceStatusFilter(statusFilter)}
+      </div>
+
       <hr class="section-hr">
 
-      ${unpaidInvoices.length > 0 ? `
+      ${statusFilter !== 'paid' && unpaidInvoices.length > 0 ? `
         <div class="invoices-section invoices-unpaid">
           <div class="invoices-section-head">
             <h4 class="invoices-section-title tone-rose">● NIEOPLACONE</h4>
             <span class="invoices-section-count">${unpaidInvoices.length}</span>
           </div>
-          ${renderInvoiceTable(unpaidInvoices, 'Brak nieoplaconych faktur.', true)}
+          ${renderInvoiceTable(unpaidInvoices, 'Brak nieoplaconych faktur.', true, selectedMonth === '__all__')}
         </div>
       ` : ''}
 
-        <div class="invoices-section invoices-paid-me">
+        ${statusFilter !== 'unpaid' ? `<div class="invoices-section invoices-paid-me">
           <div class="invoices-section-head">
             <h4 class="invoices-section-title tone-mint">● Oplacilem ja</h4>
             <span class="invoices-section-count">${paidByMe.length}</span>
           </div>
-          ${renderInvoiceTable(paidByMe, 'Brak faktur oplaconych przeze mnie.', true)}
+          ${renderInvoiceTable(paidByMe, 'Brak faktur oplaconych przeze mnie.', true, selectedMonth === '__all__')}
         </div>
 
         <div class="invoices-section invoices-paid-client">
@@ -460,8 +506,11 @@ function renderInvoices() {
             <h4 class="invoices-section-title tone-cyan">● Oplacil klient</h4>
             <span class="invoices-section-count">${paidByClient.length}</span>
           </div>
-          ${renderInvoiceTable(paidByClient, 'Brak faktur oplaconych przez klienta.', true)}
-        </div>
+          ${renderInvoiceTable(paidByClient, 'Brak faktur oplaconych przez klienta.', true, selectedMonth === '__all__')}
+        </div>` : ''}
+
+        ${statusFilter === 'unpaid' && unpaidInvoices.length === 0 ? '<div class="empty-block"><p>Brak faktur do zapłaty w tym zakresie.</p></div>' : ''}
+        ${statusFilter === 'paid' && paidByMe.length + paidByClient.length === 0 ? '<div class="empty-block"><p>Brak opłaconych faktur w tym zakresie.</p></div>' : ''}
 
 
     </section>
@@ -816,6 +865,13 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
         onSave: () => {
           firm.updatedAt = new Date().toISOString();
           state.ui.selectedFirmId = firm.id;
+          appendFirmHistory(firm, {
+            area: 'invoice',
+            action: 'edit',
+            title: 'Zmieniono fakturę własną',
+            amount: existingInvoice.amount,
+            meta: { period: monthLabel(existingInvoice.month) },
+          });
           persist();
           render();
         },
@@ -866,6 +922,13 @@ function openOwnInvoiceStep3(step2Data, existingInvoice = null) {
           firm.invoices.push(invoice);
           firm.updatedAt = new Date().toISOString();
           state.ui.selectedFirmId = firm.id;
+          appendFirmHistory(firm, {
+            area: 'invoice',
+            action: 'create',
+            title: 'Dodano fakturę własną',
+            amount: invoice.amount,
+            meta: { period: monthLabel(invoice.month) },
+          });
           persist();
           render();
         },
@@ -882,6 +945,8 @@ function openExternalInvoiceStep2(prefill = null) {
   const today = prefill?.issueDate || new Date().toISOString().slice(0, 10);
   const { months, selectedMonth: selMonth } = getInvoiceMonthOptions();
   const selectedMonth = prefill?.month || selMonth;
+  const configuredMonths = new Set((firm.months || []).map((item) => item.month));
+  const showMissingPeriodWarning = !configuredMonths.has(selectedMonth);
 
   openModal(
     'Dodaj fakture cudza – dane',
@@ -892,6 +957,9 @@ function openExternalInvoiceStep2(prefill = null) {
           ${labeledInput({ name: 'issueDate', label: 'Data wystawienia', type: 'date', value: today, required: true })}
           ${labeledInput({ name: 'month', label: 'Okres rozliczeniowy', type: 'select', value: selectedMonth, options: months.map((m) => ({ value: m, label: monthLabel(m) })) })}
         </div>
+        <div class="form-warning ${showMissingPeriodWarning ? '' : 'is-hidden'}" data-missing-period-warning>
+          Ten okres nie ma jeszcze budżetu w kliencie. Faktura zostanie przypisana do rozliczeń, ale może być trudniej kontrolować budżet.
+        </div>
         <p class="form-hint">Firma: <strong>${escapeHtml(firm.name)}</strong> (automatycznie)</p>
         ${modalActions('Dalej →')}
       </form>
@@ -900,12 +968,21 @@ function openExternalInvoiceStep2(prefill = null) {
   );
 
   const form = document.getElementById('extInvoiceStep2');
+  const monthSelect = form.querySelector('[name="month"]');
+  const warning = form.querySelector('[data-missing-period-warning]');
+  monthSelect?.addEventListener('change', () => {
+    warning?.classList.toggle('is-hidden', configuredMonths.has(monthSelect.value));
+  });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const data = new FormData(form);
+    const month = String(data.get('month'));
+    if (!configuredMonths.has(month) && !window.confirm('Ten okres nie ma budżetu w kliencie. Dodać fakturę kosztową mimo to?')) {
+      return;
+    }
     openExternalInvoiceStep3({
       title: String(data.get('title') || '').trim(),
-      month: String(data.get('month')),
+      month,
       issueDate: String(data.get('issueDate')),
     });
   });
@@ -1033,6 +1110,13 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
       firm.updatedAt = new Date().toISOString();
       state.ui.selectedMonth = step2Data.month;
       await syncInvoiceFinancialState(existingInvoice, existingInvoice.paidBy);
+      appendFirmHistory(firm, {
+        area: 'invoice',
+        action: 'edit',
+        title: 'Zmieniono fakturę kosztową',
+        amount: existingInvoice.amount,
+        meta: { period: monthLabel(existingInvoice.month) },
+      });
       persist();
       closeModal();
       render();
@@ -1066,6 +1150,13 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
       firm.invoices.push(invoice);
       firm.updatedAt = new Date().toISOString();
       state.ui.selectedMonth = step2Data.month;
+      appendFirmHistory(firm, {
+        area: 'invoice',
+        action: 'create',
+        title: 'Dodano fakturę kosztową',
+        amount: invoice.amount,
+        meta: { period: monthLabel(invoice.month) },
+      });
       persist();
       closeModal();
       render();
@@ -1134,6 +1225,13 @@ async function deleteInvoice(id) {
   removeLinkedWalletEntries(id);
   firm.expenses = firm.expenses.filter((item) => item.linkedInvoiceId !== id);
   firm.updatedAt = new Date().toISOString();
+  appendFirmHistory(firm, {
+    area: 'invoice',
+    action: 'delete',
+    title: invoice.kind === 'own' ? 'Usunięto fakturę własną' : 'Usunięto fakturę kosztową',
+    amount: invoice.amount,
+    meta: { period: monthLabel(getInvoiceMonthKey(invoice)) },
+  });
 
   // Zwolnij numer jezeli mozna
   if (canFreeNumber && invoice.number) {
@@ -1267,6 +1365,11 @@ function handleClick(event) {
   const { action } = target.dataset;
 
   if (action === 'close-modal') return closeModal();
+  if (action === 'switch-firm-tab') {
+    state.ui.activeTab = target.dataset.tab || 'overview';
+    persist();
+    return navigateTo('przeglad.html', state);
+  }
 
   // Zamknij menu akcji po kliknieciu dowolnej akcji (oprocz toggle)
   if (action !== 'toggle-actions' && action !== 'toggle-global-actions' && action !== 'toggle-display-filter') {
@@ -1292,25 +1395,49 @@ function handleClick(event) {
     return;
   }
 
+  if (action === 'set-invoice-status-filter') {
+    state.ui.invoiceStatusFilter = target.dataset.filter || 'all';
+    persist();
+    return render();
+  }
+
   if (action === 'mark-all-paid-me') {
     if (!firm) return;
+    let changed = 0;
     firm.invoices.forEach((inv) => {
       if (!inv.paidBy && inv.status !== 'cancelled') {
         syncInvoiceFinancialState(inv, 'me');
+        changed += 1;
       }
     });
     firm.updatedAt = new Date().toISOString();
+    if (changed > 0) {
+      appendFirmHistory(firm, {
+        area: 'invoice',
+        action: 'status',
+        title: `Oznaczono ${changed} faktur jako opłacone przeze mnie`,
+      });
+    }
     persist();
     return render();
   }
   if (action === 'mark-all-paid-client') {
     if (!firm) return;
+    let changed = 0;
     firm.invoices.forEach((inv) => {
       if (!inv.paidBy && inv.status !== 'cancelled') {
         syncInvoiceFinancialState(inv, 'client');
+        changed += 1;
       }
     });
     firm.updatedAt = new Date().toISOString();
+    if (changed > 0) {
+      appendFirmHistory(firm, {
+        area: 'invoice',
+        action: 'status',
+        title: `Oznaczono ${changed} faktur jako opłacone przez klienta`,
+      });
+    }
     persist();
     return render();
   }
@@ -1319,6 +1446,13 @@ function handleClick(event) {
     if (!invoice) return;
     syncInvoiceFinancialState(invoice, 'me');
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'invoice',
+      action: 'status',
+      title: 'Faktura opłacona przeze mnie',
+      amount: invoice.amount,
+      meta: { period: monthLabel(getInvoiceMonthKey(invoice)) },
+    });
     persist();
     return render();
   }
@@ -1327,6 +1461,13 @@ function handleClick(event) {
     if (!invoice) return;
     syncInvoiceFinancialState(invoice, 'client');
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'invoice',
+      action: 'status',
+      title: 'Faktura opłacona przez klienta',
+      amount: invoice.amount,
+      meta: { period: monthLabel(getInvoiceMonthKey(invoice)) },
+    });
     persist();
     return render();
   }
@@ -1335,6 +1476,13 @@ function handleClick(event) {
     if (!invoice) return;
     syncInvoiceFinancialState(invoice, null);
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'invoice',
+      action: 'status',
+      title: 'Cofnięto opłacenie faktury',
+      amount: invoice.amount,
+      meta: { period: monthLabel(getInvoiceMonthKey(invoice)) },
+    });
     persist();
     return render();
   }
@@ -1506,6 +1654,14 @@ function handleClick(event) {
     if (!window.confirm('Anulowac te fakture? Numer faktury zostanie zachowany, ale faktura zniknie z listy.')) return;
     invoice.status = 'cancelled';
     invoice.paidBy = null;
+    firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'invoice',
+      action: 'cancel',
+      title: 'Anulowano fakturę',
+      amount: invoice.amount,
+      meta: { period: monthLabel(getInvoiceMonthKey(invoice)) },
+    });
     persist();
     // Zamknij menu
     document.querySelectorAll('.actions-menu.open').forEach((m) => m.classList.remove('open'));

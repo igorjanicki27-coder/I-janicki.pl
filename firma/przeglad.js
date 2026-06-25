@@ -18,14 +18,14 @@ import {
   uid,
   VAT_OPTIONS,
   addDays,
-} from './logic.js?v=19';
+} from './logic.js?v=21';
 import {
   deleteAttachment,
   getAttachment,
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=21';
+} from './storage.js?v=23';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -60,14 +60,15 @@ import {
   navigateTo,
   restoreContext,
   initSyncIndicator,
-} from './core.js?v=21';
+  appendFirmHistory,
+} from './core.js?v=23';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
 let state = initializeState();
 const shouldRestoreFirmContext = shouldRestoreOverviewContext();
 applyOverviewEntryContext(state);
-if (!['overview', 'posts'].includes(state.ui.activeTab)) {
+if (!['overview', 'posts', 'compensation'].includes(state.ui.activeTab)) {
   state.ui.activeTab = 'overview';
 }
 // Gdy nie ma wybranej firmy, zawsze pokazuj liste firm (nigdy 'Moje faktury')
@@ -111,7 +112,7 @@ function applyOverviewEntryContext(nextState) {
   sessionStorage.removeItem('ijanicki_firma_activeMonth');
   sessionStorage.removeItem('ijanicki_firma_activeTab');
   nextState.ui.selectedFirmId = null;
-  nextState.ui.selectedMonth = null;
+  nextState.ui.selectedMonth = '__all__';
   nextState.ui.activeTab = 'overview';
   nextState.ui.activeGlobalTab = 'firms';
 }
@@ -132,6 +133,7 @@ function persist() {
   // Sync context to sessionStorage for other pages
   sessionStorage.setItem('ijanicki_firma_activeFirm', state.ui.selectedFirmId || '');
   sessionStorage.setItem('ijanicki_firma_activeMonth', state.ui.selectedMonth || '');
+  sessionStorage.setItem('ijanicki_firma_activeTab', state.ui.activeTab || 'overview');
 }
 
 function persistAndFlush() {
@@ -174,6 +176,10 @@ function findBalanceEntry(id) {
 
 function findAdBudgetEntry(id) {
   return getSelectedFirm(state)?.adBudgetEntries?.find((item) => item.id === id) || null;
+}
+
+function findCompensationEntry(id) {
+  return getSelectedFirm(state)?.compensationEntries?.find((item) => item.id === id) || null;
 }
 
 function ensureFirmPostCollectionsLoaded(firm) {
@@ -546,13 +552,13 @@ function renderAllOwnInvoices() {
 // --- Rendering ---
 function renderMonthList(ledger, selectedMonth) {
   return `
-    <div class="table-wrap">
-      <table class="data-table">
+    <div class="table-wrap responsive-table-wrap">
+      <table class="data-table responsive-table">
         <thead>
           <tr>
             <th>Miesiąc</th>
-            <th>Budżet</th>
-            <th>Wynagrodzenie</th>
+            <th>Budżet reklamowy</th>
+            <th>Wydatki</th>
             <th>Dostępne na reklamę</th>
             <th>Rozrachunek</th>
             <th></th>
@@ -563,21 +569,21 @@ function renderMonthList(ledger, selectedMonth) {
             const settlement = getSettlementMeta(row.settlementNetChange);
             return `
             <tr class="${row.month === selectedMonth ? 'is-current-row' : ''}">
-              <td>
+              <td data-label="Miesiąc">
                 <button class="row-link strong-link" type="button" data-action="select-month" data-month="${row.month}">
                   ${row.label}
                 </button>
               </td>
-              <td>${formatCurrency(row.budget)}</td>
-              <td>${formatCurrency(row.compensation)}</td>
-              <td class="${row.adEndingBalance < 0 ? 'tone-amber' : 'tone-mint'}">${formatCurrency(row.adEndingBalance)}</td>
-              <td>
+              <td data-label="Budżet reklamowy">${formatCurrency(row.budget)}</td>
+              <td data-label="Wydatki">${formatCurrency(row.expensesTotal)}</td>
+              <td data-label="Dostępne" class="${row.adEndingBalance < 0 ? 'tone-amber' : 'tone-mint'}">${formatCurrency(row.adEndingBalance)}</td>
+              <td data-label="Rozrachunek">
                 <div class="settlement-cell">
                   <strong class="${settlement.textClass}">${settlement.shortLabel}</strong>
                   <span class="table-subline">${formatCurrency(settlement.amount)}</span>
                 </div>
               </td>
-              <td class="table-actions">
+              <td data-label="Akcje" class="table-actions">
                 <button class="mini-button" type="button" data-action="edit-month" data-month="${row.month}">${icon('edit')}</button>
                 <button class="mini-button tone-danger" type="button" data-action="delete-month" data-month="${row.month}">${icon('trash')}</button>
               </td>
@@ -601,7 +607,7 @@ function renderOverviewHero({ eyebrow, title, settlement, adBalance, budget, exp
           <article class="overview-focus-card focus-${settlement.tone}">
             <span class="overview-focus-label">${settlement.label}</span>
             <strong class="overview-focus-value">${formatCurrency(settlement.amount)}</strong>
-            <span class="overview-focus-note">Po odjęciu wpłat klienta i kosztów budżetowych, które opłacił bezpośrednio.</span>
+            <span class="overview-focus-note">Liczone z faktur, kosztów opłaconych przeze mnie, ręcznych wynagrodzeń i wpłat klienta.</span>
           </article>
           <article class="overview-focus-card focus-${adIsNegative ? 'rose' : 'emerald'}">
             <span class="overview-focus-label">${adIsNegative ? 'Przekroczony budżet reklamy' : 'Dostępne na reklamę'}</span>
@@ -612,7 +618,7 @@ function renderOverviewHero({ eyebrow, title, settlement, adBalance, budget, exp
       </div>
       <div class="overview-hero-side">
         <div class="overview-chip">
-          <span>Budżet klienta</span>
+          <span>Budżet reklamowy</span>
           <strong>${formatCurrency(budget)}</strong>
         </div>
         <div class="overview-chip">
@@ -654,15 +660,8 @@ function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInje
   const remaining = roundCurrency(Math.max(0, adBalance || 0));
   const overrun = roundCurrency(Math.max(0, -(adBalance || 0)));
   const baseForPercent = Math.max(availablePool, spent, 1);
-  const spentPercent = availablePool > 0
-    ? (Math.min(spent, availablePool) / availablePool) * 100
-    : 0;
-  const remainingPercent = availablePool > 0
-    ? (remaining / availablePool) * 100
-    : 0;
-  const overrunPercent = spent > 0
-    ? (overrun / Math.max(spent, 1)) * 100
-    : 0;
+  const spentPercent = availablePool > 0 ? (Math.min(spent, availablePool) / availablePool) * 100 : 0;
+  const remainingPercent = availablePool > 0 ? (remaining / availablePool) * 100 : 0;
 
   return `
     <section class="section-band overview-panel">
@@ -674,26 +673,59 @@ function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInje
       </div>
       <div class="overview-panel-grid">
         <div class="flow-chart">
-          ${renderFlowBar('Pula reklamowa z tego miesiąca', adInjection || 0, availablePool > 0 ? ((adInjection || 0) / baseForPercent) * 100 : 0, 'cyan', 'Budżet po odjęciu Twojego wynagrodzenia')}
-          ${adOnly > 0 ? renderFlowBar('Budżet poza okresem', adOnly, availablePool > 0 ? (adOnly / baseForPercent) * 100 : 0, 'emerald', 'Dodatkowy budżet bez naliczania wynagrodzenia') : ''}
-          ${positiveCarry > 0 ? renderFlowBar('Przeniesione z poprzednich miesięcy', positiveCarry, availablePool > 0 ? (positiveCarry / baseForPercent) * 100 : 0, 'slate', 'Dodatkowe środki dostępne od startu') : ''}
-          ${carryDebt > 0 ? renderFlowBar('Minus z poprzednich miesięcy', carryDebt, availablePool > 0 ? (Math.min(carryDebt, availablePool) / baseForPercent) * 100 : 0, 'rose', 'Ta kwota zmniejszyła obecną pulę reklamową') : ''}
-          ${renderFlowBar('Wydatki budżetowe', spent, spentPercent, 'amber', availablePool > 0 ? `Wykorzystano ${Math.round(spentPercent)}% dostępnej puli reklamowej.` : 'Brak aktywnej puli reklamowej w tym zakresie.')}
-          ${renderFlowBar(remaining > 0 ? 'Zostało na reklamę' : 'Zostało na reklamę', remaining, remainingPercent, 'emerald', availablePool > 0 ? `Do wykorzystania zostało ${Math.round(remainingPercent)}% puli.` : 'Brak środków do wydania.')}
-          ${overrun > 0 ? renderFlowBar('Przekroczenie budżetu', overrun, overrunPercent, 'rose', 'To jedyna pozycja alarmowa: wydatki wyszły ponad dostępną pulę.') : ''}
+          ${renderFlowBar('Dostępny budżet reklamowy', availablePool, 100, 'cyan', 'Budżet okresu + budżet poza okresem + dodatnie przeniesienia.')}
+          ${renderFlowBar('Wydatki budżetowe', spent, (spent / baseForPercent) * 100, 'amber', availablePool > 0 ? `Wykorzystano ${Math.round(spentPercent)}% budżetu.` : 'Brak aktywnej puli do porównania.')}
+          ${overrun > 0
+            ? renderFlowBar('Przekroczenie budżetu', overrun, (overrun / baseForPercent) * 100, 'rose', 'Wydatki przekroczyły dostępny budżet reklamowy.')
+            : renderFlowBar('Zostało na reklamę', remaining, remainingPercent, 'emerald', availablePool > 0 ? `Pozostało ${Math.round(remainingPercent)}% budżetu.` : 'Brak środków do wydania.')}
+          ${carryDebt > 0 ? renderFlowBar('Minus z poprzednich okresów', carryDebt, (Math.min(carryDebt, baseForPercent) / baseForPercent) * 100, 'rose', 'Minus obniża realnie dostępny budżet.') : ''}
         </div>
         <div class="overview-compact-cards">
-          ${statCard('Pula reklamowa razem', formatCurrency(availablePool), 'cyan', 'Bieżąca pula plus dodatnie przeniesienia')}
-          ${statCard('Twoje wynagrodzenie', formatCurrency(compensation || 0), 'default', 'Ta kwota nie wchodzi do puli reklamowej')}
-          ${statCard('Wydane', formatCurrency(spent), 'amber', availablePool > 0 ? `${Math.round(spentPercent)}% wykorzystania puli` : 'Brak puli do porównania')}
-          ${statCard(overrun > 0 ? 'Do wyrównania' : 'Zostało', formatCurrency(overrun > 0 ? overrun : remaining), overrun > 0 ? 'rose' : 'emerald', overrun > 0 ? 'Budżet reklamowy jest już na minusie' : 'Środki dostępne na kolejne działania')}
+          ${statCard('Budżet okresów', formatCurrency(adInjection || 0), 'cyan', 'Kwota przeznaczona na działania reklamowe')}
+          ${statCard('Budżet poza okresem', formatCurrency(adOnly), 'default', 'Dodatkowa pula bez przypisania do miesiąca')}
+          ${statCard('Wydane', formatCurrency(spent), 'amber', availablePool > 0 ? `${Math.round(spentPercent)}% wykorzystania` : 'Brak budżetu')}
+          ${statCard(overrun > 0 ? 'Przekroczenie' : 'Zostało', formatCurrency(overrun > 0 ? overrun : remaining), overrun > 0 ? 'rose' : 'emerald', overrun > 0 ? 'Wydatki są wyższe niż budżet' : 'Środki na kolejne działania')}
         </div>
       </div>
     </section>
   `;
 }
 
-function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation, adOnlyBudget }) {
+function renderSettlementBreakdown({ unpaidOwnInvoices = 0, ownPaid = 0, compensation = 0, balanceNet = 0, paymentsReceived = 0 }) {
+  const totalBeforePayments = roundCurrency(unpaidOwnInvoices + ownPaid + compensation + balanceNet);
+  const result = roundCurrency(totalBeforePayments - paymentsReceived);
+  const resultMeta = getSettlementMeta(result);
+  return `
+    <div class="settlement-breakdown">
+      <div class="settlement-breakdown-head">
+        <strong>Skąd bierze się kwota do zapłaty</strong>
+        <span>${resultMeta.shortLabel}: ${formatCurrency(resultMeta.amount)}</span>
+      </div>
+      <div class="overview-detail-row">
+        <span>Faktury własne nieopłacone</span>
+        <strong>${formatCurrency(unpaidOwnInvoices)}</strong>
+      </div>
+      <div class="overview-detail-row">
+        <span>Koszty opłacone przeze mnie</span>
+        <strong>${formatCurrency(ownPaid)}</strong>
+      </div>
+      <div class="overview-detail-row">
+        <span>Wynagrodzenia ręczne</span>
+        <strong>${formatCurrency(compensation)}</strong>
+      </div>
+      <div class="overview-detail-row">
+        <span>Korekty rozrachunku</span>
+        <strong>${formatCurrency(balanceNet)}</strong>
+      </div>
+      <div class="overview-detail-row is-muted">
+        <span>Wpłaty klienta do Ciebie</span>
+        <strong>-${formatCurrency(paymentsReceived)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation, adOnlyBudget, unpaidOwnInvoices, balanceNet }) {
   return `
     <section class="section-band overview-panel">
       <div class="panel-head">
@@ -729,6 +761,58 @@ function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid,
           <strong>${formatCurrency(reserved || 0)}</strong>
         </div>
       </div>
+      ${renderSettlementBreakdown({
+        unpaidOwnInvoices,
+        ownPaid,
+        compensation,
+        balanceNet,
+        paymentsReceived,
+      })}
+    </section>
+  `;
+}
+
+function historyAreaLabel(area) {
+  const labels = {
+    budget: 'Budżet',
+    compensation: 'Wynagrodzenie',
+    invoice: 'Faktura',
+    wallet: 'Wpłata',
+    firm: 'Klient',
+    post: 'Posty',
+    system: 'System',
+  };
+  return labels[area] || area || 'Zmiana';
+}
+
+function renderHistoryPanel(firm) {
+  const entries = [...(firm.history || [])]
+    .sort((a, b) => (b.at || '').localeCompare(a.at || ''))
+    .slice(0, 12);
+  return `
+    <section class="section-band overview-panel history-panel">
+      <div class="panel-head space-between">
+        <div>
+          <p class="eyebrow">Historia zmian</p>
+          <h3>Ostatnie operacje</h3>
+        </div>
+      </div>
+      ${entries.length === 0 ? `
+        <div class="empty-block compact"><p>Brak zapisanych zmian dla tego klienta.</p></div>
+      ` : `
+        <div class="history-list">
+          ${entries.map((entry) => `
+            <article class="history-item">
+              <span class="history-badge">${escapeHtml(historyAreaLabel(entry.area))}</span>
+              <div>
+                <strong>${escapeHtml(entry.title || 'Zmiana')}</strong>
+                <span>${formatDate(entry.at)}${entry.meta?.period ? ` · ${escapeHtml(entry.meta.period)}` : ''}</span>
+              </div>
+              ${entry.amount === null || entry.amount === undefined ? '' : `<strong class="history-amount">${formatCurrency(entry.amount)}</strong>`}
+            </article>
+          `).join('')}
+        </div>
+      `}
     </section>
   `;
 }
@@ -751,8 +835,8 @@ function renderAdBudgetEntriesPanel(firm) {
       ${entries.length === 0 ? `
         <div class="empty-block"><p>Brak dodatkowego budżetu bez wynagrodzenia.</p></div>
       ` : `
-        <div class="table-wrap">
-          <table class="data-table">
+        <div class="table-wrap responsive-table-wrap">
+          <table class="data-table responsive-table">
             <thead>
               <tr>
                 <th>Data</th>
@@ -764,10 +848,10 @@ function renderAdBudgetEntriesPanel(firm) {
             <tbody>
               ${entries.map((entry) => `
                 <tr>
-                  <td>${formatDate(entry.date)}</td>
-                  <td>${escapeHtml(entry.description || '-')}</td>
-                  <td class="tone-mint">${formatCurrency(entry.amount)}</td>
-                  <td class="table-actions">
+                  <td data-label="Data">${formatDate(entry.date)}</td>
+                  <td data-label="Opis">${escapeHtml(entry.description || '-')}</td>
+                  <td data-label="Kwota" class="tone-mint">${formatCurrency(entry.amount)}</td>
+                  <td data-label="Akcje" class="table-actions">
                     <button class="mini-button" type="button" data-action="edit-ad-budget" data-id="${entry.id}">${icon('edit')}</button>
                     <button class="mini-button tone-danger" type="button" data-action="delete-ad-budget" data-id="${entry.id}">${icon('trash')}</button>
                   </td>
@@ -778,6 +862,105 @@ function renderAdBudgetEntriesPanel(firm) {
         </div>
       `}
     </section>
+  `;
+}
+
+function compensationEntryPeriod(entry) {
+  return entry.period || monthFromDate(entry.date);
+}
+
+function compensationEntriesForSelection(firm, selectedMonth) {
+  const entries = [...(firm.compensationEntries || [])];
+  if (!selectedMonth || selectedMonth === '__all__') {
+    return entries;
+  }
+  if (selectedMonth === '__year__') {
+    const year = String(new Date().getFullYear());
+    return entries.filter((entry) => compensationEntryPeriod(entry).startsWith(year));
+  }
+  if (selectedMonth === '__quarter__') {
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const q = Math.floor(now.getMonth() / 3);
+    const qMonths = [
+      `${year}-${String(q * 3 + 1).padStart(2, '0')}`,
+      `${year}-${String(q * 3 + 2).padStart(2, '0')}`,
+      `${year}-${String(q * 3 + 3).padStart(2, '0')}`,
+    ];
+    return entries.filter((entry) => qMonths.includes(compensationEntryPeriod(entry)));
+  }
+  return entries.filter((entry) => compensationEntryPeriod(entry) === selectedMonth);
+}
+
+function renderCompensationPage(firm, ledger, selectedMonth) {
+  const entries = compensationEntriesForSelection(firm, selectedMonth)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = roundCurrency(entries.reduce((acc, entry) => acc + Number(entry.amount || 0), 0));
+  const periodLabel = selectedMonth === '__all__' || !selectedMonth
+    ? 'Razem'
+    : selectedMonth === '__year__'
+      ? 'Ten rok'
+      : selectedMonth === '__quarter__'
+        ? 'Ten kwartał'
+        : monthLabel(selectedMonth);
+
+  return `
+    <div class="firm-detail-page">
+      <section class="main-area">
+        ${renderFirmContextHeader(firm, ledger, selectedMonth)}
+        <section class="section-band overview-panel">
+          <div class="panel-head space-between">
+            <div>
+              <p class="eyebrow">Wynagrodzenia</p>
+              <h3>Ręczne koszty wynagrodzenia</h3>
+              <p class="table-note">Zakres: <strong>${escapeHtml(periodLabel)}</strong>. Te pozycje zwiększają kwotę, którą klient ma zapłacić.</p>
+            </div>
+            <button class="primary-button" type="button" data-action="add-compensation">${icon('plus')}Dodaj wynagrodzenie</button>
+          </div>
+          <div class="stats-grid stats-grid-4">
+            ${statCard('Do obciążenia klienta', formatCurrency(total), 'rose', 'Suma ręcznie dodanych wynagrodzeń w tym zakresie')}
+            ${statCard('Sugestia ze starych %', formatCurrency(ledger.totals.totalSuggestedCompensation || 0), 'default', 'Tylko informacyjnie, nie nalicza się automatycznie')}
+            ${statCard('Liczba pozycji', String(entries.length), 'cyan', 'Ręcznie wpisane wynagrodzenia')}
+            ${statCard('Widok', escapeHtml(periodLabel), 'default', 'Zmienisz go selektorem okresu w nagłówku')}
+          </div>
+        </section>
+        <section class="section-band overview-panel">
+          ${entries.length === 0 ? `
+            <div class="empty-block"><p>Brak wynagrodzeń w tym zakresie.</p></div>
+          ` : `
+            <div class="table-wrap responsive-table-wrap">
+              <table class="data-table responsive-table compensation-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Okres</th>
+                    <th>Opis</th>
+                    <th>Kwota</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${entries.map((entry) => `
+                    <tr>
+                      <td data-label="Data">${formatDate(entry.date)}</td>
+                      <td data-label="Okres">${entry.period ? monthLabel(entry.period) : 'Według daty'}</td>
+                      <td data-label="Opis"><strong>${escapeHtml(entry.title || 'Wynagrodzenie')}</strong></td>
+                      <td data-label="Kwota" class="tone-rose">${formatCurrency(entry.amount)}</td>
+                      <td data-label="Akcje" class="table-actions">
+                        <button class="mini-button" type="button" data-action="edit-compensation" data-id="${entry.id}">${icon('edit')}</button>
+                        <button class="mini-button tone-danger" type="button" data-action="delete-compensation" data-id="${entry.id}">${icon('trash')}</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </section>
+        ${renderHistoryPanel(firm)}
+      </section>
+      ${renderFabMenu('add-compensation')}
+    </div>
   `;
 }
 
@@ -868,6 +1051,8 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             reserved: monthRow.reservedBudgetExpenses || 0,
             compensation: monthRow.compensation || 0,
             adOnlyBudget,
+            unpaidOwnInvoices: monthRow.unpaidOwnInvoices || 0,
+            balanceNet: monthRow.balanceNet || 0,
           })}
         </div>
         <div class="overview-side-column">
@@ -885,8 +1070,8 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
         ${expensePreview.length === 0 ? `
           <div class="empty-block"><p>Brak wydatków w tym miesiącu.</p></div>
         ` : `
-          <div class="table-wrap">
-            <table class="data-table">
+          <div class="table-wrap responsive-table-wrap">
+            <table class="data-table responsive-table">
               <thead>
                 <tr>
                   <th>Data</th>
@@ -899,14 +1084,14 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
               <tbody>
                 ${expensePreview.map((expense) => `
                   <tr>
-                    <td>${formatDate(expense.date)}</td>
-                    <td>${categoryLabel(expense.category)}</td>
-                    <td>
+                    <td data-label="Data">${formatDate(expense.date)}</td>
+                    <td data-label="Kategoria">${categoryLabel(expense.category)}</td>
+                    <td data-label="Opis">
                       <strong>${escapeHtml(expense.vendor || 'Wydatek')}</strong>
                       <span class="table-subline">${escapeHtml(expense.description || '-')}</span>
                     </td>
-                    <td>${payerLabel(expense.payer)}</td>
-                    <td>${formatCurrency(expense.amount)}</td>
+                    <td data-label="Płatnik">${payerLabel(expense.payer)}</td>
+                    <td data-label="Kwota">${formatCurrency(expense.amount)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -945,7 +1130,7 @@ function renderFirmContextHeader(firm, ledger, selectedMonth) {
       </div>
       <div class="firm-context-stats">
         <span><strong>${ledger.rows.length}</strong> okresów</span>
-        <span><strong>${unpaidCount}</strong> nieopłacone</span>
+        <span>${unpaidCount > 0 ? `<strong>${unpaidCount}</strong> faktur do opłacenia` : 'Brak zaległych faktur'}</span>
         <span><strong>${formatCurrency(settlement.amount)}</strong> ${settlement.shortLabel.toLowerCase()}</span>
         <span>${escapeHtml(selectedLabel)}</span>
       </div>
@@ -1004,7 +1189,7 @@ function renderMonthExpenses(month, expenses) {
 }
 
 function renderTilesGrid(budget, compensation, carryIn, wydano) {
-  const doWydania = roundCurrency(budget - compensation);
+  const doWydania = roundCurrency(budget);
   const zostalo = roundCurrency(doWydania + carryIn - wydano);
   return `
     <div class="section-stack" style="display:grid; gap:20px;">
@@ -1020,8 +1205,8 @@ function renderTilesGrid(budget, compensation, carryIn, wydano) {
           </div>
         </div>
         <div class="stats-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-          ${statCard('Twoje wynagrodzenie', formatCurrency(compensation), 'emerald', 'Laczna kwota wynagrodzenia z budzetow')}
-          ${statCard('Pula reklamowa', formatCurrency(doWydania), 'amber', 'Budzet po odjeciu wynagrodzenia')}
+          ${statCard('Dawna sugestia wynagrodzenia', formatCurrency(compensation), 'default', 'Informacyjnie, bez automatycznego naliczania')}
+          ${statCard('Pula reklamowa', formatCurrency(doWydania), 'amber', 'Budżet reklamowy w tym widoku')}
           ${statCard('Przeniesione', formatCurrency(carryIn), carryIn < 0 ? 'rose' : 'default', 'Stan z okresu przed wybranym zakresem')}
           ${statCard('Wydane lacznie', formatCurrency(wydano), 'rose', 'Suma wydatkow w tym widoku')}
         </div>
@@ -1049,7 +1234,7 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
       <div class="overview-main-grid">
         <div class="overview-main-column">
           ${renderBudgetFlowSection({
-            title: 'Jak wygląda wykorzystanie budżetu w tym zakresie',
+            title: 'Budżet reklamowy w tym zakresie',
             eyebrow: 'Budżet i wykorzystanie',
             carryIn: scope.adCarryIn || 0,
             compensation: scope.totalCompensation || 0,
@@ -1067,6 +1252,8 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
             reserved: 0,
             compensation: scope.totalCompensation || 0,
             adOnlyBudget: scope.adOnlyBudget || 0,
+            unpaidOwnInvoices: scope.totalUnpaidOwnInvoices || 0,
+            balanceNet: scope.totalBalanceNet || 0,
           })}
         </div>
         <div class="overview-side-column">
@@ -1088,7 +1275,7 @@ function renderOverview(firm, ledger, selectedMonth, monthRow) {
           </div>
         </div>
         <div class="empty-block">
-          <p>Ta firma nie ma jeszcze zadnego miesiaca. Dodaj pierwszy budzet i procent wynagrodzenia.</p>
+          <p>Ta firma nie ma jeszcze żadnego okresu. Dodaj pierwszy budżet reklamowy.</p>
         </div>
       </section>
     `;
@@ -1191,6 +1378,9 @@ function renderFirmDetail() {
   if (state.ui.activeTab === 'posts') {
     return renderPostsPage(firm);
   }
+  if (state.ui.activeTab === 'compensation') {
+    return renderCompensationPage(firm, ledger, selectedMonth);
+  }
 
   return `
     <div class="firm-detail-page">
@@ -1211,6 +1401,7 @@ function renderFirmDetail() {
           </div>
           ${renderMonthList(ledger, selectedMonth)}
         </section>
+        ${renderHistoryPanel(firm)}
       </section>
       ${renderFabMenu('add-month')}
     </div>
@@ -1825,16 +2016,23 @@ function openFirmModal(firm = null) {
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
       adBudgetEntries: firm?.adBudgetEntries || [],
+      compensationEntries: firm?.compensationEntries || [],
       balanceEntries: firm?.balanceEntries || [],
       walletEntries: firm?.walletEntries || [],
       expenses: firm?.expenses || [],
       invoices: firm?.invoices || [],
+      history: firm?.history || [],
       postTabs: firm ? (firm.postTabs || []) : undefined,
       posts: firm?.posts || [],
       postReminderKeys: firm?.postReminderKeys || [],
       createdAt: firm?.createdAt || now,
       updatedAt: now,
     };
+    appendFirmHistory(nextFirm, {
+      area: 'firm',
+      action: firm ? 'edit' : 'create',
+      title: firm ? 'Zmieniono dane klienta' : 'Dodano klienta',
+    });
 
     state.firms = firm
       ? state.firms.map((item) => (item.id === firm.id ? nextFirm : item))
@@ -1853,7 +2051,7 @@ function openFirmModal(firm = null) {
       }
       state.firms = state.firms.filter((item) => item.id !== firm.id);
       state.ui.selectedFirmId = state.firms[0]?.id || null;
-      state.ui.selectedMonth = state.firms[0] ? currentMonthKey() : null;
+      state.ui.selectedMonth = state.firms[0] ? '__all__' : null;
       persist();
       closeModal();
       render();
@@ -1861,42 +2059,75 @@ function openFirmModal(firm = null) {
   }
 }
 
+function budgetPeriodOptions(firm, existingMonth = null) {
+  const used = new Set((firm.months || []).map((item) => item.month).filter(Boolean));
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const end = new Date(now.getFullYear() + 1, 11, 1);
+  const options = [];
+  for (const date = new Date(start); date <= end; date.setMonth(date.getMonth() + 1)) {
+    const key = date.toISOString().slice(0, 7);
+    if (key === existingMonth || !used.has(key)) {
+      options.push({ value: key, label: monthLabel(key) });
+    }
+  }
+  const currentKey = currentMonthKey();
+  const defaultMonth = options.find((item) => item.value >= currentKey)?.value || options[0]?.value || currentKey;
+  return { options, defaultMonth };
+}
+
 function openMonthModal(existing = null) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
+  const isOutsideDefault = existing === '__out_of_period__';
+  const monthExisting = existing && existing !== '__out_of_period__' ? existing : null;
+  const { options, defaultMonth } = budgetPeriodOptions(firm, monthExisting?.month || null);
+  const periodOptions = [
+    ...options,
+    { value: '__out_of_period__', label: 'Poza okresem' },
+  ];
+  const periodValue = isOutsideDefault
+    ? '__out_of_period__'
+    : monthExisting?.month || defaultMonth;
 
   openModal(
-    existing ? 'Edytuj miesiac' : 'Dodaj miesiac',
+    monthExisting ? 'Edytuj okres' : 'Dodaj budżet',
     `
       <form id="monthForm" class="form-grid">
-        ${monthYearFields('month', existing?.month || safeMonthValue(state))}
-        ${labeledInput({ name: 'budget', label: 'Budzet miesiaca', type: 'number', value: existing?.budget ?? '', min: '0', required: true })}
-        ${labeledInput({ name: 'compensationPercent', label: '% wynagrodzenia', type: 'number', value: existing?.compensationPercent ?? 50, min: '0', required: true })}
-        ${existing ? `
+        ${monthExisting ? monthYearFields('month', monthExisting.month) : labeledInput({ name: 'period', label: 'Okres', type: 'select', value: periodValue, options: periodOptions })}
+        ${labeledInput({ name: 'budget', label: 'Budżet reklamowy', type: 'number', value: monthExisting?.budget ?? '', min: '0', required: true })}
+        ${monthExisting ? `
         <div class="modal-actions is-split">
-          <button class="ghost-button tone-danger" type="button" id="deleteMonthButton" data-action="delete-month-from-modal" data-month="${existing.month}">Usun miesiac</button>
+          <button class="ghost-button tone-danger" type="button" id="deleteMonthButton" data-action="delete-month-from-modal" data-month="${monthExisting.month}">Usuń okres</button>
           <div class="modal-actions-group">
             <button class="ghost-button" type="button" data-action="close-modal">Anuluj</button>
-            <button class="primary-button" type="submit">Zapisz miesiac</button>
+            <button class="primary-button" type="submit">Zapisz okres</button>
           </div>
-        </div>` : modalActions('Dodaj miesiac')}
+        </div>` : modalActions('Dodaj budżet')}
       </form>
     `
   );
 
   // Usun miesiac (inline listener)
-  if (existing) {
+  if (monthExisting) {
     const delBtn = document.getElementById('deleteMonthButton');
     delBtn?.addEventListener('click', () => {
-      const month = existing.month;
-      if (!confirm(`Usunac miesiac ${monthLabel(month)}?`)) return;
+      const month = monthExisting.month;
+      if (!confirm(`Usunąć okres ${monthLabel(month)}?`)) return;
       firm.months = (firm.months || []).filter(m => m.month !== month);
       firm.expenses = (firm.expenses || []).filter(e => (e.month || monthFromDate(e.date)) !== month);
       firm.balanceEntries = (firm.balanceEntries || []).filter(e => monthFromDate(e.date) !== month);
       firm.walletEntries = (firm.walletEntries || []).filter(e => getWalletEntryMonth(e) !== month);
       firm.invoices = (firm.invoices || []).filter(inv => getInvoiceMonthKey(inv) !== month);
       firm.updatedAt = new Date().toISOString();
-      state.ui.selectedMonth = (firm.months || [])[0]?.month || currentMonthKey();
+      appendFirmHistory(firm, {
+        area: 'budget',
+        action: 'delete',
+        title: 'Usunięto okres rozliczeniowy',
+        amount: monthExisting.budget || 0,
+        meta: { period: monthLabel(month) },
+      });
+      state.ui.selectedMonth = '__all__';
       state.ui.activeMonthTab = 'overview';
       persist();
       closeModal();
@@ -1908,19 +2139,46 @@ function openMonthModal(existing = null) {
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const data = new FormData(form);
-    const month = readMonthYear(data, 'month');
+    const selectedPeriod = monthExisting ? readMonthYear(data, 'month') : String(data.get('period') || defaultMonth);
+    const budget = roundCurrency(data.get('budget'));
+
+    if (!monthExisting && selectedPeriod === '__out_of_period__') {
+      const entry = {
+        id: uid(),
+        date: new Date().toISOString().slice(0, 10),
+        amount: budget,
+        description: 'Budżet poza okresem',
+        createdAt: new Date().toISOString(),
+      };
+      firm.adBudgetEntries = [...(firm.adBudgetEntries || []), entry];
+      firm.updatedAt = new Date().toISOString();
+      appendFirmHistory(firm, {
+        area: 'budget',
+        action: 'create',
+        title: 'Dodano budżet poza okresem',
+        amount: budget,
+        meta: { period: 'Poza okresem' },
+      });
+      state.ui.selectedMonth = '__all__';
+      persist();
+      closeModal();
+      render();
+      return;
+    }
+
+    const month = selectedPeriod;
 
     // Blokada duplikatow
-    if (!existing && firm.months.some(m => m.month === month)) {
-      alert('Ten miesiac juz istnieje. Wybierz inny.');
+    if (!monthExisting && firm.months.some(m => m.month === month)) {
+      alert('Ten okres już istnieje. Wybierz inny.');
       return;
     }
 
     const monthEntry = {
-      id: existing?.id || uid(),
+      id: monthExisting?.id || uid(),
       month,
-      budget: roundCurrency(data.get('budget')),
-      compensationPercent: roundCurrency(data.get('compensationPercent')),
+      budget,
+      compensationPercent: monthExisting?.compensationPercent ?? 0,
       updatedAt: new Date().toISOString(),
     };
 
@@ -1929,7 +2187,14 @@ function openMonthModal(existing = null) {
       monthEntry,
     ].sort((a, b) => a.month.localeCompare(b.month));
     firm.updatedAt = new Date().toISOString();
-    state.ui.selectedMonth = month;
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: monthExisting ? 'edit' : 'create',
+      title: monthExisting ? 'Zmieniono budżet okresu' : 'Dodano okres rozliczeniowy',
+      amount: budget,
+      meta: { period: monthLabel(month) },
+    });
+    state.ui.selectedMonth = '__all__';
     state.ui.activeMonthTab = 'overview';
     persist();
     closeModal();
@@ -1991,8 +2256,7 @@ function showMonthEditStep2(month) {
       <h3>Edytuj: ${monthLabel(month)}</h3>
       <form id="monthForm" class="form-grid">
         ${monthYearFields('month', existing.month)}
-        ${labeledInput({ name: 'budget', label: 'Budzet miesiaca', type: 'number', value: existing.budget ?? '', min: '0', required: true })}
-        ${labeledInput({ name: 'compensationPercent', label: '% wynagrodzenia', type: 'number', value: existing.compensationPercent ?? 50, min: '0', required: true })}
+        ${labeledInput({ name: 'budget', label: 'Budżet reklamowy', type: 'number', value: existing.budget ?? '', min: '0', required: true })}
         <div class="modal-actions is-split">
           <button class="ghost-button tone-danger" type="button" id="deleteMonthButton">Usun miesiac</button>
           <div class="modal-actions-group">
@@ -2020,7 +2284,14 @@ function showMonthEditStep2(month) {
     firm.walletEntries = (firm.walletEntries || []).filter(e => getWalletEntryMonth(e) !== month);
     firm.invoices = (firm.invoices || []).filter(inv => getInvoiceMonthKey(inv) !== month);
     firm.updatedAt = new Date().toISOString();
-    state.ui.selectedMonth = (firm.months || [])[0]?.month || currentMonthKey();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: 'delete',
+      title: 'Usunięto okres rozliczeniowy',
+      amount: existing.budget || 0,
+      meta: { period: monthLabel(month) },
+    });
+    state.ui.selectedMonth = '__all__';
     state.ui.activeMonthTab = 'overview';
     persist();
     closeModal();
@@ -2042,7 +2313,7 @@ function showMonthEditStep2(month) {
       id: existing.id,
       month: monthVal,
       budget: roundCurrency(data.get('budget')),
-      compensationPercent: roundCurrency(data.get('compensationPercent')),
+      compensationPercent: existing.compensationPercent ?? 0,
       updatedAt: new Date().toISOString(),
     };
 
@@ -2051,6 +2322,13 @@ function showMonthEditStep2(month) {
       monthEntry,
     ].sort((a, b) => a.month.localeCompare(b.month));
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: 'edit',
+      title: 'Zmieniono budżet okresu',
+      amount: monthEntry.budget,
+      meta: { period: monthLabel(monthVal) },
+    });
     state.ui.selectedMonth = monthVal;
     state.ui.activeMonthTab = 'overview';
     persist();
@@ -2104,6 +2382,13 @@ function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
     firm.balanceEntries = [...firm.balanceEntries.filter((item) => item.id !== entry.id), entry]
       .sort((a, b) => a.date.localeCompare(b.date));
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: existing ? 'edit' : 'create',
+      title: existing ? 'Zmieniono korektę rozrachunku' : 'Dodano korektę rozrachunku',
+      amount: entry.amount,
+      meta: { period: monthLabel(monthFromDate(entry.date)) },
+    });
     persist();
     closeModal();
     render();
@@ -2152,6 +2437,77 @@ function openAdBudgetEntryModal(existing = null) {
       entry,
     ].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: existing ? 'edit' : 'create',
+      title: existing ? 'Zmieniono budżet poza okresem' : 'Dodano budżet poza okresem',
+      amount,
+      meta: { period: 'Poza okresem' },
+    });
+    persist();
+    closeModal();
+    render();
+  });
+}
+
+function openCompensationEntryModal(existing = null) {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const monthOptions = [
+    { value: '', label: 'Według daty' },
+    ...(firm.months || [])
+      .slice()
+      .sort((a, b) => b.month.localeCompare(a.month))
+      .map((month) => ({ value: month.month, label: monthLabel(month.month) })),
+  ];
+
+  openModal(
+    existing ? 'Edytuj wynagrodzenie' : 'Dodaj wynagrodzenie',
+    `
+      <form id="compensationForm" class="form-grid">
+        ${labeledInput({ name: 'date', label: 'Data', type: 'date', value: existing?.date || new Date().toISOString().slice(0, 10), required: true })}
+        ${labeledInput({ name: 'period', label: 'Okres', type: 'select', value: existing?.period || '', options: monthOptions })}
+        ${labeledInput({ name: 'amount', label: 'Kwota', type: 'number', value: existing?.amount ?? '', min: '0', required: true })}
+        <div class="field field-span-2">
+          <span>Opis</span>
+          <input type="text" name="title" value="${escapeHtml(existing?.title || '')}" placeholder="Np. wynagrodzenie za obsługę kampanii" required />
+        </div>
+        ${modalActions(existing ? 'Zapisz wynagrodzenie' : 'Dodaj wynagrodzenie')}
+      </form>
+    `
+  );
+
+  const form = document.getElementById('compensationForm');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const amount = roundCurrency(data.get('amount'));
+    if (amount <= 0) {
+      window.alert('Podaj kwotę większą od 0.');
+      return;
+    }
+
+    const entry = {
+      id: existing?.id || uid(),
+      date: String(data.get('date')),
+      period: String(data.get('period') || '') || null,
+      title: String(data.get('title') || '').trim(),
+      amount,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+    };
+
+    firm.compensationEntries = [
+      ...(firm.compensationEntries || []).filter((item) => item.id !== entry.id),
+      entry,
+    ].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'compensation',
+      action: existing ? 'edit' : 'create',
+      title: existing ? 'Zmieniono wynagrodzenie' : 'Dodano wynagrodzenie',
+      amount,
+      meta: { period: entry.period ? monthLabel(entry.period) : 'Według daty' },
+    });
     persist();
     closeModal();
     render();
@@ -2205,6 +2561,13 @@ function openWalletIncomeModal(existing) {
       entry,
     ].sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: existing ? 'edit' : 'create',
+      title: existing ? 'Zmieniono wpłatę klienta' : 'Dodano wpłatę klienta',
+      amount: entry.amount,
+      meta: { period: monthLabel(entry.period) },
+    });
     persist();
     closeModal();
     render();
@@ -2232,7 +2595,7 @@ async function handleClick(event) {
     sessionStorage.removeItem('ijanicki_firma_activeMonth');
     sessionStorage.removeItem('ijanicki_firma_activeTab');
     state.ui.selectedFirmId = null;
-    state.ui.selectedMonth = null;
+    state.ui.selectedMonth = '__all__';
     state.ui.activeTab = 'overview';
     state.ui.activeGlobalTab = 'firms';
     persist();
@@ -2261,14 +2624,14 @@ async function handleClick(event) {
     state.firms = state.firms.filter((item) => item.id !== found.id);
     if (state.ui.selectedFirmId === found.id) {
       state.ui.selectedFirmId = state.firms[0]?.id || null;
-      state.ui.selectedMonth = state.firms[0] ? currentMonthKey() : null;
+      state.ui.selectedMonth = state.firms[0] ? '__all__' : null;
     }
     persist();
     return render();
   }
   if (action === 'select-firm') {
     state.ui.selectedFirmId = target.dataset.id;
-    state.ui.selectedMonth = null;
+    state.ui.selectedMonth = '__all__';
     state.ui.activeTab = 'overview';
     state.ui.activePostTabId = null;
     state.ui.activeMonthTab = 'overview';
@@ -2343,6 +2706,7 @@ async function handleClick(event) {
   if (action === 'delete-month') {
     if (!firm || !window.confirm(`Usunac miesiac ${monthLabel(target.dataset.month)}?`)) return;
     const month = target.dataset.month;
+    const removedMonth = findMonthConfig(month);
     // Usuń konfigurację miesiąca
     firm.months = (firm.months || []).filter(m => m.month !== month);
     // Usuń wydatki
@@ -2354,19 +2718,34 @@ async function handleClick(event) {
     // Usuń faktury
     firm.invoices = (firm.invoices || []).filter(inv => getInvoiceMonthKey(inv) !== month);
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: 'delete',
+      title: 'Usunięto okres rozliczeniowy',
+      amount: removedMonth?.budget || 0,
+      meta: { period: monthLabel(month) },
+    });
     persist();
     return render();
   }
   if (action === 'delete-month-from-modal') {
     if (!firm || !window.confirm(`Usunac miesiac ${monthLabel(target.dataset.month)}?`)) return;
     const month = target.dataset.month;
+    const removedMonth = findMonthConfig(month);
     firm.months = (firm.months || []).filter(m => m.month !== month);
     firm.expenses = (firm.expenses || []).filter(e => (e.month || monthFromDate(e.date)) !== month);
     firm.balanceEntries = (firm.balanceEntries || []).filter(e => monthFromDate(e.date) !== month);
     firm.walletEntries = (firm.walletEntries || []).filter(e => getWalletEntryMonth(e) !== month);
     firm.invoices = (firm.invoices || []).filter(inv => getInvoiceMonthKey(inv) !== month);
     firm.updatedAt = new Date().toISOString();
-    state.ui.selectedMonth = (firm.months || [])[0]?.month || currentMonthKey();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: 'delete',
+      title: 'Usunięto okres rozliczeniowy',
+      amount: removedMonth?.budget || 0,
+      meta: { period: monthLabel(month) },
+    });
+    state.ui.selectedMonth = '__all__';
     state.ui.activeMonthTab = 'overview';
     persist();
     closeModal();
@@ -2375,19 +2754,52 @@ async function handleClick(event) {
   if (action === 'add-balance-plus') return openBalanceEntryModal(null, 'plus');
   if (action === 'add-balance-minus') return openBalanceEntryModal(null, 'minus');
   if (action === 'edit-balance') return openBalanceEntryModal(findBalanceEntry(target.dataset.id));
-  if (action === 'add-ad-budget') return openAdBudgetEntryModal();
+  if (action === 'add-ad-budget') return openMonthModal('__out_of_period__');
   if (action === 'edit-ad-budget') return openAdBudgetEntryModal(findAdBudgetEntry(target.dataset.id));
   if (action === 'delete-ad-budget') {
     if (!firm || !window.confirm('Usunac ten budzet poza okresem?')) return;
+    const removed = (firm.adBudgetEntries || []).find((item) => item.id === target.dataset.id);
     firm.adBudgetEntries = (firm.adBudgetEntries || []).filter((item) => item.id !== target.dataset.id);
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'budget',
+      action: 'delete',
+      title: 'Usunięto budżet poza okresem',
+      amount: removed?.amount || 0,
+      meta: { period: 'Poza okresem' },
+    });
+    persist();
+    return render();
+  }
+  if (action === 'add-compensation') return openCompensationEntryModal();
+  if (action === 'edit-compensation') return openCompensationEntryModal(findCompensationEntry(target.dataset.id));
+  if (action === 'delete-compensation') {
+    if (!firm || !window.confirm('Usunąć to wynagrodzenie?')) return;
+    const removed = (firm.compensationEntries || []).find((item) => item.id === target.dataset.id);
+    firm.compensationEntries = (firm.compensationEntries || []).filter((item) => item.id !== target.dataset.id);
+    firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'compensation',
+      action: 'delete',
+      title: 'Usunięto wynagrodzenie',
+      amount: removed?.amount || 0,
+      meta: { period: removed?.period ? monthLabel(removed.period) : 'Według daty' },
+    });
     persist();
     return render();
   }
   if (action === 'delete-balance') {
     if (!firm || !window.confirm('Usunac te zmiane salda?')) return;
+    const removed = firm.balanceEntries.find((item) => item.id === target.dataset.id);
     firm.balanceEntries = firm.balanceEntries.filter((item) => item.id !== target.dataset.id);
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: 'delete',
+      title: 'Usunięto korektę rozrachunku',
+      amount: removed?.amount || 0,
+      meta: { period: removed?.date ? monthLabel(monthFromDate(removed.date)) : '' },
+    });
     persist();
     return render();
   }
@@ -2401,8 +2813,16 @@ async function handleClick(event) {
   }
   if (action === 'delete-wallet-entry') {
     if (!firm || !window.confirm('Usunac ten wpis portfela?')) return;
+    const removed = (firm.walletEntries || []).find(function(item) { return item.id === target.dataset.id; });
     firm.walletEntries = (firm.walletEntries || []).filter(function(item) { return item.id !== target.dataset.id; });
     firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'wallet',
+      action: 'delete',
+      title: 'Usunięto wpłatę klienta',
+      amount: removed?.amount || 0,
+      meta: { period: removed?.period ? monthLabel(removed.period) : '' },
+    });
     persist();
     return render();
   }

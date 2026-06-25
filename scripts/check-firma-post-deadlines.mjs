@@ -1,6 +1,8 @@
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc';
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'i-janicki';
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '';
+const FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 || '';
+const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === 'true';
 const WEB3FORMS_ACCESS_KEY = process.env.WEB3FORMS_ACCESS_KEY || 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
 const REMINDER_EMAIL = process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com';
 const STATE_DOC = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/firmy_settings/state`;
@@ -124,40 +126,52 @@ function base64Url(input) {
 }
 
 async function getServiceAccountToken() {
-  if (!FIREBASE_SERVICE_ACCOUNT_JSON.trim()) return null;
-  const { createSign } = await import('node:crypto');
-  const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const claim = {
-    iss: serviceAccount.client_email,
-    scope: 'https://www.googleapis.com/auth/datastore',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  };
-  const unsignedJwt = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
-  const signer = createSign('RSA-SHA256');
-  signer.update(unsignedJwt);
-  signer.end();
-  const signature = signer
-    .sign(serviceAccount.private_key, 'base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-  const assertion = `${unsignedJwt}.${signature}`;
-  const token = await requestJson('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
-    }).toString(),
-  });
-  return {
-    idToken: token.access_token,
-    mode: 'service-account',
-  };
+  const rawServiceAccount = FIREBASE_SERVICE_ACCOUNT_JSON.trim()
+    || (FIREBASE_SERVICE_ACCOUNT_JSON_BASE64.trim()
+      ? Buffer.from(FIREBASE_SERVICE_ACCOUNT_JSON_BASE64.trim(), 'base64').toString('utf8')
+      : '');
+  if (!rawServiceAccount) return null;
+  try {
+    const { createSign } = await import('node:crypto');
+    const serviceAccount = JSON.parse(rawServiceAccount);
+    if (!serviceAccount.client_email || !serviceAccount.private_key) {
+      throw new Error('missing client_email or private_key');
+    }
+    serviceAccount.private_key = String(serviceAccount.private_key).replace(/\\n/g, '\n');
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const claim = {
+      iss: serviceAccount.client_email,
+      scope: 'https://www.googleapis.com/auth/datastore',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600,
+    };
+    const unsignedJwt = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
+    const signer = createSign('RSA-SHA256');
+    signer.update(unsignedJwt);
+    signer.end();
+    const signature = signer
+      .sign(serviceAccount.private_key, 'base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    const assertion = `${unsignedJwt}.${signature}`;
+    const token = await requestJson('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }).toString(),
+    });
+    return {
+      idToken: token.access_token,
+      mode: 'service-account',
+    };
+  } catch (error) {
+    throw new Error(`Invalid Firebase service account secret: ${error.message}`);
+  }
 }
 
 async function signInAnonymously() {
@@ -325,7 +339,17 @@ async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
 }
 
 async function main() {
-  const auth = await getServiceAccountToken() || await signInAnonymously();
+  const serviceAccountAuth = await getServiceAccountToken();
+  if (!serviceAccountAuth && IS_GITHUB_ACTIONS) {
+    throw new Error([
+      'GitHub Actions requires Firebase service-account auth for Firestore post reminders.',
+      'Add repository secret FIREBASE_SERVICE_ACCOUNT_JSON with the full service account JSON,',
+      'or FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 with the base64-encoded JSON.',
+      'Anonymous Firebase auth cannot read firmy_clients/*/posts under current Firestore rules.',
+    ].join(' '));
+  }
+
+  const auth = serviceAccountAuth || await signInAnonymously();
   if (auth.mode !== 'service-account') {
     await ensureFirmyAdminSession(auth);
     console.warn('Using anonymous Firebase auth fallback. Prefer FIREBASE_SERVICE_ACCOUNT_JSON for GitHub Actions.');

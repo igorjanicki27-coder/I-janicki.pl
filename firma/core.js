@@ -11,7 +11,7 @@ import {
   payerLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=19';
+} from './logic.js?v=21';
 import {
   createEmptyState,
   loadState,
@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=21';
+} from './storage.js?v=23';
 
 // --- Icons ---
 export function icon(name) {
@@ -67,6 +67,7 @@ export function initializeState() {
   state.ui.activeTab ||= 'overview';
   state.ui.activeMonthTab ||= 'overview';
   state.ui.activeInvoiceTab ||= 'own';
+  state.ui.invoiceStatusFilter ||= 'all';
   return state;
 }
 
@@ -84,6 +85,21 @@ export function getSelectedFirm(state) {
   return firm;
 }
 
+export function appendFirmHistory(firm, input = {}) {
+  if (!firm) return;
+  const amount = input.amount === undefined || input.amount === null ? null : roundCurrency(input.amount);
+  const entry = {
+    id: uid(),
+    at: new Date().toISOString(),
+    area: input.area || 'system',
+    action: input.action || 'change',
+    title: String(input.title || 'Zmiana').trim(),
+    amount,
+    meta: input.meta && typeof input.meta === 'object' ? input.meta : {},
+  };
+  firm.history = [entry, ...(firm.history || [])].slice(0, 120);
+}
+
 export function firmDisplayName(firm) {
   return (firm && (firm.displayName || firm.name)) || '';
 }
@@ -97,9 +113,13 @@ export function safeMonthValue(state) {
 export function ensureSelectedMonth(firm, state) {
   const ledger = calculateFirmLedger(firm);
   let selected = state.ui.selectedMonth;
+  if (!selected) {
+    selected = '__all__';
+    state.ui.selectedMonth = selected;
+  }
   if (selected !== '__all__' && selected !== '__year__' && selected !== '__quarter__') {
     if (!selected || !ledger.months.includes(selected)) {
-      selected = ledger.months.length > 0 ? ledger.months[0] : null;
+      selected = '__all__';
       state.ui.selectedMonth = selected;
     }
   }
@@ -112,7 +132,7 @@ export function ensureSelectedMonth(firm, state) {
 
 export function selectFirm(state, firmId, persistFn, renderFn) {
   state.ui.selectedFirmId = firmId;
-  state.ui.selectedMonth = null;
+  state.ui.selectedMonth = '__all__';
   state.ui.activeMonthTab = 'overview';
   persistFn(state);
   renderFn();
@@ -385,7 +405,6 @@ export function updateTopbar(state, activeTab) {
   setSyncFirm(firm.id);
 
   const { ledger, selectedMonth } = ensureSelectedMonth(firm, state);
-  const scope = summarizeLedgerScope(ledger, selectedMonth);
   const availableBalance = ledger.totals.adBalance || 0;
   const settlement = getSettlementMeta(ledger.totals.totalSettlementNet);
 
@@ -397,6 +416,7 @@ export function updateTopbar(state, activeTab) {
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
           <a class="tab-button ${activeTab === 'invoices' ? 'is-active' : ''}" href="faktury.html">Faktury</a>
           <a class="tab-button ${activeTab === 'balance' ? 'is-active' : ''}" href="portfel.html">Rozrachunek</a>
+          <button class="tab-button ${activeTab === 'compensation' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="compensation">Wynagrodzenia</button>
           <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
         </div>
       </div>
@@ -449,7 +469,7 @@ export function renderFirmList(state) {
         </div>
         <div class="list-summary">
           <span><strong>${state.firms.length}</strong> klientów</span>
-          <span><strong>${totalUnpaid}</strong> nieopłaconych faktur</span>
+          <span>${totalUnpaid > 0 ? `<strong>${totalUnpaid}</strong> faktur do opłacenia` : 'Brak zaległych faktur'}</span>
         </div>
       </div>
 
@@ -486,7 +506,7 @@ export function renderFirmList(state) {
               </div>
               <div class="firm-card-metrics">
                 <span><strong>${ledger.rows.length}</strong> okresów</span>
-                <span><strong>${unpaidCount}</strong> nieopłacone</span>
+                <span>${unpaidCount > 0 ? `<strong>${unpaidCount}</strong> faktur do opłacenia` : 'Brak zaległych faktur'}</span>
                 <span>${escapeHtml(latestMonth)}</span>
               </div>
               <div class="tile-card-balance ${settlement.badgeClass}">
@@ -614,8 +634,7 @@ function showMonthEditStep2(state, month, renderFn) {
       <form id="monthForm" class="form-grid">
         <div class="form-row">
           ${monthYearFields('month', existing.month)}
-          ${labeledInput({ name: 'budget', label: 'Budzet miesiaca', type: 'number', value: existing.budget ?? '', min: '0', required: true })}
-          ${labeledInput({ name: 'compensationPercent', label: '% wynagrodzenia', type: 'number', value: existing.compensationPercent ?? 50, min: '0', required: true })}
+          ${labeledInput({ name: 'budget', label: 'Budżet reklamowy', type: 'number', value: existing.budget ?? '', min: '0', required: true })}
         </div>
         <div class="modal-actions is-split">
           <button class="ghost-button tone-danger" type="button" data-action="delete-month-from-modal" data-month="${month}">Usun miesiac</button>
@@ -649,7 +668,7 @@ function showMonthEditStep2(state, month, renderFn) {
       id: existing.id || uid(),
       month: monthVal,
       budget: roundCurrency(data.get('budget')),
-      compensationPercent: roundCurrency(data.get('compensationPercent')),
+      compensationPercent: existing.compensationPercent ?? 0,
       updatedAt: new Date().toISOString(),
     };
 

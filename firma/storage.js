@@ -207,6 +207,14 @@ function normalizeFirm(firm) {
       description: entry.description || '',
       createdAt: entry.createdAt || now,
     })),
+    compensationEntries: ensureArray(firm.compensationEntries).map((entry) => ({
+      id: entry.id,
+      date: entry.date || now.slice(0, 10),
+      period: entry.period || null,
+      title: entry.title || entry.description || 'Wynagrodzenie',
+      amount: Number(entry.amount || 0),
+      createdAt: entry.createdAt || now,
+    })),
     balanceEntries: balanceEntries.map((entry) => ({
       id: entry.id,
       date: entry.date || now.slice(0, 10),
@@ -263,6 +271,15 @@ function normalizeFirm(firm) {
       subtractFromBudget: invoice.subtractFromBudget !== false,
       attachmentIds: ensureArray(invoice.attachmentIds),
       createdAt: invoice.createdAt || now,
+    })),
+    history: ensureArray(firm.history).map((entry) => ({
+      id: entry.id,
+      at: entry.at || entry.createdAt || now,
+      area: entry.area || 'system',
+      action: entry.action || 'change',
+      title: entry.title || entry.description || 'Zmiana',
+      amount: entry.amount === null || entry.amount === undefined ? null : Number(entry.amount || 0),
+      meta: entry.meta && typeof entry.meta === 'object' ? entry.meta : {},
     })),
     postTabs: (Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(now)).map((tab) => ({
       id: tab.id || `post-tab-${now}`,
