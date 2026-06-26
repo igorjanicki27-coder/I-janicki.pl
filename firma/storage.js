@@ -284,7 +284,7 @@ function normalizeFirm(firm) {
     postTabs: (Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(now)).map((tab) => ({
       id: tab.id || `post-tab-${now}`,
       name: tab.name || 'Nowa podzakladka',
-      frequency: ['weekly', 'biweekly', 'monthly'].includes(tab.frequency) ? tab.frequency : 'monthly',
+      frequency: ['weekly', 'biweekly', 'monthly', 'irregular'].includes(tab.frequency) ? tab.frequency : 'monthly',
       startDate: tab.startDate || now.slice(0, 10),
       createdAt: tab.createdAt || now,
       updatedAt: tab.updatedAt || now,
@@ -295,6 +295,7 @@ function normalizeFirm(firm) {
       status: post.status === 'published' ? 'published' : 'scheduled',
       publishDate: post.publishDate || post.date || now.slice(0, 10),
       title: post.title || '',
+      link: post.link || post.url || '',
       content: post.content || '',
       keywords: Array.isArray(post.keywords)
         ? post.keywords.map((item) => String(item || '').trim()).filter(Boolean)
@@ -304,6 +305,7 @@ function normalizeFirm(firm) {
       updatedAt: post.updatedAt || now,
     })),
     postReminderKeys: ensureArray(firm.postReminderKeys),
+    postStorageFallback: firm.postStorageFallback === true,
     createdAt: firm.createdAt || now,
     updatedAt: firm.updatedAt || now,
   };
@@ -350,18 +352,35 @@ export function loadState() {
 }
 
 function stripPostCollections(input) {
+  return input;
+}
+
+function mergeListById(primary = [], backup = []) {
+  const merged = [];
+  const seen = new Set();
+  for (const item of ensureArray(primary)) {
+    if (!item?.id || seen.has(item.id)) continue;
+    merged.push(item);
+    seen.add(item.id);
+  }
+  for (const item of ensureArray(backup)) {
+    if (!item?.id || seen.has(item.id)) continue;
+    merged.push(item);
+    seen.add(item.id);
+  }
+  return merged;
+}
+
+function mergePostBackups(preferredFirm, fallbackFirm) {
   return {
-    ...input,
-    firms: ensureArray(input.firms).map((firm) => {
-      if (firm.postStorageFallback) return firm;
-      const {
-        postTabs,
-        posts,
-        postReminderKeys,
-        ...rest
-      } = firm;
-      return rest;
-    }),
+    ...preferredFirm,
+    postTabs: mergeListById(preferredFirm.postTabs, fallbackFirm.postTabs),
+    posts: mergeListById(preferredFirm.posts, fallbackFirm.posts),
+    postReminderKeys: [...new Set([
+      ...ensureArray(preferredFirm.postReminderKeys),
+      ...ensureArray(fallbackFirm.postReminderKeys),
+    ])],
+    postStorageFallback: preferredFirm.postStorageFallback === true || fallbackFirm.postStorageFallback === true,
   };
 }
 
@@ -454,7 +473,9 @@ export async function syncFromCloud() {
         // Firma w obu – nowsza wygrywa
         const cloudTime = cloudFirm.updatedAt || '';
         const localTime = localFirm.updatedAt || '';
-        mergedFirms.push(cloudTime > localTime ? cloudFirm : localFirm);
+        const preferred = cloudTime > localTime ? cloudFirm : localFirm;
+        const fallback = cloudTime > localTime ? localFirm : cloudFirm;
+        mergedFirms.push(mergePostBackups(preferred, fallback));
       }
     }
 

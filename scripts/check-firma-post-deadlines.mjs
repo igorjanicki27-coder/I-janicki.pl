@@ -98,7 +98,7 @@ function getPostTabStatus(firm, tab) {
 
   return {
     dueDate,
-    isOverdue: today > dueDate,
+    isOverdue: today >= dueDate,
     lastPost,
   };
 }
@@ -118,13 +118,38 @@ function findDueReminders(state) {
   return reminders;
 }
 
+function findDuePostTabs(state) {
+  const dueTabs = [];
+  for (const firm of state.firms || []) {
+    for (const tab of firm.postTabs || []) {
+      const status = getPostTabStatus(firm, tab);
+      if (status.isSkipped || !status.isOverdue) continue;
+      dueTabs.push({ firm, tab, status });
+    }
+  }
+  return dueTabs;
+}
+
+function findScheduledPostsForToday(state) {
+  const today = warsawTodayKey();
+  const posts = [];
+  for (const firm of state.firms || []) {
+    for (const post of firm.posts || []) {
+      if (post.status === 'published') continue;
+      if (String(post.publishDate || '').slice(0, 10) !== today) continue;
+      posts.push({ firm, post });
+    }
+  }
+  return posts;
+}
+
 function findScheduledPostReminders(state) {
   const reminders = [];
   const today = warsawTodayKey();
   for (const firm of state.firms || []) {
     const sentKeys = new Set(Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : []);
     for (const post of firm.posts || []) {
-      if (post.status !== 'scheduled') continue;
+      if (post.status === 'published') continue;
       if (String(post.publishDate || '').slice(0, 10) !== today) continue;
       const reminderKey = `scheduled-post:${post.id || post.title || 'post'}:${today}`;
       if (sentKeys.has(reminderKey)) continue;
@@ -292,11 +317,13 @@ async function loadFirmPostCollections(idToken, firm) {
     listDocs(idToken, `firmy_clients/${firm.id}/post_tabs`),
     listDocs(idToken, `firmy_clients/${firm.id}/posts`),
   ]);
+  const firmDocTabs = Array.isArray(firmDoc.postTabs) ? firmDoc.postTabs : [];
+  const firmDocPosts = Array.isArray(firmDoc.posts) ? firmDoc.posts : [];
   return {
     ...firm,
     postReminderKeys: Array.isArray(firmDoc.postReminderKeys) ? firmDoc.postReminderKeys : [],
-    postTabs: tabs.length ? tabs : (firm.postTabs || []),
-    posts: posts.length ? posts : (firm.posts || []),
+    postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
+    posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
   };
 }
 
@@ -406,8 +433,22 @@ async function main() {
 
   const state = await loadState(auth.idToken);
   const firms = await Promise.all((state.firms || []).map((firm) => loadFirmPostCollections(auth.idToken, firm)));
+  const duePostTabs = findDuePostTabs({ firms });
+  const scheduledPostsToday = findScheduledPostsForToday({ firms });
   const overdueReminders = findDueReminders({ firms });
   const scheduledReminders = findScheduledPostReminders({ firms });
+
+  const tabCount = firms.reduce((sum, firm) => sum + ((firm.postTabs || []).length), 0);
+  const postCount = firms.reduce((sum, firm) => sum + ((firm.posts || []).length), 0);
+  console.log([
+    `Post reminder scan for ${warsawTodayKey()}:`,
+    `${firms.length} firms`,
+    `${tabCount} post tabs`,
+    `${postCount} posts`,
+    `${duePostTabs.length} tabs due today or overdue`,
+    `${scheduledPostsToday.length} scheduled posts for today`,
+    `${overdueReminders.length + scheduledReminders.length} emails pending after sent-key filtering`,
+  ].join(' '));
 
   if (!overdueReminders.length && !scheduledReminders.length) {
     console.log('No overdue post tabs or scheduled posts for today found.');

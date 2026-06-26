@@ -20,7 +20,7 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=24';
+} from './storage.js?v=25';
 
 // --- Icons ---
 export function icon(name) {
@@ -242,7 +242,7 @@ function isPostTabOverdue(firm, tab) {
     }
   }
 
-  return today > dueDate;
+  return today >= dueDate;
 }
 
 function firmHasOverduePostTabs(firm) {

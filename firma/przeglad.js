@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=24';
+} from './storage.js?v=25';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=5';
+} from './post-storage.js?v=6';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=29';
+} from './core.js?v=31';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -351,7 +351,7 @@ function getPostTabStatus(firm, tab) {
 
   return {
     dueDate,
-    isOverdue: today > dueDate,
+    isOverdue: today >= dueDate,
     lastPost,
     daysSinceLast: lastPost ? daysBetween(lastPost.publishDate, today) : null,
   };

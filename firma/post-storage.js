@@ -84,6 +84,22 @@ function fallbackPostCollections(firm) {
   };
 }
 
+function mergeById(primary, backup) {
+  const merged = [];
+  const seen = new Set();
+  for (const item of ensureArray(primary)) {
+    if (!item?.id || seen.has(item.id)) continue;
+    merged.push(item);
+    seen.add(item.id);
+  }
+  for (const item of ensureArray(backup)) {
+    if (!item?.id || seen.has(item.id)) continue;
+    merged.push(item);
+    seen.add(item.id);
+  }
+  return merged;
+}
+
 async function loadCollection(pathSegments) {
   const snap = await getDocs(collection(db, ...pathSegments));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -109,15 +125,31 @@ export async function loadFirmPostCollections(firm) {
 
   const legacyTabs = ensureArray(firm.postTabs);
   const legacyPosts = ensureArray(firm.posts);
-  if (!tabs.length && legacyTabs.length) {
+  const normalizedLegacyTabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
+  const normalizedLegacyPosts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
+
+  if ((!tabs.length && normalizedLegacyTabs.length) || (!posts.length && normalizedLegacyPosts.length)) {
     try {
-      await migrateLegacyPosts(firm, legacyTabs, legacyPosts);
+      await migrateLegacyPosts(firm, normalizedLegacyTabs, normalizedLegacyPosts);
     } catch (error) {
       if (!isPermissionError(error)) throw error;
       console.info('Brak uprawnień do migracji postów. Używam danych lokalnych.', error);
     }
-    tabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
-    posts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
+  }
+
+  const mergedTabs = mergeById(tabs, normalizedLegacyTabs);
+  const mergedPosts = mergeById(posts, normalizedLegacyPosts);
+  if (mergedTabs.length !== tabs.length || mergedPosts.length !== posts.length) {
+    tabs = mergedTabs;
+    posts = mergedPosts;
+    try {
+      await savePostTabs(firm, tabs);
+      if (posts.length) await savePosts(firm, posts);
+    } catch (error) {
+      if (!isPermissionError(error)) throw error;
+      console.info('Brak uprawnień do synchronizacji lokalnych postów z Firestore. Zachowuję je lokalnie.', error);
+      return { tabs, posts, fallback: true };
+    }
   }
 
   if (!tabs.length) {
