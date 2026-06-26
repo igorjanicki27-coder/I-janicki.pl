@@ -1,10 +1,10 @@
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc';
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'i-janicki';
+const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
+const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || 'i-janicki').trim();
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '';
 const FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 || '';
 const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === 'true';
-const WEB3FORMS_ACCESS_KEY = process.env.WEB3FORMS_ACCESS_KEY || '';
-const REMINDER_EMAIL = process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com';
+const WEB3FORMS_ACCESS_KEY = (process.env.WEB3FORMS_ACCESS_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+const REMINDER_EMAIL = (process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com').trim();
 const STATE_DOC = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/firmy_settings/state`;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
@@ -394,9 +394,16 @@ async function sendReminderDigest(overdueReminders, scheduledReminders) {
       message,
     }),
   });
-  const data = await response.json().catch(() => ({}));
+  const raw = await response.text();
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    data = {};
+  }
   if (!response.ok || data.success === false) {
-    throw new Error(data.message || `Web3Forms ${response.status}`);
+    const details = data.message || data.error || raw || response.statusText || '';
+    throw new Error(`Web3Forms ${response.status}${details ? `: ${details}` : ''}`);
   }
 }
 
@@ -465,6 +472,7 @@ async function main() {
   if (!WEB3FORMS_ACCESS_KEY) {
     throw new Error('Missing WEB3FORMS_ACCESS_KEY. Add it as a repository or firebase environment secret before reminder emails can be sent.');
   }
+  console.log(`Web3Forms key configured: yes (${WEB3FORMS_ACCESS_KEY.length} chars).`);
 
   await sendReminderDigest(overdueReminders, scheduledReminders);
   console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s).`);
