@@ -10,11 +10,13 @@
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_PROJECT = 'i-janicki';
 const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
+const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
 const EMAILJS_SERVICE  = 'service_0m7ieum';
 const EMAILJS_TEMPLATE = 'template_gd8aaq5';
 const EMAILJS_KEY      = 'BugGXsqvUvMyP4buf';
 const OWNER_EMAIL      = 'igor.janicki27@gmail.com';
 const WEB3FORMS_KEY    = 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
+const COOKIE_POLICY_VERSION = '1.2';
 
 // ─────────────────────────────────────────────────────────────────
 // STORAGE KEYS
@@ -25,6 +27,10 @@ const LS = {
   COOKIE_ANALYTICS: 'ijanek_cookie_analytics',
   COOKIE_MARKETING: 'ijanek_cookie_marketing',
   COOKIE_EXTERNAL:  'ijanek_cookie_external',
+  COOKIE_CONSENT_ID: 'ijanek_cookie_consent_id',
+  COOKIE_CONSENT_CREATED_AT: 'ijanek_cookie_consent_created_at',
+  COOKIE_CONSENT_UPDATED_AT: 'ijanek_cookie_consent_updated_at',
+  ANONYMOUS_USER_ID: 'ijanek_anonymous_user_id',
   TUTORIAL_DONE:    'ijanek_tutorial_done',
   THEME:            'ijanek_theme',
   LANG:             'ijanek_lang',
@@ -1545,6 +1551,96 @@ function switchToCookieSettings(mode) {
   target.innerHTML = renderCookiePanelHtml(mode, 'settings');
 }
 
+function createUuid() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+    const rnd = Math.random() * 16 | 0;
+    const val = ch === 'x' ? rnd : (rnd & 0x3 | 0x8);
+    return val.toString(16);
+  });
+}
+
+function getOrCreateStoredValue(key, factory) {
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const value = factory();
+  localStorage.setItem(key, value);
+  return value;
+}
+
+function getCookieConsentCategories() {
+  return {
+    analytics: localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true',
+    marketing: localStorage.getItem(LS.COOKIE_MARKETING) === 'true',
+    external_media: localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true',
+  };
+}
+
+function buildGoogleConsentMode(categories) {
+  const analyticsValue = categories.analytics ? 'granted' : 'denied';
+  const marketingValue = categories.marketing ? 'granted' : 'denied';
+
+  return {
+    analytics_storage: analyticsValue,
+    ad_storage: marketingValue,
+    ad_user_data: marketingValue,
+    ad_personalization: marketingValue,
+  };
+}
+
+function buildCookieConsentRecord(action) {
+  const now = new Date().toISOString();
+  const consentId = getOrCreateStoredValue(LS.COOKIE_CONSENT_ID, createUuid);
+  const createdAt = getOrCreateStoredValue(LS.COOKIE_CONSENT_CREATED_AT, () => now);
+  const anonymousUserId = getOrCreateStoredValue(LS.ANONYMOUS_USER_ID, () => `anon_${createUuid()}`);
+  const categories = getCookieConsentCategories();
+  const googleConsent = buildGoogleConsentMode(categories);
+
+  localStorage.setItem(LS.COOKIE_CONSENT_UPDATED_AT, now);
+
+  return {
+    consent_id: consentId,
+    created_at: createdAt,
+    updated_at: now,
+    policy_version: COOKIE_POLICY_VERSION,
+    essential: true,
+    analytics: categories.analytics,
+    marketing: categories.marketing,
+    external_media: categories.external_media,
+    action,
+    anonymous_user_id: anonymousUserId,
+    ...googleConsent,
+  };
+}
+
+function persistCookieConsent(action) {
+  let record;
+  try {
+    record = buildCookieConsentRecord(action);
+  } catch (err) {
+    console.warn('Cookie consent local persistence failed:', err);
+    return Promise.resolve(false);
+  }
+
+  const url = `${FIREBASE_RTDB_BASE}/cookie_consents/${record.anonymous_user_id}/${record.consent_id}.json`;
+  return fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+    keepalive: true,
+  })
+    .then(response => {
+      if (!response.ok) throw new Error(`RTDB write failed: ${response.status}`);
+      return true;
+    })
+    .catch(err => {
+      console.warn('Cookie consent RTDB write failed:', err);
+      return false;
+    });
+}
+
 // Akceptuje/odrzuca wszystkie opcjonalne kategorie
 function cookieDecideAll(accept) {
   const val = accept ? 'true' : 'false';
@@ -1554,6 +1650,7 @@ function cookieDecideAll(accept) {
   localStorage.setItem(LS.COOKIE_EXTERNAL,  val);
 
   applyConsentToGtag();
+  persistCookieConsent(accept ? 'accept_all' : 'reject_all');
 
   if (accept) {
     window.loadGA?.();
@@ -1578,6 +1675,7 @@ function saveCookieSettings() {
   localStorage.setItem(LS.COOKIE_EXTERNAL,  external  ? 'true' : 'false');
 
   applyConsentToGtag();
+  persistCookieConsent('save_preferences');
 
   if (analytics) {
     window.loadGA?.();
@@ -1590,13 +1688,15 @@ function applyConsentToGtag() {
   var update = window.IJanickiAnalytics?.buildConsentUpdate?.();
   if (!update) {
     // Fallback
+    const categories = getCookieConsentCategories();
+    const googleConsent = buildGoogleConsentMode(categories);
     update = {
-      'ad_user_data':          localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
-      'ad_personalization':    localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
-      'ad_storage':            localStorage.getItem(LS.COOKIE_MARKETING) === 'true' ? 'granted' : 'denied',
-      'analytics_storage':     localStorage.getItem(LS.COOKIE_ANALYTICS) === 'true' ? 'granted' : 'denied',
-      'functionality_storage': localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true'  ? 'granted' : 'denied',
-      'personalization_storage': localStorage.getItem(LS.COOKIE_EXTERNAL) === 'true'  ? 'granted' : 'denied',
+      'ad_user_data':          googleConsent.ad_user_data,
+      'ad_personalization':    googleConsent.ad_personalization,
+      'ad_storage':            googleConsent.ad_storage,
+      'analytics_storage':     googleConsent.analytics_storage,
+      'functionality_storage': categories.external_media ? 'granted' : 'denied',
+      'personalization_storage': categories.external_media ? 'granted' : 'denied',
       'security_storage':      'granted',
     };
   }

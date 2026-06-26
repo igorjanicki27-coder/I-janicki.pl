@@ -5,6 +5,11 @@ const FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = process.env.FIREBASE_SERVICE_ACCOUN
 const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === 'true';
 const WEB3FORMS_ACCESS_KEY = (process.env.WEB3FORMS_ACCESS_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 const REMINDER_EMAIL = (process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com').trim();
+const SMTP_HOST = (process.env.SMTP_HOST || '').trim();
+const SMTP_PORT = Number((process.env.SMTP_PORT || '465').trim());
+const SMTP_USER = (process.env.SMTP_USER || '').trim();
+const SMTP_PASS = (process.env.SMTP_PASS || '').trim().replace(/^['"]|['"]$/g, '');
+const SMTP_FROM = (process.env.SMTP_FROM || SMTP_USER || REMINDER_EMAIL).trim();
 const STATE_DOC = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/firmy_settings/state`;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
@@ -378,16 +383,101 @@ function buildReminderDigest(overdueReminders, scheduledReminders) {
   return lines.join('\n').trim();
 }
 
-async function sendReminderDigest(overdueReminders, scheduledReminders) {
-  const total = overdueReminders.length + scheduledReminders.length;
-  const message = buildReminderDigest(overdueReminders, scheduledReminders);
+function hasSmtpConfig() {
+  return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && SMTP_FROM);
+}
 
+function encodeMailSubject(value) {
+  return `=?UTF-8?B?${Buffer.from(String(value), 'utf8').toString('base64')}?=`;
+}
+
+function smtpSafeAddress(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/<([^>]+)>/);
+  return (match ? match[1] : text).replace(/[<>\r\n]/g, '');
+}
+
+function smtpEscapeData(value) {
+  return String(value || '')
+    .replace(/\r?\n/g, '\r\n')
+    .replace(/^\./gm, '..');
+}
+
+async function sendSmtpMail({ subject, message }) {
+  const tls = await import('node:tls');
+  const socket = tls.connect({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    servername: SMTP_HOST,
+  });
+  socket.setEncoding('utf8');
+  socket.setTimeout(30000, () => {
+    socket.destroy(new Error('SMTP connection timed out after 30s'));
+  });
+
+  let buffer = '';
+  const readResponse = () => new Promise((resolve, reject) => {
+    const onData = (chunk) => {
+      buffer += chunk;
+      const lines = buffer.split(/\r?\n/).filter(Boolean);
+      const last = lines[lines.length - 1] || '';
+      if (/^\d{3} /.test(last)) {
+        socket.off('data', onData);
+        socket.off('error', onError);
+        const response = buffer;
+        buffer = '';
+        resolve(response);
+      }
+    };
+    const onError = (error) => {
+      socket.off('data', onData);
+      reject(error);
+    };
+    socket.on('data', onData);
+    socket.once('error', onError);
+  });
+
+  const command = async (line, expected = /^[23]/) => {
+    if (line) socket.write(`${line}\r\n`);
+    const response = await readResponse();
+    if (!expected.test(response)) {
+      throw new Error(`SMTP command failed: ${line || 'connect'} -> ${response.trim()}`);
+    }
+    return response;
+  };
+
+  await command('', /^220/);
+  await command('EHLO github-actions');
+  await command('AUTH LOGIN', /^334/);
+  await command(Buffer.from(SMTP_USER).toString('base64'), /^334/);
+  await command(Buffer.from(SMTP_PASS).toString('base64'), /^235/);
+  await command(`MAIL FROM:<${smtpSafeAddress(SMTP_FROM)}>`);
+  await command(`RCPT TO:<${smtpSafeAddress(REMINDER_EMAIL)}>`);
+  await command('DATA', /^354/);
+  socket.write([
+    `From: ${SMTP_FROM}`,
+    `To: ${REMINDER_EMAIL}`,
+    `Subject: ${encodeMailSubject(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: 8bit',
+    '',
+    smtpEscapeData(message),
+    '.',
+    '',
+  ].join('\r\n'));
+  await command('', /^250/);
+  await command('QUIT', /^221/);
+  socket.end();
+}
+
+async function sendWeb3FormsMail({ subject, message }) {
   const response = await fetch('https://api.web3forms.com/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       access_key: WEB3FORMS_ACCESS_KEY,
-      subject: `Firma - przypomnienia publikacji (${total})`,
+      subject,
       from_name: 'Panel Firma',
       name: 'Panel Firma',
       email: REMINDER_EMAIL,
@@ -405,6 +495,26 @@ async function sendReminderDigest(overdueReminders, scheduledReminders) {
     const details = data.message || data.error || raw || response.statusText || '';
     throw new Error(`Web3Forms ${response.status}${details ? `: ${details}` : ''}`);
   }
+}
+
+async function sendReminderDigest(overdueReminders, scheduledReminders) {
+  const total = overdueReminders.length + scheduledReminders.length;
+  const message = buildReminderDigest(overdueReminders, scheduledReminders);
+  const subject = `Firma - przypomnienia publikacji (${total})`;
+
+  if (hasSmtpConfig()) {
+    console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} as ${SMTP_USER}.`);
+    await sendSmtpMail({ subject, message });
+    return;
+  }
+
+  if (!WEB3FORMS_ACCESS_KEY) {
+    throw new Error('Missing email sender config. Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and optionally SMTP_FROM as firebase environment secrets.');
+  }
+
+  console.warn('SMTP is not configured. Falling back to Web3Forms, which may be blocked by Cloudflare in GitHub Actions.');
+  console.log(`Web3Forms key configured: yes (${WEB3FORMS_ACCESS_KEY.length} chars).`);
+  await sendWeb3FormsMail({ subject, message });
 }
 
 async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
@@ -468,11 +578,6 @@ async function main() {
     console.log('No overdue post tabs or scheduled posts for today found.');
     return;
   }
-
-  if (!WEB3FORMS_ACCESS_KEY) {
-    throw new Error('Missing WEB3FORMS_ACCESS_KEY. Add it as a repository or firebase environment secret before reminder emails can be sent.');
-  }
-  console.log(`Web3Forms key configured: yes (${WEB3FORMS_ACCESS_KEY.length} chars).`);
 
   await sendReminderDigest(overdueReminders, scheduledReminders);
   console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s).`);
