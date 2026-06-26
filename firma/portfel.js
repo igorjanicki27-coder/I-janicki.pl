@@ -32,7 +32,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=26';
+} from './core.js?v=28';
 
 let state = initializeState();
 restoreContext(state);
@@ -324,6 +324,15 @@ function render() {
 document.body.addEventListener('click', handleClick);
 
 document.body.addEventListener('change', function(event) {
+  var firmTarget = event.target.closest('[data-action="select-firm-dropdown"]');
+  if (firmTarget) {
+    if (!state.firms.some(function(item) { return item.id === firmTarget.value; })) return;
+    state.ui.selectedFirmId = firmTarget.value;
+    state.ui.selectedMonth = '__all__';
+    persist();
+    return render();
+  }
+
   var financeTarget = event.target.closest('[data-action="finance-nav"]');
   if (financeTarget) {
     var value = financeTarget.value || '';

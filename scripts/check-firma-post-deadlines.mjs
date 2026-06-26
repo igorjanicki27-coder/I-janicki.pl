@@ -118,6 +118,22 @@ function findDueReminders(state) {
   return reminders;
 }
 
+function findScheduledPostReminders(state) {
+  const reminders = [];
+  const today = warsawTodayKey();
+  for (const firm of state.firms || []) {
+    const sentKeys = new Set(Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : []);
+    for (const post of firm.posts || []) {
+      if (post.status !== 'scheduled') continue;
+      if (String(post.publishDate || '').slice(0, 10) !== today) continue;
+      const reminderKey = `scheduled-post:${post.id || post.title || 'post'}:${today}`;
+      if (sentKeys.has(reminderKey)) continue;
+      reminders.push({ firm, post, reminderKey });
+    }
+  }
+  return reminders;
+}
+
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
   const data = await response.json().catch(() => ({}));
@@ -330,6 +346,29 @@ async function sendReminderEmail(reminder) {
   }
 }
 
+async function sendScheduledPostEmail(reminder) {
+  const { firm, post } = reminder;
+  const title = post.title || 'Bez tytulu';
+  const message = `Na dzis masz zaplanowana publikacje artykulu/posta dla ${firmName(firm)}. Tytul artykulu: ${title}`;
+
+  const response = await fetch('https://api.web3forms.com/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_key: WEB3FORMS_ACCESS_KEY,
+      subject: `Firma - publikacja zaplanowana na dzis: ${firmName(firm)}`,
+      from_name: 'Panel Firma',
+      name: 'Panel Firma',
+      email: REMINDER_EMAIL,
+      message,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.success === false) {
+    throw new Error(data.message || `Web3Forms ${response.status}`);
+  }
+}
+
 async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
   const nextKeys = Array.from(new Set([...(existingKeys || []), reminderKey]));
   await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}?updateMask.fieldPaths=postReminderKeys&updateMask.fieldPaths=updatedAt`, {
@@ -367,21 +406,31 @@ async function main() {
 
   const state = await loadState(auth.idToken);
   const firms = await Promise.all((state.firms || []).map((firm) => loadFirmPostCollections(auth.idToken, firm)));
-  const reminders = findDueReminders({ firms });
+  const overdueReminders = findDueReminders({ firms });
+  const scheduledReminders = findScheduledPostReminders({ firms });
 
-  if (!reminders.length) {
-    console.log('No overdue post tabs found.');
+  if (!overdueReminders.length && !scheduledReminders.length) {
+    console.log('No overdue post tabs or scheduled posts for today found.');
     return;
   }
 
   const sent = [];
-  for (const reminder of reminders) {
+  for (const reminder of overdueReminders) {
     try {
       await sendReminderEmail(reminder);
       sent.push({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey });
       console.log(`Sent reminder: ${firmName(reminder.firm)} / ${reminder.tab.name} / ${reminder.status.dueDate}`);
     } catch (error) {
       console.error(`Reminder failed: ${firmName(reminder.firm)} / ${reminder.tab.name}: ${error.message}`);
+    }
+  }
+  for (const reminder of scheduledReminders) {
+    try {
+      await sendScheduledPostEmail(reminder);
+      sent.push({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey });
+      console.log(`Sent scheduled post reminder: ${firmName(reminder.firm)} / ${reminder.post.title || 'Bez tytulu'} / ${reminder.post.publishDate}`);
+    } catch (error) {
+      console.error(`Scheduled post reminder failed: ${firmName(reminder.firm)} / ${reminder.post.title || 'Bez tytulu'}: ${error.message}`);
     }
   }
 

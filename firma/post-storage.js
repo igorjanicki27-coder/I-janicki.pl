@@ -52,6 +52,7 @@ function normalizePost(post, now = currentIso()) {
     status: post.status === 'published' ? 'published' : 'scheduled',
     publishDate: post.publishDate || post.date || now.slice(0, 10),
     title: post.title || '',
+    link: post.link || post.url || '',
     content: post.content || '',
     keywords: Array.isArray(post.keywords)
       ? post.keywords.map((item) => String(item || '').trim()).filter(Boolean)

@@ -13,6 +13,7 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment: firebase
     env:
       HAS_FIREBASE_SERVICE_ACCOUNT: ${{ (secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' || secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 != '') && 'true' || 'false' }}
 

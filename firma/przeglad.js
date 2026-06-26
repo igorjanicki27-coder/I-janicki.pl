@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=4';
+} from './post-storage.js?v=5';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=26';
+} from './core.js?v=29';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -366,6 +366,33 @@ function splitKeywords(value) {
 
 function postKeywordText(post) {
   return Array.isArray(post.keywords) ? post.keywords.join(', ') : String(post.keywords || '');
+}
+
+function normalizePostLink(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+
+function safePostLink(value) {
+  const normalized = normalizePostLink(value);
+  if (!normalized) return '';
+  try {
+    const url = new URL(normalized);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function postLinkLabel(value) {
+  try {
+    const url = new URL(normalizePostLink(value));
+    const path = url.pathname && url.pathname !== '/' ? url.pathname : '';
+    return `${url.hostname.replace(/^www\./, '')}${path}`;
+  } catch {
+    return String(value || '').trim();
+  }
 }
 
 function normalizeTopicText(value) {
@@ -1478,8 +1505,10 @@ function renderPostTabButton(firm, tab) {
       </button>
       <div class="post-tab-actions">
         <span class="post-due-pill ${tabStatus.isOverdue ? 'is-overdue' : ''}">${dueLabel}</span>
-        <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${tab.id}" aria-label="Edytuj podzakładkę">${icon('edit')}</button>
-        <button class="icon-button tone-danger" type="button" data-action="delete-post-tab" data-id="${tab.id}" aria-label="Usuń podzakładkę">${icon('trash')}</button>
+        <span class="post-tab-icon-actions">
+          <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${tab.id}" aria-label="Edytuj podzakładkę">${icon('edit')}</button>
+          <button class="icon-button tone-danger" type="button" data-action="delete-post-tab" data-id="${tab.id}" aria-label="Usuń podzakładkę">${icon('trash')}</button>
+        </span>
       </div>
     </article>
   `;
@@ -1487,7 +1516,7 @@ function renderPostTabButton(firm, tab) {
 
 function postMatchesSearch(post, query) {
   if (!query) return true;
-  const haystack = `${post.title || ''} ${post.content || ''} ${postKeywordText(post)}`.toLowerCase();
+  const haystack = `${post.title || ''} ${post.link || ''} ${post.content || ''} ${postKeywordText(post)}`.toLowerCase();
   return haystack.includes(query.toLowerCase());
 }
 
@@ -1497,6 +1526,7 @@ function renderPostCard(firm, post) {
   const showSimilarAlert = similar.length && !isSimilarAlertDismissed(post, similar);
   const preview = String(post.content || '').trim();
   const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
+  const postLink = safePostLink(post.link);
   return `
     <article class="post-card">
       <div class="post-card-top">
@@ -1509,6 +1539,7 @@ function renderPostCard(firm, post) {
         <span class="post-date">${formatDate(post.publishDate)}</span>
       </div>
       <p class="post-preview">${escapeHtml(shortPreview || 'Brak tresci.')}</p>
+      ${postLink ? `<a class="post-link-pill" href="${escapeHtml(postLink)}" target="_blank" rel="noopener noreferrer">${icon('link')}<span>${escapeHtml(postLinkLabel(post.link))}</span></a>` : ''}
       ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
       ${showSimilarAlert ? `
         <div class="post-similar-alert" role="status">
@@ -1674,10 +1705,9 @@ function openPostTabModal(existing = null) {
       updatedAt: now,
     };
     await tryPostCloudWrite(firm, () => savePostTabDoc(firm, tab), 'Zapis podzakładki postów');
-    firm.postTabs = [
-      ...(firm.postTabs || []).filter((item) => item.id !== tab.id),
-      tab,
-    ];
+    firm.postTabs = existing
+      ? (firm.postTabs || []).map((item) => item.id === tab.id ? tab : item)
+      : [...(firm.postTabs || []), tab];
     firm.updatedAt = now;
     state.ui.activePostTabId = tab.id;
     persistAndFlush();
@@ -1712,6 +1742,7 @@ function openPostModal(existing = null, template = null) {
       ${labeledInput({ name: 'status', label: 'Status', type: 'select', value: source.status || 'scheduled', options: POST_STATUS_OPTIONS })}
       ${labeledInput({ name: 'publishDate', label: 'Data', type: 'date', value: source.publishDate || todayKey(), required: true })}
       ${labeledInput({ name: 'title', label: 'Tytul', value: source.title || '', required: true })}
+      ${labeledInput({ name: 'link', label: 'Link', value: source.link || '', placeholder: 'https://adres-strony.pl/wpis' })}
       <label class="field field-span-2">
         <span>Tresc artykulu</span>
         <textarea name="content" rows="10" placeholder="Wklej lub opisz tresc materialu">${escapeHtml(source.content || '')}</textarea>
@@ -1745,12 +1776,18 @@ function openPostModal(existing = null, template = null) {
     event.preventDefault();
     const data = new FormData(form);
     const now = new Date().toISOString();
+    const link = normalizePostLink(data.get('link'));
+    if (link && !safePostLink(link)) {
+      alert('Podaj poprawny link zaczynający się od http:// albo https://.');
+      return;
+    }
     const post = {
       id: existing?.id || uid(),
       tabId: String(data.get('tabId') || activeTabId),
       status: String(data.get('status') || 'scheduled') === 'published' ? 'published' : 'scheduled',
       publishDate: String(data.get('publishDate') || todayKey()),
       title: String(data.get('title') || '').trim(),
+      link,
       content: String(data.get('content') || '').trim(),
       keywords: splitKeywords(data.get('keywords')),
       createdAt: existing?.createdAt || now,
@@ -1778,6 +1815,7 @@ function openPostModal(existing = null, template = null) {
 function openPostPreview(post) {
   if (!post) return;
   const tab = findPostTab(post.tabId);
+  const postLink = safePostLink(post.link);
   openModal('Podglad wpisu', `
     <div class="post-preview-modal">
       <p class="eyebrow">${escapeHtml(tab?.name || 'Posty')}</p>
@@ -1787,6 +1825,7 @@ function openPostPreview(post) {
         <span>${formatDate(post.publishDate)}</span>
       </div>
       ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
+      ${postLink ? `<a class="post-link-pill" href="${escapeHtml(postLink)}" target="_blank" rel="noopener noreferrer">${icon('link')}<span>${escapeHtml(postLinkLabel(post.link))}</span></a>` : ''}
       <div class="post-full-content">${escapeHtml(post.content || 'Brak tresci.').replace(/\n/g, '<br>')}</div>
     </div>
   `);
@@ -1805,6 +1844,7 @@ function postExportRows(firm) {
         status: '',
         data: '',
         tytul: '',
+        link: '',
         tresc: '',
         slowa_kluczowe: '',
       });
@@ -1818,6 +1858,7 @@ function postExportRows(firm) {
         status: post.status,
         data: post.publishDate,
         tytul: post.title,
+        link: post.link || '',
         tresc: post.content,
         slowa_kluczowe: postKeywordText(post),
       });
@@ -1845,7 +1886,7 @@ function csvEscape(value) {
 function exportPostsCsv() {
   const firm = getSelectedFirm(state);
   if (!firm) return;
-  const headers = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'tresc', 'slowa_kluczowe'];
+  const headers = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'link', 'tresc', 'slowa_kluczowe'];
   const rows = postExportRows(firm);
   const csv = '\ufeff' + [
     headers.join(','),
@@ -1855,8 +1896,8 @@ function exportPostsCsv() {
 }
 
 function exportPostsExcelFallback(firm) {
-  const headers = ['Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'Tresc', 'Slowa kluczowe'];
-  const keys = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'tresc', 'slowa_kluczowe'];
+  const headers = ['Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'Link', 'Tresc', 'Slowa kluczowe'];
+  const keys = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'link', 'tresc', 'slowa_kluczowe'];
   const rows = postExportRows(firm);
   const html = `
     <html><head><meta charset="utf-8"></head><body>
@@ -1966,6 +2007,8 @@ async function importPostRows(importRows) {
     }
 
     const title = String(row.tytul || row['tytuł'] || '').trim();
+    const link = normalizePostLink(row.link || row.url || row['adres url'] || row['link do publikacji']);
+    if (link && !safePostLink(link)) continue;
     const content = String(row.tresc || row['treść'] || '').trim();
     if (!title && !content) continue;
     firm.posts = [
@@ -1976,6 +2019,7 @@ async function importPostRows(importRows) {
         status: String(row.status || 'scheduled') === 'published' || String(row.status || '').toLowerCase() === 'opublikowane' ? 'published' : 'scheduled',
         publishDate: String(row.data || row.date || todayKey()).slice(0, 10),
         title,
+        link,
         content,
         keywords: splitKeywords(row.slowa_kluczowe || row['slowa kluczowe'] || row['słowa kluczowe'] || row.keywords),
         createdAt: now,
@@ -2993,6 +3037,16 @@ document.body.addEventListener('click', function(event) {
 });
 
 document.body.addEventListener('change', (event) => {
+  const firmTarget = event.target.closest('[data-action="select-firm-dropdown"]');
+  if (firmTarget) {
+    if (!state.firms.some((item) => item.id === firmTarget.value)) return;
+    state.ui.selectedFirmId = firmTarget.value;
+    state.ui.selectedMonth = '__all__';
+    state.ui.activeMonthTab = 'overview';
+    persist();
+    return render();
+  }
+
   const financeTarget = event.target.closest('[data-action="finance-nav"]');
   if (financeTarget) {
     const value = financeTarget.value || '';

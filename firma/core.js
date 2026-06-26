@@ -34,6 +34,7 @@ export function icon(name) {
     edit: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 4.5-1 9.5-9.5-3.5-3.5L5 15.5 4 20Zm10-12 3.5 3.5" /></svg>',
     upload: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>',
     download: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>',
+    link: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4.93" /><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07L13 19.07" /></svg>',
     home: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" /></svg>',
     arrowLeft: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>',
     lock: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>',
@@ -183,6 +184,69 @@ export function getSettlementMeta(value) {
 
 function countUnpaidInvoices(firm) {
   return (firm.invoices || []).filter((invoice) => invoice.status !== 'cancelled' && !invoice.paidBy).length;
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseDateKey(value) {
+  if (!value) return null;
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDaysKey(value, days) {
+  const date = parseDateKey(value);
+  if (!date) return value;
+  date.setDate(date.getDate() + Number(days || 0));
+  return dateKey(date);
+}
+
+function addMonthsKey(value, months) {
+  const date = parseDateKey(value);
+  if (!date) return value;
+  const day = date.getDate();
+  date.setMonth(date.getMonth() + Number(months || 0));
+  if (date.getDate() !== day) {
+    date.setDate(0);
+  }
+  return dateKey(date);
+}
+
+function addPostFrequencyKey(value, frequency) {
+  if (frequency === 'weekly') return addDaysKey(value, 7);
+  if (frequency === 'biweekly') return addDaysKey(value, 14);
+  return addMonthsKey(value, 1);
+}
+
+function latestPublishedPost(firm, tabId) {
+  return (firm.posts || [])
+    .filter((post) => post.tabId === tabId && post.status === 'published')
+    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
+}
+
+function isPostTabOverdue(firm, tab) {
+  if (!tab || tab.frequency === 'irregular') return false;
+  const today = todayKey();
+  const lastPost = latestPublishedPost(firm, tab.id);
+  let dueDate = tab.startDate || today;
+
+  if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
+    while (dueDate <= lastPost.publishDate) {
+      dueDate = addPostFrequencyKey(dueDate, tab.frequency);
+    }
+  }
+
+  return today > dueDate;
+}
+
+function firmHasOverduePostTabs(firm) {
+  return (firm.postTabs || []).some((tab) => isPostTabOverdue(firm, tab));
 }
 
 function firmContactSummary(firm) {
@@ -404,14 +468,23 @@ export function updateTopbar(state, activeTab) {
   const financeValue = activeTab === 'invoices' || activeTab === 'balance' || activeTab === 'compensation'
     ? activeTab
     : '';
+  const hasOverduePosts = firmHasOverduePostTabs(firm);
+  const firmOptions = state.firms.map((item) => `
+    <option value="${item.id}" ${item.id === firm.id ? 'selected' : ''}>${escapeHtml(firmDisplayName(item) || item.name || 'Firma bez nazwy')}</option>
+  `).join('');
 
   container.innerHTML = `
     <div class="topbar-compact">
       <div class="topbar-nav">
-        <button class="ghost-button compact-button back-inline" type="button" data-action="back-to-list">${icon('arrowLeft')}Klienci</button>
+        <label class="firm-picker">
+          <span>Klient</span>
+          <select data-action="select-firm-dropdown" aria-label="Wybierz klienta">
+            ${firmOptions}
+          </select>
+        </label>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
-          <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts">Posty</button>
+          <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''} ${hasOverduePosts ? 'has-alert' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts" ${hasOverduePosts ? 'title="Są zaległe podzakładki postów"' : ''}>Posty</button>
         </div>
       </div>
       <div class="topbar-finance">
