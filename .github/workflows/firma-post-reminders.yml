@@ -13,6 +13,8 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      HAS_FIREBASE_SERVICE_ACCOUNT: ${{ (secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' || secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 != '') && 'true' || 'false' }}
 
     steps:
       - name: Checkout repository
@@ -24,6 +26,7 @@ jobs:
           node-version: 20
 
       - name: Check overdue post tabs
+        if: env.HAS_FIREBASE_SERVICE_ACCOUNT == 'true'
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}
@@ -32,3 +35,8 @@ jobs:
           WEB3FORMS_ACCESS_KEY: ${{ secrets.WEB3FORMS_ACCESS_KEY }}
           POST_REMINDER_EMAIL: ${{ secrets.POST_REMINDER_EMAIL }}
         run: node scripts/check-firma-post-deadlines.mjs
+
+      - name: Skip post reminders without Firebase service account
+        if: env.HAS_FIREBASE_SERVICE_ACCOUNT != 'true'
+        run: |
+          echo "::notice::Firma post reminders skipped. Add FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 repository secret to enable Firestore post reminder checks."

@@ -37,7 +37,7 @@ function normalizeTab(tab, now = currentIso()) {
     id: tab.id,
     firmId: tab.firmId || '',
     name: tab.name || 'Nowa podzakladka',
-    frequency: ['weekly', 'biweekly', 'monthly'].includes(tab.frequency) ? tab.frequency : 'monthly',
+    frequency: ['weekly', 'biweekly', 'monthly', 'irregular'].includes(tab.frequency) ? tab.frequency : 'monthly',
     startDate: tab.startDate || now.slice(0, 10),
     createdAt: tab.createdAt || now,
     updatedAt: tab.updatedAt || now,

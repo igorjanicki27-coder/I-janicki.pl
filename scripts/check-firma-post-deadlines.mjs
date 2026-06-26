@@ -56,6 +56,7 @@ function addFrequencyKey(value, frequency) {
 function frequencyLabel(value) {
   if (value === 'weekly') return 'Raz w tygodniu';
   if (value === 'biweekly') return 'Raz na 2 tygodnie';
+  if (value === 'irregular') return 'Nieregularnie';
   return 'Raz w miesiacu';
 }
 
@@ -79,6 +80,14 @@ function getPostTabStatus(firm, tab) {
   const startDate = tab.startDate || warsawTodayKey();
   const lastPost = latestPublishedPost(firm, tab.id);
   const today = warsawTodayKey();
+  if (tab.frequency === 'irregular') {
+    return {
+      dueDate: null,
+      isOverdue: false,
+      lastPost,
+      isSkipped: true,
+    };
+  }
   let dueDate = startDate;
 
   if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
@@ -100,6 +109,7 @@ function findDueReminders(state) {
     const sentKeys = new Set(Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : []);
     for (const tab of firm.postTabs || []) {
       const status = getPostTabStatus(firm, tab);
+      if (status.isSkipped) continue;
       const reminderKey = `${tab.id}:${status.dueDate}`;
       if (!status.isOverdue || sentKeys.has(reminderKey)) continue;
       reminders.push({ firm, tab, status, reminderKey });

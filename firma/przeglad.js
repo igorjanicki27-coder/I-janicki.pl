@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=3';
+} from './post-storage.js?v=4';
 import {
   icon,
   escapeHtml,
@@ -243,6 +243,7 @@ const POST_FREQUENCY_OPTIONS = [
   { value: 'weekly', label: 'Raz w tygodniu' },
   { value: 'biweekly', label: 'Raz na 2 tygodnie' },
   { value: 'monthly', label: 'Raz w miesiacu' },
+  { value: 'irregular', label: 'Nieregularnie' },
 ];
 
 const POST_STATUS_OPTIONS = [
@@ -287,6 +288,10 @@ function postFrequencyLabel(value) {
   return POST_FREQUENCY_OPTIONS.find((item) => item.value === value)?.label || 'Raz w miesiacu';
 }
 
+function isIrregularPostTab(tab) {
+  return tab?.frequency === 'irregular';
+}
+
 function ensurePostTabSelection(firm) {
   const tabs = firm.postTabs || [];
   if (!tabs.length) {
@@ -327,6 +332,15 @@ function getPostTabStatus(firm, tab) {
   const startDate = tab.startDate || todayKey();
   const lastPost = latestPublishedPost(firm, tab.id);
   const today = todayKey();
+  if (isIrregularPostTab(tab)) {
+    return {
+      dueDate: null,
+      isOverdue: false,
+      lastPost,
+      daysSinceLast: lastPost ? daysBetween(lastPost.publishDate, today) : null,
+      isSkipped: true,
+    };
+  }
   let dueDate = startDate;
 
   if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
@@ -1451,15 +1465,19 @@ function renderPostTabButton(firm, tab) {
   const lastLabel = tabStatus.lastPost
     ? `Ostatnia publikacja ${tabStatus.daysSinceLast === 0 ? 'dzisiaj' : `${tabStatus.daysSinceLast} dni temu`}`
     : 'Brak opublikowanych materialow';
+  const frequencyMeta = isIrregularPostTab(tab)
+    ? postFrequencyLabel(tab.frequency)
+    : `${postFrequencyLabel(tab.frequency)} od ${formatDate(tab.startDate)}`;
+  const dueLabel = tabStatus.isSkipped ? 'Bez terminu' : `Termin: ${formatDate(tabStatus.dueDate)}`;
   return `
     <article class="post-tab-card ${state.ui.activePostTabId === tab.id ? 'is-active' : ''} ${tabStatus.isOverdue ? 'is-overdue' : ''}">
       <button class="post-tab-main" type="button" data-action="select-post-tab" data-id="${tab.id}">
         <span class="post-tab-title">${escapeHtml(tab.name)}</span>
-        <span class="post-tab-meta">${postFrequencyLabel(tab.frequency)} od ${formatDate(tab.startDate)}</span>
+        <span class="post-tab-meta">${frequencyMeta}</span>
         <span class="post-tab-note">${escapeHtml(lastLabel)}</span>
       </button>
       <div class="post-tab-actions">
-        <span class="post-due-pill ${tabStatus.isOverdue ? 'is-overdue' : ''}">Termin: ${formatDate(tabStatus.dueDate)}</span>
+        <span class="post-due-pill ${tabStatus.isOverdue ? 'is-overdue' : ''}">${dueLabel}</span>
         <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${tab.id}" aria-label="Edytuj podzakładkę">${icon('edit')}</button>
         <button class="icon-button tone-danger" type="button" data-action="delete-post-tab" data-id="${tab.id}" aria-label="Usuń podzakładkę">${icon('trash')}</button>
       </div>
