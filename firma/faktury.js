@@ -16,7 +16,7 @@ import {
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=25';
+} from './storage.js?v=26';
 import {
   icon,
   escapeHtml,

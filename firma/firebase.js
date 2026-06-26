@@ -80,6 +80,22 @@ export async function setSetting(docPath, data) {
   await setDoc(doc(db, docPath), data);
 }
 
+/** Odtwarza sesję uprawnień dla panelu Firma po odświeżeniu anonimowego auth. */
+export async function ensureFirmyAdminSession() {
+  const user = await ensureAuth();
+  const now = new Date().toISOString();
+  await setDoc(doc(db, 'firmy_sessions', user.uid), {
+    uid: user.uid,
+    pin: '151100',
+    role: 'admin',
+    clientId: '',
+    clientSlug: '',
+    lastLoginAt: now,
+    updatedAt: now,
+  });
+  return user;
+}
+
 /** Pobiera surowy snapshot (do sprawdzenia exists/metadata). */
 export async function getDocSnapshot(docPath) {
   return getDoc(doc(db, docPath));

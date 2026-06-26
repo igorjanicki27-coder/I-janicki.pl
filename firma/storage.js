@@ -1,4 +1,4 @@
-import { ensureAuth, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js?v=19';
+import { ensureFirmyAdminSession, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js?v=20';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
@@ -77,7 +77,7 @@ function scheduleFirestoreSync(state) {
 
 async function flushToFirestore(state, attempt = 1) {
   try {
-    await ensureAuth();
+    await ensureFirmyAdminSession();
     await setSetting(FIRESTORE_STATE_DOC, {
       state: JSON.stringify(state),
       updatedAt: currentIso(),
@@ -404,7 +404,7 @@ export function saveState(state) {
 
 async function loadFromFirestore() {
   try {
-    await ensureAuth();
+    await ensureFirmyAdminSession();
     const data = await getSetting(FIRESTORE_STATE_DOC);
     if (data && data.state) {
       const cloud = JSON.parse(data.state);
@@ -573,7 +573,7 @@ export { MAX_ATTACHMENT_BYTES };
  */
 export async function storeAttachment(record) {
   try {
-    await ensureAuth();
+    await ensureFirmyAdminSession();
     if (record.blob.size > MAX_ATTACHMENT_BYTES) {
       throw new Error(`Plik przekracza limit ${Math.round(MAX_ATTACHMENT_BYTES / 1024)} KB.`);
     }
@@ -624,7 +624,7 @@ export async function storeAttachment(record) {
  */
 export async function getAttachment(id) {
   try {
-    await ensureAuth();
+    await ensureFirmyAdminSession();
 
     // Pobierz metadane
     const metaSnap = await getDoc(doc(db, ATTACHMENTS_COLLECTION, id));
@@ -674,7 +674,7 @@ export async function getAttachment(id) {
  */
 export async function deleteAttachment(id) {
   try {
-    await ensureAuth();
+    await ensureFirmyAdminSession();
 
     // Pobierz chunki
     const chunksCol = collection(db, ATTACHMENTS_COLLECTION, id, 'chunks');

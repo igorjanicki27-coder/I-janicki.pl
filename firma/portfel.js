@@ -11,7 +11,7 @@ import {
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=25';
+} from './storage.js?v=26';
 import {
   icon,
   escapeHtml,

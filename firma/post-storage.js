@@ -1,5 +1,4 @@
 import {
-  ensureAuth,
   db,
   doc,
   collection,
@@ -7,7 +6,8 @@ import {
   getDocs,
   deleteDoc,
   writeBatch,
-} from './firebase.js?v=19';
+  ensureFirmyAdminSession,
+} from './firebase.js?v=20';
 
 function currentIso() {
   return new Date().toISOString();
@@ -63,7 +63,7 @@ function normalizePost(post, now = currentIso()) {
 }
 
 async function ensureFirmPostDoc(firm) {
-  await ensureAuth();
+  await ensureFirmyAdminSession();
   const now = currentIso();
   await setDoc(doc(db, 'firmy_clients', firm.id), {
     id: firm.id,
@@ -106,7 +106,7 @@ async function loadCollection(pathSegments) {
 }
 
 export async function loadFirmPostCollections(firm) {
-  await ensureAuth();
+  await ensureFirmyAdminSession();
 
   let tabs;
   let posts;
@@ -211,6 +211,7 @@ export async function savePosts(firm, posts) {
 }
 
 export async function deletePost(firm, postId) {
+  await ensureFirmyAdminSession();
   await deleteDoc(doc(db, 'firmy_clients', firm.id, 'posts', postId));
 }
 
