@@ -368,6 +368,29 @@ function postKeywordText(post) {
   return Array.isArray(post.keywords) ? post.keywords.join(', ') : String(post.keywords || '');
 }
 
+function uniqueTokens(tokens) {
+  return Array.from(new Set(tokens)).sort();
+}
+
+function normalizeKeywordTokens(value) {
+  return uniqueTokens(normalizeTopicText(stripEmoji(value)));
+}
+
+function postKeywordTokens(post) {
+  return normalizeKeywordTokens(postKeywordText(post));
+}
+
+function keywordMatchScore(leftTokens, rightTokens) {
+  if (!leftTokens.length || !rightTokens.length) return { common: 0, score: 0, exact: false };
+  const rightSet = new Set(rightTokens);
+  const common = leftTokens.filter((token) => rightSet.has(token)).length;
+  return {
+    common,
+    score: common / Math.max(1, Math.min(leftTokens.length, rightTokens.length)),
+    exact: leftTokens.length === rightTokens.length && common === leftTokens.length,
+  };
+}
+
 function stripEmoji(value) {
   return String(value || '')
     .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')
@@ -416,18 +439,17 @@ function normalizeTopicText(value) {
 }
 
 function findSimilarPosts(firm, draft, excludeId = null) {
-  const draftTokens = new Set(normalizeTopicText(`${draft.title || ''} ${postKeywordText(draft)}`));
-  if (!draftTokens.size) return [];
+  const draftTokens = postKeywordTokens(draft);
+  if (!draftTokens.length) return [];
 
   return (firm.posts || [])
     .filter((post) => post.id !== excludeId)
     .map((post) => {
-      const tokens = new Set(normalizeTopicText(`${post.title || ''} ${postKeywordText(post)}`));
-      const common = [...draftTokens].filter((token) => tokens.has(token)).length;
-      const score = common / Math.max(1, Math.min(draftTokens.size, tokens.size));
-      return { post, score, common };
+      const tokens = postKeywordTokens(post);
+      const match = keywordMatchScore(draftTokens, tokens);
+      return { post, score: match.score, common: match.common };
     })
-    .filter((item) => item.common >= 2 || item.score >= 0.45)
+    .filter((item) => item.common >= 2 || item.score >= 0.5)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 }
@@ -441,7 +463,7 @@ function getSimilarAlertKey(post, similar) {
 }
 
 function postSimilarityIdentity(post) {
-  const tokens = normalizeTopicText(`${post.title || ''} ${postKeywordText(post)}`).slice(0, 14);
+  const tokens = postKeywordTokens(post).slice(0, 14);
   return [
     post.tabId || '',
     String(post.publishDate || '').slice(0, 10),
@@ -1551,6 +1573,55 @@ function postMatchesSearch(post, query) {
   return haystack.includes(query.toLowerCase());
 }
 
+function postMatchesStatusFilter(post, filter) {
+  if (!filter || filter === 'all') return true;
+  return post.status === filter;
+}
+
+function sortPostsByPublishDate(posts, direction = 'nearest') {
+  const multiplier = direction === 'farthest' ? -1 : 1;
+  return [...posts].sort((a, b) => {
+    const aDate = String(a.publishDate || '');
+    const bDate = String(b.publishDate || '');
+    const dateCompare = aDate.localeCompare(bDate) * multiplier;
+    if (dateCompare) return dateCompare;
+    return String(a.title || '').localeCompare(String(b.title || ''), 'pl');
+  });
+}
+
+function renderPostStatusFilter(activeFilter) {
+  const filters = [
+    { value: 'all', label: 'Wszystkie' },
+    { value: 'scheduled', label: 'Zaplanowane' },
+    { value: 'published', label: 'Opublikowane' },
+  ];
+  return `
+    <div class="post-status-filter" role="group" aria-label="Filtr statusu wpisów">
+      ${filters.map((filter) => `
+        <button class="post-status-filter-button ${activeFilter === filter.value ? 'is-active' : ''}" type="button" data-action="set-post-status-filter" data-filter="${filter.value}">
+          ${escapeHtml(filter.label)}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderPostSortControl(activeSort) {
+  const options = [
+    { value: 'nearest', label: 'Najbliższe' },
+    { value: 'farthest', label: 'Najdalsze' },
+  ];
+  return `
+    <div class="post-sort-filter" role="group" aria-label="Sortowanie wpisów">
+      ${options.map((option) => `
+        <button class="post-status-filter-button ${activeSort === option.value ? 'is-active' : ''}" type="button" data-action="set-post-sort" data-sort="${option.value}">
+          ${escapeHtml(option.label)}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderPostCard(firm, post) {
   const similar = findSimilarPosts(firm, post, post.id);
   const similarAlertKey = similar.length ? getSimilarAlertKey(post, similar) : '';
@@ -1615,7 +1686,16 @@ function renderPostsPage(firm) {
   const tabs = firm.postTabs || [];
   const activeTab = tabs.find((tab) => tab.id === activeTabId) || null;
   const query = state.ui.postSearch || '';
-  const posts = activeTab ? postsForTab(firm, activeTab.id).filter((post) => postMatchesSearch(post, query)) : [];
+  const statusFilter = ['all', 'scheduled', 'published'].includes(state.ui.postStatusFilter) ? state.ui.postStatusFilter : 'all';
+  const postSort = ['nearest', 'farthest'].includes(state.ui.postSort) ? state.ui.postSort : 'nearest';
+  const posts = activeTab
+    ? sortPostsByPublishDate(
+      postsForTab(firm, activeTab.id)
+        .filter((post) => postMatchesStatusFilter(post, statusFilter))
+        .filter((post) => postMatchesSearch(post, query)),
+      postSort,
+    )
+    : [];
   const overdueTabs = tabs.filter((tab) => getPostTabStatus(firm, tab).isOverdue).length;
 
   return `
@@ -1665,7 +1745,11 @@ function renderPostsPage(firm) {
               <p class="eyebrow">${activeTab ? escapeHtml(activeTab.name) : 'Wpisy'}</p>
               <h3>Materiały publikacyjne</h3>
             </div>
-            <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
+            <div class="post-material-actions">
+              ${renderPostStatusFilter(statusFilter)}
+              ${renderPostSortControl(postSort)}
+              <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
+            </div>
           </div>
           <div class="post-search-row">
             <input class="post-search-input" type="search" data-action="filter-post-search" value="${escapeHtml(query)}" placeholder="Szukaj po tytule, treści lub słowach kluczowych..." />
@@ -2081,10 +2165,6 @@ function dismissedSimilarSignaturesFromImport(value, fallback = []) {
     .filter(Boolean);
 }
 
-function normalizeImportedTitleKey(value) {
-  return normalizeTopicText(stripEmoji(value)).join(' ');
-}
-
 function normalizeImportedContentKey(value) {
   return normalizeTopicText(stripEmoji(value)).slice(0, 24).join(' ');
 }
@@ -2094,25 +2174,24 @@ function normalizeImportedLinkKey(value) {
   return normalized ? normalized.replace(/\/$/, '').toLowerCase() : '';
 }
 
-function findImportedPostMatches(firm, tabId, rowPostId, title, publishDate, content = '', link = '') {
+function findImportedPostMatches(firm, tabId, rowPostId, publishDate, content = '', link = '', keywords = []) {
   const posts = firm.posts || [];
   const byId = rowPostId ? posts.find((post) => post.id === rowPostId) : null;
   if (rowPostId) {
-    if (!title && !content && !link) return byId ? [byId] : [];
+    if (!content && !link && !keywords.length) return byId ? [byId] : [];
   }
-  const titleKey = normalizeImportedTitleKey(title);
   const dateKey = String(publishDate || '').slice(0, 10);
   const contentKey = normalizeImportedContentKey(content);
   const linkKey = normalizeImportedLinkKey(link);
+  const keywordTokens = normalizeKeywordTokens(Array.isArray(keywords) ? keywords.join(', ') : keywords);
   const matches = posts.filter((post) => {
-    const postTitleKey = normalizeImportedTitleKey(post.title);
     const postDateKey = String(post.publishDate || '').slice(0, 10);
     const postContentKey = normalizeImportedContentKey(post.content);
     const postLinkKey = normalizeImportedLinkKey(post.link);
+    const keywordMatch = keywordMatchScore(keywordTokens, postKeywordTokens(post));
     if (linkKey && postLinkKey && linkKey === postLinkKey) return true;
-    if (titleKey && postTitleKey === titleKey && dateKey && postDateKey === dateKey) return true;
-    if (titleKey && postTitleKey === titleKey && contentKey && postContentKey === contentKey) return true;
-    if (contentKey && postContentKey === contentKey && dateKey && postDateKey === dateKey) return true;
+    if (keywordMatch.common && (keywordMatch.exact || keywordMatch.score >= 0.8) && dateKey && postDateKey === dateKey) return true;
+    if (keywordMatch.common && (keywordMatch.exact || keywordMatch.score >= 0.8) && contentKey && postContentKey === contentKey) return true;
     return false;
   });
 
@@ -2168,7 +2247,8 @@ async function importPostRows(importRows) {
     if (!title && !content) continue;
     const publishDate = String(importRowValue(row, ['data', 'date']) || todayKey()).slice(0, 10);
     const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu']) || '').trim();
-    const existingMatches = findImportedPostMatches(firm, tab.id, rowPostId, title, publishDate, content, link);
+    const keywords = splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords']));
+    const existingMatches = findImportedPostMatches(firm, tab.id, rowPostId, publishDate, content, link, keywords);
     const existingPost = existingMatches[0] || null;
     const duplicateIds = new Set(existingMatches.map((postItem) => postItem.id));
     const rowStatus = String(importRowValue(row, ['status']) || '').toLowerCase();
@@ -2185,7 +2265,7 @@ async function importPostRows(importRows) {
       title,
       link,
       content,
-      keywords: splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords'])),
+      keywords,
       dismissedSimilarSignatures: dismissedSimilarSignaturesFromImport(
         importRowValue(row, ['pominiete_podobienstwa', 'pominiete podobienstwa', 'pominięte podobieństwa', 'dismissedSimilarSignatures']),
         existingPost?.dismissedSimilarSignatures || [],
@@ -3118,6 +3198,20 @@ async function handleClick(event) {
   }
   if (action === 'select-post-tab') {
     state.ui.activePostTabId = target.dataset.id;
+    persist();
+    return render();
+  }
+  if (action === 'set-post-status-filter') {
+    state.ui.postStatusFilter = ['all', 'scheduled', 'published'].includes(target.dataset.filter)
+      ? target.dataset.filter
+      : 'all';
+    persist();
+    return render();
+  }
+  if (action === 'set-post-sort') {
+    state.ui.postSort = ['nearest', 'farthest'].includes(target.dataset.sort)
+      ? target.dataset.sort
+      : 'nearest';
     persist();
     return render();
   }

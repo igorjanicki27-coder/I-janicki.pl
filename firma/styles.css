@@ -2679,6 +2679,45 @@ svg {
   gap: 10px;
 }
 
+.post-material-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.post-status-filter,
+.post-sort-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.post-status-filter-button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.post-status-filter-button.is-active {
+  color: #12345f;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(20, 43, 70, 0.14);
+}
+
 .posts-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3033,6 +3072,7 @@ svg {
   }
 
   .posts-actions,
+  .post-material-actions,
   .post-card-actions,
   .post-tab-actions {
     justify-content: stretch;
@@ -3049,8 +3089,19 @@ svg {
   }
 
   .posts-actions > *,
+  .post-material-actions > *,
   .post-card-actions > * {
     flex: 1 1 auto;
+  }
+
+  .post-status-filter,
+  .post-sort-filter {
+    width: 100%;
+  }
+
+  .post-status-filter-button {
+    flex: 1 1 0;
+    padding-inline: 8px;
   }
 
   .post-tab-actions > .post-due-pill {
