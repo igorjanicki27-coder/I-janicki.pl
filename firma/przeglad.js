@@ -2139,25 +2139,32 @@ function sameImportList(left, right) {
   return leftList.length === rightList.length && leftList.every((item, index) => item === rightList[index]);
 }
 
-function shortImportValue(value, maxLength = 80) {
+function shortImportValue(value, maxLength = 180) {
   const text = normalizeImportCompareValue(value).replace(/\s+/g, ' ');
   if (!text) return 'puste';
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
-function importFieldChangeSummary(label, oldValue, newValue) {
-  if (label === 'treść') {
-    return `${label}: ${String(oldValue || '').length} -> ${String(newValue || '').length} znaków`;
-  }
-  return `${label}: "${shortImportValue(oldValue)}" -> "${shortImportValue(newValue)}"`;
+function importFieldChangeDetail(label, oldValue, newValue) {
+  const oldText = normalizeImportCompareValue(oldValue);
+  const newText = normalizeImportCompareValue(newValue);
+  return {
+    label,
+    before: label === 'link' ? `${oldText.length} znaków` : shortImportValue(oldText),
+    after: label === 'link' ? `${newText.length} znaków` : shortImportValue(newText),
+    meta: label === 'treść' ? `${oldText.length} -> ${newText.length} znaków` : '',
+  };
 }
 
-function importKeywordChangeSummary(oldKeywords, newKeywords) {
+function importKeywordChangeDetail(oldKeywords, newKeywords) {
   const oldList = normalizeImportCompareList(oldKeywords);
   const newList = normalizeImportCompareList(newKeywords);
-  const oldPreview = oldList.slice(0, 3).join(', ') || 'puste';
-  const newPreview = newList.slice(0, 3).join(', ') || 'puste';
-  return `słowa kluczowe: ${oldList.length} -> ${newList.length} (${oldPreview} -> ${newPreview})`;
+  return {
+    label: 'słowa kluczowe',
+    before: oldList.join(', ') || 'puste',
+    after: newList.join(', ') || 'puste',
+    meta: `${oldList.length} -> ${newList.length}`,
+  };
 }
 
 function postImportChanges(before, after) {
@@ -2172,16 +2179,80 @@ function postImportChanges(before, after) {
   ];
   const changes = checks
     .filter(([, , oldValue, newValue]) => normalizeImportCompareValue(oldValue) !== normalizeImportCompareValue(newValue))
-    .map(([, label, oldValue, newValue]) => importFieldChangeSummary(label, oldValue, newValue));
+    .map(([, label, oldValue, newValue]) => importFieldChangeDetail(label, oldValue, newValue));
   if (!sameImportList(before.keywords, after.keywords)) {
-    changes.push(importKeywordChangeSummary(before.keywords, after.keywords));
+    changes.push(importKeywordChangeDetail(before.keywords, after.keywords));
   }
   return changes;
 }
 
-function importSummaryList(title, items) {
-  if (!items.length) return '';
-  return `\n\n${title}:\n${items.slice(0, 12).map((item) => `- ${item}`).join('\n')}${items.length > 12 ? `\n- ... i jeszcze ${items.length - 12}` : ''}`;
+function importResultText(summary) {
+  const lines = [
+    `Import zakonczony. Dodano wpisow: ${summary.imported}. Zaktualizowano: ${summary.updated}. Bez zmian: ${summary.unchanged}. Nowe podzakladki: ${summary.createdTabs}.`,
+  ];
+  if (summary.importedItems.length) {
+    lines.push('', 'Dodane:');
+    summary.importedItems.forEach((item) => lines.push(`- ${item.title}`));
+  }
+  if (summary.updatedItems.length) {
+    lines.push('', 'Zmienione:');
+    summary.updatedItems.forEach((item) => {
+      lines.push(`- ${item.title}`);
+      item.changes.forEach((change) => {
+        lines.push(`  ${change.label}${change.meta ? ` (${change.meta})` : ''}`);
+        lines.push(`    Przed: ${change.before}`);
+        lines.push(`    Po: ${change.after}`);
+      });
+    });
+  }
+  return lines.join('\n');
+}
+
+function renderImportChange(change) {
+  return `
+    <div class="import-change-row">
+      <strong>${escapeHtml(change.label)}${change.meta ? ` <span>${escapeHtml(change.meta)}</span>` : ''}</strong>
+      <div class="import-compare-grid">
+        <div><span>Przed</span><p>${escapeHtml(change.before)}</p></div>
+        <div><span>Po</span><p>${escapeHtml(change.after)}</p></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderImportItemDetails(item, tone) {
+  return `
+    <details class="import-result-item ${tone === 'new' ? 'is-new' : ''}">
+      <summary>
+        <span>${escapeHtml(item.title)}</span>
+        <small>${tone === 'new' ? 'Dodano' : `${item.changes.length} zmian`}</small>
+      </summary>
+      ${tone === 'new' ? '<p class="import-result-note">Nowy wpis dodany z importowanego pliku.</p>' : item.changes.map(renderImportChange).join('')}
+    </details>
+  `;
+}
+
+function openImportResultModal(summary) {
+  const reportText = importResultText(summary);
+  openModal('Wynik importu', `
+    <section class="import-result-modal">
+      <div class="import-result-summary">
+        <span>Dodano <strong>${summary.imported}</strong></span>
+        <span>Zaktualizowano <strong>${summary.updated}</strong></span>
+        <span>Bez zmian <strong>${summary.unchanged}</strong></span>
+        <span>Nowe podzakładki <strong>${summary.createdTabs}</strong></span>
+      </div>
+      <div class="import-result-actions">
+        <button class="ghost-button" type="button" data-action="copy-import-report" data-report="${escapeHtml(reportText)}">${icon('copy')}Kopiuj raport</button>
+        <button class="ghost-button" type="button" data-action="close-modal">Zamknij</button>
+      </div>
+      <div class="import-result-list">
+        ${summary.importedItems.length ? `<h3>Dodane</h3>${summary.importedItems.map((item) => renderImportItemDetails(item, 'new')).join('')}` : ''}
+        ${summary.updatedItems.length ? `<h3>Zmienione</h3>${summary.updatedItems.map((item) => renderImportItemDetails(item, 'changed')).join('')}` : ''}
+        ${!summary.importedItems.length && !summary.updatedItems.length ? '<p class="empty-msg">Nie wykryto zmian w importowanych wpisach.</p>' : ''}
+      </div>
+    </section>
+  `, { wide: true });
 }
 
 async function importPostRows(importRows) {
@@ -2194,8 +2265,8 @@ async function importPostRows(importRows) {
   let imported = 0;
   let updated = 0;
   let unchanged = 0;
-  const importedTitles = [];
-  const updatedTitles = [];
+  const importedItems = [];
+  const updatedItems = [];
   let hasChanges = false;
   let createdTabs = 0;
 
@@ -2275,10 +2346,15 @@ async function importPostRows(importRows) {
     hasChanges = true;
     if (existingPost) {
       updated += 1;
-      updatedTitles.push(`${post.title || post.id || 'Bez tytulu'}\n  ${changes.join('\n  ')}`);
+      updatedItems.push({
+        title: post.title || post.id || 'Bez tytulu',
+        changes,
+      });
     } else {
       imported += 1;
-      importedTitles.push(post.title || post.id || 'Bez tytulu');
+      importedItems.push({
+        title: post.title || post.id || 'Bez tytulu',
+      });
     }
   }
 
@@ -2291,9 +2367,14 @@ async function importPostRows(importRows) {
     persistAndFlush();
     render();
   }
-  const importedSummary = importSummaryList('Dodane', importedTitles);
-  const updatedSummary = importSummaryList('Zmienione', updatedTitles);
-  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}. Bez zmian: ${unchanged}. Nowe podzakladki: ${createdTabs}.${importedSummary}${updatedSummary}`);
+  openImportResultModal({
+    imported,
+    updated,
+    unchanged,
+    createdTabs,
+    importedItems,
+    updatedItems,
+  });
 }
 
 async function importPostsFile() {
@@ -3248,6 +3329,23 @@ async function handleClick(event) {
       }, 1200);
     } catch (_) {
       alert('Nie udało się skopiować tekstu.');
+    }
+    return;
+  }
+  if (action === 'copy-import-report') {
+    try {
+      await copyTextToClipboard(target.dataset.report || '');
+      const original = target.innerHTML;
+      target.classList.add('is-copied');
+      target.innerHTML = `${icon('check')}Skopiowano`;
+      setTimeout(() => {
+        if (target.isConnected) {
+          target.innerHTML = original;
+          target.classList.remove('is-copied');
+        }
+      }, 1200);
+    } catch (_) {
+      alert('Nie udało się skopiować raportu.');
     }
     return;
   }
