@@ -84,6 +84,21 @@ function latestPublishedPost(firm, tabId) {
     .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
 }
 
+function nearestScheduledPost(firm, tabId, referenceDate = warsawTodayKey()) {
+  const scheduled = postsForTab(firm, tabId)
+    .filter((post) => post.status !== 'published')
+    .filter((post) => post.publishDate || post.title || post.content);
+  if (!scheduled.length) return null;
+
+  const futureOrToday = scheduled
+    .filter((post) => String(post.publishDate || '').slice(0, 10) >= referenceDate)
+    .sort((a, b) => String(a.publishDate || '').localeCompare(String(b.publishDate || '')));
+  if (futureOrToday.length) return futureOrToday[0];
+
+  return scheduled
+    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
+}
+
 function getPostTabStatus(firm, tab) {
   const startDate = tab.startDate || warsawTodayKey();
   const lastPost = latestPublishedPost(firm, tab.id);
@@ -120,7 +135,13 @@ function findDueReminders(state) {
       if (status.isSkipped) continue;
       const reminderKey = `${tab.id}:${status.dueDate}`;
       if (!status.isOverdue || sentKeys.has(reminderKey)) continue;
-      reminders.push({ firm, tab, status, reminderKey });
+      reminders.push({
+        firm,
+        tab,
+        status,
+        nearestScheduledPost: nearestScheduledPost(firm, tab.id, status.dueDate || warsawTodayKey()),
+        reminderKey,
+      });
     }
   }
   return reminders;
@@ -366,6 +387,7 @@ function buildReminderDigest(overdueReminders, scheduledReminders) {
       lines.push(`${index + 1}. ${firmName(firm)}`);
       lines.push(`   Tytul: ${post.title || 'Bez tytulu'}`);
       lines.push(`   Data: ${post.publishDate || warsawTodayKey()}`);
+      lines.push(`   Utworzony: ${post.isCreated ? 'tak' : 'nie'}`);
       if (post.link) lines.push(`   Link: ${post.link}`);
       lines.push('');
     });
@@ -374,11 +396,17 @@ function buildReminderDigest(overdueReminders, scheduledReminders) {
   if (overdueReminders.length) {
     lines.push('Podzakladki wymagajace publikacji:');
     overdueReminders.forEach((reminder, index) => {
-      const { firm, tab, status } = reminder;
+      const { firm, tab, status, nearestScheduledPost: nearestPost } = reminder;
       lines.push(`${index + 1}. ${firmName(firm)} / ${tab.name}`);
       lines.push(`   Czestotliwosc: ${frequencyLabel(tab.frequency)}`);
       lines.push(`   Termin: ${status.dueDate}`);
       lines.push(`   Ostatnia publikacja: ${status.lastPost ? `${status.lastPost.title || 'Bez tytulu'} (${status.lastPost.publishDate})` : 'brak'}`);
+      if (nearestPost) {
+        lines.push(`   Najblizszy zaplanowany post: ${nearestPost.title || 'Bez tytulu'} (${nearestPost.publishDate || 'brak daty'})`);
+        lines.push(`   Utworzony: ${nearestPost.isCreated ? 'tak' : 'nie'}`);
+      } else {
+        lines.push('   Najblizszy zaplanowany post: brak');
+      }
       lines.push('');
     });
   }
