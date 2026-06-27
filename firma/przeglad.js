@@ -2131,6 +2131,7 @@ async function importPostRows(importRows) {
   const tabByName = new Map((firm.postTabs || []).map((tab) => [normalizeImportName(tab.name), tab]));
   let imported = 0;
   let updated = 0;
+  const importedTitles = [];
 
   for (const row of importRows) {
     const tabName = String(importTextValue(row, ['podzakladka', 'podzakładka', 'category']) || '').trim();
@@ -2198,8 +2199,12 @@ async function importPostRows(importRows) {
       ...(firm.posts || []).filter((item) => item.id !== post.id),
       post,
     ];
-    if (existingPost) updated += 1;
-    else imported += 1;
+    if (existingPost) {
+      updated += 1;
+    } else {
+      imported += 1;
+      importedTitles.push(post.title || post.id || 'Bez tytulu');
+    }
   }
 
   firm.updatedAt = now;
@@ -2209,7 +2214,10 @@ async function importPostRows(importRows) {
   }, 'Import postów');
   persistAndFlush();
   render();
-  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}.`);
+  const importedSummary = importedTitles.length
+    ? `\n\nDodane:\n${importedTitles.slice(0, 12).map((title) => `- ${title}`).join('\n')}${importedTitles.length > 12 ? `\n- ... i jeszcze ${importedTitles.length - 12}` : ''}`
+    : '';
+  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}.${importedSummary}`);
 }
 
 async function importPostsFile() {
