@@ -2083,33 +2083,23 @@ function normalizeImportedContentKey(value) {
   return normalizeTopicText(stripEmoji(value)).slice(0, 24).join(' ');
 }
 
-function normalizeImportedLinkKey(value) {
-  const normalized = safePostLink(value);
-  return normalized ? normalized.replace(/\/$/, '').toLowerCase() : '';
-}
-
 function importBooleanValue(value, fallback = false) {
   const raw = String(value ?? '').trim().toLowerCase();
   if (!raw) return Boolean(fallback);
   return ['1', 'true', 'tak', 'yes', 'utworzone', 'utworzony'].includes(raw);
 }
 
-function findImportedPostMatches(firm, tabId, rowPostId, publishDate, content = '', link = '', keywords = []) {
+function findImportedPostMatches(firm, tabId, rowPostId, publishDate, content = '', keywords = []) {
   const posts = firm.posts || [];
   const byId = rowPostId ? posts.find((post) => post.id === rowPostId) : null;
-  if (rowPostId) {
-    if (!content && !link && !keywords.length) return byId ? [byId] : [];
-  }
+  if (byId) return [byId];
   const dateKey = String(publishDate || '').slice(0, 10);
   const contentKey = normalizeImportedContentKey(content);
-  const linkKey = normalizeImportedLinkKey(link);
   const keywordTokens = normalizeKeywordTokens(Array.isArray(keywords) ? keywords.join(', ') : keywords);
   const matches = posts.filter((post) => {
     const postDateKey = String(post.publishDate || '').slice(0, 10);
     const postContentKey = normalizeImportedContentKey(post.content);
-    const postLinkKey = normalizeImportedLinkKey(post.link);
     const keywordMatch = keywordMatchScore(keywordTokens, postKeywordTokens(post));
-    if (linkKey && postLinkKey && linkKey === postLinkKey) return true;
     if (keywordMatch.common && (keywordMatch.exact || keywordMatch.score >= 0.8) && dateKey && postDateKey === dateKey) return true;
     if (keywordMatch.common && (keywordMatch.exact || keywordMatch.score >= 0.8) && contentKey && postContentKey === contentKey) return true;
     return false;
@@ -2141,7 +2131,6 @@ async function importPostRows(importRows) {
   const tabByName = new Map((firm.postTabs || []).map((tab) => [normalizeImportName(tab.name), tab]));
   let imported = 0;
   let updated = 0;
-  const duplicatePostIdsToDelete = new Set();
 
   for (const row of importRows) {
     const tabName = String(importTextValue(row, ['podzakladka', 'podzakładka', 'category']) || '').trim();
@@ -2175,12 +2164,10 @@ async function importPostRows(importRows) {
       rowPostId,
       importedDate || todayKey(),
       importedContent,
-      importedLink,
       importedKeywords,
     );
     const existingPost = existingMatches[0] || null;
     if (!existingPost && !importedTitle && !importedContent && !importedLink) continue;
-    const duplicateIds = new Set(existingMatches.map((postItem) => postItem.id));
     const rowStatus = String(importRowValue(row, ['status']) || '').toLowerCase();
     const status = rowStatus === 'published' || rowStatus === 'opublikowane'
       ? 'published'
@@ -2208,27 +2195,21 @@ async function importPostRows(importRows) {
       updatedAt: now,
     };
     firm.posts = [
-      ...(firm.posts || []).filter((item) => item.id !== post.id && !duplicateIds.has(item.id)),
+      ...(firm.posts || []).filter((item) => item.id !== post.id),
       post,
     ];
-    duplicateIds.forEach((id) => {
-      if (id && id !== post.id) duplicatePostIdsToDelete.add(id);
-    });
     if (existingPost) updated += 1;
     else imported += 1;
   }
 
   firm.updatedAt = now;
   await tryPostCloudWrite(firm, async () => {
-    for (const postId of duplicatePostIdsToDelete) {
-      await deletePostDoc(firm, postId);
-    }
     await savePostTabDocs(firm, firm.postTabs || []);
     await savePostDocs(firm, firm.posts || []);
   }, 'Import postów');
   persistAndFlush();
   render();
-  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}. Scalono duplikatow: ${duplicatePostIdsToDelete.size}.`);
+  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}.`);
 }
 
 async function importPostsFile() {
