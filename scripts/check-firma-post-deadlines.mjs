@@ -7,6 +7,9 @@ const WEB3FORMS_ACCESS_KEY = (process.env.WEB3FORMS_ACCESS_KEY || '').trim().rep
 const REMINDER_EMAIL = (process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com').trim();
 const SMTP_HOST = (process.env.SMTP_HOST || '').trim();
 const SMTP_PORT = Number((process.env.SMTP_PORT || '465').trim());
+const SMTP_SECURE = (process.env.SMTP_SECURE || '').trim()
+  ? !['0', 'false', 'no'].includes((process.env.SMTP_SECURE || '').trim().toLowerCase())
+  : SMTP_PORT === 465;
 const SMTP_USER = (process.env.SMTP_USER || '').trim();
 const SMTP_PASS = (process.env.SMTP_PASS || '').trim().replace(/^['"]|['"]$/g, '');
 const SMTP_FROM = (process.env.SMTP_FROM || SMTP_USER || REMINDER_EMAIL).trim();
@@ -405,15 +408,18 @@ function smtpEscapeData(value) {
 
 async function sendSmtpMail({ subject, message }) {
   const tls = await import('node:tls');
-  const socket = tls.connect({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    servername: SMTP_HOST,
-  });
-  socket.setEncoding('utf8');
-  socket.setTimeout(30000, () => {
-    socket.destroy(new Error('SMTP connection timed out after 30s'));
-  });
+  const net = await import('node:net');
+  let socket;
+  const configureSocket = (nextSocket) => {
+    socket = nextSocket;
+    socket.setEncoding('utf8');
+    socket.setTimeout(30000, () => {
+      socket.destroy(new Error('SMTP connection timed out after 30s'));
+    });
+  };
+  configureSocket(SMTP_SECURE
+    ? tls.connect({ host: SMTP_HOST, port: SMTP_PORT, servername: SMTP_HOST })
+    : net.connect({ host: SMTP_HOST, port: SMTP_PORT }));
 
   let buffer = '';
   const readResponse = () => new Promise((resolve, reject) => {
@@ -448,6 +454,16 @@ async function sendSmtpMail({ subject, message }) {
 
   await command('', /^220/);
   await command('EHLO github-actions');
+  if (!SMTP_SECURE) {
+    await command('STARTTLS', /^220/);
+    const secureSocket = tls.connect({ socket, servername: SMTP_HOST });
+    configureSocket(secureSocket);
+    await new Promise((resolve, reject) => {
+      secureSocket.once('secureConnect', resolve);
+      secureSocket.once('error', reject);
+    });
+    await command('EHLO github-actions');
+  }
   await command('AUTH LOGIN', /^334/);
   await command(Buffer.from(SMTP_USER).toString('base64'), /^334/);
   await command(Buffer.from(SMTP_PASS).toString('base64'), /^235/);
@@ -503,7 +519,7 @@ async function sendReminderDigest(overdueReminders, scheduledReminders) {
   const subject = `Firma - przypomnienia publikacji (${total})`;
 
   if (hasSmtpConfig()) {
-    console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} as ${SMTP_USER}.`);
+    console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} (${SMTP_SECURE ? 'TLS' : 'STARTTLS'}) as ${SMTP_USER}.`);
     await sendSmtpMail({ subject, message });
     return;
   }
