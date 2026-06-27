@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=27';
+} from './storage.js?v=28';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=8';
+} from './post-storage.js?v=9';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=31';
+} from './core.js?v=32';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -83,7 +83,6 @@ const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 let postSearchTimer = null;
 const postCollectionStatus = new Map();
-const DISMISSED_SIMILAR_ALERTS_STORAGE_KEY = 'ijanicki_firma_dismissed_similar_alerts';
 
 function shouldRestoreOverviewContext() {
   const navEntry = performance.getEntriesByType('navigation')[0];
@@ -428,6 +427,23 @@ function postLinkLabel(value) {
   }
 }
 
+async function copyTextToClipboard(text) {
+  const value = String(text || '');
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
 function normalizeTopicText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -436,75 +452,6 @@ function normalizeTopicText(value) {
     .replace(/[^a-z0-9\s-]/g, ' ')
     .split(/\s+/)
     .filter((word) => word.length > 2);
-}
-
-function findSimilarPosts(firm, draft, excludeId = null) {
-  const draftTokens = postKeywordTokens(draft);
-  if (!draftTokens.length) return [];
-
-  return (firm.posts || [])
-    .filter((post) => post.id !== excludeId)
-    .map((post) => {
-      const tokens = postKeywordTokens(post);
-      const match = keywordMatchScore(draftTokens, tokens);
-      return { post, score: match.score, common: match.common };
-    })
-    .filter((item) => item.common >= 2 || item.score >= 0.5)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
-}
-
-function getSimilarAlertKey(post, similar) {
-  const similarSignature = similar
-    .map((item) => `${item.post.id || ''}:${item.post.title || ''}`)
-    .sort()
-    .join('|');
-  return `${post.id || ''}::${similarSignature}`;
-}
-
-function postSimilarityIdentity(post) {
-  const tokens = postKeywordTokens(post).slice(0, 14);
-  return [
-    post.tabId || '',
-    String(post.publishDate || '').slice(0, 10),
-    tokens.join('-') || String(post.title || post.id || 'post').trim().toLowerCase(),
-  ].join(':');
-}
-
-function getSimilarAlertSignature(post, similar) {
-  const similarSignature = similar
-    .map((item) => postSimilarityIdentity(item.post))
-    .sort()
-    .join('|');
-  return `${postSimilarityIdentity(post)}::${similarSignature}`;
-}
-
-function getDismissedSimilarAlerts() {
-  try {
-    return JSON.parse(localStorage.getItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY) || '{}') || {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function isSimilarAlertDismissed(post, similar) {
-  const dismissed = getDismissedSimilarAlerts();
-  const legacyKey = getSimilarAlertKey(post, similar);
-  const signature = getSimilarAlertSignature(post, similar);
-  return Boolean(dismissed[legacyKey])
-    || Boolean(dismissed[signature])
-    || (Array.isArray(post.dismissedSimilarSignatures) && post.dismissedSimilarSignatures.includes(signature));
-}
-
-function rememberDismissedSimilarAlert(key, signature) {
-  const dismissed = getDismissedSimilarAlerts();
-  if (key) dismissed[key] = true;
-  if (signature) dismissed[signature] = true;
-  try {
-    localStorage.setItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY, JSON.stringify(dismissed));
-  } catch (_) {
-    // Prefer leaving the UI responsive over failing because local storage is unavailable.
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1623,10 +1570,6 @@ function renderPostSortControl(activeSort) {
 }
 
 function renderPostCard(firm, post) {
-  const similar = findSimilarPosts(firm, post, post.id);
-  const similarAlertKey = similar.length ? getSimilarAlertKey(post, similar) : '';
-  const similarAlertSignature = similar.length ? getSimilarAlertSignature(post, similar) : '';
-  const showSimilarAlert = similar.length && !isSimilarAlertDismissed(post, similar);
   const preview = String(post.content || '').trim();
   const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
   const postLink = safePostLink(post.link);
@@ -1637,6 +1580,7 @@ function renderPostCard(firm, post) {
           <span class="status-pill ${post.status === 'published' ? 'is-positive' : 'is-muted'}">
             ${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}
           </span>
+          ${post.status !== 'published' && post.isCreated ? '<span class="status-pill is-created">Utworzone</span>' : ''}
           <h4>${escapeHtml(post.title || 'Bez tytulu')}</h4>
         </div>
         <span class="post-date">${formatDate(post.publishDate)}</span>
@@ -1644,15 +1588,8 @@ function renderPostCard(firm, post) {
       <p class="post-preview">${escapeHtml(shortPreview || 'Brak tresci.')}</p>
       ${postLink ? `<a class="post-link-pill" href="${escapeHtml(postLink)}" target="_blank" rel="noopener noreferrer">${icon('link')}<span>${escapeHtml(postLinkLabel(post.link))}</span></a>` : ''}
       ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
-      ${showSimilarAlert ? `
-        <div class="post-similar-alert" role="status">
-          <span>Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</span>
-          <button class="post-similar-dismiss" type="button" data-action="dismiss-similar-alert" data-id="${escapeHtml(post.id)}" data-alert-key="${escapeHtml(similarAlertKey)}" data-alert-signature="${escapeHtml(similarAlertSignature)}" aria-label="Zamknij powiadomienie o podobnych tematach">
-            ${icon('x-circle')}
-          </button>
-        </div>
-      ` : ''}
       <div class="post-card-actions">
+        ${post.status !== 'published' && !post.isCreated ? `<button class="created-post-button" type="button" data-action="mark-post-created" data-id="${post.id}">${icon('check')}UTWORZONE</button>` : ''}
         ${post.status !== 'published' ? `<button class="publish-post-button" type="button" data-action="publish-post" data-id="${post.id}">${icon('cloud-check')}OPUBLIKUJ</button>` : ''}
         <button class="ghost-button" type="button" data-action="preview-post" data-id="${post.id}">${icon('eye')}Podgląd</button>
         <button class="ghost-button" type="button" data-action="edit-post" data-id="${post.id}">${icon('edit')}Edytuj</button>
@@ -1832,19 +1769,6 @@ function openPostTabModal(existing = null) {
   });
 }
 
-function renderSimilarWarningHtml(firm, draft, excludeId) {
-  const similar = findSimilarPosts(firm, draft, excludeId);
-  if (!similar.length) return '';
-  return `
-    <div class="similar-topic-box">
-      <strong>Podobne tematy</strong>
-      ${similar.map((item) => `
-        <p>${escapeHtml(item.post.title || 'Bez tytulu')} <span>${formatDate(item.post.publishDate)}</span></p>
-      `).join('')}
-    </div>
-  `;
-}
-
 function openPostModal(existing = null, template = null) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
@@ -1867,26 +1791,11 @@ function openPostModal(existing = null, template = null) {
         <span>Slowa kluczowe</span>
         <input name="keywords" value="${escapeHtml(postKeywordText(source))}" placeholder="fraza 1, fraza 2, fraza 3" />
       </label>
-      <div id="similarTopicPreview" class="field-span-2">
-        ${renderSimilarWarningHtml(firm, source, existing?.id || null)}
-      </div>
       ${modalActions(existing ? 'Zapisz wpis' : 'Dodaj wpis')}
     </form>
   `);
 
   const form = document.getElementById('postForm');
-  const preview = document.getElementById('similarTopicPreview');
-
-  const updateSimilarPreview = () => {
-    const data = new FormData(form);
-    const draft = {
-      title: String(data.get('title') || ''),
-      keywords: splitKeywords(data.get('keywords')),
-    };
-    preview.innerHTML = renderSimilarWarningHtml(firm, draft, existing?.id || null);
-  };
-  form.querySelector('[name="title"]')?.addEventListener('input', updateSimilarPreview);
-  form.querySelector('[name="keywords"]')?.addEventListener('input', updateSimilarPreview);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1901,6 +1810,7 @@ function openPostModal(existing = null, template = null) {
       id: existing?.id || uid(),
       tabId: String(data.get('tabId') || activeTabId),
       status: String(data.get('status') || 'scheduled') === 'published' ? 'published' : 'scheduled',
+      isCreated: String(data.get('status') || 'scheduled') === 'published' ? false : Boolean(existing?.isCreated),
       publishDate: String(data.get('publishDate') || todayKey()),
       title: String(data.get('title') || '').trim(),
       link,
@@ -1910,11 +1820,6 @@ function openPostModal(existing = null, template = null) {
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
-
-    const similar = findSimilarPosts(firm, post, existing?.id || null);
-    if (similar.length && !confirm(`Znaleziono podobne tematy: ${similar.map((item) => item.post.title || 'Bez tytulu').join(', ')}. Zapisać mimo to?`)) {
-      return;
-    }
 
     await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Zapis wpisu');
     firm.posts = [
@@ -1934,15 +1839,22 @@ function openPostPreview(post) {
   const tab = findPostTab(post.tabId);
   const postLink = safePostLink(post.link);
   openModal('Podglad wpisu', `
-    <div class="post-preview-modal">
+    <div class="post-preview-modal" data-preview-post-id="${escapeHtml(post.id)}">
       <p class="eyebrow">${escapeHtml(tab?.name || 'Posty')}</p>
-      <h3>${escapeHtml(post.title || 'Bez tytulu')}</h3>
+      <div class="post-preview-copy-row">
+        <h3>${escapeHtml(post.title || 'Bez tytulu')}</h3>
+        <button class="ghost-button post-copy-button" type="button" data-action="copy-post-preview-field" data-id="${escapeHtml(post.id)}" data-copy-field="title">${icon('copy')}Kopiuj tytuł</button>
+      </div>
       <div class="post-preview-meta">
         <span>${post.status === 'published' ? 'Opublikowane' : 'Zaplanowane'}</span>
         <span>${formatDate(post.publishDate)}</span>
       </div>
       ${post.keywords?.length ? `<div class="keyword-row">${post.keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>` : ''}
       ${postLink ? `<a class="post-link-pill" href="${escapeHtml(postLink)}" target="_blank" rel="noopener noreferrer">${icon('link')}<span>${escapeHtml(postLinkLabel(post.link))}</span></a>` : ''}
+      <div class="post-preview-copy-row">
+        <strong>Treść</strong>
+        <button class="ghost-button post-copy-button" type="button" data-action="copy-post-preview-field" data-id="${escapeHtml(post.id)}" data-copy-field="content">${icon('copy')}Kopiuj treść</button>
+      </div>
       <div class="post-full-content">${escapeHtml(post.content || 'Brak tresci.').replace(/\n/g, '<br>')}</div>
     </div>
   `);
@@ -1961,6 +1873,7 @@ function postExportRows(firm) {
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: '',
+        utworzone: '',
         data: '',
         tytul: '',
         id: '',
@@ -1979,6 +1892,7 @@ function postExportRows(firm) {
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: post.status,
+        utworzone: post.status !== 'published' && post.isCreated ? 'tak' : '',
         data: post.publishDate,
         tytul: stripEmoji(post.title),
         id: post.id || '',
@@ -2011,7 +1925,7 @@ function csvEscape(value) {
 function exportPostsCsv() {
   const firm = getSelectedFirm(state);
   if (!firm) return;
-  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const csv = '\ufeff' + [
     headers.join(','),
@@ -2021,8 +1935,8 @@ function exportPostsCsv() {
 }
 
 function exportPostsExcelFallback(firm) {
-  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
-  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Utworzone', 'Data', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
+  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const html = `
     <html><head><meta charset="utf-8"></head><body>
@@ -2174,6 +2088,12 @@ function normalizeImportedLinkKey(value) {
   return normalized ? normalized.replace(/\/$/, '').toLowerCase() : '';
 }
 
+function importBooleanValue(value, fallback = false) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return Boolean(fallback);
+  return ['1', 'true', 'tak', 'yes', 'utworzone', 'utworzony'].includes(raw);
+}
+
 function findImportedPostMatches(firm, tabId, rowPostId, publishDate, content = '', link = '', keywords = []) {
   const posts = firm.posts || [];
   const byId = rowPostId ? posts.find((post) => post.id === rowPostId) : null;
@@ -2257,10 +2177,14 @@ async function importPostRows(importRows) {
       : rowStatus === 'scheduled' || rowStatus === 'zaplanowane'
         ? 'scheduled'
         : (existingPost?.status || 'scheduled');
+    const isCreated = status === 'published'
+      ? false
+      : importBooleanValue(importRowValue(row, ['utworzone', 'utworzony', 'created', 'isCreated']), existingPost?.isCreated);
     const post = {
       id: existingPost?.id || rowPostId || uid(),
       tabId: tab.id,
       status,
+      isCreated,
       publishDate,
       title,
       link,
@@ -3232,22 +3156,35 @@ async function handleClick(event) {
   if (action === 'add-post') return openPostModal();
   if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
   if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
-  if (action === 'dismiss-similar-alert') {
+  if (action === 'copy-post-preview-field') {
     const post = findPost(target.dataset.id);
-    const key = target.dataset.alertKey;
-    const signature = target.dataset.alertSignature;
-    if (!key && !signature) return;
-    rememberDismissedSimilarAlert(key, signature);
-    if (firm && post && signature) {
-      post.dismissedSimilarSignatures = Array.from(new Set([
-        ...(post.dismissedSimilarSignatures || []),
-        signature,
-      ]));
-      post.updatedAt = new Date().toISOString();
-      firm.updatedAt = post.updatedAt;
-      await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Pominięcie podobieństwa wpisu');
-      persistAndFlush();
+    if (!post) return;
+    const text = target.dataset.copyField === 'title' ? post.title : post.content;
+    try {
+      await copyTextToClipboard(text || '');
+      const original = target.innerHTML;
+      target.classList.add('is-copied');
+      target.innerHTML = `${icon('check')}Skopiowano`;
+      setTimeout(() => {
+        if (target.isConnected) {
+          target.innerHTML = original;
+          target.classList.remove('is-copied');
+        }
+      }, 1200);
+    } catch (_) {
+      alert('Nie udało się skopiować tekstu.');
     }
+    return;
+  }
+  if (action === 'mark-post-created') {
+    const post = findPost(target.dataset.id);
+    if (!firm || !post) return;
+    if (post.status === 'published' || post.isCreated) return;
+    post.isCreated = true;
+    post.updatedAt = new Date().toISOString();
+    firm.updatedAt = post.updatedAt;
+    await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Oznaczenie wpisu jako utworzony');
+    persistAndFlush();
     return render();
   }
   if (action === 'publish-post') {
@@ -3255,6 +3192,7 @@ async function handleClick(event) {
     if (!firm || !post) return;
     if (post.status === 'published') return;
     post.status = 'published';
+    post.isCreated = false;
     post.publishDate = todayKey();
     post.updatedAt = new Date().toISOString();
     firm.updatedAt = post.updatedAt;

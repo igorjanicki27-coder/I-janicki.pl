@@ -50,6 +50,7 @@ function normalizePost(post, now = currentIso()) {
     firmId: post.firmId || '',
     tabId: post.tabId || '',
     status: post.status === 'published' ? 'published' : 'scheduled',
+    isCreated: post.status === 'published' ? false : Boolean(post.isCreated),
     publishDate: post.publishDate || post.date || now.slice(0, 10),
     title: post.title || '',
     link: post.link || post.url || '',
