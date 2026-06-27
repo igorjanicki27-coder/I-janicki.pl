@@ -2160,16 +2160,26 @@ async function importPostRows(importRows) {
       tabByName.set(normalizeImportName(tab.name), tab);
     }
 
-    const title = String(importTextValue(row, ['tytul', 'tytuł']) || '').trim();
-    const link = normalizePostLink(importTextValue(row, ['link', 'url', 'adres url', 'link do publikacji']));
-    if (link && !safePostLink(link)) continue;
-    const content = String(importTextValue(row, ['tresc', 'treść']) || '').trim();
-    if (!title && !content) continue;
-    const publishDate = String(importRowValue(row, ['data', 'date']) || todayKey()).slice(0, 10);
     const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu']) || '').trim();
-    const keywords = splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords']));
-    const existingMatches = findImportedPostMatches(firm, tab.id, rowPostId, publishDate, content, link, keywords);
+    const importedTitle = String(importTextValue(row, ['tytul', 'tytuł']) || '').trim();
+    const importedLinkRaw = importTextValue(row, ['link', 'url', 'adres url', 'link do publikacji']);
+    const importedLink = importedLinkRaw ? normalizePostLink(importedLinkRaw) : '';
+    if (importedLink && !safePostLink(importedLink)) continue;
+    const importedContent = String(importTextValue(row, ['tresc', 'treść']) || '').trim();
+    const importedDate = String(importRowValue(row, ['data', 'date']) || '').slice(0, 10);
+    const importedKeywords = splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords']));
+    if (!rowPostId && !importedTitle && !importedContent && !importedLink) continue;
+    const existingMatches = findImportedPostMatches(
+      firm,
+      tab.id,
+      rowPostId,
+      importedDate || todayKey(),
+      importedContent,
+      importedLink,
+      importedKeywords,
+    );
     const existingPost = existingMatches[0] || null;
+    if (!existingPost && !importedTitle && !importedContent && !importedLink) continue;
     const duplicateIds = new Set(existingMatches.map((postItem) => postItem.id));
     const rowStatus = String(importRowValue(row, ['status']) || '').toLowerCase();
     const status = rowStatus === 'published' || rowStatus === 'opublikowane'
@@ -2185,11 +2195,11 @@ async function importPostRows(importRows) {
       tabId: tab.id,
       status,
       isCreated,
-      publishDate,
-      title,
-      link,
-      content,
-      keywords,
+      publishDate: importedDate || existingPost?.publishDate || todayKey(),
+      title: importedTitle || existingPost?.title || '',
+      link: importedLink || existingPost?.link || '',
+      content: importedContent || existingPost?.content || '',
+      keywords: importedKeywords.length ? importedKeywords : (existingPost?.keywords || []),
       dismissedSimilarSignatures: dismissedSimilarSignaturesFromImport(
         importRowValue(row, ['pominiete_podobienstwa', 'pominiete podobienstwa', 'pominięte podobieństwa', 'dismissedSimilarSignatures']),
         existingPost?.dismissedSimilarSignatures || [],
