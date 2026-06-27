@@ -2920,11 +2920,11 @@ svg {
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  color: #ffe5b8;
+  color: #68410a;
   font-size: 0.82rem;
   line-height: 1.45;
-  background: rgba(245, 184, 90, 0.11);
-  border: 1px solid rgba(245, 184, 90, 0.28);
+  background: rgba(245, 184, 90, 0.16);
+  border: 1px solid rgba(212, 137, 32, 0.34);
 }
 
 .post-similar-alert {
@@ -2947,18 +2947,18 @@ svg {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border: 1px solid rgba(245, 184, 90, 0.3);
+  border: 1px solid rgba(212, 137, 32, 0.45);
   border-radius: 999px;
-  color: #ffe5b8;
-  background: rgba(245, 184, 90, 0.08);
+  color: #8a5a12;
+  background: rgba(255, 250, 240, 0.72);
   cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
 .post-similar-dismiss:hover,
 .post-similar-dismiss:focus-visible {
-  background: rgba(245, 184, 90, 0.18);
-  border-color: rgba(245, 184, 90, 0.55);
+  background: rgba(245, 184, 90, 0.25);
+  border-color: rgba(172, 103, 12, 0.62);
   transform: translateY(-1px);
   outline: none;
 }

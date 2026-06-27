@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=26';
+} from './storage.js?v=27';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=7';
+} from './post-storage.js?v=8';
 import {
   icon,
   escapeHtml,
@@ -358,7 +358,7 @@ function getPostTabStatus(firm, tab) {
 }
 
 function splitKeywords(value) {
-  return String(value || '')
+  return stripEmoji(String(value || ''))
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
@@ -366,6 +366,16 @@ function splitKeywords(value) {
 
 function postKeywordText(post) {
   return Array.isArray(post.keywords) ? post.keywords.join(', ') : String(post.keywords || '');
+}
+
+function stripEmoji(value) {
+  return String(value || '')
+    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\uFE0E\uFE0F\u200D]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
 }
 
 function normalizePostLink(value) {
@@ -430,6 +440,23 @@ function getSimilarAlertKey(post, similar) {
   return `${post.id || ''}::${similarSignature}`;
 }
 
+function postSimilarityIdentity(post) {
+  const tokens = normalizeTopicText(`${post.title || ''} ${postKeywordText(post)}`).slice(0, 14);
+  return [
+    post.tabId || '',
+    String(post.publishDate || '').slice(0, 10),
+    tokens.join('-') || String(post.title || post.id || 'post').trim().toLowerCase(),
+  ].join(':');
+}
+
+function getSimilarAlertSignature(post, similar) {
+  const similarSignature = similar
+    .map((item) => postSimilarityIdentity(item.post))
+    .sort()
+    .join('|');
+  return `${postSimilarityIdentity(post)}::${similarSignature}`;
+}
+
 function getDismissedSimilarAlerts() {
   try {
     return JSON.parse(localStorage.getItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY) || '{}') || {};
@@ -439,14 +466,18 @@ function getDismissedSimilarAlerts() {
 }
 
 function isSimilarAlertDismissed(post, similar) {
-  const key = getSimilarAlertKey(post, similar);
-  return Boolean(getDismissedSimilarAlerts()[key]);
+  const dismissed = getDismissedSimilarAlerts();
+  const legacyKey = getSimilarAlertKey(post, similar);
+  const signature = getSimilarAlertSignature(post, similar);
+  return Boolean(dismissed[legacyKey])
+    || Boolean(dismissed[signature])
+    || (Array.isArray(post.dismissedSimilarSignatures) && post.dismissedSimilarSignatures.includes(signature));
 }
 
-function dismissSimilarAlert(key) {
-  if (!key) return;
+function rememberDismissedSimilarAlert(key, signature) {
   const dismissed = getDismissedSimilarAlerts();
-  dismissed[key] = true;
+  if (key) dismissed[key] = true;
+  if (signature) dismissed[signature] = true;
   try {
     localStorage.setItem(DISMISSED_SIMILAR_ALERTS_STORAGE_KEY, JSON.stringify(dismissed));
   } catch (_) {
@@ -1523,6 +1554,7 @@ function postMatchesSearch(post, query) {
 function renderPostCard(firm, post) {
   const similar = findSimilarPosts(firm, post, post.id);
   const similarAlertKey = similar.length ? getSimilarAlertKey(post, similar) : '';
+  const similarAlertSignature = similar.length ? getSimilarAlertSignature(post, similar) : '';
   const showSimilarAlert = similar.length && !isSimilarAlertDismissed(post, similar);
   const preview = String(post.content || '').trim();
   const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
@@ -1544,7 +1576,7 @@ function renderPostCard(firm, post) {
       ${showSimilarAlert ? `
         <div class="post-similar-alert" role="status">
           <span>Podobne tematy: ${similar.map((item) => escapeHtml(item.post.title || 'Bez tytulu')).join(', ')}</span>
-          <button class="post-similar-dismiss" type="button" data-action="dismiss-similar-alert" data-alert-key="${escapeHtml(similarAlertKey)}" aria-label="Zamknij powiadomienie o podobnych tematach">
+          <button class="post-similar-dismiss" type="button" data-action="dismiss-similar-alert" data-id="${escapeHtml(post.id)}" data-alert-key="${escapeHtml(similarAlertKey)}" data-alert-signature="${escapeHtml(similarAlertSignature)}" aria-label="Zamknij powiadomienie o podobnych tematach">
             ${icon('x-circle')}
           </button>
         </div>
@@ -1790,6 +1822,7 @@ function openPostModal(existing = null, template = null) {
       link,
       content: String(data.get('content') || '').trim(),
       keywords: splitKeywords(data.get('keywords')),
+      dismissedSimilarSignatures: existing?.dismissedSimilarSignatures || [],
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
@@ -1838,29 +1871,37 @@ function postExportRows(firm) {
     const posts = postsForTab(firm, tab.id);
     if (!posts.length) {
       rows.push({
-        podzakladka: tab.name,
+        firma_id: firm.id || '',
+        firma_nazwa: stripEmoji(firmDisplayName(firm)),
+        podzakladka: stripEmoji(tab.name),
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: '',
         data: '',
         tytul: '',
+        id: '',
         link: '',
         tresc: '',
         slowa_kluczowe: '',
+        pominiete_podobienstwa: '',
       });
       continue;
     }
     for (const post of posts) {
       rows.push({
-        podzakladka: tab.name,
+        firma_id: firm.id || '',
+        firma_nazwa: stripEmoji(firmDisplayName(firm)),
+        podzakladka: stripEmoji(tab.name),
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: post.status,
         data: post.publishDate,
-        tytul: post.title,
-        link: post.link || '',
-        tresc: post.content,
-        slowa_kluczowe: postKeywordText(post),
+        tytul: stripEmoji(post.title),
+        id: post.id || '',
+        link: stripEmoji(post.link || ''),
+        tresc: stripEmoji(post.content),
+        slowa_kluczowe: stripEmoji(postKeywordText(post)),
+        pominiete_podobienstwa: JSON.stringify(post.dismissedSimilarSignatures || []),
       });
     }
   }
@@ -1886,7 +1927,7 @@ function csvEscape(value) {
 function exportPostsCsv() {
   const firm = getSelectedFirm(state);
   if (!firm) return;
-  const headers = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'link', 'tresc', 'slowa_kluczowe'];
+  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const csv = '\ufeff' + [
     headers.join(','),
@@ -1896,8 +1937,8 @@ function exportPostsCsv() {
 }
 
 function exportPostsExcelFallback(firm) {
-  const headers = ['Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'Link', 'Tresc', 'Slowa kluczowe'];
-  const keys = ['podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'link', 'tresc', 'slowa_kluczowe'];
+  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Data', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
+  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const html = `
     <html><head><meta charset="utf-8"></head><body>
@@ -1972,7 +2013,7 @@ function parseCsv(text) {
 
 function rowsToPostImport(records) {
   if (!records.length) return [];
-  const headers = records[0].map((header) => String(header || '').trim().toLowerCase());
+  const headers = records[0].map((header) => String(header || '').replace(/^\ufeff/, '').trim().toLowerCase());
   return records.slice(1).map((row) => {
     const obj = {};
     headers.forEach((header, index) => {
@@ -1982,61 +2023,198 @@ function rowsToPostImport(records) {
   });
 }
 
+function importRowValue(row, keys) {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+      return row[key];
+    }
+  }
+  return '';
+}
+
+function importTextValue(row, keys) {
+  return stripEmoji(importRowValue(row, keys));
+}
+
+function normalizeImportName(value) {
+  return stripEmoji(value).toLowerCase().replace(/\s+/g, ' ');
+}
+
+function validatePostImportOwner(firm, rows) {
+  const firmIds = Array.from(new Set(rows
+    .map((row) => String(importRowValue(row, ['firma_id', 'firma id', 'firm_id', 'id firmy']) || '').trim())
+    .filter(Boolean)));
+  const firmNames = Array.from(new Set(rows
+    .map((row) => String(importRowValue(row, ['firma_nazwa', 'firma nazwa', 'firm_name', 'nazwa firmy']) || '').trim())
+    .filter(Boolean)));
+  const currentName = firmDisplayName(firm);
+
+  if (firmIds.some((firmId) => firmId !== firm.id)) {
+    const source = firmNames[0] ? `"${firmNames[0]}"` : `ID: ${firmIds[0]}`;
+    alert(`Ten plik wygląda na eksport dla innej firmy (${source}). Jesteś teraz w firmie "${currentName}". Import został przerwany.`);
+    return false;
+  }
+
+  if (!firmIds.length) {
+    if (firmNames.length && !firmNames.some((name) => normalizeImportName(name) === normalizeImportName(currentName))) {
+      return confirm(`Ten plik nie ma technicznego ID firmy, ale nazwa w pliku to "${firmNames[0]}", a obecna firma to "${currentName}". Czy na pewno chcesz kontynuować import?`);
+    }
+    return confirm(`Ten plik nie ma technicznego ID firmy, więc nie mogę w 100% potwierdzić, że należy do "${currentName}". Kontynuować import?`);
+  }
+
+  return true;
+}
+
+function dismissedSimilarSignaturesFromImport(value, fallback = []) {
+  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+  const raw = String(value || '').trim();
+  if (!raw) return [...fallback];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item || '').trim()).filter(Boolean);
+  } catch (_) {
+    // Keep compatibility with hand-edited sheets.
+  }
+  return raw
+    .split(/\s*;;\s*|\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeImportedTitleKey(value) {
+  return normalizeTopicText(stripEmoji(value)).join(' ');
+}
+
+function normalizeImportedContentKey(value) {
+  return normalizeTopicText(stripEmoji(value)).slice(0, 24).join(' ');
+}
+
+function normalizeImportedLinkKey(value) {
+  const normalized = safePostLink(value);
+  return normalized ? normalized.replace(/\/$/, '').toLowerCase() : '';
+}
+
+function findImportedPostMatches(firm, tabId, rowPostId, title, publishDate, content = '', link = '') {
+  const posts = firm.posts || [];
+  const byId = rowPostId ? posts.find((post) => post.id === rowPostId) : null;
+  if (rowPostId) {
+    if (!title && !content && !link) return byId ? [byId] : [];
+  }
+  const titleKey = normalizeImportedTitleKey(title);
+  const dateKey = String(publishDate || '').slice(0, 10);
+  const contentKey = normalizeImportedContentKey(content);
+  const linkKey = normalizeImportedLinkKey(link);
+  const matches = posts.filter((post) => {
+    const postTitleKey = normalizeImportedTitleKey(post.title);
+    const postDateKey = String(post.publishDate || '').slice(0, 10);
+    const postContentKey = normalizeImportedContentKey(post.content);
+    const postLinkKey = normalizeImportedLinkKey(post.link);
+    if (linkKey && postLinkKey && linkKey === postLinkKey) return true;
+    if (titleKey && postTitleKey === titleKey && dateKey && postDateKey === dateKey) return true;
+    if (titleKey && postTitleKey === titleKey && contentKey && postContentKey === contentKey) return true;
+    if (contentKey && postContentKey === contentKey && dateKey && postDateKey === dateKey) return true;
+    return false;
+  });
+
+  const uniqueMatches = [...(byId ? [byId] : []), ...matches]
+    .filter((post, index, list) => list.findIndex((item) => item.id === post.id) === index);
+
+  return uniqueMatches.sort((a, b) => {
+    if (byId) {
+      if (a.id === byId.id) return -1;
+      if (b.id === byId.id) return 1;
+    }
+    const aSameTab = a.tabId === tabId ? 1 : 0;
+    const bSameTab = b.tabId === tabId ? 1 : 0;
+    if (aSameTab !== bSameTab) return bSameTab - aSameTab;
+    const aSameDate = String(a.publishDate || '').slice(0, 10) === dateKey ? 1 : 0;
+    const bSameDate = String(b.publishDate || '').slice(0, 10) === dateKey ? 1 : 0;
+    return bSameDate - aSameDate;
+  });
+}
+
 async function importPostRows(importRows) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
+  if (!importRows.length) return;
+  if (!validatePostImportOwner(firm, importRows)) return;
   const now = new Date().toISOString();
-  const tabByName = new Map((firm.postTabs || []).map((tab) => [tab.name.toLowerCase(), tab]));
+  const tabByName = new Map((firm.postTabs || []).map((tab) => [normalizeImportName(tab.name), tab]));
   let imported = 0;
+  let updated = 0;
+  const duplicatePostIdsToDelete = new Set();
 
   for (const row of importRows) {
-    const tabName = String(row.podzakladka || row['podzakładka'] || row.category || '').trim();
+    const tabName = String(importTextValue(row, ['podzakladka', 'podzakładka', 'category']) || '').trim();
     if (!tabName) continue;
-    let tab = tabByName.get(tabName.toLowerCase());
+    let tab = tabByName.get(normalizeImportName(tabName));
     if (!tab) {
       tab = {
         id: uid(),
         name: tabName,
-        frequency: String(row.czestotliwosc || row['częstotliwość'] || 'monthly'),
-        startDate: String(row.data_poczatkowa || row['data poczatkowa'] || row['data początkowa'] || todayKey()),
+        frequency: String(importRowValue(row, ['czestotliwosc', 'częstotliwość']) || 'monthly'),
+        startDate: String(importRowValue(row, ['data_poczatkowa', 'data poczatkowa', 'data początkowa']) || todayKey()),
         createdAt: now,
         updatedAt: now,
       };
       firm.postTabs = [...(firm.postTabs || []), tab];
-      tabByName.set(tab.name.toLowerCase(), tab);
+      tabByName.set(normalizeImportName(tab.name), tab);
     }
 
-    const title = String(row.tytul || row['tytuł'] || '').trim();
-    const link = normalizePostLink(row.link || row.url || row['adres url'] || row['link do publikacji']);
+    const title = String(importTextValue(row, ['tytul', 'tytuł']) || '').trim();
+    const link = normalizePostLink(importTextValue(row, ['link', 'url', 'adres url', 'link do publikacji']));
     if (link && !safePostLink(link)) continue;
-    const content = String(row.tresc || row['treść'] || '').trim();
+    const content = String(importTextValue(row, ['tresc', 'treść']) || '').trim();
     if (!title && !content) continue;
+    const publishDate = String(importRowValue(row, ['data', 'date']) || todayKey()).slice(0, 10);
+    const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu']) || '').trim();
+    const existingMatches = findImportedPostMatches(firm, tab.id, rowPostId, title, publishDate, content, link);
+    const existingPost = existingMatches[0] || null;
+    const duplicateIds = new Set(existingMatches.map((postItem) => postItem.id));
+    const rowStatus = String(importRowValue(row, ['status']) || '').toLowerCase();
+    const status = rowStatus === 'published' || rowStatus === 'opublikowane'
+      ? 'published'
+      : rowStatus === 'scheduled' || rowStatus === 'zaplanowane'
+        ? 'scheduled'
+        : (existingPost?.status || 'scheduled');
+    const post = {
+      id: existingPost?.id || rowPostId || uid(),
+      tabId: tab.id,
+      status,
+      publishDate,
+      title,
+      link,
+      content,
+      keywords: splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords'])),
+      dismissedSimilarSignatures: dismissedSimilarSignaturesFromImport(
+        importRowValue(row, ['pominiete_podobienstwa', 'pominiete podobienstwa', 'pominięte podobieństwa', 'dismissedSimilarSignatures']),
+        existingPost?.dismissedSimilarSignatures || [],
+      ),
+      createdAt: existingPost?.createdAt || now,
+      updatedAt: now,
+    };
     firm.posts = [
-      ...(firm.posts || []),
-      {
-        id: uid(),
-        tabId: tab.id,
-        status: String(row.status || 'scheduled') === 'published' || String(row.status || '').toLowerCase() === 'opublikowane' ? 'published' : 'scheduled',
-        publishDate: String(row.data || row.date || todayKey()).slice(0, 10),
-        title,
-        link,
-        content,
-        keywords: splitKeywords(row.slowa_kluczowe || row['slowa kluczowe'] || row['słowa kluczowe'] || row.keywords),
-        createdAt: now,
-        updatedAt: now,
-      },
+      ...(firm.posts || []).filter((item) => item.id !== post.id && !duplicateIds.has(item.id)),
+      post,
     ];
-    imported += 1;
+    duplicateIds.forEach((id) => {
+      if (id && id !== post.id) duplicatePostIdsToDelete.add(id);
+    });
+    if (existingPost) updated += 1;
+    else imported += 1;
   }
 
   firm.updatedAt = now;
   await tryPostCloudWrite(firm, async () => {
+    for (const postId of duplicatePostIdsToDelete) {
+      await deletePostDoc(firm, postId);
+    }
     await savePostTabDocs(firm, firm.postTabs || []);
     await savePostDocs(firm, firm.posts || []);
   }, 'Import postów');
   persistAndFlush();
   render();
-  alert(`Import zakonczony. Dodano wpisow: ${imported}.`);
+  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}. Scalono duplikatow: ${duplicatePostIdsToDelete.size}.`);
 }
 
 async function importPostsFile() {
@@ -2961,9 +3139,21 @@ async function handleClick(event) {
   if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
   if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
   if (action === 'dismiss-similar-alert') {
+    const post = findPost(target.dataset.id);
     const key = target.dataset.alertKey;
-    if (!key) return;
-    dismissSimilarAlert(key);
+    const signature = target.dataset.alertSignature;
+    if (!key && !signature) return;
+    rememberDismissedSimilarAlert(key, signature);
+    if (firm && post && signature) {
+      post.dismissedSimilarSignatures = Array.from(new Set([
+        ...(post.dismissedSimilarSignatures || []),
+        signature,
+      ]));
+      post.updatedAt = new Date().toISOString();
+      firm.updatedAt = post.updatedAt;
+      await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Pominięcie podobieństwa wpisu');
+      persistAndFlush();
+    }
     return render();
   }
   if (action === 'publish-post') {

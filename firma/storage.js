@@ -300,6 +300,9 @@ function normalizeFirm(firm) {
       keywords: Array.isArray(post.keywords)
         ? post.keywords.map((item) => String(item || '').trim()).filter(Boolean)
         : String(post.keywords || '').split(',').map((item) => item.trim()).filter(Boolean),
+      dismissedSimilarSignatures: ensureArray(post.dismissedSimilarSignatures)
+        .map((item) => String(item || '').trim())
+        .filter(Boolean),
       reminderKeys: ensureArray(post.reminderKeys),
       createdAt: post.createdAt || now,
       updatedAt: post.updatedAt || now,

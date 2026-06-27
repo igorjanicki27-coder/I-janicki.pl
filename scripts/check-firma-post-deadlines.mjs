@@ -406,7 +406,7 @@ function smtpEscapeData(value) {
     .replace(/^\./gm, '..');
 }
 
-async function sendSmtpMail({ subject, message }) {
+async function sendSmtpMail({ subject, message, host = SMTP_HOST, port = SMTP_PORT, secure = SMTP_SECURE }) {
   const tls = await import('node:tls');
   const net = await import('node:net');
   let socket;
@@ -417,9 +417,9 @@ async function sendSmtpMail({ subject, message }) {
       socket.destroy(new Error('SMTP connection timed out after 30s'));
     });
   };
-  configureSocket(SMTP_SECURE
-    ? tls.connect({ host: SMTP_HOST, port: SMTP_PORT, servername: SMTP_HOST })
-    : net.connect({ host: SMTP_HOST, port: SMTP_PORT }));
+  configureSocket(secure
+    ? tls.connect({ host, port, servername: host })
+    : net.connect({ host, port }));
 
   let buffer = '';
   const readResponse = () => new Promise((resolve, reject) => {
@@ -454,9 +454,9 @@ async function sendSmtpMail({ subject, message }) {
 
   await command('', /^220/);
   await command('EHLO github-actions');
-  if (!SMTP_SECURE) {
+  if (!secure) {
     await command('STARTTLS', /^220/);
-    const secureSocket = tls.connect({ socket, servername: SMTP_HOST });
+    const secureSocket = tls.connect({ socket, servername: host });
     configureSocket(secureSocket);
     await new Promise((resolve, reject) => {
       secureSocket.once('secureConnect', resolve);
@@ -520,7 +520,14 @@ async function sendReminderDigest(overdueReminders, scheduledReminders) {
 
   if (hasSmtpConfig()) {
     console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} (${SMTP_SECURE ? 'TLS' : 'STARTTLS'}) as ${SMTP_USER}.`);
-    await sendSmtpMail({ subject, message });
+    try {
+      await sendSmtpMail({ subject, message });
+    } catch (error) {
+      const canRetryStartTls = SMTP_SECURE && SMTP_PORT !== 587 && /timed out|timeout|ETIMEDOUT/i.test(String(error?.message || error));
+      if (!canRetryStartTls) throw error;
+      console.warn(`SMTP TLS attempt failed: ${error.message}. Retrying ${SMTP_HOST}:587 (STARTTLS).`);
+      await sendSmtpMail({ subject, message, host: SMTP_HOST, port: 587, secure: false });
+    }
     return;
   }
 

@@ -57,6 +57,9 @@ function normalizePost(post, now = currentIso()) {
     keywords: Array.isArray(post.keywords)
       ? post.keywords.map((item) => String(item || '').trim()).filter(Boolean)
       : String(post.keywords || '').split(',').map((item) => item.trim()).filter(Boolean),
+    dismissedSimilarSignatures: Array.isArray(post.dismissedSimilarSignatures)
+      ? post.dismissedSimilarSignatures.map((item) => String(item || '').trim()).filter(Boolean)
+      : [],
     createdAt: post.createdAt || now,
     updatedAt: post.updatedAt || now,
   };
