@@ -2122,6 +2122,45 @@ function findImportedPostMatches(firm, tabId, rowPostId, publishDate, content = 
   });
 }
 
+function normalizeImportCompareValue(value) {
+  return String(value ?? '').replace(/\r\n/g, '\n').trim();
+}
+
+function normalizeImportCompareList(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => normalizeImportCompareValue(item))
+    .filter(Boolean)
+    .sort();
+}
+
+function sameImportList(left, right) {
+  const leftList = normalizeImportCompareList(left);
+  const rightList = normalizeImportCompareList(right);
+  return leftList.length === rightList.length && leftList.every((item, index) => item === rightList[index]);
+}
+
+function postImportChanges(before, after) {
+  if (!before) return [];
+  const checks = [
+    ['status', 'status', before.status, after.status],
+    ['isCreated', 'utworzone', before.isCreated ? 'tak' : 'nie', after.isCreated ? 'tak' : 'nie'],
+    ['publishDate', 'data', before.publishDate, after.publishDate],
+    ['title', 'tytuł', before.title, after.title],
+    ['link', 'link', before.link, after.link],
+    ['content', 'treść', before.content, after.content],
+  ];
+  const changes = checks
+    .filter(([, , oldValue, newValue]) => normalizeImportCompareValue(oldValue) !== normalizeImportCompareValue(newValue))
+    .map(([, label]) => label);
+  if (!sameImportList(before.keywords, after.keywords)) changes.push('słowa kluczowe');
+  return changes;
+}
+
+function importSummaryList(title, items) {
+  if (!items.length) return '';
+  return `\n\n${title}:\n${items.slice(0, 12).map((item) => `- ${item}`).join('\n')}${items.length > 12 ? `\n- ... i jeszcze ${items.length - 12}` : ''}`;
+}
+
 async function importPostRows(importRows) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
@@ -2131,7 +2170,11 @@ async function importPostRows(importRows) {
   const tabByName = new Map((firm.postTabs || []).map((tab) => [normalizeImportName(tab.name), tab]));
   let imported = 0;
   let updated = 0;
+  let unchanged = 0;
   const importedTitles = [];
+  const updatedTitles = [];
+  let hasChanges = false;
+  let createdTabs = 0;
 
   for (const row of importRows) {
     const tabName = String(importTextValue(row, ['podzakladka', 'podzakładka', 'category']) || '').trim();
@@ -2148,6 +2191,8 @@ async function importPostRows(importRows) {
       };
       firm.postTabs = [...(firm.postTabs || []), tab];
       tabByName.set(normalizeImportName(tab.name), tab);
+      createdTabs += 1;
+      hasChanges = true;
     }
 
     const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu']) || '').trim();
@@ -2195,29 +2240,37 @@ async function importPostRows(importRows) {
       createdAt: existingPost?.createdAt || now,
       updatedAt: now,
     };
+    const changes = existingPost ? postImportChanges(existingPost, post) : [];
+    if (existingPost && !changes.length) {
+      unchanged += 1;
+      continue;
+    }
     firm.posts = [
       ...(firm.posts || []).filter((item) => item.id !== post.id),
       post,
     ];
+    hasChanges = true;
     if (existingPost) {
       updated += 1;
+      updatedTitles.push(`${post.title || post.id || 'Bez tytulu'} (${changes.join(', ')})`);
     } else {
       imported += 1;
       importedTitles.push(post.title || post.id || 'Bez tytulu');
     }
   }
 
-  firm.updatedAt = now;
-  await tryPostCloudWrite(firm, async () => {
-    await savePostTabDocs(firm, firm.postTabs || []);
-    await savePostDocs(firm, firm.posts || []);
-  }, 'Import postów');
-  persistAndFlush();
-  render();
-  const importedSummary = importedTitles.length
-    ? `\n\nDodane:\n${importedTitles.slice(0, 12).map((title) => `- ${title}`).join('\n')}${importedTitles.length > 12 ? `\n- ... i jeszcze ${importedTitles.length - 12}` : ''}`
-    : '';
-  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}.${importedSummary}`);
+  if (hasChanges) {
+    firm.updatedAt = now;
+    await tryPostCloudWrite(firm, async () => {
+      await savePostTabDocs(firm, firm.postTabs || []);
+      await savePostDocs(firm, firm.posts || []);
+    }, 'Import postów');
+    persistAndFlush();
+    render();
+  }
+  const importedSummary = importSummaryList('Dodane', importedTitles);
+  const updatedSummary = importSummaryList('Zmienione', updatedTitles);
+  alert(`Import zakonczony. Dodano wpisow: ${imported}. Zaktualizowano: ${updated}. Bez zmian: ${unchanged}. Nowe podzakladki: ${createdTabs}.${importedSummary}${updatedSummary}`);
 }
 
 async function importPostsFile() {
