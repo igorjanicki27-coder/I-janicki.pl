@@ -2139,6 +2139,27 @@ function sameImportList(left, right) {
   return leftList.length === rightList.length && leftList.every((item, index) => item === rightList[index]);
 }
 
+function shortImportValue(value, maxLength = 80) {
+  const text = normalizeImportCompareValue(value).replace(/\s+/g, ' ');
+  if (!text) return 'puste';
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function importFieldChangeSummary(label, oldValue, newValue) {
+  if (label === 'treść') {
+    return `${label}: ${String(oldValue || '').length} -> ${String(newValue || '').length} znaków`;
+  }
+  return `${label}: "${shortImportValue(oldValue)}" -> "${shortImportValue(newValue)}"`;
+}
+
+function importKeywordChangeSummary(oldKeywords, newKeywords) {
+  const oldList = normalizeImportCompareList(oldKeywords);
+  const newList = normalizeImportCompareList(newKeywords);
+  const oldPreview = oldList.slice(0, 3).join(', ') || 'puste';
+  const newPreview = newList.slice(0, 3).join(', ') || 'puste';
+  return `słowa kluczowe: ${oldList.length} -> ${newList.length} (${oldPreview} -> ${newPreview})`;
+}
+
 function postImportChanges(before, after) {
   if (!before) return [];
   const checks = [
@@ -2151,8 +2172,10 @@ function postImportChanges(before, after) {
   ];
   const changes = checks
     .filter(([, , oldValue, newValue]) => normalizeImportCompareValue(oldValue) !== normalizeImportCompareValue(newValue))
-    .map(([, label]) => label);
-  if (!sameImportList(before.keywords, after.keywords)) changes.push('słowa kluczowe');
+    .map(([, label, oldValue, newValue]) => importFieldChangeSummary(label, oldValue, newValue));
+  if (!sameImportList(before.keywords, after.keywords)) {
+    changes.push(importKeywordChangeSummary(before.keywords, after.keywords));
+  }
   return changes;
 }
 
@@ -2252,7 +2275,7 @@ async function importPostRows(importRows) {
     hasChanges = true;
     if (existingPost) {
       updated += 1;
-      updatedTitles.push(`${post.title || post.id || 'Bez tytulu'} (${changes.join(', ')})`);
+      updatedTitles.push(`${post.title || post.id || 'Bez tytulu'}\n  ${changes.join('\n  ')}`);
     } else {
       imported += 1;
       importedTitles.push(post.title || post.id || 'Bez tytulu');
