@@ -32,6 +32,37 @@ function fnv1aHex(input) {
   return hash.toString(16).padStart(8, '0');
 }
 
+function readPinAccount(env, index, fallbackCollectionName) {
+  const suffix = index === 1 ? '' : `_${index}`;
+  const pinKey = `KALKULATOR_PIN${suffix}`;
+  const saltKey = `KALKULATOR_PIN${suffix}_SALT`;
+  const collectionKey = `KALKULATOR_PIN${suffix}_COLLECTION`;
+  const labelKey = `KALKULATOR_PIN${suffix}_LABEL`;
+  const pin = process.env[pinKey] || env[pinKey];
+
+  if (!pin) {
+    if (index === 1) {
+      throw new Error('Missing KALKULATOR_PIN in .env');
+    }
+    return null;
+  }
+
+  if (!/^\d{4}$/.test(pin)) {
+    throw new Error(`${pinKey} must be exactly 4 digits`);
+  }
+
+  const salt = process.env[saltKey] || env[saltKey] || randomBytes(16).toString('hex');
+  const collectionName = process.env[collectionKey] || env[collectionKey] || fallbackCollectionName;
+
+  return {
+    id: index === 1 ? 'pin1' : `pin${index}`,
+    label: process.env[labelKey] || env[labelKey] || pin,
+    pinHash: fnv1aHex(`${salt}:${pin}`),
+    pinSalt: salt,
+    collectionName,
+  };
+}
+
 async function main() {
   const env = {};
 
@@ -44,23 +75,16 @@ async function main() {
     }
   }
 
-  const pin = process.env.KALKULATOR_PIN || env.KALKULATOR_PIN;
-  if (!pin) {
-    throw new Error('Missing KALKULATOR_PIN in .env');
-  }
-  if (!/^\d{4}$/.test(pin)) {
-    throw new Error('KALKULATOR_PIN must be exactly 4 digits');
-  }
-
-  const salt = process.env.KALKULATOR_PIN_SALT || env.KALKULATOR_PIN_SALT || randomBytes(16).toString('hex');
-  const pinHash = fnv1aHex(`${salt}:${pin}`);
+  const accounts = [
+    readPinAccount(env, 1, 'calculator_orders'),
+    readPinAccount(env, 2, 'calculator_orders_pin2'),
+  ].filter(Boolean);
 
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(
     outPath,
     `export const KALKULATOR_PIN_CONFIG = ${JSON.stringify({
-      pinHash,
-      pinSalt: salt,
+      accounts,
       pinLength: 4,
       lockMinutes: 2,
       unlockHours: 8,

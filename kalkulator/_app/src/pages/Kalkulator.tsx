@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Coins, FileText, ChevronRight, ClipboardList, ClipboardPen, X } from 'lucide-react';
+import { Plus, Search, Coins, FileText, ChevronRight, ClipboardList, ClipboardPen, X, LogOut } from 'lucide-react';
 import { useOrders } from '../store/useOrders';
 import { Order, OrderStatus } from '../types';
 import { format } from 'date-fns';
@@ -19,8 +19,14 @@ const statusColors: Record<OrderStatus, string> = {
   anulowano: 'bg-red-500/15 text-red-400 border border-red-500/30',
 };
 
-export default function Kalkulator() {
-  const { orders, addOrder, updateOrder, updateOrderItems, deleteOrder, isLoading, error } = useOrders();
+interface KalkulatorProps {
+  activePinLabel: string;
+  ordersCollection: string;
+  onLogout: () => void;
+}
+
+export default function Kalkulator({ activePinLabel, ordersCollection, onLogout }: KalkulatorProps) {
+  const { orders, addOrder, updateOrder, updateOrderItems, deleteOrder, isLoading, error } = useOrders(ordersCollection);
   const [activeModal, setActiveModal] = useState<'add' | 'addManual' | 'search' | 'finance' | 'order' | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showAddChoice, setShowAddChoice] = useState(false);
@@ -89,10 +95,19 @@ export default function Kalkulator() {
             <div className="text-sm font-semibold text-white">Kalkulator</div>
           </div>
         </div>
-        <div className="flex items-center gap-6 text-sm font-medium">
-           <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-white/50">
-             AD
-           </div>
+        <div className="flex items-center gap-2 sm:gap-3 text-sm font-medium">
+          <div className="h-10 rounded-[8px] bg-white/5 border border-white/10 px-3 flex items-center justify-center font-mono text-xs font-bold text-white/70">
+            PIN {activePinLabel}
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="h-10 rounded-[8px] bg-white/5 border border-white/10 px-3 flex items-center gap-2 text-xs font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Wyloguj"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Wyloguj</span>
+          </button>
         </div>
       </header>
 

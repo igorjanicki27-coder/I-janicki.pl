@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
 import { PinGate } from './components/PinGate';
 import Kalkulator from './pages/Kalkulator';
-import { isPinUnlocked, getLockRemainingMs } from './lib/pin';
+import {
+  clearPinSession,
+  getActivePinAccount,
+  getLockRemainingMs,
+  getPrimaryPinAccount,
+  isPinUnlocked,
+  type PinAccount,
+} from './lib/pin';
 import loginLogoUrl from './assets/logo-login.png';
 
 export default function App() {
   const [unlocked, setUnlocked] = useState(() => isPinUnlocked());
+  const [activeAccount, setActiveAccount] = useState<PinAccount>(() => getActivePinAccount());
   const [isRevealVisible, setIsRevealVisible] = useState(false);
 
   useEffect(() => {
@@ -13,6 +21,7 @@ export default function App() {
       if (!isPinUnlocked() || getLockRemainingMs() > 0) {
         setUnlocked(isPinUnlocked());
       }
+      setActiveAccount(getActivePinAccount());
     }, 1000);
 
     return () => window.clearInterval(timer);
@@ -21,6 +30,7 @@ export default function App() {
   useEffect(() => {
     if (!isRevealVisible) return;
     const revealTimer = window.setTimeout(() => {
+      setActiveAccount(getActivePinAccount());
       setUnlocked(true);
       setIsRevealVisible(false);
     }, 2000);
@@ -30,6 +40,13 @@ export default function App() {
 
   const handleUnlock = () => {
     setIsRevealVisible(true);
+  };
+
+  const handleLogout = () => {
+    clearPinSession();
+    setIsRevealVisible(false);
+    setUnlocked(false);
+    setActiveAccount(getPrimaryPinAccount());
   };
 
   if (isRevealVisible) {
@@ -52,5 +69,11 @@ export default function App() {
     return <PinGate onUnlock={handleUnlock} />;
   }
 
-  return <Kalkulator />;
+  return (
+    <Kalkulator
+      activePinLabel={activeAccount.label}
+      ordersCollection={activeAccount.collectionName}
+      onLogout={handleLogout}
+    />
+  );
 }

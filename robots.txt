@@ -3,6 +3,10 @@ Allow: /
 Disallow: /i-JANEK/
 Disallow: /Szablony/
 Disallow: /dokumenty/
+Disallow: /functions/
+Disallow: /firma/
+Disallow: /firmy/
+Disallow: /stats/
 Disallow: /kalkulator/
 Disallow: /kalkulator/_app/
 Disallow: /kalkulator/stare/

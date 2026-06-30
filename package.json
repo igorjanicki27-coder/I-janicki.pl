@@ -5,8 +5,12 @@
   "scripts": {
     "build": "npm run build:kalkulator && npm run build:css && npm run build:js",
     "build:kalkulator": "node scripts/build-kalkulator-config.mjs",
+    "build:kalkulator-app": "npm --prefix kalkulator/_app run publish:inline",
     "build:css": "postcss styles.css -o styles.min.css",
     "build:js": "terser script.js -o script.min.js -c -m",
+    "deploy:kalkulator:rules": "firebase deploy --only firestore:rules",
+    "deploy:kalkulator:hosting": "node scripts/verify-kalkulator-deploy-target.mjs && firebase deploy --config firebase.kalkulator.json --only hosting:kalkulator",
+    "deploy:kalkulator": "npm run build:kalkulator-app && npm run deploy:kalkulator:rules && npm run deploy:kalkulator:hosting",
     "seo": "node scripts/generate-seo-files.mjs"
   },
   "devDependencies": {

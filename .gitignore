@@ -3,6 +3,7 @@
 node_modules/
 .npm-cache/
 .env
+.firebase/
 i-JANEK/node_modules/
 i-JANEK/.npm-cache/
 i-JANEK/.env

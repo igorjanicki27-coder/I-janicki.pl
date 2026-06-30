@@ -18,14 +18,14 @@ import {
   uid,
   VAT_OPTIONS,
   addDays,
-} from './logic.js?v=21';
+} from './logic.js?v=22';
 import {
   deleteAttachment,
   getAttachment,
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=28';
+} from './storage.js?v=29';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -137,7 +137,7 @@ function persist() {
 
 function persistAndFlush() {
   persist();
-  void flushSync();
+  return flushSync();
 }
 
 function isPostPermissionError(error) {
@@ -790,8 +790,8 @@ function renderBudgetFlowSection({ title, eyebrow, carryIn, compensation, adInje
   `;
 }
 
-function renderSettlementBreakdown({ unpaidOwnInvoices = 0, ownPaid = 0, compensation = 0, balanceNet = 0, paymentsReceived = 0 }) {
-  const totalBeforePayments = roundCurrency(unpaidOwnInvoices + ownPaid + compensation + balanceNet);
+function renderSettlementBreakdown({ unpaidOwnInvoices = 0, ownPaid = 0, compensation = 0, chargeableAdBudget = 0, balanceNet = 0, paymentsReceived = 0 }) {
+  const totalBeforePayments = roundCurrency(unpaidOwnInvoices + ownPaid + compensation + chargeableAdBudget + balanceNet);
   const result = roundCurrency(totalBeforePayments - paymentsReceived);
   const resultMeta = getSettlementMeta(result);
   return `
@@ -812,6 +812,11 @@ function renderSettlementBreakdown({ unpaidOwnInvoices = 0, ownPaid = 0, compens
         <span>Wynagrodzenia ręczne</span>
         <strong>${formatCurrency(compensation)}</strong>
       </div>
+      ${(chargeableAdBudget || 0) > 0 ? `
+      <div class="overview-detail-row">
+        <span>Budżet poza okresem doliczany klientowi</span>
+        <strong>${formatCurrency(chargeableAdBudget)}</strong>
+      </div>` : ''}
       <div class="overview-detail-row">
         <span>Korekty rozrachunku</span>
         <strong>${formatCurrency(balanceNet)}</strong>
@@ -824,7 +829,7 @@ function renderSettlementBreakdown({ unpaidOwnInvoices = 0, ownPaid = 0, compens
   `;
 }
 
-function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation, adOnlyBudget, unpaidOwnInvoices, balanceNet }) {
+function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid, ownPaid, reserved, compensation, adOnlyBudget, chargeableAdBudget, unpaidOwnInvoices, balanceNet }) {
   return `
     <section class="section-band overview-panel">
       <div class="panel-head">
@@ -840,8 +845,13 @@ function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid,
         </div>
         ${(adOnlyBudget || 0) > 0 ? `
         <div class="overview-detail-row is-strong">
-          <span>Budżet poza okresem</span>
+          <span>Budżet poza okresem jako pula reklamowa</span>
           <strong>${formatCurrency(adOnlyBudget)}</strong>
+        </div>` : ''}
+        ${(chargeableAdBudget || 0) > 0 ? `
+        <div class="overview-detail-row is-strong">
+          <span>Budżet poza okresem doliczany klientowi</span>
+          <strong>${formatCurrency(chargeableAdBudget)}</strong>
         </div>` : ''}
         <div class="overview-detail-row">
           <span>Wpłaty klienta do Ciebie</span>
@@ -864,6 +874,7 @@ function renderSettlementDetails({ eyebrow, title, paymentsReceived, clientPaid,
         unpaidOwnInvoices,
         ownPaid,
         compensation,
+        chargeableAdBudget,
         balanceNet,
         paymentsReceived,
       })}
@@ -941,6 +952,7 @@ function renderAdBudgetEntriesPanel(firm) {
                 <th>Data</th>
                 <th>Opis</th>
                 <th>Kwota</th>
+                <th>Rozrachunek</th>
                 <th></th>
               </tr>
             </thead>
@@ -950,6 +962,7 @@ function renderAdBudgetEntriesPanel(firm) {
                   <td data-label="Data">${formatDate(entry.date)}</td>
                   <td data-label="Opis">${escapeHtml(entry.description || '-')}</td>
                   <td data-label="Kwota" class="tone-mint">${formatCurrency(entry.amount)}</td>
+                  <td data-label="Rozrachunek">${entry.billClient ? 'Doliczany klientowi' : 'Tylko pula reklamowa'}</td>
                   <td data-label="Akcje" class="table-actions">
                     <button class="mini-button" type="button" data-action="edit-ad-budget" data-id="${entry.id}">${icon('edit')}</button>
                     <button class="mini-button tone-danger" type="button" data-action="delete-ad-budget" data-id="${entry.id}">${icon('trash')}</button>
@@ -1147,6 +1160,7 @@ function renderMonthOverview(firm, ledger, selectedMonth, monthRow) {
             reserved: monthRow.reservedBudgetExpenses || 0,
             compensation: monthRow.compensation || 0,
             adOnlyBudget,
+            chargeableAdBudget: 0,
             unpaidOwnInvoices: monthRow.unpaidOwnInvoices || 0,
             balanceNet: monthRow.balanceNet || 0,
           })}
@@ -1335,6 +1349,7 @@ function renderScopeOverview(scope, title, eyebrow, ledger) {
             reserved: 0,
             compensation: scope.totalCompensation || 0,
             adOnlyBudget: scope.adOnlyBudget || 0,
+            chargeableAdBudget: scope.chargeableAdBudget || 0,
             unpaidOwnInvoices: scope.totalUnpaidOwnInvoices || 0,
             balanceNet: scope.totalBalanceNet || 0,
           })}
@@ -2445,7 +2460,7 @@ function openFirmModal(firm = null) {
   );
 
   const form = document.getElementById('firmForm');
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(form);
     const now = new Date().toISOString();
@@ -2522,6 +2537,19 @@ function budgetPeriodOptions(firm, existingMonth = null) {
   return { options, defaultMonth };
 }
 
+function adBudgetBillClientField(checked = false, hidden = false) {
+  return `
+    <div class="field field-span-2" id="adBudgetBillingField" ${hidden ? 'hidden' : ''}>
+      <span>Rozrachunek klienta</span>
+      <label class="checkbox-opt">
+        <input type="checkbox" name="billClient" value="1" ${checked ? 'checked' : ''} />
+        <span>Dolicz tę kwotę do tego, co klient ma zapłacić</span>
+      </label>
+      <p class="form-hint">Zaznacz tylko wtedy, gdy ten budżet poza okresem ma być osobnym obciążeniem klienta.</p>
+    </div>
+  `;
+}
+
 function openMonthModal(existing = null) {
   const firm = getSelectedFirm(state);
   if (!firm) return;
@@ -2542,6 +2570,7 @@ function openMonthModal(existing = null) {
       <form id="monthForm" class="form-grid">
         ${monthExisting ? monthYearFields('month', monthExisting.month) : labeledInput({ name: 'period', label: 'Okres', type: 'select', value: periodValue, options: periodOptions })}
         ${labeledInput({ name: 'budget', label: 'Budżet reklamowy', type: 'number', value: monthExisting?.budget ?? '', min: '0', required: true })}
+        ${monthExisting ? '' : adBudgetBillClientField(false, periodValue !== '__out_of_period__')}
         ${monthExisting ? `
         <div class="modal-actions is-split">
           <button class="ghost-button tone-danger" type="button" id="deleteMonthButton" data-action="delete-month-from-modal" data-month="${monthExisting.month}">Usuń okres</button>
@@ -2582,6 +2611,19 @@ function openMonthModal(existing = null) {
   }
 
   const form = document.getElementById('monthForm');
+  const periodSelect = form.elements.period;
+  const billingField = document.getElementById('adBudgetBillingField');
+  const syncBillingField = () => {
+    if (!periodSelect || !billingField) return;
+    const isOutsidePeriod = periodSelect.value === '__out_of_period__';
+    billingField.hidden = !isOutsidePeriod;
+    if (!isOutsidePeriod) {
+      const checkbox = billingField.querySelector('input[name="billClient"]');
+      if (checkbox) checkbox.checked = false;
+    }
+  };
+  periodSelect?.addEventListener('change', syncBillingField);
+  syncBillingField();
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const data = new FormData(form);
@@ -2594,6 +2636,7 @@ function openMonthModal(existing = null) {
         date: new Date().toISOString().slice(0, 10),
         amount: budget,
         description: 'Budżet poza okresem',
+        billClient: data.get('billClient') === '1',
         createdAt: new Date().toISOString(),
       };
       firm.adBudgetEntries = [...(firm.adBudgetEntries || []), entry];
@@ -2835,7 +2878,7 @@ function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
       amount: entry.amount,
       meta: { period: monthLabel(monthFromDate(entry.date)) },
     });
-    persist();
+    await persistAndFlush();
     closeModal();
     render();
   });
@@ -2855,6 +2898,7 @@ function openAdBudgetEntryModal(existing = null) {
           <span>Opis</span>
           <input type="text" name="description" value="${escapeHtml(existing?.description || '')}" placeholder="Np. dodatkowy budżet reklamowy bez wynagrodzenia" required />
         </div>
+        ${adBudgetBillClientField(existing?.billClient === true)}
         ${modalActions(existing ? 'Zapisz budżet' : 'Dodaj budżet')}
       </form>
     `
@@ -2875,6 +2919,7 @@ function openAdBudgetEntryModal(existing = null) {
       date: String(data.get('date')),
       amount,
       description: String(data.get('description') || '').trim(),
+      billClient: data.get('billClient') === '1',
       createdAt: existing?.createdAt || new Date().toISOString(),
     };
 
@@ -2987,7 +3032,7 @@ function openWalletIncomeModal(existing) {
   openModal(existing ? 'Edytuj wplate klienta' : 'Dodaj wplate klienta', '<form id="walletIncomeForm" class="form-grid">' + formContent + '</form>');
 
   var form = document.getElementById('walletIncomeForm');
-  form.addEventListener('submit', function(event) {
+  form.addEventListener('submit', async function(event) {
     event.preventDefault();
     var data = new FormData(form);
     var periodRaw = String(data.get('period') || '');
@@ -3014,7 +3059,7 @@ function openWalletIncomeModal(existing) {
       amount: entry.amount,
       meta: { period: monthLabel(entry.period) },
     });
-    persist();
+    await persistAndFlush();
     closeModal();
     render();
   });
@@ -3246,7 +3291,7 @@ async function handleClick(event) {
       amount: removed?.amount || 0,
       meta: { period: removed?.date ? monthLabel(monthFromDate(removed.date)) : '' },
     });
-    persist();
+    await persistAndFlush();
     return render();
   }
   if (action === 'add-wallet-expense') {
@@ -3269,7 +3314,7 @@ async function handleClick(event) {
       amount: removed?.amount || 0,
       meta: { period: removed?.period ? monthLabel(removed.period) : '' },
     });
-    persist();
+    await persistAndFlush();
     return render();
   }
   if (action === 'issue-invoice') {

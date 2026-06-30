@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -13,7 +13,7 @@ export function AddOrderModal({ isOpen, onClose, onCreate }: AddOrderModalProps)
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
       setIsSubmitting(true);

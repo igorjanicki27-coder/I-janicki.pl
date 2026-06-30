@@ -16,6 +16,10 @@ const EXCLUDED_DIRS = new Set([
   'icons',
   'scripts',
   'test-results',
+  'functions',
+  'firma',
+  'firmy',
+  'stats',
   'kalkulator',
   'kalkulator/_app',
   'kalkulator/stare'
@@ -23,6 +27,8 @@ const EXCLUDED_DIRS = new Set([
 
 function isExcluded(relativePath) {
   if (!relativePath || relativePath === '.') return false;
+  const segments = relativePath.split('/');
+  if (segments.includes('node_modules')) return true;
   return Array.from(EXCLUDED_DIRS).some((excluded) => relativePath === excluded || relativePath.startsWith(`${excluded}/`));
 }
 
@@ -111,6 +117,10 @@ async function writeRobots() {
     'Disallow: /i-JANEK/',
     'Disallow: /Szablony/',
     'Disallow: /dokumenty/',
+    'Disallow: /functions/',
+    'Disallow: /firma/',
+    'Disallow: /firmy/',
+    'Disallow: /stats/',
     'Disallow: /kalkulator/',
     'Disallow: /kalkulator/_app/',
     'Disallow: /kalkulator/stare/',

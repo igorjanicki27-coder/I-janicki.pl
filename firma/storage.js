@@ -205,6 +205,7 @@ function normalizeFirm(firm) {
       date: entry.date || now.slice(0, 10),
       amount: Number(entry.amount || 0),
       description: entry.description || '',
+      billClient: entry.billClient === true,
       createdAt: entry.createdAt || now,
     })),
     compensationEntries: ensureArray(firm.compensationEntries).map((entry) => ({

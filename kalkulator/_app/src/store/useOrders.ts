@@ -113,7 +113,7 @@ function cloneOrder(order: Order): Order {
   };
 }
 
-export function useOrders() {
+export function useOrders(collectionName = calculatorOrdersCollection) {
   const [orders, setOrders] = useState<Order[]>(EMPTY_ORDERS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,13 +126,19 @@ export function useOrders() {
   }, [orders]);
 
   useEffect(() => {
+    setOrders(EMPTY_ORDERS);
+    ordersRef.current = EMPTY_ORDERS;
+    pendingWriteIds.current.clear();
+    setIsLoading(true);
+    setError(null);
+
     if (!firestore) {
       setError('Brak konfiguracji Firestore.');
       setIsLoading(false);
       return undefined;
     }
 
-    const ordersQuery = query(collection(firestore, calculatorOrdersCollection), orderBy('createdAt', 'desc'));
+    const ordersQuery = query(collection(firestore, collectionName), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(
       ordersQuery,
       (snapshot) => {
@@ -160,7 +166,7 @@ export function useOrders() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [collectionName]);
 
   const addOrder = async (name: string, type: OrderType = 'zlecenie'): Promise<Order> => {
     const now = Date.now();
@@ -182,7 +188,7 @@ export function useOrders() {
       const serialized = serializeOrder(newOrder);
       console.log('[addOrder] Tworzenie nowego zamówienia w Firestore:', { id: newOrder.id, name: newOrder.name, type: newOrder.type, serialized });
       try {
-        await setDoc(doc(firestore, calculatorOrdersCollection, newOrder.id), serialized);
+        await setDoc(doc(firestore, collectionName, newOrder.id), serialized);
         console.log('[addOrder] Zapisano pomyślnie:', newOrder.id);
       } catch (writeError) {
         console.error('[addOrder] BŁĄD zapisu:', writeError);
@@ -210,7 +216,7 @@ export function useOrders() {
 
     if (firestore) {
       try {
-        await setDoc(doc(firestore, calculatorOrdersCollection, id), serializeOrder(nextOrder), { merge: true });
+        await setDoc(doc(firestore, collectionName, id), serializeOrder(nextOrder), { merge: true });
       } catch (writeError) {
         console.error('Nie udało się zaktualizować zlecenia', writeError);
         setError('Nie udało się zaktualizować zlecenia w Firestore.');
@@ -254,10 +260,10 @@ export function useOrders() {
       console.log('[updateOrderItems] Dane do Firestore:', { id, serializedItems: serialized.items.map((i: { id: string; total: number; price: number; quantity: number }) => ({ id: i.id, total: i.total, price: i.price, quantity: i.quantity })), serializedTotal: serialized.total });
       pendingWriteIds.current.add(id);
       try {
-        await setDoc(doc(firestore, calculatorOrdersCollection, id), serialized, { merge: true });
+        await setDoc(doc(firestore, collectionName, id), serialized, { merge: true });
         console.log('[updateOrderItems] Zapisano pomyślnie do Firestore:', id);
         // Weryfikacja - odczytaj dokument z Firestore
-        const verifySnap = await getDoc(doc(firestore, calculatorOrdersCollection, id));
+        const verifySnap = await getDoc(doc(firestore, collectionName, id));
         if (verifySnap.exists()) {
           const verifyData = verifySnap.data();
           console.log('[updateOrderItems] Weryfikacja - dane w Firestore:', { 
@@ -282,7 +288,7 @@ export function useOrders() {
 
     if (firestore) {
       try {
-        await deleteDoc(doc(firestore, calculatorOrdersCollection, id));
+        await deleteDoc(doc(firestore, collectionName, id));
       } catch (writeError) {
         console.error('Nie udało się usunąć zlecenia', writeError);
         setError('Nie udało się usunąć zlecenia z Firestore.');

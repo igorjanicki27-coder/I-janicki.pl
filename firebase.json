@@ -85,6 +85,12 @@
         "headers": [
           { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
         ]
+      },
+      {
+        "source": "kalkulator/**",
+        "headers": [
+          { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
+        ]
       }
     ]
   }

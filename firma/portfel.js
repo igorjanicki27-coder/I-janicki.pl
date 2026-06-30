@@ -7,11 +7,11 @@ import {
   monthLabel,
   roundCurrency,
   uid,
-} from './logic.js?v=21';
+} from './logic.js?v=22';
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=28';
+} from './storage.js?v=29';
 import {
   icon,
   escapeHtml,

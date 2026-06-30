@@ -9,14 +9,14 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-} from './logic.js?v=21';
+} from './logic.js?v=22';
 import {
   deleteAttachment,
   getAttachment,
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=28';
+} from './storage.js?v=29';
 import {
   icon,
   escapeHtml,

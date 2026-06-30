@@ -3,8 +3,18 @@ import { KALKULATOR_PIN_CONFIG } from '../generated/kalkulatorConfig';
 const SESSION_KEY = 'kalkulator_pin_session';
 const STATE_KEY = 'kalkulator_pin_state';
 
+export type PinAccount = {
+  id: string;
+  label: string;
+  pinHash: string;
+  pinSalt: string;
+  collectionName: string;
+};
+
 type PinSession = {
   unlockedUntil: number;
+  accountId?: string;
+  collectionName?: string;
 };
 
 type PinState = {
@@ -62,8 +72,28 @@ export function getPinSession() {
   return readStorage<PinSession>(SESSION_KEY, { unlockedUntil: 0 });
 }
 
-export function setPinSession(unlockedUntil: number) {
-  writeStorage(SESSION_KEY, { unlockedUntil });
+export function getPrimaryPinAccount(): PinAccount {
+  return KALKULATOR_PIN_CONFIG.accounts[0];
+}
+
+export function getPinAccounts(): PinAccount[] {
+  return [...KALKULATOR_PIN_CONFIG.accounts];
+}
+
+export function getActivePinAccount(): PinAccount {
+  const session = getPinSession();
+  return (
+    getPinAccounts().find((account) => account.id === session.accountId)
+    || getPrimaryPinAccount()
+  );
+}
+
+export function setPinSession(unlockedUntil: number, account: PinAccount) {
+  writeStorage(SESSION_KEY, {
+    unlockedUntil,
+    accountId: account.id,
+    collectionName: account.collectionName,
+  });
 }
 
 export function clearPinSession() {
@@ -82,12 +112,16 @@ export function isPinLocked() {
   return getLockRemainingMs() > 0;
 }
 
-export function hashPin(pin: string) {
-  return fnv1aHex(`${KALKULATOR_PIN_CONFIG.pinSalt}:${pin}`);
+export function hashPin(pin: string, account: PinAccount) {
+  return fnv1aHex(`${account.pinSalt}:${pin}`);
+}
+
+export function findPinAccount(pin: string) {
+  return getPinAccounts().find((account) => hashPin(pin, account) === account.pinHash) || null;
 }
 
 export function verifyPin(pin: string) {
-  return hashPin(pin) === KALKULATOR_PIN_CONFIG.pinHash;
+  return Boolean(findPinAccount(pin));
 }
 
 export function registerPinAttempt(pin: string) {
@@ -103,14 +137,16 @@ export function registerPinAttempt(pin: string) {
     };
   }
 
-  if (verifyPin(pin)) {
+  const account = findPinAccount(pin);
+  if (account) {
     resetPinState();
-    setPinSession(now + KALKULATOR_PIN_CONFIG.unlockHours * 60 * 60 * 1000);
+    setPinSession(now + KALKULATOR_PIN_CONFIG.unlockHours * 60 * 60 * 1000, account);
     return {
       ok: true,
       locked: false,
       remainingMs: 0,
       attemptsLeft: 5,
+      account,
     };
   }
 
