@@ -1,15 +1,5 @@
 {
   "projects": {
     "default": "i-janicki"
-  },
-  "targets": {
-    "i-janicki": {
-      "hosting": {
-        "kalkulator": [
-          "i-janicki-kalkulator"
-        ]
-      }
-    }
-  },
-  "etags": {}
+  }
 }
