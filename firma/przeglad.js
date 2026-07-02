@@ -2878,9 +2878,10 @@ function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
       amount: entry.amount,
       meta: { period: monthLabel(monthFromDate(entry.date)) },
     });
-    await persistAndFlush();
-    closeModal();
-    render();
+    persistAndFlush().finally(() => {
+      closeModal();
+      render();
+    });
   });
 }
 
@@ -3032,7 +3033,7 @@ function openWalletIncomeModal(existing) {
   openModal(existing ? 'Edytuj wplate klienta' : 'Dodaj wplate klienta', '<form id="walletIncomeForm" class="form-grid">' + formContent + '</form>');
 
   var form = document.getElementById('walletIncomeForm');
-  form.addEventListener('submit', async function(event) {
+  form.addEventListener('submit', function(event) {
     event.preventDefault();
     var data = new FormData(form);
     var periodRaw = String(data.get('period') || '');
@@ -3059,9 +3060,10 @@ function openWalletIncomeModal(existing) {
       amount: entry.amount,
       meta: { period: monthLabel(entry.period) },
     });
-    await persistAndFlush();
-    closeModal();
-    render();
+    persistAndFlush().finally(function() {
+      closeModal();
+      render();
+    });
   });
 }
 
