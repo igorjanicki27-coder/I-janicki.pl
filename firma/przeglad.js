@@ -2624,7 +2624,7 @@ function openMonthModal(existing = null) {
   };
   periodSelect?.addEventListener('change', syncBillingField);
   syncBillingField();
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(form);
     const selectedPeriod = monthExisting ? readMonthYear(data, 'month') : String(data.get('period') || defaultMonth);
@@ -2857,7 +2857,7 @@ function openBalanceEntryModal(existing = null, defaultDirection = 'plus') {
   );
 
   const form = document.getElementById('balanceForm');
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(form);
     const sign = String(data.get('direction')) === 'minus' ? -1 : 1;
