@@ -1045,7 +1045,8 @@ function openExternalInvoiceStep3(step2Data, existingInvoice = null) {
       return;
     }
 
-    const file = form.querySelector('[name="file"]').files?.[0] || null;
+    const fileInput = form.querySelector('[name="file"]');
+    const file = fileInput?.files?.[0] || null;
     const attachmentIds = [];
 
     if (file && !isEdit) {
