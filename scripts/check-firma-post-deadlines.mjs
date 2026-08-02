@@ -44,6 +44,23 @@ function addDays(value, days) {
   return dateKey(date);
 }
 
+function daysBetween(fromValue, toValue) {
+  const fromDate = parseDateKey(fromValue);
+  const toDate = parseDateKey(toValue);
+  if (!fromDate || !toDate) return null;
+  return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+}
+
+function formatDatePl(value) {
+  const date = parseDateKey(value);
+  if (!date) return String(value || '');
+  return [
+    String(date.getUTCDate()).padStart(2, '0'),
+    String(date.getUTCMonth() + 1).padStart(2, '0'),
+    date.getUTCFullYear(),
+  ].join('/');
+}
+
 function addMonthsKey(value, months) {
   const date = parseDateKey(value);
   if (!date) return value;
@@ -184,6 +201,23 @@ function findScheduledPostReminders(state) {
       if (sentKeys.has(reminderKey)) continue;
       reminders.push({ firm, post, reminderKey });
     }
+  }
+  return reminders;
+}
+
+function findDomainExpiryReminders(state) {
+  const reminders = [];
+  const today = warsawTodayKey();
+  const reminderOffsets = new Set([30, 14, 0]);
+  for (const firm of state.firms || []) {
+    const expiryDate = String(firm.domainExpiryDate || '').slice(0, 10);
+    if (!parseDateKey(expiryDate)) continue;
+    const daysUntilExpiry = daysBetween(today, expiryDate);
+    if (!reminderOffsets.has(daysUntilExpiry)) continue;
+    const reminderKey = `domain-expiry:${expiryDate}:${daysUntilExpiry}`;
+    const sentKeys = new Set(Array.isArray(firm.domainReminderKeys) ? firm.domainReminderKeys : []);
+    if (sentKeys.has(reminderKey)) continue;
+    reminders.push({ firm, expiryDate, daysUntilExpiry, reminderKey });
   }
   return reminders;
 }
@@ -351,6 +385,9 @@ async function loadFirmPostCollections(idToken, firm) {
   return {
     ...firm,
     postReminderKeys: Array.isArray(firmDoc.postReminderKeys) ? firmDoc.postReminderKeys : [],
+    domainReminderKeys: Array.isArray(firmDoc.domainReminderKeys)
+      ? firmDoc.domainReminderKeys
+      : (firm.domainReminderKeys || []),
     postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
     posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
   };
@@ -374,11 +411,23 @@ async function saveState(idToken, state) {
   });
 }
 
-function buildReminderDigest(overdueReminders, scheduledReminders) {
+function buildReminderDigest(overdueReminders, scheduledReminders, domainReminders) {
   const lines = [
-    `Podsumowanie publikacji na ${warsawTodayKey()}`,
+    `Podsumowanie przypomnień na ${warsawTodayKey()}`,
     '',
   ];
+
+  if (domainReminders.length) {
+    lines.push('Ważność domen:');
+    domainReminders.forEach((reminder, index) => {
+      const remainingLabel = reminder.daysUntilExpiry === 0
+        ? 'Termin upływa dzisiaj'
+        : `Pozostało ${reminder.daysUntilExpiry} dni`;
+      lines.push(`${index + 1}. Domena firmy ${firmName(reminder.firm)}, dnia ${formatDatePl(reminder.expiryDate)} kończy swoją ważność.`);
+      lines.push(`   ${remainingLabel}`);
+      lines.push('');
+    });
+  }
 
   if (scheduledReminders.length) {
     lines.push('Zaplanowane publikacje na dzis:');
@@ -541,10 +590,10 @@ async function sendWeb3FormsMail({ subject, message }) {
   }
 }
 
-async function sendReminderDigest(overdueReminders, scheduledReminders) {
-  const total = overdueReminders.length + scheduledReminders.length;
-  const message = buildReminderDigest(overdueReminders, scheduledReminders);
-  const subject = `Firma - przypomnienia publikacji (${total})`;
+async function sendReminderDigest(overdueReminders, scheduledReminders, domainReminders) {
+  const total = overdueReminders.length + scheduledReminders.length + domainReminders.length;
+  const message = buildReminderDigest(overdueReminders, scheduledReminders, domainReminders);
+  const subject = `Firma - przypomnienia (${total})`;
 
   if (hasSmtpConfig()) {
     console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} (${SMTP_SECURE ? 'TLS' : 'STARTTLS'}) as ${SMTP_USER}.`);
@@ -568,9 +617,9 @@ async function sendReminderDigest(overdueReminders, scheduledReminders) {
   await sendWeb3FormsMail({ subject, message });
 }
 
-async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
+async function markReminderSent(idToken, firmId, existingKeys, reminderKey, fieldName = 'postReminderKeys') {
   const nextKeys = Array.from(new Set([...(existingKeys || []), reminderKey]));
-  await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}?updateMask.fieldPaths=postReminderKeys&updateMask.fieldPaths=updatedAt`, {
+  await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}?updateMask.fieldPaths=${fieldName}&updateMask.fieldPaths=updatedAt`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${idToken}`,
@@ -578,7 +627,7 @@ async function markReminderSent(idToken, firmId, existingKeys, reminderKey) {
     },
     body: JSON.stringify({
       fields: {
-        postReminderKeys: toStringArrayValue(nextKeys),
+        [fieldName]: toStringArrayValue(nextKeys),
         updatedAt: { stringValue: new Date().toISOString() },
       },
     }),
@@ -609,6 +658,7 @@ async function main() {
   const scheduledPostsToday = findScheduledPostsForToday({ firms });
   const overdueReminders = findDueReminders({ firms });
   const scheduledReminders = findScheduledPostReminders({ firms });
+  const domainReminders = findDomainExpiryReminders({ firms });
 
   const tabCount = firms.reduce((sum, firm) => sum + ((firm.postTabs || []).length), 0);
   const postCount = firms.reduce((sum, firm) => sum + ((firm.posts || []).length), 0);
@@ -619,28 +669,35 @@ async function main() {
     `${postCount} posts`,
     `${duePostTabs.length} tabs due today or overdue`,
     `${scheduledPostsToday.length} scheduled posts for today`,
-    `${overdueReminders.length + scheduledReminders.length} emails pending after sent-key filtering`,
+    `${domainReminders.length} domain expiry reminders`,
+    `${overdueReminders.length + scheduledReminders.length + domainReminders.length} reminders pending after sent-key filtering`,
   ].join(' '));
   if (postCount === 0) {
     console.warn('No posts were loaded from Firestore. Scheduled-post reminders cannot be detected until posts are saved/migrated to firmy_clients/*/posts or preserved in firmy_settings/state.');
   }
 
-  if (!overdueReminders.length && !scheduledReminders.length) {
-    console.log('No overdue post tabs or scheduled posts for today found.');
+  if (!overdueReminders.length && !scheduledReminders.length && !domainReminders.length) {
+    console.log('No overdue post tabs, scheduled posts or domain expiry reminders for today found.');
     return;
   }
 
-  await sendReminderDigest(overdueReminders, scheduledReminders);
-  console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s).`);
+  await sendReminderDigest(overdueReminders, scheduledReminders, domainReminders);
+  console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s), ${domainReminders.length} domain reminder(s).`);
 
   const sent = [
     ...overdueReminders.map((reminder) => ({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey })),
     ...scheduledReminders.map((reminder) => ({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey })),
+    ...domainReminders.map((reminder) => ({
+      firmId: reminder.firm.id,
+      reminderKey: reminder.reminderKey,
+      fieldName: 'domainReminderKeys',
+    })),
   ];
   for (const item of sent) {
     const firm = firms.find((candidate) => candidate.id === item.firmId);
-    const nextKeys = await markReminderSent(auth.idToken, item.firmId, firm?.postReminderKeys || [], item.reminderKey);
-    if (firm) firm.postReminderKeys = nextKeys;
+    const fieldName = item.fieldName || 'postReminderKeys';
+    const nextKeys = await markReminderSent(auth.idToken, item.firmId, firm?.[fieldName] || [], item.reminderKey, fieldName);
+    if (firm) firm[fieldName] = nextKeys;
   }
 }
 

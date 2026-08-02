@@ -191,6 +191,7 @@ function normalizeFirm(firm) {
     address2,
     email: firm.email || '',
     phone: firm.phone || '',
+    domainExpiryDate: String(firm.domainExpiryDate || '').slice(0, 10),
     notes: firm.notes || '',
     months: months.map((month) => ({
       id: month.id,
@@ -310,6 +311,7 @@ function normalizeFirm(firm) {
       updatedAt: post.updatedAt || now,
     })),
     postReminderKeys: ensureArray(firm.postReminderKeys),
+    domainReminderKeys: ensureArray(firm.domainReminderKeys),
     postStorageFallback: firm.postStorageFallback === true,
     createdAt: firm.createdAt || now,
     updatedAt: firm.updatedAt || now,
@@ -384,6 +386,10 @@ function mergePostBackups(preferredFirm, fallbackFirm) {
     postReminderKeys: [...new Set([
       ...ensureArray(preferredFirm.postReminderKeys),
       ...ensureArray(fallbackFirm.postReminderKeys),
+    ])],
+    domainReminderKeys: [...new Set([
+      ...ensureArray(preferredFirm.domainReminderKeys),
+      ...ensureArray(fallbackFirm.domainReminderKeys),
     ])],
     postStorageFallback: preferredFirm.postStorageFallback === true || fallbackFirm.postStorageFallback === true,
   };

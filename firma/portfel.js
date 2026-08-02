@@ -11,7 +11,7 @@ import {
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=29';
+} from './storage.js?v=30';
 import {
   icon,
   escapeHtml,
@@ -32,7 +32,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=31';
+} from './core.js?v=33';
 
 let state = initializeState();
 restoreContext(state);

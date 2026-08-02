@@ -26,7 +26,7 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=29';
+} from './storage.js?v=30';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 const root = document.getElementById('app');
@@ -1209,6 +1209,7 @@ function openFirmModal(firm = null) {
         ${labeledInput({ name: 'nip', label: 'NIP', value: firm?.nip || '' })}
         ${labeledInput({ name: 'email', label: 'E-mail', type: 'email', value: firm?.email || '' })}
         ${labeledInput({ name: 'phone', label: 'Telefon', value: firm?.phone || '' })}
+        ${labeledInput({ name: 'domainExpiryDate', label: 'Ważność domeny', type: 'date', value: firm?.domainExpiryDate || '' })}
         ${labeledInput({ name: 'address1', label: 'Adres – ulica i numer', value: firm?.address1 || '' })}
         ${labeledInput({ name: 'address2', label: 'Adres – kod pocztowy, miejscowość', value: firm?.address2 || '' })}
         <div class="field field-span-2">
@@ -1241,6 +1242,7 @@ function openFirmModal(firm = null) {
       address2: String(data.get('address2') || '').trim(),
       email: String(data.get('email') || '').trim(),
       phone: String(data.get('phone') || '').trim(),
+      domainExpiryDate: String(data.get('domainExpiryDate') || '').trim(),
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
       adBudgetEntries: firm?.adBudgetEntries || [],
@@ -1248,6 +1250,7 @@ function openFirmModal(firm = null) {
       walletEntries: firm?.walletEntries || [],
       expenses: firm?.expenses || [],
       invoices: firm?.invoices || [],
+      domainReminderKeys: firm?.domainReminderKeys || [],
       createdAt: firm?.createdAt || now,
       updatedAt: now,
     };
