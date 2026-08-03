@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=36';
+} from './core.js?v=37';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -1041,7 +1041,10 @@ function renderCompensationPage(firm, ledger, selectedMonth) {
               <h3>Ręczne koszty wynagrodzenia</h3>
               <p class="table-note">Zakres: <strong>${escapeHtml(periodLabel)}</strong>. Te pozycje zwiększają kwotę, którą klient ma zapłacić.</p>
             </div>
-            <button class="primary-button" type="button" data-action="add-compensation">${icon('plus')}Dodaj wynagrodzenie</button>
+            <div class="panel-actions">
+              <button class="ghost-button" type="button" data-action="edit-compensation-reminder">${icon('bell')}Ustaw przypomnienia</button>
+              <button class="primary-button" type="button" data-action="add-compensation">${icon('plus')}Dodaj wynagrodzenie</button>
+            </div>
           </div>
           <div class="compensation-summary">
             <article class="compensation-total-card">
@@ -2565,13 +2568,15 @@ function budgetPeriodOptions(firm, existingMonth = null) {
 
 function adBudgetBillClientField(checked = false, hidden = false) {
   return `
-    <div class="field field-span-2" id="adBudgetBillingField" ${hidden ? 'hidden' : ''}>
+    <div class="field field-span-2 ad-budget-billing-field" id="adBudgetBillingField" ${hidden ? 'hidden' : ''}>
       <span>Rozrachunek klienta</span>
-      <label class="checkbox-opt">
+      <label class="checkbox-opt budget-billing-option">
         <input type="checkbox" name="billClient" value="1" ${checked ? 'checked' : ''} />
-        <span>Dolicz tę kwotę do tego, co klient ma zapłacić</span>
+        <span class="budget-billing-copy">
+          <strong>Dolicz tę kwotę do tego, co klient ma zapłacić</strong>
+          <small>Tylko dla budżetu poza okresem, który ma być osobnym obciążeniem klienta.</small>
+        </span>
       </label>
-      <p class="form-hint">Zaznacz tylko wtedy, gdy ten budżet poza okresem ma być osobnym obciążeniem klienta.</p>
     </div>
   `;
 }
