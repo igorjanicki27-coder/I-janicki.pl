@@ -20,7 +20,8 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=30';
+} from './storage.js?v=32';
+import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
 
 // --- Icons ---
 export function icon(name) {
@@ -36,6 +37,7 @@ export function icon(name) {
     download: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>',
     copy: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>',
     check: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>',
+    bell: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>',
     link: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4.93" /><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07L13 19.07" /></svg>',
     home: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" /></svg>',
     arrowLeft: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>',
@@ -471,6 +473,7 @@ export function updateTopbar(state, activeTab) {
     ? activeTab
     : '';
   const hasOverduePosts = firmHasOverduePostTabs(firm);
+  const hasCompensationAlert = getCompensationReminderStatus(firm).hasAlert;
   const firmOptions = state.firms.map((item) => `
     <option value="${item.id}" ${item.id === firm.id ? 'selected' : ''}>${escapeHtml(firmDisplayName(item) || item.name || 'Firma bez nazwy')}</option>
   `).join('');
@@ -490,15 +493,11 @@ export function updateTopbar(state, activeTab) {
         </div>
       </div>
       <div class="topbar-finance">
-        <label class="finance-picker ${financeValue ? 'is-active' : ''}">
-          <span>Finanse</span>
-          <select data-action="finance-nav" aria-label="Finanse">
-            <option value="" ${financeValue ? '' : 'selected'}>Finanse</option>
-            <option value="invoices" ${financeValue === 'invoices' ? 'selected' : ''}>Faktury</option>
-            <option value="balance" ${financeValue === 'balance' ? 'selected' : ''}>Rozrachunek</option>
-            <option value="compensation" ${financeValue === 'compensation' ? 'selected' : ''}>Wynagrodzenia</option>
-          </select>
-        </label>
+        <div class="tab-row finance-tabs" role="navigation" aria-label="Finanse">
+          <button class="tab-button ${financeValue === 'invoices' ? 'is-active' : ''}" type="button" data-action="finance-nav" data-tab="invoices">Faktury</button>
+          <button class="tab-button ${financeValue === 'balance' ? 'is-active' : ''}" type="button" data-action="finance-nav" data-tab="balance">Rozrachunek</button>
+          <button class="tab-button ${financeValue === 'compensation' ? 'is-active' : ''} ${hasCompensationAlert ? 'has-alert' : ''}" type="button" data-action="finance-nav" data-tab="compensation" ${hasCompensationAlert ? 'title="Brakuje wynagrodzenia za termin płatności"' : ''}>Wynagrodzenia</button>
+        </div>
       </div>
       <div class="topbar-spacer"></div>
       <div class="topbar-metrics">

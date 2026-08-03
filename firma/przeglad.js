@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=30';
+} from './storage.js?v=32';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -61,7 +61,13 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=33';
+} from './core.js?v=36';
+import {
+  COMPENSATION_FREQUENCY_OPTIONS,
+  compensationFrequencyLabel,
+  getCompensationReminderStatus,
+  normalizeCompensationReminder,
+} from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -1015,6 +1021,14 @@ function renderCompensationPage(firm, ledger, selectedMonth) {
       : selectedMonth === '__quarter__'
         ? 'Ten kwartał'
         : monthLabel(selectedMonth);
+  const reminderStatus = getCompensationReminderStatus(firm);
+  const reminderSettings = reminderStatus.settings;
+  const oldestMissing = reminderStatus.overdueItems[0] || null;
+  const reminderDescription = !reminderSettings.enabled
+    ? 'Wyłączone dla tej firmy. Nie będą wysyłane wiadomości ani wyświetlane alerty.'
+    : reminderStatus.hasAlert
+      ? `${reminderStatus.overdueItems.length} ${reminderStatus.overdueItems.length === 1 ? 'nieuzupełniony termin' : 'nieuzupełnione terminy'}. Najstarszy: ${formatDate(oldestMissing.dueDate)}.`
+      : `${compensationFrequencyLabel(reminderSettings.frequency)} od ${formatDate(reminderSettings.startDate)}. Wszystkie dotychczasowe terminy są uzupełnione.`;
 
   return `
     <div class="firm-detail-page">
@@ -1034,6 +1048,13 @@ function renderCompensationPage(firm, ledger, selectedMonth) {
               <span>Suma wynagrodzeń</span>
               <strong>${formatCurrency(total)}</strong>
             </article>
+          </div>
+          <div class="compensation-reminder-strip ${reminderStatus.hasAlert ? 'has-alert' : ''}">
+            <div class="compensation-reminder-copy">
+              <strong>${icon('bell')}Przypominaj o wynagrodzeniu</strong>
+              <span>${escapeHtml(reminderDescription)}</span>
+            </div>
+            <button class="ghost-button" type="button" data-action="edit-compensation-reminder">Ustawienia</button>
           </div>
         </section>
         <section class="section-band overview-panel">
@@ -2476,6 +2497,7 @@ function openFirmModal(firm = null) {
       email: String(data.get('email') || '').trim(),
       phone: String(data.get('phone') || '').trim(),
       domainExpiryDate: String(data.get('domainExpiryDate') || '').trim(),
+      compensationReminder: normalizeCompensationReminder(firm?.compensationReminder),
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
       adBudgetEntries: firm?.adBudgetEntries || [],
@@ -2489,6 +2511,7 @@ function openFirmModal(firm = null) {
       posts: firm?.posts || [],
       postReminderKeys: firm?.postReminderKeys || [],
       domainReminderKeys: firm?.domainReminderKeys || [],
+      compensationReminderKeys: firm?.compensationReminderKeys || [],
       createdAt: firm?.createdAt || now,
       updatedAt: now,
     };
@@ -3009,6 +3032,71 @@ function openCompensationEntryModal(existing = null) {
   });
 }
 
+function openCompensationReminderModal() {
+  const firm = getSelectedFirm(state);
+  if (!firm) return;
+  const settings = normalizeCompensationReminder(firm.compensationReminder);
+
+  openModal(
+    'Przypomnienie o wynagrodzeniu',
+    `
+      <form id="compensationReminderForm" class="form-grid">
+        <label class="checkbox-opt field-span-2">
+          <input type="checkbox" name="enabled" value="1" ${settings.enabled ? 'checked' : ''} />
+          <span>Przypominaj o wynagrodzeniu dla tej firmy</span>
+        </label>
+        ${labeledInput({
+          name: 'frequency',
+          label: 'Częstotliwość wynagrodzenia',
+          type: 'select',
+          value: settings.frequency,
+          options: COMPENSATION_FREQUENCY_OPTIONS,
+          required: true,
+        })}
+        ${labeledInput({
+          name: 'startDate',
+          label: 'Pierwszy termin płatności',
+          type: 'date',
+          value: settings.startDate || new Date().toISOString().slice(0, 10),
+          required: true,
+        })}
+        <p class="form-help field-span-2">Jeżeli w miesiącu terminu nie dodasz wynagrodzenia, alert i mail pojawią się w dniu terminu, a następnie co 7 dni.</p>
+        ${modalActions('Zapisz ustawienia')}
+      </form>
+    `
+  );
+
+  const form = document.getElementById('compensationReminderForm');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const enabled = data.get('enabled') === '1';
+    const startDate = String(data.get('startDate') || '').slice(0, 10);
+    if (enabled && !startDate) {
+      window.alert('Wybierz pierwszy termin płatności.');
+      return;
+    }
+    firm.compensationReminder = normalizeCompensationReminder({
+      enabled,
+      frequency: String(data.get('frequency') || 'monthly'),
+      startDate,
+    });
+    firm.compensationReminderKeys ||= [];
+    firm.updatedAt = new Date().toISOString();
+    appendFirmHistory(firm, {
+      area: 'compensation',
+      action: 'reminder-settings',
+      title: enabled ? 'Włączono przypomnienia o wynagrodzeniu' : 'Wyłączono przypomnienia o wynagrodzeniu',
+      meta: enabled
+        ? { frequency: compensationFrequencyLabel(firm.compensationReminder.frequency), startDate }
+        : {},
+    });
+    persist();
+    closeModal();
+    render();
+  });
+}
+
 function openWalletIncomeModal(existing) {
   existing = existing || null;
   var firm = getSelectedFirm(state);
@@ -3101,6 +3189,17 @@ async function handleClick(event) {
     state.ui.activeTab = target.dataset.tab || 'overview';
     persist();
     render();
+    return;
+  }
+  if (action === 'finance-nav') {
+    const value = target.dataset.tab || '';
+    if (value === 'invoices') return navigateTo('faktury.html', state);
+    if (value === 'balance') return navigateTo('portfel.html', state);
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      render();
+    }
     return;
   }
 
@@ -3268,6 +3367,7 @@ async function handleClick(event) {
     return render();
   }
   if (action === 'add-compensation') return openCompensationEntryModal();
+  if (action === 'edit-compensation-reminder') return openCompensationReminderModal();
   if (action === 'edit-compensation') return openCompensationEntryModal(findCompensationEntry(target.dataset.id));
   if (action === 'delete-compensation') {
     if (!firm || !window.confirm('Usunąć to wynagrodzenie?')) return;
@@ -3490,19 +3590,6 @@ document.body.addEventListener('change', (event) => {
     state.ui.activeMonthTab = 'overview';
     persist();
     return render();
-  }
-
-  const financeTarget = event.target.closest('[data-action="finance-nav"]');
-  if (financeTarget) {
-    const value = financeTarget.value || '';
-    if (value === 'invoices') return navigateTo('faktury.html', state);
-    if (value === 'balance') return navigateTo('portfel.html', state);
-    if (value === 'compensation') {
-      state.ui.activeTab = 'compensation';
-      persist();
-      render();
-    }
-    return;
   }
 
   const target = event.target.closest('[data-action="select-month-dropdown"]');

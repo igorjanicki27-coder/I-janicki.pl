@@ -26,7 +26,8 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=30';
+} from './storage.js?v=32';
+import { normalizeCompensationReminder } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 const root = document.getElementById('app');
@@ -1243,6 +1244,7 @@ function openFirmModal(firm = null) {
       email: String(data.get('email') || '').trim(),
       phone: String(data.get('phone') || '').trim(),
       domainExpiryDate: String(data.get('domainExpiryDate') || '').trim(),
+      compensationReminder: normalizeCompensationReminder(firm?.compensationReminder),
       notes: String(data.get('notes') || '').trim(),
       months: firm?.months || [],
       adBudgetEntries: firm?.adBudgetEntries || [],
@@ -1251,6 +1253,7 @@ function openFirmModal(firm = null) {
       expenses: firm?.expenses || [],
       invoices: firm?.invoices || [],
       domainReminderKeys: firm?.domainReminderKeys || [],
+      compensationReminderKeys: firm?.compensationReminderKeys || [],
       createdAt: firm?.createdAt || now,
       updatedAt: now,
     };

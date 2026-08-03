@@ -1,4 +1,5 @@
 import { ensureFirmyAdminSession, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js?v=20';
+import { normalizeCompensationReminder } from './compensation-reminders.mjs?v=2';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
@@ -192,6 +193,7 @@ function normalizeFirm(firm) {
     email: firm.email || '',
     phone: firm.phone || '',
     domainExpiryDate: String(firm.domainExpiryDate || '').slice(0, 10),
+    compensationReminder: normalizeCompensationReminder(firm.compensationReminder),
     notes: firm.notes || '',
     months: months.map((month) => ({
       id: month.id,
@@ -312,6 +314,7 @@ function normalizeFirm(firm) {
     })),
     postReminderKeys: ensureArray(firm.postReminderKeys),
     domainReminderKeys: ensureArray(firm.domainReminderKeys),
+    compensationReminderKeys: ensureArray(firm.compensationReminderKeys),
     postStorageFallback: firm.postStorageFallback === true,
     createdAt: firm.createdAt || now,
     updatedAt: firm.updatedAt || now,
@@ -390,6 +393,10 @@ function mergePostBackups(preferredFirm, fallbackFirm) {
     domainReminderKeys: [...new Set([
       ...ensureArray(preferredFirm.domainReminderKeys),
       ...ensureArray(fallbackFirm.domainReminderKeys),
+    ])],
+    compensationReminderKeys: [...new Set([
+      ...ensureArray(preferredFirm.compensationReminderKeys),
+      ...ensureArray(fallbackFirm.compensationReminderKeys),
     ])],
     postStorageFallback: preferredFirm.postStorageFallback === true || fallbackFirm.postStorageFallback === true,
   };

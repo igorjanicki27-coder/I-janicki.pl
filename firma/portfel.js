@@ -11,7 +11,7 @@ import {
 import {
   getAttachment,
   syncFromCloud,
-} from './storage.js?v=30';
+} from './storage.js?v=32';
 import {
   icon,
   escapeHtml,
@@ -32,7 +32,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=33';
+} from './core.js?v=36';
 
 let state = initializeState();
 restoreContext(state);
@@ -265,6 +265,17 @@ function handleClick(event) {
     persist();
     return navigateTo('przeglad.html', state);
   }
+  if (action === 'finance-nav') {
+    var value = target.dataset.tab || '';
+    if (value === 'invoices') return navigateTo('faktury.html', state);
+    if (value === 'balance') return;
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      return navigateTo('przeglad.html', state);
+    }
+    return;
+  }
   if (action === 'nav-portfel') return;
   if (action === 'nav-faktury') return navigateTo('faktury.html', state);
 
@@ -331,19 +342,6 @@ document.body.addEventListener('change', function(event) {
     state.ui.selectedMonth = '__all__';
     persist();
     return render();
-  }
-
-  var financeTarget = event.target.closest('[data-action="finance-nav"]');
-  if (financeTarget) {
-    var value = financeTarget.value || '';
-    if (value === 'invoices') return navigateTo('faktury.html', state);
-    if (value === 'balance') return;
-    if (value === 'compensation') {
-      state.ui.activeTab = 'compensation';
-      persist();
-      return navigateTo('przeglad.html', state);
-    }
-    return;
   }
 
   var target = event.target.closest('[data-action="select-month-dropdown"]');

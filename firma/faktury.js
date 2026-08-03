@@ -16,7 +16,7 @@ import {
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=30';
+} from './storage.js?v=32';
 import {
   icon,
   escapeHtml,
@@ -39,7 +39,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=33';
+} from './core.js?v=36';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---
@@ -1371,6 +1371,17 @@ function handleClick(event) {
     persist();
     return navigateTo('przeglad.html', state);
   }
+  if (action === 'finance-nav') {
+    const value = target.dataset.tab || '';
+    if (value === 'invoices') return;
+    if (value === 'balance') return navigateTo('portfel.html', state);
+    if (value === 'compensation') {
+      state.ui.activeTab = 'compensation';
+      persist();
+      return navigateTo('przeglad.html', state);
+    }
+    return;
+  }
 
   // Zamknij menu akcji po kliknieciu dowolnej akcji (oprocz toggle)
   if (action !== 'toggle-actions' && action !== 'toggle-global-actions' && action !== 'toggle-display-filter') {
@@ -1757,19 +1768,6 @@ document.body.addEventListener('change', (event) => {
     state.ui.selectedMonth = '__all__';
     persist();
     return render();
-  }
-
-  const financeTarget = event.target.closest('[data-action="finance-nav"]');
-  if (financeTarget) {
-    const value = financeTarget.value || '';
-    if (value === 'invoices') return;
-    if (value === 'balance') return navigateTo('portfel.html', state);
-    if (value === 'compensation') {
-      state.ui.activeTab = 'compensation';
-      persist();
-      return navigateTo('przeglad.html', state);
-    }
-    return;
   }
 
   const target = event.target.closest('[data-action="select-month-dropdown"]');

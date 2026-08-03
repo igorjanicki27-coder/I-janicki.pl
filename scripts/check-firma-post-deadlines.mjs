@@ -1,3 +1,8 @@
+import {
+  compensationFrequencyLabel,
+  getCompensationReminderStatus,
+} from '../firma/compensation-reminders.mjs';
+
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
 const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || 'i-janicki').trim();
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '';
@@ -59,6 +64,11 @@ function formatDatePl(value) {
     String(date.getUTCMonth() + 1).padStart(2, '0'),
     date.getUTCFullYear(),
   ].join('/');
+}
+
+function formatPeriodPl(value) {
+  const [year, month] = String(value || '').split('-');
+  return year && month ? `${month}/${year}` : String(value || '');
 }
 
 function addMonthsKey(value, months) {
@@ -218,6 +228,27 @@ function findDomainExpiryReminders(state) {
     const sentKeys = new Set(Array.isArray(firm.domainReminderKeys) ? firm.domainReminderKeys : []);
     if (sentKeys.has(reminderKey)) continue;
     reminders.push({ firm, expiryDate, daysUntilExpiry, reminderKey });
+  }
+  return reminders;
+}
+
+function findCompensationReminders(state) {
+  const reminders = [];
+  const today = warsawTodayKey();
+  for (const firm of state.firms || []) {
+    const status = getCompensationReminderStatus(firm, today);
+    const sentKeys = new Set(Array.isArray(firm.compensationReminderKeys) ? firm.compensationReminderKeys : []);
+    for (const dueItem of status.overdueItems) {
+      if (!dueItem.shouldSendToday) continue;
+      const reminderKey = `compensation:${dueItem.dueDate}:${today}`;
+      if (sentKeys.has(reminderKey)) continue;
+      reminders.push({
+        firm,
+        settings: status.settings,
+        dueItem,
+        reminderKey,
+      });
+    }
   }
   return reminders;
 }
@@ -388,6 +419,9 @@ async function loadFirmPostCollections(idToken, firm) {
     domainReminderKeys: Array.isArray(firmDoc.domainReminderKeys)
       ? firmDoc.domainReminderKeys
       : (firm.domainReminderKeys || []),
+    compensationReminderKeys: Array.isArray(firmDoc.compensationReminderKeys)
+      ? firmDoc.compensationReminderKeys
+      : (firm.compensationReminderKeys || []),
     postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
     posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
   };
@@ -411,7 +445,7 @@ async function saveState(idToken, state) {
   });
 }
 
-function buildReminderDigest(overdueReminders, scheduledReminders, domainReminders) {
+function buildReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders) {
   const lines = [
     `Podsumowanie przypomnień na ${warsawTodayKey()}`,
     '',
@@ -425,6 +459,18 @@ function buildReminderDigest(overdueReminders, scheduledReminders, domainReminde
         : `Pozostało ${reminder.daysUntilExpiry} dni`;
       lines.push(`${index + 1}. Domena firmy ${firmName(reminder.firm)}, dnia ${formatDatePl(reminder.expiryDate)} kończy swoją ważność.`);
       lines.push(`   ${remainingLabel}`);
+      lines.push('');
+    });
+  }
+
+  if (compensationReminders.length) {
+    lines.push('Wynagrodzenia wymagające uzupełnienia:');
+    compensationReminders.forEach((reminder, index) => {
+      const { firm, settings, dueItem } = reminder;
+      lines.push(`${index + 1}. Termin płatności wynagrodzenia przez firmę ${firmName(firm)}: ${formatDatePl(dueItem.dueDate)}.`);
+      lines.push(`   Okres: ${formatPeriodPl(dueItem.period)}`);
+      lines.push(`   Częstotliwość: ${compensationFrequencyLabel(settings.frequency)}`);
+      lines.push(`   Nie dodano wynagrodzenia w zakładce Wynagrodzenia.`);
       lines.push('');
     });
   }
@@ -590,9 +636,9 @@ async function sendWeb3FormsMail({ subject, message }) {
   }
 }
 
-async function sendReminderDigest(overdueReminders, scheduledReminders, domainReminders) {
-  const total = overdueReminders.length + scheduledReminders.length + domainReminders.length;
-  const message = buildReminderDigest(overdueReminders, scheduledReminders, domainReminders);
+async function sendReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders) {
+  const total = overdueReminders.length + scheduledReminders.length + domainReminders.length + compensationReminders.length;
+  const message = buildReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders);
   const subject = `Firma - przypomnienia (${total})`;
 
   if (hasSmtpConfig()) {
@@ -659,6 +705,7 @@ async function main() {
   const overdueReminders = findDueReminders({ firms });
   const scheduledReminders = findScheduledPostReminders({ firms });
   const domainReminders = findDomainExpiryReminders({ firms });
+  const compensationReminders = findCompensationReminders({ firms });
 
   const tabCount = firms.reduce((sum, firm) => sum + ((firm.postTabs || []).length), 0);
   const postCount = firms.reduce((sum, firm) => sum + ((firm.posts || []).length), 0);
@@ -670,19 +717,20 @@ async function main() {
     `${duePostTabs.length} tabs due today or overdue`,
     `${scheduledPostsToday.length} scheduled posts for today`,
     `${domainReminders.length} domain expiry reminders`,
-    `${overdueReminders.length + scheduledReminders.length + domainReminders.length} reminders pending after sent-key filtering`,
+    `${compensationReminders.length} compensation reminders`,
+    `${overdueReminders.length + scheduledReminders.length + domainReminders.length + compensationReminders.length} reminders pending after sent-key filtering`,
   ].join(' '));
   if (postCount === 0) {
     console.warn('No posts were loaded from Firestore. Scheduled-post reminders cannot be detected until posts are saved/migrated to firmy_clients/*/posts or preserved in firmy_settings/state.');
   }
 
-  if (!overdueReminders.length && !scheduledReminders.length && !domainReminders.length) {
-    console.log('No overdue post tabs, scheduled posts or domain expiry reminders for today found.');
+  if (!overdueReminders.length && !scheduledReminders.length && !domainReminders.length && !compensationReminders.length) {
+    console.log('No overdue post tabs, scheduled posts, domain expiry or compensation reminders for today found.');
     return;
   }
 
-  await sendReminderDigest(overdueReminders, scheduledReminders, domainReminders);
-  console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s), ${domainReminders.length} domain reminder(s).`);
+  await sendReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders);
+  console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s), ${domainReminders.length} domain reminder(s), ${compensationReminders.length} compensation reminder(s).`);
 
   const sent = [
     ...overdueReminders.map((reminder) => ({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey })),
@@ -691,6 +739,11 @@ async function main() {
       firmId: reminder.firm.id,
       reminderKey: reminder.reminderKey,
       fieldName: 'domainReminderKeys',
+    })),
+    ...compensationReminders.map((reminder) => ({
+      firmId: reminder.firm.id,
+      reminderKey: reminder.reminderKey,
+      fieldName: 'compensationReminderKeys',
     })),
   ];
   for (const item of sent) {
