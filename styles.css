@@ -641,6 +641,10 @@ html[data-theme="light"] .opt { background: rgba(255,255,255,0.5); }
 .snav-item[data-topic="tutorial"] .opt-icon {
   transform: translateY(0.5px);
 }
+.opt-icon-tutorial {
+  position: relative;
+  top: -1px;
+}
 .opt-primary { background: linear-gradient(135deg,rgba(127,64,255,0.25),rgba(255,0,212,0.25)); border-color: var(--accent-3); }
 .opt-primary:hover { box-shadow: 0 0 0 1px var(--accent-3),0 10px 30px -10px rgba(255,0,212,0.6); }
 
@@ -984,13 +988,15 @@ html[data-theme="light"] .form-group input, html[data-theme="light"] .form-group
 .reviews-section-title {
   font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 2px;
   margin-bottom: 20px;
+  width: 100%;
+  text-align: center;
   background: linear-gradient(135deg,#baeaff,#7f40ff 60%,#ff00d4);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
 /* Formularz oceny */
-.review-form { display: flex; flex-direction: column; gap: 14px; max-width: 500px; }
-.star-picker { display: flex; gap: 6px; margin-bottom: 4px; }
+.review-form { display: flex; flex-direction: column; gap: 14px; width: min(100%, 500px); }
+.star-picker { display: flex; justify-content: center; gap: 6px; margin-bottom: 4px; }
 
 /* Gwiazdki — animowane */
 @keyframes star-active-pulse {
@@ -1047,7 +1053,7 @@ html[data-theme="light"] .review-field textarea { background: rgba(0,0,0,0.04); 
 /* Modal opinii — layout */
 .modal-reviews-container { display: flex; gap: 28px; align-items: stretch; }
 .reviews-carousel-section { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-.modal-review-form-container { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.modal-review-form-container { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .review-success { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; height: 100%; text-align: center; padding: 24px 0; }
 .review-success-msg { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #40c9ff; line-height: 1.6; }
 @media (max-width: 768px) {
@@ -1445,7 +1451,11 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   border-top: 1px solid var(--border-soft);
 }
 .panel-faq-btn {
-  padding: 7px 12px;
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 10;
+  padding: 5px 11px;
   border-radius: 8px;
   border: 1px solid rgba(255, 0, 212, 0.45);
   background: rgba(255, 0, 212, 0.1);

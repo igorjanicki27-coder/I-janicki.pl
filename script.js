@@ -1117,7 +1117,7 @@ function renderTopicButtons(buttonClass) {
 }
 
 function renderTutorialButton(buttonClass) {
-  return `<button class="${buttonClass}" data-topic="tutorial"><span class="opt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> ${t('btn-tutorial')}</button>`;
+  return `<button class="${buttonClass}" data-topic="tutorial"><span class="opt-icon opt-icon-tutorial" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> ${t('btn-tutorial')}</button>`;
 }
 
 function finishTutorial() {
@@ -2166,20 +2166,28 @@ function injectFaqBtn() {
   const panel = $('panel');
   if (!panel) return;
   removeFaqBtn();
+  const faqLink = document.createElement('a');
+  faqLink.className = 'panel-faq-btn';
+  faqLink.href = '/faq/';
+  faqLink.setAttribute('aria-label', t('faq-aria'));
+  faqLink.textContent = 'FAQ';
+
   const links = document.createElement('nav');
   links.className = 'panel-quick-links';
-  links.setAttribute('aria-label', currentLang === 'en' ? 'FAQ and local offers' : 'FAQ i oferty lokalne');
+  links.setAttribute('aria-label', currentLang === 'en' ? 'Local offers' : 'Oferty lokalne');
   links.innerHTML = `
-    <a class="panel-faq-btn" href="/faq/" aria-label="${t('faq-aria')}">FAQ</a>
     <a class="panel-location-btn" href="/oferta/sroda-slaska/">Środa Śląska</a>
     <a class="panel-location-btn" href="/oferta/miekinia-lutynia/">Miękinia/Lutynia</a>
     <a class="panel-location-btn" href="/oferta/wroclaw/">Wrocław</a>
   `;
+  panel.appendChild(faqLink);
   panel.appendChild(links);
 }
 
 function removeFaqBtn() {
-  $('panel')?.querySelector('.panel-quick-links')?.remove();
+  const panel = $('panel');
+  panel?.querySelector('.panel-faq-btn')?.remove();
+  panel?.querySelector('.panel-quick-links')?.remove();
 }
 
 function openFaqModal() {
