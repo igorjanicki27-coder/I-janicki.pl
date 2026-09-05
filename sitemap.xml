@@ -5,6 +5,7 @@
     <lastmod>2026-09-05</lastmod>
   </url>
   <url>
+<<<<<<< HEAD
     <loc>https://i-janicki.pl/kontakt/</loc>
     <lastmod>2026-09-05</lastmod>
   </url>
@@ -42,6 +43,29 @@
   </url>
   <url>
     <loc>https://i-janicki.pl/oferta/wroclaw/</loc>
+=======
+    <loc>https://i-janicki.pl/aplikacje-webowe-na-zamowienie/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/cennik-stron-internetowych/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/konfiguracja-sieci-sroda-slaska/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/opieka-it-sroda-slaska/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/pozycjonowanie-stron-sroda-slaska/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/strony-internetowe-sroda-slaska/</loc>
+>>>>>>> 8e3a62b6042f9ab4020fda836e0a733ad48e3c7a
     <lastmod>2026-09-05</lastmod>
   </url>
 </urlset>
