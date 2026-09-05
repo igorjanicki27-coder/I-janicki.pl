@@ -23,6 +23,7 @@ import {
 } from './storage.js?v=33';
 import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
 import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
+import { loadFirmPostCollections } from './post-storage.js?v=10';
 
 // --- Icons ---
 export function icon(name) {
@@ -251,8 +252,60 @@ function isPostTabOverdue(firm, tab) {
   return today >= dueDate;
 }
 
-function firmHasOverduePostTabs(firm) {
-  return (firm.postTabs || []).some((tab) => isPostTabOverdue(firm, tab));
+function getOverduePostTabs(firm) {
+  return (firm.postTabs || []).filter((tab) => isPostTabOverdue(firm, tab));
+}
+
+function postAlertTitle(overdueTabs) {
+  if (!overdueTabs.length) return 'Posty';
+  return `Po terminie: ${overdueTabs.map((tab) => tab.name || 'Podzakładka bez nazwy').join(', ')}`;
+}
+
+function applyPostAlertState(button, firm) {
+  if (!button) return;
+  const overdueTabs = getOverduePostTabs(firm);
+  const title = postAlertTitle(overdueTabs);
+  const badge = button.querySelector('.tab-alert-count');
+  button.classList.toggle('has-alert', overdueTabs.length > 0);
+  button.title = overdueTabs.length ? title : '';
+  button.setAttribute('aria-label', title);
+  if (badge) {
+    badge.textContent = String(overdueTabs.length);
+    badge.hidden = overdueTabs.length === 0;
+  }
+}
+
+const postAlertRefreshes = new Map();
+const refreshedPostAlertFirms = new Set();
+
+function refreshPostAlertFromFirestore(state, firmId) {
+  if (!firmId || refreshedPostAlertFirms.has(firmId) || postAlertRefreshes.has(firmId)) return;
+  const firm = state.firms.find((item) => item.id === firmId);
+  if (!firm) return;
+
+  const refresh = loadFirmPostCollections(firm)
+    .then(({ tabs, posts, fallback }) => {
+      const currentFirm = state.firms.find((item) => item.id === firmId);
+      if (!currentFirm) return;
+      currentFirm.postTabs = tabs;
+      currentFirm.posts = posts;
+      if (fallback) currentFirm.postStorageFallback = true;
+      else delete currentFirm.postStorageFallback;
+      refreshedPostAlertFirms.add(firmId);
+      persistState(state);
+
+      if (state.ui.selectedFirmId !== firmId) return;
+      applyPostAlertState(
+        document.querySelector('[data-action="switch-firm-tab"][data-tab="posts"]'),
+        currentFirm,
+      );
+    })
+    .catch((error) => {
+      console.warn('Nie udało się odświeżyć statusu postów w nagłówku:', error);
+    })
+    .finally(() => postAlertRefreshes.delete(firmId));
+
+  postAlertRefreshes.set(firmId, refresh);
 }
 
 function firmContactSummary(firm) {
@@ -474,7 +527,8 @@ export function updateTopbar(state, activeTab) {
   const financeValue = activeTab === 'invoices' || activeTab === 'balance' || activeTab === 'compensation'
     ? activeTab
     : '';
-  const hasOverduePosts = firmHasOverduePostTabs(firm);
+  const overduePostTabs = getOverduePostTabs(firm);
+  const postAlertText = postAlertTitle(overduePostTabs);
   const hasCompensationAlert = getCompensationReminderStatus(firm).hasAlert;
   const firmOptions = state.firms.map((item) => `
     <option value="${item.id}" ${item.id === firm.id ? 'selected' : ''}>${escapeHtml(firmDisplayName(item) || item.name || 'Firma bez nazwy')}</option>
@@ -491,7 +545,7 @@ export function updateTopbar(state, activeTab) {
         </label>
         <div class="tab-row">
           <button class="tab-button ${activeTab === 'overview' ? 'is-active' : ''}" type="button" data-action="switch-firm-tab" data-tab="overview">Przegląd</button>
-          <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''} ${hasOverduePosts ? 'has-alert' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts" ${hasOverduePosts ? 'title="Są zaległe podzakładki postów"' : ''}>Posty</button>
+          <button class="tab-button ${activeTab === 'posts' ? 'is-active' : ''} ${overduePostTabs.length ? 'has-alert' : ''}" type="button" data-action="switch-firm-tab" data-tab="posts" title="${overduePostTabs.length ? escapeHtml(postAlertText) : ''}" aria-label="${escapeHtml(postAlertText)}">Posty<span class="tab-alert-count" ${overduePostTabs.length ? '' : 'hidden'}>${overduePostTabs.length}</span></button>
         </div>
       </div>
       <div class="topbar-finance">
@@ -533,6 +587,7 @@ export function updateTopbar(state, activeTab) {
       </div>
     </div>
   `;
+  if (activeTab !== 'posts') refreshPostAlertFromFirestore(state, firm.id);
 }
 
 // --- Firm List (shared by przeglad and other pages) ---

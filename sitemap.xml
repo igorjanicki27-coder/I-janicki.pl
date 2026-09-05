@@ -2,30 +2,46 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-janicki.pl/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/aplikacje-webowe-na-zamowienie/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/kontakt/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/cennik-stron-internetowych/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/oferta/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/konfiguracja-sieci-sroda-slaska/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/oferta/aplikacje/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/opieka-it-sroda-slaska/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/oferta/cennik/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/pozycjonowanie-stron-sroda-slaska/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/oferta/miekinia-lutynia/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://i-janicki.pl/strony-internetowe-sroda-slaska/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://i-janicki.pl/oferta/opieka-it/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/oferta/seo/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/oferta/sieci/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/oferta/sroda-slaska/</loc>
+    <lastmod>2026-09-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/oferta/wroclaw/</loc>
+    <lastmod>2026-09-05</lastmod>
   </url>
 </urlset>

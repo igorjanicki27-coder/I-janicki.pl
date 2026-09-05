@@ -618,6 +618,7 @@ html[data-theme="light"] .panel {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px;
   background: rgba(255,255,255,0.03); border: 1px solid var(--border-soft);
   border-radius: 12px; color: var(--text); font-size: 14px; font-weight: 500;
+  text-decoration: none;
   text-align: left; transition: transform 0.2s var(--ease), background 0.2s, border-color 0.2s, box-shadow 0.2s;
   position: relative; overflow: hidden;
 }

@@ -174,7 +174,7 @@ const TRANSLATIONS = {
     'btn-reviews': 'Opinie',
     'btn-tutorial': 'Prezentacja',
     'greeting-title': 'i-JANEK',
-    'greeting-text': '<h1 class="panel-seo-h1">Strony internetowe i aplikacje webowe na zamówienie</h1><p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
+    'greeting-text': '<h1 class="panel-seo-h1">Strony internetowe i aplikacje na zamówienie</h1><p>Cześć! Jestem <strong>i-JANEK</strong> — Twój wirtualny asystent.</p><p>Skonfiguruj kilka preferencji, a potem wyruszamy w podróż po ofercie <strong>i-JANICKI</strong>!</p>',
     'greeting-ready': 'Gotowy? Kliknij <em>Dalej</em>! 🚀',
     'lang-label': '🌐 Język',
     'lang-pl': '🇵🇱 PL',
@@ -223,10 +223,10 @@ const TRANSLATIONS = {
     'cookie-doc-all-docs': 'Wszystkie dokumenty',
     'name-title': 'Jak mam się do Ciebie zwracać?',
     'about-photo-alt': 'Igor Janicki',
-    'about-handle': '@i-janicki · Środa Śląska i okolice',
-    'about-lead': 'Tworzę strony internetowe i aplikacje webowe na zamówienie, pomagam w konfiguracji sieci i oferuję bieżącą opiekę IT. Pracuję zarówno z klientami lokalnymi, jak i zdalnie.',
+    'about-handle': '@i-janicki · Środa Śląska · Miękinia/Lutynia · Wrocław',
+    'about-lead': 'Tworzę strony internetowe oraz aplikacje webowe, desktopowe i mobilne na zamówienie, pomagam w konfiguracji sieci i oferuję bieżącą opiekę IT. Pracuję zarówno z klientami lokalnymi, jak i zdalnie.',
     'about-li-web': 'Strony internetowe na zamówienie',
-    'about-li-apps': 'Aplikacje webowe i mobilne na zamówienie',
+    'about-li-apps': 'Aplikacje webowe, desktopowe i mobilne na zamówienie',
     'about-li-network': 'Konfiguracja sieci i administracja',
     'about-li-support': 'Wsparcie i opieka IT',
     'services-design-title': 'Projektowanie i Marketing',
@@ -234,7 +234,7 @@ const TRANSLATIONS = {
     'services-web-title': 'Strony internetowe',
     'services-web-desc': 'Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.',
     'services-webapps-title': 'Aplikacje',
-    'services-webapps-desc': 'Tworzę aplikacje webowe i mobilne. Integruję je ze stronami lub innymi aplikacjami.',
+    'services-webapps-desc': 'Tworzę aplikacje webowe, desktopowe i mobilne. Integruję je ze stronami oraz innymi systemami.',
     'services-mobile-title': 'SEO',
     'services-mobile-desc': 'Optymalizuję strony i rozwijam treści, aby zwiększać ich widoczność na właściwe zapytania.',
     'services-network-title': 'Konfiguracja sieci',
@@ -334,7 +334,7 @@ const TRANSLATIONS = {
     'btn-reviews': 'Reviews',
     'btn-tutorial': 'Tutorial',
     'greeting-title': 'i-JANEK',
-    'greeting-text': '<p>Hello! I\'m <strong>i-JANEK</strong> — your virtual assistant.</p><h1 class="panel-seo-h1">Custom websites and web applications</h1><p>I\'ll help you learn more about <strong>i-JANICKI</strong> services.</p>',
+    'greeting-text': '<p>Hello! I\'m <strong>i-JANEK</strong> — your virtual assistant.</p><h1 class="panel-seo-h1">Custom websites and applications</h1><p>I\'ll help you learn more about <strong>i-JANICKI</strong> services.</p>',
     'greeting-ready': 'Ready? Click <em>Next</em>! 🚀',
     'lang-label': '🌐 Language',
     'lang-pl': '🇵🇱 PL',
@@ -383,10 +383,10 @@ const TRANSLATIONS = {
     'cookie-doc-all-docs': 'All documents',
     'name-title': 'What should I call you?',
     'about-photo-alt': 'Igor Janicki',
-    'about-handle': '@i-janicki · Sroda Slaska and nearby areas',
-    'about-lead': 'I build custom websites and web apps, help with network setup, and provide ongoing IT support. I work with both local and remote clients.',
+    'about-handle': '@i-janicki · Sroda Slaska · Miekinia/Lutynia · Wroclaw',
+    'about-lead': 'I build custom websites, web apps, desktop software, and mobile apps, help with network setup, and provide ongoing IT support. I work with both local and remote clients.',
     'about-li-web': 'Custom websites',
-    'about-li-apps': 'Custom web and mobile apps',
+    'about-li-apps': 'Custom web, desktop, and mobile apps',
     'about-li-network': 'Network setup and administration',
     'about-li-support': 'IT support and ongoing care',
     'services-design-title': 'Design',
@@ -394,7 +394,7 @@ const TRANSLATIONS = {
     'services-web-title': 'Websites',
     'services-web-desc': 'I design and deliver custom websites, from business cards to larger portals. Responsive, fast, and SEO-friendly.',
     'services-webapps-title': 'Apps',
-    'services-webapps-desc': 'I build web and mobile apps. I integrate them with websites or other applications.',
+    'services-webapps-desc': 'I build web, desktop, and mobile apps. I integrate them with websites and other systems.',
     'services-mobile-title': 'SEO',
     'services-mobile-desc': 'I optimize websites for search engines to maximize traffic.',
     'services-network-title': 'Network setup',
@@ -596,7 +596,7 @@ function getLangLabel(topic, lang) {
 const SECTION_MSG = {
   pl: {
     about: n => `Pozwól, że się przedstawię${n}! Tutaj dowiesz się, <strong>kim jestem</strong>, skąd pochodzę i czym się zajmuję.`,
-    services: () => 'Tu znajdziesz moje <strong>Usługi</strong> — strony, aplikacje webowe, sieci LAN/WLAN i opieka IT.',
+    services: () => 'Tu znajdziesz moje <strong>Usługi</strong> — strony, aplikacje webowe, desktopowe i mobilne, sieci LAN/WLAN oraz opiekę IT.',
     projects: () => 'Moje <strong>Projekty</strong> — wybrane realizacje. Zerknij, co już stworzyłem.',
     process: () => 'Tak wygląda <strong>Proces współpracy</strong> — od pierwszej rozmowy do wdrożenia. Zero niespodzianek.',
     pricing: () => 'Orientacyjny <strong>Cennik</strong>. Każdy projekt wyceniam indywidualnie — tu znajdziesz punkt wyjścia.',
@@ -604,7 +604,7 @@ const SECTION_MSG = {
   },
   en: {
     about: n => `Let me introduce myself${n}! Here you'll learn <strong>who I am</strong>, where I come from, and what I do.`,
-    services: () => 'Here you can explore my <strong>services</strong> — websites, web apps, LAN/WLAN networks, and IT support.',
+    services: () => 'Here you can explore my <strong>services</strong> — websites, web, desktop and mobile apps, LAN/WLAN networks, and IT support.',
     projects: () => 'These are my <strong>projects</strong> — selected work I\'ve already delivered.',
     process: () => 'This is what the <strong>collaboration process</strong> looks like — from the first conversation to launch. No surprises.',
     pricing: () => 'Here is the <strong>pricing overview</strong>. Every project is quoted individually, and this gives you a solid starting point.',
@@ -1115,7 +1115,9 @@ const TOPIC_ICONS = {
 
 function renderTopicButtons(buttonClass) {
   return ['about', 'services', 'projects', 'process', 'pricing', 'contact', 'reviews']
-    .map(topic => `<button class="${buttonClass}" data-topic="${topic}">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</button>`)
+    .map(topic => topic === 'contact'
+      ? `<a class="${buttonClass}" href="/kontakt/">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</a>`
+      : `<button class="${buttonClass}" data-topic="${topic}">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</button>`)
     .join('');
 }
 
@@ -1221,6 +1223,7 @@ function showReturning() {
 // ─────────────────────────────────────────────────────────────────
 function handleTopic(topic) {
   if (topic === 'tutorial') { restartTutorial(); return; }
+  if (topic === 'contact') { window.location.href = '/kontakt/'; return; }
 
   openModal(topic);
 
@@ -2332,11 +2335,11 @@ const FAQ_ITEMS = {
   pl: [
     {
       q: 'Jakie usługi oferuje i-JANICKI?',
-      a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję klientów ze Środy Śląskiej i okolic oraz zdalnie z całej Polski.',
+      a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych oraz aplikacji webowych, desktopowych i mobilnych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie.',
     },
     {
       q: 'Ile kosztuje wykonanie strony internetowej na zamówienie?',
-      a: 'Ceny stron internetowych na zamówienie zaczynają się od 1 500 zł za prostą stronę wizytówkową lub portfolio. Rozbudowane portale i sklepy internetowe wyceniam indywidualnie — po krótkiej rozmowie o zakresie i funkcjonalnościach. Zawsze otrzymujesz szczegółową wycenę przed podpisaniem umowy, bez ukrytych kosztów.',
+      a: 'Abonament za stronę internetową zaczyna się od 49 zł miesięcznie za prostą stronę wizytówkową lub portfolio. Rozbudowane serwisy wyceniam indywidualnie po krótkiej rozmowie o zakresie i funkcjonalnościach.',
     },
     {
       q: 'Jak długo trwa stworzenie strony internetowej?',
@@ -2351,8 +2354,8 @@ const FAQ_ITEMS = {
       a: 'Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce.',
     },
     {
-      q: 'Czy tworzysz aplikacje webowe i mobilne na zamówienie?',
-      a: 'Tak. Projektuję i wdrażam aplikacje webowe z logiką biznesową, integracjami API i panelami administracyjnymi. Tworzę też aplikacje mobilne i integruję je ze stronami internetowymi lub innymi systemami. Każdy projekt jest dopasowany do indywidualnych potrzeb klienta.',
+      q: 'Czy tworzysz aplikacje webowe, desktopowe i mobilne na zamówienie?',
+      a: 'Tak. Projektuję i wdrażam aplikacje webowe, programy desktopowe oraz aplikacje mobilne z logiką biznesową i integracjami API. Platformę dobieram do użytkowników, urządzeń i celu projektu.',
     },
     {
       q: 'Jak wygląda współpraca przy tworzeniu strony internetowej?',
@@ -2366,11 +2369,11 @@ const FAQ_ITEMS = {
   en: [
     {
       q: 'What services does i-JANICKI offer?',
-      a: 'i-JANICKI provides end-to-end IT services: custom websites and web apps, logo and visual identity design, LAN/WLAN and VPN network setup, and ongoing IT support on a subscription basis. I work with local clients in Sroda Slaska and nearby areas as well as remote clients across Poland.',
+      a: 'i-JANICKI provides end-to-end IT services: custom websites, web apps, desktop software and mobile apps, logo and visual identity design, LAN/WLAN and VPN network setup, and ongoing IT support on a subscription basis.',
     },
     {
       q: 'How much does a custom website cost?',
-      a: 'Custom website projects start from PLN 1,500 for a simple business-card site or portfolio. Larger portals and e-commerce projects are quoted individually after a short conversation about scope and features. You always receive a detailed quote before any agreement is signed.',
+      a: 'Website subscriptions start from PLN 49 per month for a simple business-card site or portfolio. Larger projects are quoted individually after a short conversation about scope and features.',
     },
     {
       q: 'How long does it take to build a website?',
@@ -2385,8 +2388,8 @@ const FAQ_ITEMS = {
       a: 'Yes. Every website I build works well on phones, tablets, and desktops. I focus on fast loading, lightweight code, and optimized images, which helps achieve better Google PageSpeed results and stronger visibility in search.',
     },
     {
-      q: 'Do you build custom web and mobile applications?',
-      a: 'Yes. I design and implement web applications with business logic, API integrations, and admin panels. I also create mobile apps and connect them with websites or other systems. Every project is tailored to the client\'s needs.',
+      q: 'Do you build custom web, desktop, and mobile applications?',
+      a: 'Yes. I design and implement web, desktop, and mobile applications with business logic and API integrations. I select the platform based on the users, devices, and project goals.',
     },
     {
       q: 'What does collaboration look like when building a website?',

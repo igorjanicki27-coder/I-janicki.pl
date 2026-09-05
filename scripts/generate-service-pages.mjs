@@ -6,25 +6,37 @@ const SITE_URL = 'https://i-janicki.pl';
 const EMAIL = 'kontakt@i-janicki.pl';
 
 const navigation = [
-  ['strony-internetowe-sroda-slaska', 'Strony WWW'],
-  ['cennik-stron-internetowych', 'Cennik'],
-  ['aplikacje-webowe-na-zamowienie', 'Aplikacje'],
-  ['opieka-it-sroda-slaska', 'Opieka IT'],
-  ['konfiguracja-sieci-sroda-slaska', 'Sieci'],
-  ['pozycjonowanie-stron-sroda-slaska', 'SEO']
+  ['oferta', 'Oferta'],
+  ['oferta/sroda-slaska', 'Środa Śląska'],
+  ['oferta/miekinia-lutynia', 'Miękinia i Lutynia'],
+  ['oferta/wroclaw', 'Wrocław'],
+  ['oferta/cennik', 'Cennik'],
+  ['oferta/aplikacje', 'Aplikacje']
+];
+
+const relatedServices = [
+  ['oferta/sroda-slaska', 'Strony WWW — Środa Śląska'],
+  ['oferta/miekinia-lutynia', 'Strony WWW — Miękinia i Lutynia'],
+  ['oferta/wroclaw', 'Strony WWW — Wrocław'],
+  ['oferta/cennik', 'Cennik'],
+  ['oferta/aplikacje', 'Aplikacje'],
+  ['oferta/opieka-it', 'Opieka IT'],
+  ['oferta/sieci', 'Sieci LAN, Wi-Fi i VPN'],
+  ['oferta/seo', 'Pozycjonowanie i SEO']
 ];
 
 const pages = [
   {
-    slug: 'strony-internetowe-sroda-slaska',
-    navLabel: 'Strony WWW',
+    slug: 'oferta/sroda-slaska',
+    navLabel: 'Środa Śląska',
+    areaServed: ['Środa Śląska', 'powiat średzki'],
     metaTitle: 'Strony internetowe Środa Śląska | i-JANICKI',
     metaDescription: 'Nowoczesne strony internetowe dla firm ze Środy Śląskiej i okolic. Indywidualny projekt, responsywność, szybkie działanie i solidne podstawy SEO.',
     eyebrow: 'Strony internetowe • Środa Śląska i okolice',
     title: 'Strony internetowe dla firm ze Środy Śląskiej',
     lead: 'Projektuję szybkie, czytelne i dopasowane do firmy strony WWW, które budują zaufanie i prowadzą klienta od pierwszego wejścia do kontaktu. Bez przypadkowego szablonu i bez zbędnych funkcji.',
     facts: [
-      ['Cena', 'od 1 500 zł'],
+      ['Cena', 'od 49 zł/mies.'],
       ['Obsługa', 'lokalnie i zdalnie'],
       ['Standard', 'mobile + SEO'],
       ['Wycena', 'indywidualna']
@@ -61,9 +73,9 @@ const pages = [
     localPanelText: 'Środa Śląska i powiat średzki, a projekty stron internetowych również zdalnie dla firm z całej Polski.',
     areas: ['Środa Śląska', 'Miękinia', 'Malczyce', 'Kostomłoty', 'Udanin', 'Dolny Śląsk'],
     priceTitle: 'Ile kosztuje strona internetowa?',
-    priceLead: 'Prosta strona firmowa lub portfolio zaczyna się od 1 500 zł. Końcowa cena zależy przede wszystkim od liczby widoków, ilości treści, integracji i funkcji dodatkowych.',
+    priceLead: 'Abonament za prostą stronę firmową lub portfolio zaczyna się od 49 zł miesięcznie. Końcowa cena zależy przede wszystkim od liczby widoków, ilości treści, integracji i funkcji dodatkowych.',
     priceCards: [
-      ['Strona wizytówkowa', 'od 1 500 zł', 'Zwarta prezentacja firmy, usług i kontaktu. Dobra na uporządkowany start w internecie.'],
+      ['Strona wizytówkowa w abonamencie', 'od 49 zł/mies.', 'Zwarta prezentacja firmy, usług i kontaktu. Dobra na uporządkowany start w internecie.'],
       ['Rozbudowana strona firmowa', 'wycena indywidualna', 'Więcej podstron, rozbudowana oferta, realizacje, treści lokalne lub dodatkowe integracje.']
     ],
     faq: [
@@ -75,16 +87,17 @@ const pages = [
     ]
   },
   {
-    slug: 'cennik-stron-internetowych',
+    slug: 'oferta/cennik',
     navLabel: 'Cennik',
-    metaTitle: 'Cennik stron internetowych | Środa Śląska',
-    metaDescription: 'Sprawdź orientacyjny cennik stron internetowych i usług i-JANICKI. Strony WWW od 1500 zł, aplikacje od 5000 zł. Środa Śląska i okolice.',
+    areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Dolny Śląsk'],
+    metaTitle: 'Cennik stron internetowych i aplikacji | i-JANICKI',
+    metaDescription: 'Sprawdź orientacyjny cennik usług i-JANICKI. Strony internetowe od 49 zł/mies., aplikacje od 99 zł/mies. Środa Śląska, Miękinia i Wrocław.',
     eyebrow: 'Przejrzyste widełki • indywidualna wycena',
     title: 'Cennik stron internetowych i usług IT',
     lead: 'Poznaj ceny początkowe, zanim opiszesz projekt. Każde zlecenie wyceniam indywidualnie, ale od początku wskazuję, co wpływa na budżet i gdzie można uprościć zakres.',
     facts: [
-      ['Strony', 'od 1 500 zł'],
-      ['Aplikacje', 'od 5 000 zł'],
+      ['Strony', 'od 49 zł/mies.'],
+      ['Aplikacje', 'od 99 zł/mies.'],
       ['Sieci', 'od 150 zł/h'],
       ['Opieka IT', 'od 300 zł/mc']
     ],
@@ -114,16 +127,16 @@ const pages = [
       ['Otrzymujesz propozycję', 'Przedstawiam zakres oraz orientacyjny harmonogram i koszt realizacji.'],
       ['Podejmujesz decyzję', 'Wycena nie zobowiązuje do rozpoczęcia współpracy. Zakres możemy także podzielić na etapy.']
     ],
-    localTitle: 'Wycena dla firm ze Środy Śląskiej i okolic',
-    localText: ['Lokalizacja nie podnosi ceny projektu internetowego. Większość ustaleń możemy przeprowadzić zdalnie, a działania wymagające obecności na miejscu wyceniam po poznaniu zakresu.', 'Najpierw dobieramy rozwiązanie do celu i budżetu. Jeżeli prostsza wersja wystarczy, powiem o tym wprost.'],
+    localTitle: 'Wycena dla firm z Dolnego Śląska i całej Polski',
+    localText: ['Lokalizacja nie podnosi ceny projektu internetowego. Firmy ze Środy Śląskiej, Miękini i Wrocławia obsługuję lokalnie, a większość ustaleń możemy przeprowadzić również zdalnie.', 'Najpierw dobieramy rozwiązanie do celu i budżetu. Jeżeli prostsza wersja wystarczy, powiem o tym wprost.'],
     localPanelTitle: 'Wycena bez zobowiązań',
     localPanelText: 'Napisz, jaki efekt chcesz osiągnąć. Otrzymasz propozycję zakresu dopasowaną do firmy, a nie automatyczny pakiet.',
-    areas: ['Środa Śląska', 'Powiat średzki', 'Realizacja zdalna', 'Wycena indywidualna'],
+    areas: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Realizacja zdalna'],
     priceTitle: 'Orientacyjne ceny usług',
     priceLead: 'Podane kwoty są cenami początkowymi. Dokładna wycena powstaje po ustaleniu zakresu, dzięki czemu wiadomo, jakie prace obejmuje budżet.',
     priceCards: [
-      ['Strona internetowa', 'od 1 500 zł', 'Strona wizytówkowa lub portfolio, responsywna i przygotowana pod podstawowe działania SEO.'],
-      ['Aplikacja webowa', 'od 5 000 zł', 'Panel, system lub aplikacja z logiką biznesową, integracjami i bazą danych.'],
+      ['Strona internetowa', 'od 49 zł/mies.', 'Strona wizytówkowa lub portfolio, responsywna i przygotowana pod podstawowe działania SEO.'],
+      ['Aplikacja na zamówienie', 'od 99 zł/mies.', 'Aplikacja webowa, desktopowa lub mobilna z logiką biznesową, integracjami i bazą danych.'],
       ['Sieć i administracja', 'od 150 zł/h', 'Projekt, konfiguracja LAN/Wi-Fi, VPN, urządzeń sieciowych i zabezpieczeń.'],
       ['Opieka IT', 'od 300 zł/mc', 'Bieżące wsparcie, aktualizacje i monitoring w uzgodnionym zakresie.']
     ],
@@ -136,17 +149,18 @@ const pages = [
     ]
   },
   {
-    slug: 'aplikacje-webowe-na-zamowienie',
+    slug: 'oferta/aplikacje',
     navLabel: 'Aplikacje',
-    metaTitle: 'Aplikacje webowe na zamówienie | i-JANICKI',
-    metaDescription: 'Dedykowane aplikacje webowe, panele i narzędzia dla firm. Logika biznesowa, bazy danych i integracje API. Środa Śląska oraz cała Polska.',
+    areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Polska'],
+    metaTitle: 'Aplikacje na zamówienie | web, desktop i mobile',
+    metaDescription: 'Dedykowane aplikacje webowe, desktopowe i mobilne dla firm. Logika biznesowa, bazy danych, integracje API i rozwiązania wieloplatformowe.',
     eyebrow: 'Dedykowane narzędzia dla biznesu',
-    title: 'Aplikacje webowe na zamówienie',
-    lead: 'Tworzę panele, kalkulatory i systemy dopasowane do konkretnego procesu w firmie. Zamiast naginać gotowy program do pracy zespołu, budujemy narzędzie rozwiązujące jasno określony problem.',
+    title: 'Aplikacje na zamówienie',
+    lead: 'Tworzę aplikacje webowe, desktopowe i mobilne, a także panele, kalkulatory oraz systemy dopasowane do konkretnego procesu w firmie. Dobieram platformę do użytkowników i problemu, który rozwiązujemy.',
     facts: [
-      ['Cena', 'od 5 000 zł'],
+      ['Cena', 'od 99 zł/mies.'],
       ['Realizacja', 'etapami'],
-      ['Dostęp', 'przeglądarka'],
+      ['Platformy', 'web • desktop • mobile'],
       ['Obszar', 'cała Polska']
     ],
     benefitsTitle: 'Kiedy dedykowana aplikacja ma sens',
@@ -156,9 +170,12 @@ const pages = [
       ['Funkcje dopasowane do pracy', 'Interfejs i logika wynikają z rzeczywistych zadań zespołu, bez nadmiaru modułów charakterystycznego dla dużych systemów.'],
       ['Możliwość dalszego rozwoju', 'Pierwsza wersja może obejmować najważniejszy proces, a następne moduły można dodawać w kolejnych etapach.']
     ],
-    scopeTitle: 'Przykładowy zakres aplikacji webowej',
+    scopeTitle: 'Przykładowy zakres aplikacji na zamówienie',
     scopeLead: 'Ostateczny zestaw funkcji wynika z analizy procesu. Najpierw określamy minimalną wersję, która przyniesie firmie realną wartość.',
     scope: [
+      'Aplikacje webowe działające w przeglądarce',
+      'Aplikacje desktopowe dla Windows, macOS lub Linux',
+      'Aplikacje mobilne na Androida i iOS',
       'Panele administracyjne i pracownicze',
       'Kalkulatory, formularze i generowanie dokumentów',
       'Bazy klientów, zleceń lub zasobów',
@@ -166,7 +183,7 @@ const pages = [
       'Integracje z zewnętrznymi API',
       'Raporty, wyszukiwanie i filtrowanie danych',
       'Automatyzacja powtarzalnych czynności',
-      'Rozwój i opieka po uruchomieniu'
+      'Rozwój, publikacja i opieka po uruchomieniu'
     ],
     processTitle: 'Od problemu do działającego systemu',
     process: [
@@ -176,30 +193,31 @@ const pages = [
       ['Uruchomienie i rozwój', 'Po testach aplikacja trafia do użytkowników, a dalsze zmiany wynikają z faktycznego użycia.']
     ],
     localTitle: 'Dla firm lokalnych i zespołów pracujących zdalnie',
-    localText: ['Firmy ze Środy Śląskiej i powiatu średzkiego mogą korzystać z lokalnego kontaktu, ale sama realizacja aplikacji nie jest ograniczona geograficznie.', 'Analizę, prezentacje kolejnych wersji i odbiory możemy prowadzić online, dzięki czemu współpracuję również z klientami z całej Polski.'],
+    localText: ['Firmy ze Środy Śląskiej, Miękini i Wrocławia mogą korzystać z lokalnego kontaktu, ale realizacja aplikacji webowych, desktopowych i mobilnych nie jest ograniczona geograficznie.', 'Analizę, prezentacje kolejnych wersji i odbiory możemy prowadzić online, dzięki czemu współpracuję również z klientami z całej Polski.'],
     localPanelTitle: 'Najpierw weryfikacja pomysłu',
     localPanelText: 'Nie każdy proces wymaga dedykowanego systemu. Przed wyceną sprawdzamy, czy prostsza integracja lub istniejące narzędzie nie rozwiąże problemu taniej.',
-    areas: ['Środa Śląska', 'Dolny Śląsk', 'Cała Polska', 'Współpraca zdalna'],
-    priceTitle: 'Koszt aplikacji webowej',
-    priceLead: 'Realizacje zaczynają się od 5 000 zł. Budżet zależy od liczby ról, ekranów, integracji, rodzaju danych, wymagań bezpieczeństwa i zakresu automatyzacji.',
+    areas: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Cała Polska'],
+    priceTitle: 'Koszt aplikacji na zamówienie',
+    priceLead: 'Abonament za aplikację zaczyna się od 99 zł miesięcznie. Cena zależy od platformy, liczby ról, ekranów, integracji, rodzaju danych, wymagań bezpieczeństwa i zakresu automatyzacji.',
     priceCards: [
-      ['Pierwsza wersja aplikacji', 'od 5 000 zł', 'Najważniejszy proces, podstawowe widoki i funkcje potrzebne do sprawdzenia rozwiązania w praktyce.'],
+      ['Pierwsza wersja aplikacji', 'od 99 zł/mies.', 'Najważniejszy proces, podstawowe widoki i funkcje potrzebne do sprawdzenia rozwiązania w praktyce.'],
       ['Rozbudowany system', 'wycena indywidualna', 'Więcej ról, modułów, raportów, integracji oraz wymagań dotyczących utrzymania i bezpieczeństwa.']
     ],
     faq: [
-      ['Czym aplikacja webowa różni się od strony?', 'Strona przede wszystkim prezentuje informacje. Aplikacja obsługuje działania użytkowników, dane i logikę biznesową, na przykład zlecenia, raporty lub wewnętrzne procesy.'],
-      ['Czy aplikację trzeba instalować?', 'Zwykle nie. Aplikacja webowa działa w przeglądarce, dzięki czemu można korzystać z niej na różnych urządzeniach zgodnie z ustalonymi uprawnieniami.'],
+      ['Jakie rodzaje aplikacji tworzysz?', 'Tworzę aplikacje webowe działające w przeglądarce, programy desktopowe oraz aplikacje mobilne. Platformę dobieram do sposobu pracy użytkowników, urządzeń i wymaganych integracji.'],
+      ['Czy aplikację trzeba instalować?', 'To zależy od wybranej platformy. Aplikacja webowa działa w przeglądarce, natomiast aplikacja desktopowa lub mobilna może wymagać instalacji albo publikacji w odpowiednim sklepie.'],
       ['Czy można zacząć od małej wersji?', 'Tak. Najbezpieczniej rozpocząć od najważniejszego procesu i rozbudowywać system po sprawdzeniu go w codziennej pracy.'],
       ['Czy integrujesz aplikacje z innymi usługami?', 'Tak, jeżeli dana usługa udostępnia odpowiedni interfejs API i warunki techniczne pozwalają na bezpieczną integrację.'],
       ['Czy zapewniasz późniejsze utrzymanie?', 'Zakres opieki, aktualizacji i dalszego rozwoju można ustalić jako osobny etap lub stałą współpracę.']
     ]
   },
   {
-    slug: 'opieka-it-sroda-slaska',
+    slug: 'oferta/opieka-it',
     navLabel: 'Opieka IT',
-    metaTitle: 'Opieka IT dla firm Środa Śląska | i-JANICKI',
-    metaDescription: 'Bieżąca opieka IT dla małych firm ze Środy Śląskiej i okolic. Wsparcie techniczne, aktualizacje, monitoring i pomoc zdalna.',
-    eyebrow: 'Stałe wsparcie • Środa Śląska i okolice',
+    areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Dolny Śląsk'],
+    metaTitle: 'Opieka IT dla małych firm | i-JANICKI',
+    metaDescription: 'Bieżąca opieka IT dla małych firm. Wsparcie techniczne, aktualizacje, monitoring oraz pomoc zdalna i lokalna na Dolnym Śląsku.',
+    eyebrow: 'Stałe wsparcie • lokalnie i zdalnie',
     title: 'Opieka IT dla małych firm',
     lead: 'Pomagam utrzymać firmowe narzędzia i strony w porządku, reaguję na bieżące problemy oraz planuję potrzebne aktualizacje. Zakres abonamentu dopasowuję do wielkości firmy i faktycznych potrzeb.',
     facts: [
@@ -234,11 +252,11 @@ const pages = [
       ['Uporządkowanie startu', 'Porządkuję dostęp, podstawową dokumentację i najpilniejsze aktualizacje objęte ustaleniami.'],
       ['Bieżąca opieka', 'Realizuję zgłoszenia, monitoruję uzgodnione elementy i sygnalizuję potrzebne działania.']
     ],
-    localTitle: 'Wsparcie IT w Środzie Śląskiej i powiecie średzkim',
+    localTitle: 'Wsparcie IT w Środzie Śląskiej, Miękini i Wrocławiu',
     localText: ['Większość typowych problemów można rozwiązać zdalnie. Jeżeli potrzebna jest obecność na miejscu, termin i koszt dojazdu ustalamy przed wizytą.', 'Usługa jest skierowana przede wszystkim do mniejszych firm, które nie potrzebują pełnego wewnętrznego działu IT, ale chcą mieć stały kontakt do osoby znającej ich środowisko.'],
     localPanelTitle: 'Elastyczny model wsparcia',
     localPanelText: 'Abonament może objąć stałe działania, a jednorazowe lub większe prace są wyceniane oddzielnie po wcześniejszym uzgodnieniu.',
-    areas: ['Środa Śląska', 'Miękinia', 'Malczyce', 'Kostomłoty', 'Udanin', 'Wsparcie zdalne'],
+    areas: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Powiat średzki', 'Wsparcie zdalne'],
     priceTitle: 'Ile kosztuje opieka IT?',
     priceLead: 'Podstawowy abonament zaczyna się od 300 zł miesięcznie. Cena zależy od liczby urządzeń i użytkowników, zakresu systemów, oczekiwanego czasu reakcji oraz potrzeby wizyt na miejscu.',
     priceCards: [
@@ -254,17 +272,18 @@ const pages = [
     ]
   },
   {
-    slug: 'konfiguracja-sieci-sroda-slaska',
+    slug: 'oferta/sieci',
     navLabel: 'Sieci',
-    metaTitle: 'Konfiguracja sieci Środa Śląska | LAN, Wi-Fi, VPN',
-    metaDescription: 'Projektowanie i konfiguracja sieci LAN, Wi-Fi oraz VPN dla firm i domów w Środzie Śląskiej i okolicy. Audyt, urządzenia i bezpieczeństwo.',
-    eyebrow: 'LAN • Wi-Fi • VPN • Środa Śląska',
+    areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Dolny Śląsk'],
+    metaTitle: 'Konfiguracja sieci LAN, Wi-Fi i VPN | i-JANICKI',
+    metaDescription: 'Projektowanie i konfiguracja sieci LAN, Wi-Fi oraz VPN dla firm i domów. Środa Śląska, Miękinia, Wrocław i okolice.',
+    eyebrow: 'LAN • Wi-Fi • VPN • Dolny Śląsk',
     title: 'Konfiguracja sieci dla firmy i domu',
     lead: 'Projektuję i konfiguruję sieci dopasowane do miejsca, liczby urządzeń oraz sposobu korzystania z internetu. Pomagam poprawić stabilność Wi-Fi, uporządkować urządzenia i bezpiecznie zestawić dostęp zdalny.',
     facts: [
       ['Stawka', 'od 150 zł/h'],
       ['Realizacja', 'po diagnozie'],
-      ['Obszar', 'Środa Śląska i okolice'],
+      ['Obszar', 'Środa Śląska • Miękinia • Wrocław'],
       ['Zakres', 'LAN, Wi-Fi, VPN']
     ],
     benefitsTitle: 'Stabilna sieć zaczyna się od diagnozy',
@@ -293,11 +312,11 @@ const pages = [
       ['Propozycja rozwiązania', 'Przedstawiam potrzebne zmiany, ewentualny sprzęt i orientacyjny koszt prac.'],
       ['Konfiguracja i test', 'Wdrażam uzgodnione ustawienia i sprawdzam działanie sieci w typowych scenariuszach.']
     ],
-    localTitle: 'Konfiguracja sieci w Środzie Śląskiej i okolicy',
+    localTitle: 'Konfiguracja sieci w Środzie Śląskiej, Miękini i Wrocławiu',
     localText: ['Usługi wymagające dostępu do urządzeń realizuję lokalnie po ustaleniu terminu. Część konfiguracji i późniejszego wsparcia może być wykonana zdalnie.', 'Nie wykonuję prac elektrycznych ani budowlanych w ramach samej konfiguracji. Jeśli potrzebne jest nowe okablowanie, zakres techniczny ustalamy przed wyceną.'],
     localPanelTitle: 'Najpierw sprawdzamy przyczynę',
     localPanelText: 'Celem jest dobranie rozwiązania do budynku i sposobu pracy. Nowy sprzęt proponuję wtedy, gdy obecne urządzenia rzeczywiście ograniczają sieć.',
-    areas: ['Środa Śląska', 'Miękinia', 'Malczyce', 'Kostomłoty', 'Udanin', 'Powiat średzki'],
+    areas: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Powiat średzki', 'Dolny Śląsk'],
     priceTitle: 'Cena konfiguracji sieci',
     priceLead: 'Prace administracyjne zaczynają się od 150 zł za godzinę. Przy większych wdrożeniach możliwa jest wycena całego zakresu po diagnozie i poznaniu infrastruktury.',
     priceCards: [
@@ -313,16 +332,17 @@ const pages = [
     ]
   },
   {
-    slug: 'pozycjonowanie-stron-sroda-slaska',
+    slug: 'oferta/seo',
     navLabel: 'SEO',
-    metaTitle: 'Pozycjonowanie stron Środa Śląska | Lokalne SEO',
-    metaDescription: 'Pozycjonowanie i optymalizacja stron firm ze Środy Śląskiej. Audyt techniczny, treści lokalne, Search Console i przejrzysty plan działań.',
-    eyebrow: 'Lokalne SEO • Środa Śląska i okolice',
+    areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Dolny Śląsk'],
+    metaTitle: 'Pozycjonowanie stron i lokalne SEO | i-JANICKI',
+    metaDescription: 'Pozycjonowanie i optymalizacja stron firm. Audyt techniczny, treści lokalne, Search Console i przejrzysty plan działań.',
+    eyebrow: 'Lokalne SEO • Dolny Śląsk',
     title: 'Pozycjonowanie stron lokalnych firm',
     lead: 'Pomagam uporządkować stronę tak, aby wyszukiwarka mogła ją zrozumieć, a potencjalny klient szybko znalazł właściwą usługę. Działania dobieram do konkurencji, możliwości serwisu i realnego obszaru obsługi firmy.',
     facts: [
       ['Model', 'zakres indywidualny'],
-      ['Obszar', 'Środa Śląska i okolice'],
+      ['Obszar', 'Środa Śląska • Miękinia • Wrocław'],
       ['Punkt startu', 'audyt i dane'],
       ['Raportowanie', 'ustalane w ofercie']
     ],
@@ -331,7 +351,7 @@ const pages = [
     benefits: [
       ['Czytelna architektura usług', 'Każda ważna usługa otrzymuje własny adres, temat i ścieżkę kontaktu, dzięki czemu nie konkuruje z przypadkowymi fragmentami strony głównej.'],
       ['Optymalizacja techniczna', 'Sprawdzam indeksowanie, metadane, linkowanie, wydajność i podstawowe błędy utrudniające wyszukiwarce pracę z serwisem.'],
-      ['Treści z lokalnym kontekstem', 'Rozwijamy materiały przydatne dla klientów ze Środy Śląskiej i okolic, bez masowego kopiowania stron dla kolejnych miejscowości.']
+      ['Treści z lokalnym kontekstem', 'Rozwijamy materiały przydatne dla klientów z realnego obszaru obsługi firmy, bez masowego kopiowania stron dla kolejnych miejscowości.']
     ],
     scopeTitle: 'Co mogą obejmować działania SEO',
     scopeLead: 'Zakres zależy od stanu strony i konkurencji. Najpierw ustalamy problemy, priorytety oraz sposób mierzenia efektów.',
@@ -352,11 +372,11 @@ const pages = [
       ['Wdrożenie', 'Realizujemy najważniejsze zmiany etapami, zaczynając od tych, które odblokowują dalszy rozwój serwisu.'],
       ['Pomiar i korekty', 'Obserwujemy wyświetlenia, kliknięcia i zapytania, a kolejne działania dobieramy do danych.']
     ],
-    localTitle: 'Widoczność w Środzie Śląskiej i powiecie średzkim',
+    localTitle: 'Widoczność lokalna w Środzie Śląskiej, Miękini i Wrocławiu',
     localText: ['Dla lokalnej firmy ważne jest spójne pokazanie obszaru obsługi, danych kontaktowych, usług, realizacji i opinii. Podstrony powinny odpowiadać na realne zapytania, a nie być zestawem nazw miejscowości.', 'Pozycjonowanie jest procesem, nie jednorazowym przełącznikiem. Nie obiecuję konkretnej pozycji ani terminu, ponieważ wynik zależy także od konkurencji i zmian po stronie wyszukiwarki.'],
     localPanelTitle: 'Lokalne sygnały poza stroną',
     localPanelText: 'W zależności od rodzaju firmy znaczenie mogą mieć również kompletny Profil Firmy Google, aktualne dane, prawdziwe opinie klientów i linki z wiarygodnych lokalnych źródeł.',
-    areas: ['Środa Śląska', 'Powiat średzki', 'Miękinia', 'Malczyce', 'Kostomłoty', 'Udanin'],
+    areas: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Powiat średzki', 'Dolny Śląsk'],
     priceTitle: 'Koszt pozycjonowania',
     priceLead: 'Wycena jest indywidualna, ponieważ innego zakresu wymaga nowa strona usługowa, a innego rozbudowany serwis z błędami technicznymi i silną konkurencją.',
     priceCards: [
@@ -372,6 +392,72 @@ const pages = [
     ]
   }
 ];
+
+const baseWebsitePage = pages[0];
+
+const miekiniaLutyniaPage = {
+  ...structuredClone(baseWebsitePage),
+  slug: 'oferta/miekinia-lutynia',
+  navLabel: 'Miękinia i Lutynia',
+  areaServed: ['Miękinia', 'Lutynia', 'gmina Miękinia', 'powiat średzki'],
+  metaTitle: 'Strony internetowe Miękinia i Lutynia | i-JANICKI',
+  metaDescription: 'Nowoczesne strony internetowe dla firm z Miękini, Lutyni i gminy Miękinia. Indywidualny projekt, szybkość, wersja mobilna i podstawy SEO.',
+  eyebrow: 'Strony internetowe • Miękinia i Lutynia',
+  title: 'Strony internetowe dla firm z Miękini i Lutyni',
+  lead: 'Tworzę szybkie i czytelne strony WWW dla firm działających w Miękini, Lutyni oraz pozostałych miejscowościach między Środą Śląską a Wrocławiem. Oferta, dojazd i kontakt są pokazane tak, aby klient od razu wiedział, czy obsługujesz jego lokalizację.',
+  benefitsTitle: 'Strona dopasowana do rozwijającego się lokalnego rynku',
+  benefitsLead: 'W Miękini i Lutyni konkurują firmy lokalne, usługodawcy dojeżdżający oraz biznesy obsługujące Wrocław. Witryna powinna jasno komunikować przewagę i faktyczny obszar działania.',
+  benefits: [
+    ['Czytelny obszar obsługi', 'Treść wyjaśnia, czy działasz w Miękini i Lutyni, na terenie całej gminy, czy także we Wrocławiu i sąsiednich powiatach.'],
+    ['Wygodny kontakt z telefonu', 'Najważniejsze usługi, numer telefonu i formularz są łatwo dostępne dla osób szukających wykonawcy w drodze lub na miejscu.'],
+    ['Fundament lokalnego SEO', 'Osobny adres, właściwe metadane, linkowanie i dane strukturalne przygotowują stronę do rozwoju widoczności w Miękini, Lutyni i całej gminie.']
+  ],
+  localTitle: 'Miękinia, Lutynia i zachodnia część aglomeracji wrocławskiej',
+  localText: ['Projektuję strony dla firm, które pozyskują klientów w Miękini, Lutyni, Brzezince Średzkiej, Wilkszynie i pozostałych miejscowościach gminy. Treść porządkuję według realnego zasięgu usługi, bez sztucznego powielania nazw miejscowości.', 'Miękinia i Lutynia są na tej stronie równorzędnymi obszarami oferty. Ustalenia możemy prowadzić zdalnie, a jeśli charakter projektu tego wymaga — umówić spotkanie lub działania na miejscu.'],
+  localPanelTitle: 'Obszar obsługi',
+  localPanelText: 'Miękinia, Lutynia i gmina Miękinia, a projekty stron internetowych również dla firm obsługujących Wrocław oraz klientów z całej Polski.',
+  areas: ['Miękinia', 'Lutynia', 'Wilkszyn', 'Brzezinka Średzka', 'Gmina Miękinia', 'Wrocław'],
+  faq: [
+    ['Ile trwa przygotowanie strony?', 'Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Większe realizacje wymagają więcej czasu, zależnie od liczby podstron, materiałów i integracji.'],
+    ['Czy przygotujesz treści pod Miękinię, Lutynię i okoliczne miejscowości?', 'Tak. Najpierw ustalam realny obszar obsługi firmy, a następnie porządkuję treść tak, aby była użyteczna dla klienta i nie wyglądała jak sztuczna lista miejscowości.'],
+    ['Czy strona będzie widoczna w Google?', 'Strona otrzymuje poprawne podstawy techniczne SEO. Pozycje zależą także od konkurencji, jakości treści, historii domeny, profilu firmy i dalszych działań.'],
+    ['Czy możemy spotkać się na miejscu?', 'Tak, jeśli zakres projektu wymaga spotkania. Większość ustaleń możemy też sprawnie przeprowadzić zdalnie.'],
+    ['Czy później można dodać kolejne usługi?', 'Tak. Strukturę można przygotować tak, aby rozwijać ofertę, realizacje, poradniki oraz kolejne funkcje bez przebudowy całej witryny.']
+  ]
+};
+
+const wroclawPage = {
+  ...structuredClone(baseWebsitePage),
+  slug: 'oferta/wroclaw',
+  navLabel: 'Wrocław',
+  areaServed: ['Wrocław', 'aglomeracja wrocławska', 'Dolny Śląsk'],
+  metaTitle: 'Strony internetowe Wrocław | i-JANICKI',
+  metaDescription: 'Nowoczesne strony internetowe dla firm z Wrocławia. Indywidualny projekt, szybkie działanie, responsywność, konwersja i solidne podstawy SEO.',
+  eyebrow: 'Strony internetowe • Wrocław',
+  title: 'Strony internetowe dla firm z Wrocławia',
+  lead: 'Projektuję strony WWW dla wrocławskich firm, które muszą szybko wyróżnić ofertę na konkurencyjnym rynku. Łączę wyrazisty projekt z czytelną strukturą, wydajnością i prostą drogą do zapytania.',
+  benefitsTitle: 'Konkretny przekaz na konkurencyjnym rynku',
+  benefitsLead: 'We Wrocławiu klient często porównuje kilka firm jednocześnie. Strona powinna w pierwszych sekundach pokazać specjalizację, wiarygodność oraz łatwy następny krok.',
+  benefits: [
+    ['Oferta bez zgadywania', 'Hierarchia treści prowadzi od problemu klienta do właściwej usługi, realizacji, ceny orientacyjnej i kontaktu.'],
+    ['Szybkość na każdym ekranie', 'Wydajny kod i projekt mobile-first ograniczają frustrację użytkowników korzystających z telefonu oraz wspierają techniczne SEO.'],
+    ['Struktura gotowa do rozwoju', 'Oddzielne usługi, lokalne konteksty i przemyślane linkowanie pozwalają później rozwijać widoczność bez przebudowy od zera.']
+  ],
+  localTitle: 'Współpraca z firmami z Wrocławia i aglomeracji',
+  localText: ['Realizuję strony dla usługodawców, małych firm i zespołów działających we Wrocławiu oraz w gminach sąsiadujących z miastem. W treści uwzględniam tylko te lokalizacje i dzielnice, które rzeczywiście wynikają z oferty.', 'Proces może przebiegać całkowicie zdalnie. Spotkanie na miejscu ustalamy wtedy, gdy pomaga ono zebrać materiały, poznać usługę lub sprawniej zaplanować serwis.'],
+  localPanelTitle: 'Obszar obsługi',
+  localPanelText: 'Wrocław i aglomeracja wrocławska, ze szczególnym uwzględnieniem zachodniej części miasta oraz kierunku Miękinia–Środa Śląska.',
+  areas: ['Wrocław', 'Fabryczna', 'Leśnica', 'Aglomeracja wrocławska', 'Miękinia', 'Dolny Śląsk'],
+  faq: [
+    ['Ile trwa przygotowanie strony?', 'Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Termin większego serwisu zależy od liczby podstron, materiałów, integracji i etapów akceptacji.'],
+    ['Jak wyróżnić stronę firmy we Wrocławiu?', 'Najpierw trzeba jasno określić specjalizację i odbiorcę. Następnie warto pokazać konkretne realizacje, obszar obsługi, dowody wiarygodności i odpowiedzi na pytania klientów.'],
+    ['Czy sama nowa strona wystarczy do wysokich pozycji?', 'Nie zawsze. Dobra strona tworzy fundament, ale widoczność zależy również od konkurencji, treści, historii domeny, Profilu Firmy Google, linków i regularnej pracy.'],
+    ['Czy współpraca może być całkowicie zdalna?', 'Tak. Rozmowy, prezentacje projektu, poprawki i odbiór możemy przeprowadzić online.'],
+    ['Czy stronę można później rozbudować?', 'Tak. Od początku można zaplanować miejsce na kolejne usługi, realizacje, treści poradnikowe, wersje językowe lub integracje.']
+  ]
+};
+
+pages.splice(1, 0, miekiniaLutyniaPage, wroclawPage);
 
 function escapeHtml(value) {
   return String(value)
@@ -420,7 +506,7 @@ function renderFaq(items) {
 }
 
 function renderRelated(currentSlug) {
-  return navigation.filter(function (item) { return item[0] !== currentSlug; }).slice(0, 3).map(function (item) {
+  return relatedServices.filter(function (item) { return item[0] !== currentSlug; }).slice(0, 4).map(function (item) {
     return '<a href="/' + item[0] + '/">' + item[1] + ' <span aria-hidden="true">→</span></a>';
   }).join('\n          ');
 }
@@ -434,17 +520,17 @@ function renderStructuredData(page) {
     description: page.metaDescription,
     url: SITE_URL + '/' + page.slug + '/',
     provider: { '@id': SITE_URL + '/#business' },
-    areaServed: [
-      { '@type': 'City', name: 'Środa Śląska' },
-      { '@type': 'AdministrativeArea', name: 'powiat średzki' }
-    ]
+    areaServed: page.areaServed.map(function (name) {
+      return { '@type': 'AdministrativeArea', name };
+    })
   };
   const breadcrumbs = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Strona główna', item: SITE_URL + '/' },
-      { '@type': 'ListItem', position: 2, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
+      { '@type': 'ListItem', position: 2, name: 'Oferta', item: SITE_URL + '/oferta/' },
+      { '@type': 'ListItem', position: 3, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
     ]
   };
   const faq = {
@@ -490,10 +576,10 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
-    '  <link rel="stylesheet" href="/oferta.css?v=2">',
+    '  <link rel="stylesheet" href="/oferta.css?v=3">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=9"></script>',
-    '  <script defer src="/oferta.js?v=2"></script>',
+    '  <script defer src="/oferta.js?v=3"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
@@ -503,19 +589,19 @@ function renderPage(page) {
     '      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>',
     '      <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>',
     '          ' + renderNavigation(page.slug),
-    '          <a class="nav-cta" href="mailto:' + EMAIL + '">Kontakt</a>',
+    '          <a class="nav-cta" href="/kontakt/">Kontakt</a>',
     '      </nav>',
     '    </div>',
     '  </header>',
     '  <main id="main">',
-    '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li></ol></div>',
+    '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li><a href="/oferta/">Oferta</a></li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li></ol></div>',
     '    <section class="hero">',
     '      <div class="container hero-grid">',
     '        <div>',
     '          <p class="eyebrow">' + escapeHtml(page.eyebrow) + '</p>',
     '          <h1 class="gradient-text">' + escapeHtml(page.title) + '</h1>',
     '          <p class="hero-lead">' + escapeHtml(page.lead) + '</p>',
-    '          <div class="actions"><a class="button button-primary" href="mailto:' + EMAIL + '?subject=' + encodeURIComponent('Zapytanie: ' + page.navLabel) + '">Zapytaj o wycenę</a><a class="button button-secondary" href="#zakres">Zobacz zakres</a></div>',
+    '          <div class="actions"><a class="button button-primary" href="/kontakt/?temat=' + encodeURIComponent(page.navLabel) + '">Zapytaj o wycenę</a><a class="button button-secondary" href="#zakres">Zobacz zakres</a></div>',
     '        </div>',
     '        <aside class="hero-card" aria-label="Najważniejsze informacje"><p class="hero-card-label">Najważniejsze informacje</p><dl class="facts">' + renderFacts(page.facts) + '</dl></aside>',
     '      </div>',
@@ -557,7 +643,7 @@ function renderPage(page) {
     '      </div>',
     '    </section>',
     '    <section class="section">',
-    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Odezwę się z pytaniami, które pozwolą ustalić sensowny zakres i przygotować wycenę bez dokładania przypadkowych elementów.</p><div class="actions"><a class="button button-primary" href="mailto:' + EMAIL + '?subject=' + encodeURIComponent('Zapytanie: ' + page.navLabel) + '">Napisz: ' + EMAIL + '</a></div></div>',
+    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Odezwę się z pytaniami, które pozwolą ustalić sensowny zakres i przygotować wycenę bez dokładania przypadkowych elementów.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=' + encodeURIComponent(page.navLabel) + '">Przejdź do kontaktu</a></div></div>',
     '    </section>',
     '    <section class="section section-muted">',
     '      <div class="container"><div class="section-heading"><p class="section-kicker">Powiązane usługi</p><h2>Sprawdź także</h2></div><nav class="related-links" aria-label="Powiązane usługi">' + renderRelated(page.slug) + '</nav></div>',
@@ -569,8 +655,95 @@ function renderPage(page) {
     '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
     '    <span class="foot-sep">·</span>',
     '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
+    '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
+    '  </footer>',
+    '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',
+    '</body>',
+    '</html>',
+    ''
+  ].join('\n');
+}
+
+function renderHubCard(item) {
+  return '<a class="offer-card" href="/' + item.slug + '/"><span class="section-kicker">' + escapeHtml(item.kicker) + '</span><h2>' + escapeHtml(item.title) + '</h2><p>' + escapeHtml(item.description) + '</p><strong>Sprawdź ofertę <span aria-hidden="true">→</span></strong></a>';
+}
+
+function renderOfferHub() {
+  const locations = [
+    { slug: 'oferta/sroda-slaska', kicker: 'Lokalnie', title: 'Środa Śląska', description: 'Strony internetowe dla firm ze Środy Śląskiej i powiatu średzkiego.' },
+    { slug: 'oferta/miekinia-lutynia', kicker: 'Lokalnie', title: 'Miękinia i Lutynia', description: 'Jedna mocna strona WWW dla firm obsługujących Miękinię, Lutynię i pozostałe miejscowości gminy.' },
+    { slug: 'oferta/wroclaw', kicker: 'Lokalnie', title: 'Wrocław', description: 'Strony internetowe dla firm działających na konkurencyjnym rynku Wrocławia.' }
+  ];
+  const services = [
+    { slug: 'oferta/cennik', kicker: 'Wspólna oferta', title: 'Cennik', description: 'Strony od 49 zł/mies., aplikacje od 99 zł/mies. i pozostałe ceny orientacyjne.' },
+    { slug: 'oferta/aplikacje', kicker: 'Wspólna oferta', title: 'Aplikacje', description: 'Aplikacje webowe, desktopowe i mobilne dopasowane do procesu w firmie.' },
+    { slug: 'oferta/opieka-it', kicker: 'Wspólna oferta', title: 'Opieka IT', description: 'Bieżące wsparcie, aktualizacje, monitoring i pomoc techniczna.' },
+    { slug: 'oferta/sieci', kicker: 'Wspólna oferta', title: 'Sieci LAN, Wi-Fi i VPN', description: 'Projektowanie, konfiguracja i diagnoza sieci dla firm oraz domów.' },
+    { slug: 'oferta/seo', kicker: 'Wspólna oferta', title: 'Pozycjonowanie i SEO', description: 'Techniczne SEO, rozwój treści i widoczność na właściwe zapytania.' }
+  ];
+  const canonical = SITE_URL + '/oferta/';
+  const structuredData = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Oferta i-JANICKI',
+    description: 'Strony internetowe, aplikacje, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.',
+    url: canonical,
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: [...locations, ...services].map(function (item, index) {
+        return { '@type': 'ListItem', position: index + 1, name: item.title, url: SITE_URL + '/' + item.slug + '/' };
+      })
+    }
+  }).replaceAll('<', '\\u003c');
+
+  return [
+    '<!doctype html>',
+    '<html lang="pl">',
+    '<head>',
+    '  <meta charset="utf-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+    '  <meta name="theme-color" content="#05060c">',
+    '  <meta name="description" content="Strony internetowe, aplikacje, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.">',
+    '  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">',
+    '  <link rel="canonical" href="' + canonical + '">',
+    '  <meta property="og:type" content="website">',
+    '  <meta property="og:locale" content="pl_PL">',
+    '  <meta property="og:site_name" content="i-JANICKI">',
+    '  <meta property="og:title" content="Oferta | strony, aplikacje i IT | i-JANICKI">',
+    '  <meta property="og:description" content="Oferta dla Środy Śląskiej, Miękini, Lutyni, Wrocławia i klientów zdalnych.">',
+    '  <meta property="og:url" content="' + canonical + '">',
+    '  <meta property="og:image" content="' + SITE_URL + '/icons/icon.png">',
+    '  <meta name="twitter:card" content="summary">',
+    '  <title>Oferta | strony, aplikacje i IT | i-JANICKI</title>',
+    '  <link rel="icon" type="image/svg+xml" href="/favicon.svg">',
+    '  <link rel="preconnect" href="https://fonts.googleapis.com">',
+    '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+    '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
+    '  <link rel="stylesheet" href="/oferta.css?v=3">',
+    '  <script type="application/ld+json">' + structuredData + '</script>',
+    '  <script defer src="/analytics.js?v=9"></script>',
+    '  <script defer src="/oferta.js?v=3"></script>',
+    '</head>',
+    '<body>',
+    '  <a class="skip-link" href="#main">Przejdź do treści</a>',
+    '  <header class="site-header"><div class="nav-shell">',
+    '    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
+    '    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>',
+    '    <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>' + renderNavigation('oferta') + '<a class="nav-cta" href="/kontakt/">Kontakt</a></nav>',
+    '  </div></header>',
+    '  <main id="main">',
+    '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">Oferta</li></ol></div>',
+    '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Rozwiązania internetowe i IT dla Twojej firmy</h1><p class="hero-lead">Wybierz lokalną stronę dla Środy Śląskiej, Miękini i Lutyni albo Wrocławia — lub przejdź bezpośrednio do wspólnej usługi. Cennik i zasady współpracy są takie same niezależnie od miasta.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=Wycena">Zapytaj o wycenę</a><a class="button button-secondary" href="#lokalnie">Wybierz lokalizację</a></div></div></section>',
+    '    <section class="section section-muted" id="lokalnie"><div class="container"><div class="section-heading"><p class="section-kicker">Strony lokalne</p><h2>Wybierz rynek, na którym działasz</h2><p>Każda strona ma własny kontekst i treść, ale prowadzi do jednej wspólnej oferty oraz kontaktu.</p></div><div class="offer-grid offer-grid-locations">' + locations.map(renderHubCard).join('') + '</div></div></section>',
+    '    <section class="section"><div class="container"><div class="section-heading"><p class="section-kicker">Usługi wspólne</p><h2>Jedna oferta dla wszystkich lokalizacji</h2><p>Nie powielam cennika ani tych samych opisów usług dla każdego miasta. Dzięki temu struktura jest czytelna dla klientów i wyszukiwarki.</p></div><div class="offer-grid">' + services.map(renderHubCard).join('') + '</div></div></section>',
+    '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=Wycena">Przejdź do kontaktu</a></div></div></section>',
+    '  </main>',
+    '  <footer class="foot">',
+    '    <span>© <span id="year" data-year></span> i-JANICKI</span>',
     '    <span class="foot-sep">·</span>',
-    '    <a href="/strony-internetowe-sroda-slaska/" class="foot-docs">Oferta dla Środy Śląskiej</a>',
+    '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
+    '    <span class="foot-sep">·</span>',
+    '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
     '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
     '  </footer>',
     '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',
@@ -586,4 +759,7 @@ for (const page of pages) {
   await fs.writeFile(path.join(outputDirectory, 'index.html'), renderPage(page), 'utf8');
 }
 
-console.log('Generated ' + pages.length + ' service pages.');
+await fs.mkdir(path.join(ROOT, 'oferta'), { recursive: true });
+await fs.writeFile(path.join(ROOT, 'oferta', 'index.html'), renderOfferHub(), 'utf8');
+
+console.log('Generated offer hub and ' + pages.length + ' service pages.');

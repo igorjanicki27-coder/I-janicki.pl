@@ -555,6 +555,25 @@ svg {
   box-shadow: 0 0 0 2px rgba(45, 127, 249, 0.28), 0 8px 18px rgba(244, 111, 129, 0.12);
 }
 
+.tab-alert-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #b4233c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tab-alert-count[hidden] {
+  display: none;
+}
+
 .app-shell {
   display: grid;
   gap: 24px;

@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=38';
+} from './core.js?v=39';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -1675,7 +1675,11 @@ function renderPostsPage(firm) {
       postSort,
     )
     : [];
-  const overdueTabs = tabs.filter((tab) => getPostTabStatus(firm, tab).isOverdue).length;
+  const overduePostTabs = tabs.filter((tab) => getPostTabStatus(firm, tab).isOverdue);
+  const overdueTabs = overduePostTabs.length;
+  const overdueNote = overdueTabs
+    ? `Po terminie: ${overduePostTabs.map((tab) => escapeHtml(tab.name || 'Bez nazwy')).join(', ')}`
+    : 'Brak zaległych podzakładek';
 
   return `
     <div class="firm-detail-page posts-page">
@@ -1701,7 +1705,7 @@ function renderPostsPage(firm) {
           <div class="posts-summary-grid">
             ${statCard('Podzakladki', String(tabs.length), 'default', 'Osobne dla tej firmy')}
             ${statCard('Wpisy', String((firm.posts || []).length), 'cyan', 'Opublikowane i zaplanowane')}
-            ${statCard('Po terminie', String(overdueTabs), overdueTabs ? 'rose' : 'emerald', 'Licza sie tylko opublikowane')}
+            ${statCard('Po terminie', String(overdueTabs), overdueTabs ? 'rose' : 'emerald', overdueNote)}
           </div>
         </section>
 
