@@ -295,6 +295,7 @@ function refreshPostAlertFromFirestore(state, firmId) {
       persistState(state);
 
       if (state.ui.selectedFirmId !== firmId) return;
+      if (document.querySelector('[data-post-overdue-count]')) return;
       applyPostAlertState(
         document.querySelector('[data-action="switch-firm-tab"][data-tab="posts"]'),
         currentFirm,
@@ -527,7 +528,21 @@ export function updateTopbar(state, activeTab) {
   const financeValue = activeTab === 'invoices' || activeTab === 'balance' || activeTab === 'compensation'
     ? activeTab
     : '';
-  const overduePostTabs = getOverduePostTabs(firm);
+  let overduePostTabs = getOverduePostTabs(firm);
+  const postsPageAlert = activeTab === 'posts'
+    ? document.querySelector('[data-post-overdue-count]')
+    : null;
+  if (postsPageAlert) {
+    try {
+      const names = JSON.parse(postsPageAlert.dataset.postOverdueNames || '[]');
+      overduePostTabs = names.map((name) => ({ name }));
+    } catch (_) {
+      overduePostTabs = Array.from(
+        { length: Number(postsPageAlert.dataset.postOverdueCount || 0) },
+        () => ({ name: 'Podzakładka po terminie' }),
+      );
+    }
+  }
   const postAlertText = postAlertTitle(overduePostTabs);
   const hasCompensationAlert = getCompensationReminderStatus(firm).hasAlert;
   const firmOptions = state.firms.map((item) => `

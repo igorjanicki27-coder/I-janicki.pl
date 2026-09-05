@@ -39,7 +39,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=39';
+} from './core.js?v=40';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---

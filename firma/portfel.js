@@ -32,7 +32,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=39';
+} from './core.js?v=40';
 
 let state = initializeState();
 restoreContext(state);

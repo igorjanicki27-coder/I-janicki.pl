@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=39';
+} from './core.js?v=40';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -1645,7 +1645,7 @@ function renderPostsPage(firm) {
   if (!ensureFirmPostCollectionsLoaded(firm)) {
     const status = postCollectionStatus.get(firm.id);
     return `
-      <div class="firm-detail-page posts-page">
+      <div class="firm-detail-page posts-page" data-post-overdue-count="0" data-post-overdue-names="[]">
         <section class="section-band posts-panel">
           <div class="panel-head">
             <div>
@@ -1682,7 +1682,7 @@ function renderPostsPage(firm) {
     : 'Brak zaległych podzakładek';
 
   return `
-    <div class="firm-detail-page posts-page">
+    <div class="firm-detail-page posts-page" data-post-overdue-count="${overdueTabs}" data-post-overdue-names="${escapeHtml(JSON.stringify(overduePostTabs.map((tab) => tab.name || 'Bez nazwy')))}">
       <section class="main-area">
         ${firm.postStorageFallback ? `
           <section class="section-band posts-panel post-storage-warning">
