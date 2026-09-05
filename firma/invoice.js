@@ -498,7 +498,7 @@ export function buildInvoiceHtml(invoice, firm, issuer, logoDataUri) {
           <div class="party-addr">53-116 Wrocław</div>
           <div class="party-sep"></div>
           <div class="party-detail">tel. 57 57 57 817</div>
-          <div class="party-detail">igor.janicki27@gmail.com</div>
+          <div class="party-detail">kontakt@i-janicki.pl</div>
         </div>
 
         <div class="party">

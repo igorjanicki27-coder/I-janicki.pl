@@ -1,4 +1,4 @@
-export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com'
+export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl'
 export const DEFAULT_ALERT_CPU_TEMP = 90
 export const DEFAULT_ALERT_DISK_USAGE = 90
 export const DEFAULT_TELEMETRY_INTERVAL_MIN = 60

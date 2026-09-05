@@ -20,8 +20,9 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=32';
+} from './storage.js?v=33';
 import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
+import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
 
 // --- Icons ---
 export function icon(name) {
@@ -223,8 +224,9 @@ function addMonthsKey(value, months) {
 }
 
 function addPostFrequencyKey(value, frequency) {
-  if (frequency === 'weekly') return addDaysKey(value, 7);
-  if (frequency === 'biweekly') return addDaysKey(value, 14);
+  const normalizedFrequency = normalizePostFrequency(frequency);
+  if (normalizedFrequency === 'weekly') return addDaysKey(value, 7);
+  if (normalizedFrequency === 'biweekly') return addDaysKey(value, 14);
   return addMonthsKey(value, 1);
 }
 
@@ -235,7 +237,7 @@ function latestPublishedPost(firm, tabId) {
 }
 
 function isPostTabOverdue(firm, tab) {
-  if (!tab || tab.frequency === 'irregular') return false;
+  if (!tab || isIrregularPostFrequency(tab.frequency)) return false;
   const today = todayKey();
   const lastPost = latestPublishedPost(firm, tab.id);
   let dueDate = tab.startDate || today;

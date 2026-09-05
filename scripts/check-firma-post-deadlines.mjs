@@ -2,6 +2,7 @@ import {
   compensationFrequencyLabel,
   getCompensationReminderStatus,
 } from '../firma/compensation-reminders.mjs';
+import { isIrregularPostFrequency, normalizePostFrequency } from '../firma/post-frequency.mjs';
 
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
 const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || 'i-janicki').trim();
@@ -9,7 +10,7 @@ const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON 
 const FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 || '';
 const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === 'true';
 const WEB3FORMS_ACCESS_KEY = (process.env.WEB3FORMS_ACCESS_KEY || '').trim().replace(/^['"]|['"]$/g, '');
-const REMINDER_EMAIL = (process.env.POST_REMINDER_EMAIL || 'igor.janicki27@gmail.com').trim();
+const REMINDER_EMAIL = (process.env.POST_REMINDER_EMAIL || 'kontakt@i-janicki.pl').trim();
 const SMTP_HOST = (process.env.SMTP_HOST || '').trim();
 const SMTP_PORT = Number((process.env.SMTP_PORT || '465').trim());
 const SMTP_SECURE = (process.env.SMTP_SECURE || '').trim()
@@ -83,15 +84,17 @@ function addMonthsKey(value, months) {
 }
 
 function addFrequencyKey(value, frequency) {
-  if (frequency === 'weekly') return addDays(value, 7);
-  if (frequency === 'biweekly') return addDays(value, 14);
+  const normalizedFrequency = normalizePostFrequency(frequency);
+  if (normalizedFrequency === 'weekly') return addDays(value, 7);
+  if (normalizedFrequency === 'biweekly') return addDays(value, 14);
   return addMonthsKey(value, 1);
 }
 
 function frequencyLabel(value) {
-  if (value === 'weekly') return 'Raz w tygodniu';
-  if (value === 'biweekly') return 'Raz na 2 tygodnie';
-  if (value === 'irregular') return 'Nieregularnie';
+  const frequency = normalizePostFrequency(value);
+  if (frequency === 'weekly') return 'Raz w tygodniu';
+  if (frequency === 'biweekly') return 'Raz na 2 tygodnie';
+  if (frequency === 'irregular') return 'Nieregularnie';
   return 'Raz w miesiacu';
 }
 
@@ -130,7 +133,7 @@ function getPostTabStatus(firm, tab) {
   const startDate = tab.startDate || warsawTodayKey();
   const lastPost = latestPublishedPost(firm, tab.id);
   const today = warsawTodayKey();
-  if (tab.frequency === 'irregular') {
+  if (isIrregularPostFrequency(tab.frequency)) {
     return {
       dueDate: null,
       isOverdue: false,

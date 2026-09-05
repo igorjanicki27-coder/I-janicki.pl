@@ -16,7 +16,7 @@ import {
   storeAttachment,
   syncFromCloud,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=32';
+} from './storage.js?v=33';
 import {
   icon,
   escapeHtml,
@@ -39,7 +39,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=37';
+} from './core.js?v=38';
 import { openInvoicePreview } from './invoice.js?v=26';
 
 // --- State ---

@@ -26,7 +26,7 @@ import {
   saveState,
   storeAttachment,
   MAX_ATTACHMENT_BYTES,
-} from './storage.js?v=32';
+} from './storage.js?v=33';
 import { normalizeCompensationReminder } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 

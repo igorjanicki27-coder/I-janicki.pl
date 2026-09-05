@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=32';
+} from './storage.js?v=33';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=9';
+} from './post-storage.js?v=10';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=37';
+} from './core.js?v=38';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -69,6 +69,7 @@ import {
   normalizeCompensationReminder,
 } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
+import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
 
 // --- State ---
 let state = initializeState();
@@ -284,17 +285,19 @@ function addMonthsKey(value, months) {
 }
 
 function addFrequencyKey(value, frequency) {
-  if (frequency === 'weekly') return addDays(value, 7);
-  if (frequency === 'biweekly') return addDays(value, 14);
+  const normalizedFrequency = normalizePostFrequency(frequency);
+  if (normalizedFrequency === 'weekly') return addDays(value, 7);
+  if (normalizedFrequency === 'biweekly') return addDays(value, 14);
   return addMonthsKey(value, 1);
 }
 
 function postFrequencyLabel(value) {
-  return POST_FREQUENCY_OPTIONS.find((item) => item.value === value)?.label || 'Raz w miesiacu';
+  const frequency = normalizePostFrequency(value);
+  return POST_FREQUENCY_OPTIONS.find((item) => item.value === frequency)?.label || 'Raz w miesiacu';
 }
 
 function isIrregularPostTab(tab) {
-  return tab?.frequency === 'irregular';
+  return isIrregularPostFrequency(tab?.frequency);
 }
 
 function ensurePostTabSelection(firm) {
@@ -1759,7 +1762,7 @@ function openPostTabModal(existing = null) {
   openModal(existing ? 'Edytuj podzakladke' : 'Dodaj podzakladke', `
     <form id="postTabForm" class="form-grid">
       ${labeledInput({ name: 'name', label: 'Nazwa', value: existing?.name || '', placeholder: 'Np. Wpisy Google', required: true })}
-      ${labeledInput({ name: 'frequency', label: 'Czestotliwosc', type: 'select', value: existing?.frequency || 'monthly', options: POST_FREQUENCY_OPTIONS })}
+      ${labeledInput({ name: 'frequency', label: 'Czestotliwosc', type: 'select', value: normalizePostFrequency(existing?.frequency), options: POST_FREQUENCY_OPTIONS })}
       ${labeledInput({ name: 'startDate', label: 'Data poczatkowa', type: 'date', value: existing?.startDate || todayKey(), required: true })}
       <div class="modal-actions ${existing ? 'is-split' : ''}">
         ${existing ? '<button class="ghost-button tone-danger" type="button" id="deletePostTabButton">Usun z wpisami</button>' : '<span></span>'}
@@ -1791,7 +1794,7 @@ function openPostTabModal(existing = null) {
     const tab = {
       id: existing?.id || uid(),
       name: String(data.get('name') || '').trim(),
-      frequency: String(data.get('frequency') || 'monthly'),
+      frequency: normalizePostFrequency(data.get('frequency')),
       startDate: String(data.get('startDate') || todayKey()),
       createdAt: existing?.createdAt || now,
       updatedAt: now,
@@ -2317,7 +2320,7 @@ async function importPostRows(importRows) {
       tab = {
         id: uid(),
         name: tabName,
-        frequency: String(importRowValue(row, ['czestotliwosc', 'częstotliwość']) || 'monthly'),
+        frequency: normalizePostFrequency(importRowValue(row, ['czestotliwosc', 'częstotliwość'])),
         startDate: String(importRowValue(row, ['data_poczatkowa', 'data poczatkowa', 'data początkowa']) || todayKey()),
         createdAt: now,
         updatedAt: now,

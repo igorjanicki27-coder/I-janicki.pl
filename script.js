@@ -14,7 +14,7 @@ const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebase
 const EMAILJS_SERVICE  = 'service_0m7ieum';
 const EMAILJS_TEMPLATE = 'template_gd8aaq5';
 const EMAILJS_KEY      = 'BugGXsqvUvMyP4buf';
-const OWNER_EMAIL      = 'igor.janicki27@gmail.com';
+const OWNER_EMAIL      = 'kontakt@i-janicki.pl';
 const WEB3FORMS_KEY    = 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
 const COOKIE_POLICY_VERSION = '1.2';
 
@@ -223,20 +223,20 @@ const TRANSLATIONS = {
     'cookie-doc-all-docs': 'Wszystkie dokumenty',
     'name-title': 'Jak mam się do Ciebie zwracać?',
     'about-photo-alt': 'Igor Janicki',
-    'about-handle': '@i-janicki · Wrocław',
+    'about-handle': '@i-janicki · Środa Śląska i okolice',
     'about-lead': 'Tworzę strony internetowe i aplikacje webowe na zamówienie, pomagam w konfiguracji sieci i oferuję bieżącą opiekę IT. Pracuję zarówno z klientami lokalnymi, jak i zdalnie.',
     'about-li-web': 'Strony internetowe na zamówienie',
     'about-li-apps': 'Aplikacje webowe i mobilne na zamówienie',
     'about-li-network': 'Konfiguracja sieci i administracja',
     'about-li-support': 'Wsparcie i opieka IT',
     'services-design-title': 'Projektowanie i Marketing',
-    'services-design-desc': 'Projektuję i wdrażam loga i ikony. Zajmuję się marketingiem fizycznym i wirtualnym. Na zamówienie przygotowuję realizacje banerów, wizytówek itp. Dbam o wysoką prezencję firmy',
+    'services-design-desc': 'Projektuję logo, ikony i materiały firmowe. Przygotowuję między innymi banery i wizytówki, dbając o spójny wizerunek marki.',
     'services-web-title': 'Strony internetowe',
     'services-web-desc': 'Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.',
     'services-webapps-title': 'Aplikacje',
-    'services-webapps-desc': 'Tworzę aplikacje webowe i mobilne. Integruje je ze stronami lub innymi aplikacjami.',
+    'services-webapps-desc': 'Tworzę aplikacje webowe i mobilne. Integruję je ze stronami lub innymi aplikacjami.',
     'services-mobile-title': 'SEO',
-    'services-mobile-desc': 'Zajmuję się pozycjonowaniem stron, aby zmaksymalizować ilość odwiedzin.',
+    'services-mobile-desc': 'Optymalizuję strony i rozwijam treści, aby zwiększać ich widoczność na właściwe zapytania.',
     'services-network-title': 'Konfiguracja sieci',
     'services-network-desc': 'Projektuję i konfiguruję sieci LAN/WLAN, VPN i systemy bezpieczeństwa sieciowego.',
     'services-it-title': 'Opieka IT',
@@ -281,7 +281,7 @@ const TRANSLATIONS = {
     'contact-invalid': '✗ Podaj poprawny adres e-mail lub numer telefonu.',
     'contact-sending': 'Wysyłanie…',
     'contact-sent': '✓ Wiadomość wysłana! Odpiszę możliwie szybko.',
-    'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na igor.janicki27@gmail.com',
+    'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na kontakt@i-janicki.pl',
     'reviews-lead': 'Tu możesz przeczytać opinie dotychczasowych klientów.',
     'reviews-loading': 'Ładowanie opinii…',
     'reviews-empty': 'Brak opinii — bądź pierwszy! ⬆',
@@ -383,7 +383,7 @@ const TRANSLATIONS = {
     'cookie-doc-all-docs': 'All documents',
     'name-title': 'What should I call you?',
     'about-photo-alt': 'Igor Janicki',
-    'about-handle': '@i-janicki · Wroclaw',
+    'about-handle': '@i-janicki · Sroda Slaska and nearby areas',
     'about-lead': 'I build custom websites and web apps, help with network setup, and provide ongoing IT support. I work with both local and remote clients.',
     'about-li-web': 'Custom websites',
     'about-li-apps': 'Custom web and mobile apps',
@@ -441,7 +441,7 @@ const TRANSLATIONS = {
     'contact-invalid': '✗ Enter a valid e-mail address or phone number.',
     'contact-sending': 'Sending…',
     'contact-sent': '✓ Message sent! I\'ll get back to you as soon as possible.',
-    'contact-error': '✗ Something went wrong. Please write directly to igor.janicki27@gmail.com',
+    'contact-error': '✗ Something went wrong. Please write directly to kontakt@i-janicki.pl',
     'reviews-lead': 'Here you can read reviews from previous clients.',
     'reviews-loading': 'Loading reviews…',
     'reviews-empty': 'No reviews yet — be the first! ⬆',
@@ -2332,7 +2332,7 @@ const FAQ_ITEMS = {
   pl: [
     {
       q: 'Jakie usługi oferuje i-JANICKI?',
-      a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję zarówno klientów lokalnych z Wrocławia, jak i zdalnie z całej Polski.',
+      a: 'i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych i aplikacji webowych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie. Obsługuję klientów ze Środy Śląskiej i okolic oraz zdalnie z całej Polski.',
     },
     {
       q: 'Ile kosztuje wykonanie strony internetowej na zamówienie?',
@@ -2343,8 +2343,8 @@ const FAQ_ITEMS = {
       a: 'Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, rozbudowany portal lub aplikacja webowa — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe.',
     },
     {
-      q: 'Czy tworzysz strony internetowe dla firm z Wrocławia i okolic?',
-      a: 'Tak — specjalizuję się w tworzeniu stron internetowych dla firm z Wrocławia i Dolnego Śląska, ale realizuję projekty dla klientów z całej Polski. Pracuję zdalnie lub spotykam się osobiście — jak wolisz. Każda strona jest responsywna, szybka i zoptymalizowana pod wyszukiwarki.',
+      q: 'Czy tworzysz strony internetowe dla firm ze Środy Śląskiej i okolic?',
+      a: 'Tak — tworzę strony internetowe dla firm ze Środy Śląskiej, powiatu średzkiego i całego Dolnego Śląska, a projekty realizuję również zdalnie dla klientów z całej Polski. Każda strona jest responsywna, szybka i przygotowana pod wyszukiwarki.',
     },
     {
       q: 'Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?',
@@ -2366,7 +2366,7 @@ const FAQ_ITEMS = {
   en: [
     {
       q: 'What services does i-JANICKI offer?',
-      a: 'i-JANICKI provides end-to-end IT services: custom websites and web apps, logo and visual identity design, LAN/WLAN and VPN network setup, and ongoing IT support on a subscription basis. I work with both local clients in Wroclaw and remote clients across Poland.',
+      a: 'i-JANICKI provides end-to-end IT services: custom websites and web apps, logo and visual identity design, LAN/WLAN and VPN network setup, and ongoing IT support on a subscription basis. I work with local clients in Sroda Slaska and nearby areas as well as remote clients across Poland.',
     },
     {
       q: 'How much does a custom website cost?',
@@ -2377,8 +2377,8 @@ const FAQ_ITEMS = {
       a: 'Delivery time depends on the project scope. A simple business-card website is usually ready in 1 to 2 weeks, while a larger portal or web application may take 4 to 12 weeks. I keep you updated at every stage and discuss key decisions along the way.',
     },
     {
-      q: 'Do you build websites for companies in Wroclaw and nearby areas?',
-      a: 'Yes. I specialize in websites for companies in Wroclaw and Lower Silesia, but I also deliver projects for clients across Poland. We can work remotely or meet in person, whichever fits better. Every website is responsive, fast, and search-engine friendly.',
+      q: 'Do you build websites for companies in Sroda Slaska and nearby areas?',
+      a: 'Yes. I build websites for companies in Sroda Slaska, Sroda County, and across Lower Silesia, and I also deliver projects remotely for clients throughout Poland. Every website is responsive, fast, and search-engine friendly.',
     },
     {
       q: 'Are websites built by i-JANICKI responsive and fast?',

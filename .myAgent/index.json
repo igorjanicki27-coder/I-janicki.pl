@@ -684,7 +684,7 @@
       "m": "2026-05-07T16:01:39.658Z",
       "z": 446,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_VAULT_KEY",
@@ -1202,7 +1202,7 @@
       "m": "2026-05-08T12:35:46.278Z",
       "z": 379,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_ALERT_CPU_TEMP",
@@ -1708,7 +1708,7 @@
       "m": "2026-05-07T15:54:55.996Z",
       "z": 446,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_VAULT_KEY",
@@ -2247,7 +2247,7 @@
       "m": "2026-05-09T07:32:31.902Z",
       "z": 379,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_ALERT_CPU_TEMP",
@@ -2753,7 +2753,7 @@
       "m": "2026-05-07T16:14:32.609Z",
       "z": 446,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_VAULT_KEY",
@@ -3237,7 +3237,7 @@
       "m": "2026-05-06T20:30:39.604Z",
       "z": 446,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_VAULT_KEY",
@@ -4220,7 +4220,7 @@
       "m": "2026-05-06T18:28:12.311Z",
       "z": 379,
       "k": 0,
-      "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
+      "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90",
       "e": [
         "DEFAULT_MASTER_EMAIL",
         "DEFAULT_ALERT_CPU_TEMP",
@@ -9955,7 +9955,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/elastic-morse-c71858/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -10593,7 +10593,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/flamboyant-moore-c4827e/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -11187,7 +11187,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/hopeful-kilby-6ca2cc/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -11849,7 +11849,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/loving-saha-0cf6ec/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -12443,7 +12443,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/quizzical-chatelet-df5660/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -13040,7 +13040,7 @@
                                 "name": "constants.ts",
                                 "type": "file",
                                 "path": ".claude/worktrees/sweet-shtern-f1a402/i-JANEK/src/shared/constants.ts",
-                                "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
+                                "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_VAULT_KEY = 'i-janek-dev-vault-key-change-me' export const DEFAULT_ALERT_CPU_TEMP = 90"
                               },
                               {
                                 "name": "contracts.ts",
@@ -14251,7 +14251,7 @@
                     "name": "constants.ts",
                     "type": "file",
                     "path": "i-JANEK/src/shared/constants.ts",
-                    "s": "export const DEFAULT_MASTER_EMAIL = 'igor.janicki27@gmail.com' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
+                    "s": "export const DEFAULT_MASTER_EMAIL = 'kontakt@i-janicki.pl' export const DEFAULT_ALERT_CPU_TEMP = 90 export const DEFAULT_ALERT_DISK_USAGE = 90"
                   },
                   {
                     "name": "contracts.ts",

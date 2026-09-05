@@ -61,7 +61,7 @@ Ikona builda:
 
 ## Kluczowe założenia
 
-- Masterem jest wyłącznie `igor.janicki27@gmail.com`.
+- Masterem jest wyłącznie `kontakt@i-janicki.pl`.
 - Nowe urządzenie jest zawsze oznaczone jako `pending`, dopóki Master nie zatwierdzi go w Firestore.
 - Brak wymaganych zmiennych `VITE_FIREBASE_*` blokuje start aplikacji (tryb produkcyjny, bez fallbacku demo).
 - Domyślne katalogi backupu dla Windows to `%USERPROFILE%\\Desktop`, `%USERPROFILE%\\Documents` i `%USERPROFILE%\\Pictures`.

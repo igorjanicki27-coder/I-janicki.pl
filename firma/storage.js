@@ -1,5 +1,6 @@
 import { ensureFirmyAdminSession, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js?v=20';
 import { normalizeCompensationReminder } from './compensation-reminders.mjs?v=2';
+import { normalizePostFrequency } from './post-frequency.mjs?v=1';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
@@ -113,7 +114,7 @@ function defaultIssuer() {
   return {
     businessName: 'Igor Janicki',
     address: 'ul.Pułtuska 20/9 53-116 Wrocław',
-    email: 'igor.janicki27@gmail.com',
+    email: 'kontakt@i-janicki.pl',
     phone: '575757817',
     nip: '8993047085',
     bankAccount: '',
@@ -288,7 +289,7 @@ function normalizeFirm(firm) {
     postTabs: (Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(now)).map((tab) => ({
       id: tab.id || `post-tab-${now}`,
       name: tab.name || 'Nowa podzakladka',
-      frequency: ['weekly', 'biweekly', 'monthly', 'irregular'].includes(tab.frequency) ? tab.frequency : 'monthly',
+      frequency: normalizePostFrequency(tab.frequency),
       startDate: tab.startDate || now.slice(0, 10),
       createdAt: tab.createdAt || now,
       updatedAt: tab.updatedAt || now,

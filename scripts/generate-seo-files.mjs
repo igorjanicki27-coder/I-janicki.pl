@@ -48,6 +48,7 @@ async function collectHtmlFiles(currentDir, collected = []) {
     if (!entry.isFile()) continue;
     if (!entry.name.endsWith('.html')) continue;
     if (entry.name.startsWith('.')) continue;
+    if (currentDir === ROOT && /^google[a-z0-9]+\.html$/i.test(entry.name)) continue;
 
     collected.push(fullPath);
   }

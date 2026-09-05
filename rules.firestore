@@ -8,7 +8,7 @@ service cloud.firestore {
     function isMaster() {
       return isAuthenticated()
         && request.auth.token.email != null
-        && request.auth.token.email == 'igor.janicki27@gmail.com';
+        && request.auth.token.email == 'kontakt@i-janicki.pl';
     }
 
     function isOwner(userId) {

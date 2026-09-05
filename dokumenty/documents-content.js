@@ -103,7 +103,7 @@ const DOCUMENTS_CONTENT = {
   <li>ul. Pułtuska 20/9</li>
   <li>53-116 Wrocław</li>
   <li>NIP: 8993047085</li>
-  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>E-mail: kontakt@i-janicki.pl</li>
   <li>Strona: https://i-janicki.pl</li>
 </ul>`,
   "polityka-prywatnosci": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka Prywatności i Plików Cookies</h2>
@@ -117,7 +117,7 @@ const DOCUMENTS_CONTENT = {
   <li>ul. Pułtuska 20/9</li>
   <li>53-116 Wrocław</li>
   <li>NIP: 8993047085</li>
-  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>E-mail: kontakt@i-janicki.pl</li>
   <li>Strona: https://i-janicki.pl</li>
 </ul>
 <p>Administrator prowadzi serwis internetowy "i-JANICKI" dostępny pod adresem: https://i-janicki.pl.</p>
@@ -125,7 +125,7 @@ const DOCUMENTS_CONTENT = {
 <h3 id="num-kontakt-dane-osobowe">§2. Kontakt w sprawach danych osobowych</h3>
 <p>W sprawach dotyczących danych osobowych można kontaktować się z Administratorem:</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
-  <li>e-mailowo: igor.janicki27@gmail.com,</li>
+  <li>e-mailowo: kontakt@i-janicki.pl,</li>
   <li>korespondencyjnie: ul. Pułtuska 20/9, 53-116 Wrocław.</li>
 </ol>
 <p>Administrator nie powołał Inspektora Ochrony Danych.</p>
@@ -267,14 +267,14 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>Igor Janicki</li>
   <li>ul. Pułtuska 20/9, 53-116 Wrocław</li>
   <li>NIP: 8993047085</li>
-  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>E-mail: kontakt@i-janicki.pl</li>
   <li>Strona: https://i-janicki.pl</li>
 </ul>
 
 <h3 id="jak-mozna-skontaktowac-sie-z-administratorem">Jak można skontaktować się z administratorem?</h3>
 <p>Kontakt jest możliwy:</p>
 <ul>
-  <li>e-mailowo: igor.janicki27@gmail.com,</li>
+  <li>e-mailowo: kontakt@i-janicki.pl,</li>
   <li>korespondencyjnie: ul. Pułtuska 20/9, 53-116 Wrocław.</li>
 </ul>
 <p>Administrator nie powołał Inspektora Ochrony Danych.</p>
@@ -368,7 +368,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>wycofania zgody,</li>
   <li>wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.</li>
 </ol>
-<p>W celu realizacji praw należy skontaktować się z Administratorem: igor.janicki27@gmail.com.</p>
+<p>W celu realizacji praw należy skontaktować się z Administratorem: kontakt@i-janicki.pl.</p>
 `,
   "regulamin-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin współpracy B2B oraz powierzenia przetwarzania danych</h2>
 
@@ -555,7 +555,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>Regulamin może zostać zmieniony z ważnych przyczyn prawnych, technicznych lub organizacyjnych.</li>
   <li>W sprawach nieuregulowanych stosuje się przepisy prawa polskiego.</li>
-  <li>Kontakt z Dostawcą IT: igor.janicki27@gmail.com.</li>
+  <li>Kontakt z Dostawcą IT: kontakt@i-janicki.pl.</li>
 </ol>`,
   "polityka-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka współpracy i przetwarzania danych – wsparcie IT</h2>
 
@@ -643,7 +643,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 <p>W sprawach dotyczących roli technicznej Igor Janicki można kontaktować się pod adresem:</p>
 <ul>
   <li>Igor Janicki</li>
-  <li>E-mail: igor.janicki27@gmail.com</li>
+  <li>E-mail: kontakt@i-janicki.pl</li>
   <li>Strona: https://i-janicki.pl</li>
   <li>Dokumenty: https://i-janicki.pl/dokumenty</li>
 </ul>
@@ -765,7 +765,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <p>W sprawach związanych z aplikacją należy kontaktować się:</p>
   <p>
     Igor Janicki<br>
-    E-mail: igor.janicki27@gmail.com<br>
+    E-mail: kontakt@i-janicki.pl<br>
     Strona: https://i-janicki.pl<br>
     Dokumenty: https://i-janicki.pl/dokumenty
   </p>

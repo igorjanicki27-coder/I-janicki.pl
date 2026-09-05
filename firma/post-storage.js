@@ -8,6 +8,7 @@ import {
   writeBatch,
   ensureFirmyAdminSession,
 } from './firebase.js?v=20';
+import { normalizePostFrequency } from './post-frequency.mjs?v=1';
 
 function currentIso() {
   return new Date().toISOString();
@@ -37,7 +38,7 @@ function normalizeTab(tab, now = currentIso()) {
     id: tab.id,
     firmId: tab.firmId || '',
     name: tab.name || 'Nowa podzakladka',
-    frequency: ['weekly', 'biweekly', 'monthly', 'irregular'].includes(tab.frequency) ? tab.frequency : 'monthly',
+    frequency: normalizePostFrequency(tab.frequency),
     startDate: tab.startDate || now.slice(0, 10),
     createdAt: tab.createdAt || now,
     updatedAt: tab.updatedAt || now,
