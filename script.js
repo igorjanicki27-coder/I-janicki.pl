@@ -35,7 +35,10 @@ const LS = {
   THEME:            'ijanek_theme',
   LANG:             'ijanek_lang',
 };
-const SS = { SECTION: 'ijanek_active_section' };
+const SS = {
+  SECTION: 'ijanek_active_section',
+  TUTORIAL_STEP: 'ijanek_tutorial_step',
+};
 
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL STEPS
@@ -558,10 +561,6 @@ function rerenderVisibleUi() {
     openDoc(currentDocName);
   }
 
-  if (document.querySelector('.faq-modal-overlay')) {
-    openFaqModal();
-  }
-
   if (!tutDone) {
     const step = getSteps()[tutStep];
     if (!step) return;
@@ -751,8 +750,14 @@ function startTutorial() {
     window.FILTERED_STEPS = STEPS;
   }
 
-  tutStep = 0;
+  const steps = getSteps();
+  const savedStepId = sessionStorage.getItem(SS.TUTORIAL_STEP);
+  const savedStepIndex = steps.findIndex(step => step.id === savedStepId);
+  tutStep = savedStepIndex >= 0 ? savedStepIndex : 0;
   visitedSteps.clear();
+  for (let index = 0; index <= tutStep; index += 1) {
+    visitedSteps.add(index);
+  }
   buildDots();
   dom.tutProgress.hidden = false;
   dom.tutNav.hidden      = false;
@@ -760,7 +765,7 @@ function startTutorial() {
   if (brandName) {
     brandName.style.display = 'none';
   }
-  goStep(0);
+  goStep(tutStep);
 }
 
 function buildDots() {
@@ -834,6 +839,7 @@ function goStep(idx) {
 
   tutStep = targetIdx;
   const step = steps[tutStep];
+  sessionStorage.setItem(SS.TUTORIAL_STEP, step.id);
 
   // Odroczone do następnej klatki — eliminuje wymuszone przeformatowanie
   // (zapis scrollTop przy oczekujących zmianach stylu powoduje flush layoutu)
@@ -1021,11 +1027,6 @@ function renderSectionStep(step) {
   $('panel')?.classList.add('has-section');
   dom.bot.classList.add('is-pointing');
 
-  // Setup form handlers jeśli to kontakt
-  if (step.topic === 'contact') {
-    setupContactForm();
-    prefillContact();
-  }
 }
 
 function renderReviewStep() {
@@ -1090,12 +1091,6 @@ function captureName() {
   if (!val) return;
   userName = val;
   localStorage.setItem(LS.NAME, userName);
-  prefillContact();
-}
-
-function prefillContact() {
-  const fn = $('f-name');
-  if (fn && userName) fn.value = userName;
 }
 
 function prefillReviewName() {
@@ -1154,6 +1149,7 @@ function finishTutorial() {
 
 function markTutorialDone() {
   localStorage.setItem(LS.TUTORIAL_DONE, 'true');
+  sessionStorage.removeItem(SS.TUTORIAL_STEP);
   tutDone = true;
   // reviewsWrap was shown in step 9; finish step doesn't repeat it
   // sectionNav removed from topbar — section access via panel buttons
@@ -1173,10 +1169,6 @@ function showStageContent(topic) {
   // Powiąż przycisk zamknięcia (mobile)
   $('stageContentClose').onclick = hideStageContent;
 
-  if (topic === 'contact') {
-    setupContactForm();
-    prefillContact();
-  }
   // Pricing jump button
   inner.querySelectorAll('.btn-jump').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1249,6 +1241,7 @@ function restartTutorial() {
   tutDone = false;
   localStorage.removeItem(LS.TUTORIAL_DONE);
   localStorage.removeItem(LS.NAME);
+  sessionStorage.removeItem(SS.TUTORIAL_STEP);
   userName = '';
   if (dom.sectionNav) dom.sectionNav.hidden = true;
   closeModal();
@@ -1265,11 +1258,6 @@ function openModal(topic) {
   dom.modalBody.appendChild(tpl.content.cloneNode(true));
   dom.modalRoot.hidden = false;
   dom.modalRoot.setAttribute('aria-hidden', 'false');
-
-  if (topic === 'contact') {
-    setupContactForm();
-    prefillContact();
-  }
 
   if (topic === 'reviews') {
     dom.modalRoot.querySelector('.modal').classList.add('modal--wide');
@@ -1294,234 +1282,6 @@ function closeModal() {
   dom.modalRoot.hidden = true;
   dom.modalRoot.setAttribute('aria-hidden', 'true');
   dom.modalRoot.querySelector('.modal')?.classList.remove('modal--wide');
-}
-
-// ─────────────────────────────────────────────────────────────────
-// CONTACT FORM (web3forms)
-// ─────────────────────────────────────────────────────────────────
-const FORM_RATE_KEY     = 'ijanek_form_last_submit';
-const FORM_RATE_LIMIT   = 60_000; // 1 minuta między wysłaniami
-
-function isValidEmailOrPhone(val) {
-  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  const phoneRe = /^[\d\s\+\-\(\)]{7,}$/;
-  return emailRe.test(val) || phoneRe.test(val);
-}
-
-function isValidEmail(val) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val);
-}
-
-function splitContactName(fullName) {
-  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) {
-    return { firstName: '', lastName: '' };
-  }
-  return {
-    firstName: parts[0],
-    lastName: parts.slice(1).join(' '),
-  };
-}
-
-function leadDocIdFromEmail(email) {
-  return `lead_${encodeURIComponent(email.toLowerCase())}`;
-}
-
-function getConsentDatesFromDoc(doc) {
-  const values = doc?.fields?.consentAcceptedDates?.arrayValue?.values || [];
-  return values
-    .map(v => v.timestampValue)
-    .filter(Boolean);
-}
-
-async function upsertContactLead({ fullName, email, consentAcceptedAt }) {
-  const normalizedEmail = (email || '').trim().toLowerCase();
-  if (!isValidEmail(normalizedEmail)) return;
-
-  const { firstName, lastName } = splitContactName(fullName);
-  const docId = leadDocIdFromEmail(normalizedEmail);
-  const docUrl = `${FIRESTORE_BASE}/contact_leads/${docId}`;
-  let consentAcceptedDates = [consentAcceptedAt];
-  let method = 'POST';
-  let url = `${FIRESTORE_BASE}/contact_leads?documentId=${encodeURIComponent(docId)}`;
-
-  const existingRes = await fetch(docUrl, { method: 'GET' });
-  if (existingRes.ok) {
-    const existingDoc = await existingRes.json();
-    const existingDates = getConsentDatesFromDoc(existingDoc);
-    consentAcceptedDates = [...existingDates, consentAcceptedAt];
-    method = 'PATCH';
-    url = `${docUrl}?updateMask.fieldPaths=firstName&updateMask.fieldPaths=lastName&updateMask.fieldPaths=email&updateMask.fieldPaths=consentAcceptedDates`;
-  } else if (existingRes.status !== 404) {
-    throw new Error(`Firestore read failed: ${existingRes.status}`);
-  }
-
-  const body = {
-    fields: {
-      firstName: { stringValue: firstName },
-      lastName: { stringValue: lastName },
-      email: { stringValue: normalizedEmail },
-      consentAcceptedDates: {
-        arrayValue: {
-          values: consentAcceptedDates.map(ts => ({ timestampValue: ts })),
-        },
-      },
-    },
-  };
-
-  const writeRes = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!writeRes.ok) {
-    throw new Error(`Firestore write failed: ${writeRes.status}`);
-  }
-}
-
-function setupContactForm() {
-  const form = $('contactForm');
-  if (!form || form.dataset.bound) return;
-  form.dataset.bound = '1';
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const status  = $('formStatus');
-
-    // Sprawdź rate limit
-    const lastSubmit = localStorage.getItem(FORM_RATE_KEY);
-    if (lastSubmit && Date.now() - parseInt(lastSubmit, 10) < FORM_RATE_LIMIT) {
-      const sek = Math.ceil((FORM_RATE_LIMIT - (Date.now() - parseInt(lastSubmit, 10))) / 1000);
-      status.className   = 'form-status is-error';
-      status.textContent = tf('contact-wait', { seconds: sek });
-      return;
-    }
-
-    // Walidacja e-mail / telefon
-    const contact = $('f-email')?.value.trim() || '';
-    if (!isValidEmailOrPhone(contact)) {
-      status.className   = 'form-status is-error';
-      status.textContent = t('contact-invalid');
-      return;
-    }
-
-    // Pokaż modal zgody RODO
-    showConsentModal(() => {
-      submitContactForm(form);
-    });
-  });
-
-  setupConsentModal();
-}
-
-// ─────────────────────────────────────────────────────────────────
-// MODAL ZGODY RODO (przed wysłaniem formularza kontaktowego)
-// ─────────────────────────────────────────────────────────────────
-
-function showConsentModal(onAccept) {
-  const overlay = $('consentOverlay');
-  if (!overlay) return;
-  overlay.hidden = false;
-  overlay.setAttribute('aria-hidden', 'false');
-  overlay._onAccept = onAccept;
-}
-
-function hideConsentModal() {
-  const overlay = $('consentOverlay');
-  if (!overlay) return;
-  overlay.hidden = true;
-  overlay.setAttribute('aria-hidden', 'true');
-  overlay._onAccept = null;
-}
-
-function setupConsentModal() {
-  const overlay = $('consentOverlay');
-  if (!overlay || overlay.dataset.bound) return;
-  overlay.dataset.bound = '1';
-
-  // Akceptuj — wyślij formularz
-  const acceptBtn = $('consentAccept');
-  if (acceptBtn) {
-    acceptBtn.addEventListener('click', () => {
-      const cb = overlay._onAccept;
-      hideConsentModal();
-      if (typeof cb === 'function') cb();
-    });
-  }
-
-  // Anuluj — zamknij okno, nie czyść formularza
-  const cancelBtn = $('consentCancel');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', hideConsentModal);
-  }
-
-  // Kliknięcie w backdrop / przycisk zamknięcia
-  overlay.querySelectorAll('[data-consent-close]').forEach(el => {
-    el.addEventListener('click', hideConsentModal);
-  });
-
-  // Escape
-  document.addEventListener('keydown', function onKey(e) {
-    if (e.key === 'Escape' && !overlay.hidden) {
-      hideConsentModal();
-    }
-  });
-}
-
-async function submitContactForm(form) {
-  const status  = $('formStatus');
-  const btn     = form.querySelector('[type=submit]');
-  const btnText = $('submitBtnText');
-  const formData = Object.fromEntries(new FormData(form));
-  const fullName = String(formData.name || formData.fullname || '').trim();
-  const contactValue = String(formData.email || '').trim();
-  const consentAcceptedAt = new Date().toISOString();
-
-  btnText.textContent    = t('contact-sending');
-  btn.disabled           = true;
-  status.textContent     = '';
-  status.className       = 'form-status';
-
-  try {
-    const res  = await fetch('https://api.web3forms.com/submit', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (data.success) {
-      try {
-        await upsertContactLead({
-          fullName,
-          email: contactValue,
-          consentAcceptedAt,
-        });
-      } catch (err) {
-        console.warn('Contact lead save error:', err);
-      }
-
-      localStorage.setItem(FORM_RATE_KEY, String(Date.now()));
-      status.className   = 'form-status is-ok';
-      status.textContent = t('contact-sent');
-      form.reset();
-      prefillContact();
-      // Jeśli jesteśmy na kroku kontaktu w tutorialu, przejdź do następnego (Opinie)
-      const steps = getSteps();
-      if (steps[tutStep]?.id === 'contact') {
-        const reviewIdx = getStepIndex('reviews');
-        setTimeout(() => goStep(reviewIdx), 1500);
-      }
-    } else {
-      throw new Error(data.message || 'Błąd serwera');
-    }
-  } catch {
-    status.className   = 'form-status is-error';
-    status.textContent = t('contact-error');
-  } finally {
-    btnText.textContent = t('contact-submit');
-    btn.disabled        = false;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -2406,17 +2166,20 @@ function injectFaqBtn() {
   const panel = $('panel');
   if (!panel) return;
   removeFaqBtn();
-  const btn = document.createElement('button');
-  btn.className = 'panel-faq-btn';
-  btn.type = 'button';
-  btn.setAttribute('aria-label', t('faq-aria'));
-  btn.textContent = 'FAQ';
-  btn.addEventListener('click', openFaqModal);
-  panel.appendChild(btn);
+  const links = document.createElement('nav');
+  links.className = 'panel-quick-links';
+  links.setAttribute('aria-label', currentLang === 'en' ? 'FAQ and local offers' : 'FAQ i oferty lokalne');
+  links.innerHTML = `
+    <a class="panel-faq-btn" href="/faq/" aria-label="${t('faq-aria')}">FAQ</a>
+    <a class="panel-location-btn" href="/oferta/sroda-slaska/">Środa Śląska</a>
+    <a class="panel-location-btn" href="/oferta/miekinia-lutynia/">Miękinia/Lutynia</a>
+    <a class="panel-location-btn" href="/oferta/wroclaw/">Wrocław</a>
+  `;
+  panel.appendChild(links);
 }
 
 function removeFaqBtn() {
-  $('panel')?.querySelector('.panel-faq-btn')?.remove();
+  $('panel')?.querySelector('.panel-quick-links')?.remove();
 }
 
 function openFaqModal() {

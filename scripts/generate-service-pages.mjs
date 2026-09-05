@@ -11,6 +11,7 @@ const navigation = [
   ['oferta/miekinia-lutynia', 'Miękinia i Lutynia'],
   ['oferta/wroclaw', 'Wrocław'],
   ['oferta/cennik', 'Cennik'],
+  ['oferta/strony-www', 'Strony WWW'],
   ['oferta/aplikacje', 'Aplikacje']
 ];
 
@@ -19,6 +20,7 @@ const relatedServices = [
   ['oferta/miekinia-lutynia', 'Strony WWW — Miękinia i Lutynia'],
   ['oferta/wroclaw', 'Strony WWW — Wrocław'],
   ['oferta/cennik', 'Cennik'],
+  ['oferta/strony-www', 'Strony internetowe na zamówienie'],
   ['oferta/aplikacje', 'Aplikacje'],
   ['oferta/opieka-it', 'Opieka IT'],
   ['oferta/sieci', 'Sieci LAN, Wi-Fi i VPN'],
@@ -54,7 +56,7 @@ const pages = [
       'Strona wizytówkowa lub rozbudowana strona firmowa',
       'Indywidualny układ i spójna oprawa wizualna',
       'Wersja na telefon, tablet i komputer',
-      'Formularz kontaktowy i czytelne wezwania do działania',
+      'Czytelne odnośniki do e-maila, telefonu i WhatsApp',
       'Sekcje usług, realizacji, opinii i FAQ',
       'Podstawowa optymalizacja techniczna SEO',
       'Konfiguracja analityki po uzgodnieniu zakresu',
@@ -146,6 +148,67 @@ const pages = [
       ['Czy projekt można podzielić na etapy?', 'Tak. W wielu przypadkach warto najpierw uruchomić podstawową wersję, a kolejne funkcje rozwijać na podstawie realnych potrzeb użytkowników.'],
       ['Czy hosting i domena są w cenie?', 'Zakres zależy od projektu. Koszty usług zewnętrznych, takich jak domena, hosting lub płatne licencje, są zawsze wskazywane osobno przed rozpoczęciem prac.'],
       ['Czy wystawiasz dokument sprzedaży?', 'Warunki rozliczenia oraz dokumenty ustalamy przed rozpoczęciem realizacji i zapisujemy w zakresie współpracy.']
+    ]
+  },
+  {
+    slug: 'oferta/strony-www',
+    navLabel: 'Strony WWW',
+    areaServed: ['Polska'],
+    metaTitle: 'Projektowanie stron WWW dla firm | i-JANICKI',
+    metaDescription: 'Projektowanie i tworzenie stron WWW dla firm. Indywidualny układ, responsywność, szybkie działanie, bezpośredni kontakt i techniczne podstawy SEO.',
+    eyebrow: 'Projektowanie i tworzenie stron WWW',
+    title: 'Strony internetowe dopasowane do Twojej firmy',
+    lead: 'Projektuję strony WWW, które jasno prezentują ofertę, dobrze działają na telefonie i prowadzą użytkownika do kontaktu. Zakres dobieram do celu firmy — od zwartej wizytówki po rozbudowany serwis.',
+    facts: [
+      ['Cena', 'od 49 zł/mies.'],
+      ['Projekt', 'indywidualny'],
+      ['Standard', 'mobile + SEO'],
+      ['Realizacja', 'lokalnie lub zdalnie']
+    ],
+    benefitsTitle: 'Strona zaprojektowana wokół konkretnego celu',
+    benefitsLead: 'Wygląd jest ważny, ale dobra strona musi przede wszystkim pomagać odbiorcy zrozumieć ofertę i wykonać kolejny krok.',
+    benefits: [
+      ['Czytelna komunikacja', 'Porządkuję ofertę, hierarchię treści i wezwania do działania, aby użytkownik szybko znalazł najważniejsze informacje.'],
+      ['Wygoda na każdym ekranie', 'Układ powstaje z myślą o smartfonach, tabletach i komputerach, z naciskiem na czytelność oraz prostą nawigację.'],
+      ['Solidna baza techniczna', 'Lekki kod, zoptymalizowane grafiki, metadane i dane strukturalne tworzą fundament pod szybkość, dostępność i dalsze działania SEO.']
+    ],
+    scopeTitle: 'Co może obejmować realizacja strony WWW',
+    scopeLead: 'Zakres ustalamy przed rozpoczęciem prac. Nie dokładam modułów, które nie pomagają firmie osiągnąć celu.',
+    scope: [
+      'Analiza celu strony i potrzeb odbiorców',
+      'Indywidualny projekt układu oraz oprawy wizualnej',
+      'Strona wizytówkowa, firmowa, portfolio lub serwis usługowy',
+      'Wersja responsywna na telefon, tablet i komputer',
+      'Sekcje usług, realizacji, opinii, cennika i FAQ',
+      'Bezpośrednie odnośniki do e-maila, telefonu i WhatsApp',
+      'Optymalizacja grafik i szybkości ładowania',
+      'Techniczne podstawy SEO i dane strukturalne',
+      'Publikacja oraz możliwość dalszej opieki technicznej'
+    ],
+    processTitle: 'Od pomysłu do opublikowanej strony',
+    process: [
+      ['Cel i materiały', 'Ustalamy odbiorców, najważniejszą ofertę, potrzebne treści oraz działanie, które ma wykonać użytkownik.'],
+      ['Struktura i wycena', 'Przygotowuję plan strony, zakres prac, harmonogram oraz koszt bez ukrytych, przypadkowych dodatków.'],
+      ['Projekt i wdrożenie', 'Buduję stronę etapami, prezentuję postęp i konsultuję elementy ważne dla komunikacji oraz obsługi.'],
+      ['Testy i publikacja', 'Sprawdzam stronę na różnych ekranach, poprawiam uzgodnione elementy i publikuję gotowy serwis.']
+    ],
+    localTitle: 'Współpraca stacjonarna lub całkowicie zdalna',
+    localText: ['Projekt strony możemy przeprowadzić online niezależnie od siedziby firmy. Rozmowy, prezentacje kolejnych wersji i odbiory nie wymagają spotkań stacjonarnych.', 'Jeżeli zależy Ci na ofercie opisanej dla konkretnego rynku, wybierz odpowiednią stronę lokalną. Ta podstrona opisuje samą usługę tworzenia stron WWW i nie zastępuje treści przygotowanych dla poszczególnych miejscowości.'],
+    localPanelTitle: 'Jedna usługa, różne rynki',
+    localPanelText: 'Zakres techniczny i zasady realizacji pozostają wspólne. Osobne strony lokalne rozwijają wyłącznie kontekst danego obszaru działania.',
+    areas: ['Realizacja zdalna', 'Cała Polska', 'Spotkanie po ustaleniu'],
+    priceTitle: 'Ile kosztuje strona internetowa?',
+    priceLead: 'Abonament za prostą stronę firmową lub portfolio zaczyna się od 49 zł miesięcznie. Końcowa cena zależy od liczby podstron, ilości treści, integracji i dodatkowych funkcji.',
+    priceCards: [
+      ['Strona firmowa w abonamencie', 'od 49 zł/mies.', 'Zwarta prezentacja firmy, usług i danych kontaktowych, przygotowana do wygodnego dalszego rozwoju.'],
+      ['Rozbudowany serwis WWW', 'wycena indywidualna', 'Więcej podstron, treści, realizacji, wersji językowych albo integracji wymagających osobnego zakresu.']
+    ],
+    faq: [
+      ['Jakie rodzaje stron internetowych tworzysz?', 'Realizuję strony wizytówkowe, strony firmowe, portfolio i rozbudowane serwisy usługowe. Zakres wynika z celu, treści i potrzeb odbiorców.'],
+      ['Czy mogę korzystać z własnej domeny?', 'Tak. Strona może działać pod posiadaną domeną lub mogę pomóc w wyborze i poprawnej konfiguracji nowego adresu.'],
+      ['Czy strona będzie działać na telefonie?', 'Tak. Każdy projekt przygotowuję responsywnie, aby treść i najważniejsze działania były wygodne na smartfonie, tablecie oraz komputerze.'],
+      ['Czy strona będzie przygotowana pod SEO?', 'Tak. W ramach realizacji przygotowuję techniczne podstawy SEO. Dalsze pozycjonowanie zależy również od treści, konkurencji, historii domeny i regularnego rozwoju serwisu.'],
+      ['Czy po publikacji można rozbudować stronę?', 'Tak. Strukturę można przygotować tak, aby później dodawać kolejne usługi, realizacje, artykuły, wersje językowe lub integracje.']
     ]
   },
   {
@@ -409,7 +472,7 @@ const miekiniaLutyniaPage = {
   benefitsLead: 'W Miękini i Lutyni konkurują firmy lokalne, usługodawcy dojeżdżający oraz biznesy obsługujące Wrocław. Witryna powinna jasno komunikować przewagę i faktyczny obszar działania.',
   benefits: [
     ['Czytelny obszar obsługi', 'Treść wyjaśnia, czy działasz w Miękini i Lutyni, na terenie całej gminy, czy także we Wrocławiu i sąsiednich powiatach.'],
-    ['Wygodny kontakt z telefonu', 'Najważniejsze usługi, numer telefonu i formularz są łatwo dostępne dla osób szukających wykonawcy w drodze lub na miejscu.'],
+    ['Wygodny kontakt z telefonu', 'Najważniejsze usługi oraz bezpośrednie odnośniki do telefonu, e-maila i WhatsApp są łatwo dostępne dla osób szukających wykonawcy w drodze lub na miejscu.'],
     ['Fundament lokalnego SEO', 'Osobny adres, właściwe metadane, linkowanie i dane strukturalne przygotowują stronę do rozwoju widoczności w Miękini, Lutyni i całej gminie.']
   ],
   localTitle: 'Miękinia, Lutynia i zachodnia część aglomeracji wrocławskiej',
@@ -576,7 +639,7 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
-    '  <link rel="stylesheet" href="/oferta.css?v=3">',
+    '  <link rel="stylesheet" href="/oferta.css?v=4">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=9"></script>',
     '  <script defer src="/oferta.js?v=3"></script>',
@@ -601,7 +664,7 @@ function renderPage(page) {
     '          <p class="eyebrow">' + escapeHtml(page.eyebrow) + '</p>',
     '          <h1 class="gradient-text">' + escapeHtml(page.title) + '</h1>',
     '          <p class="hero-lead">' + escapeHtml(page.lead) + '</p>',
-    '          <div class="actions"><a class="button button-primary" href="/kontakt/?temat=' + encodeURIComponent(page.navLabel) + '">Zapytaj o wycenę</a><a class="button button-secondary" href="#zakres">Zobacz zakres</a></div>',
+    '          <div class="actions"><a class="button button-primary" href="/kontakt/">Zapytaj o wycenę</a><a class="button button-secondary" href="#zakres">Zobacz zakres</a></div>',
     '        </div>',
     '        <aside class="hero-card" aria-label="Najważniejsze informacje"><p class="hero-card-label">Najważniejsze informacje</p><dl class="facts">' + renderFacts(page.facts) + '</dl></aside>',
     '      </div>',
@@ -643,7 +706,7 @@ function renderPage(page) {
     '      </div>',
     '    </section>',
     '    <section class="section">',
-    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Odezwę się z pytaniami, które pozwolą ustalić sensowny zakres i przygotować wycenę bez dokładania przypadkowych elementów.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=' + encodeURIComponent(page.navLabel) + '">Przejdź do kontaktu</a></div></div>',
+    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Odezwę się z pytaniami, które pozwolą ustalić sensowny zakres i przygotować wycenę bez dokładania przypadkowych elementów.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div>',
     '    </section>',
     '    <section class="section section-muted">',
     '      <div class="container"><div class="section-heading"><p class="section-kicker">Powiązane usługi</p><h2>Sprawdź także</h2></div><nav class="related-links" aria-label="Powiązane usługi">' + renderRelated(page.slug) + '</nav></div>',
@@ -676,6 +739,7 @@ function renderOfferHub() {
   ];
   const services = [
     { slug: 'oferta/cennik', kicker: 'Wspólna oferta', title: 'Cennik', description: 'Strony od 49 zł/mies., aplikacje od 99 zł/mies. i pozostałe ceny orientacyjne.' },
+    { slug: 'oferta/strony-www', kicker: 'Wspólna oferta', title: 'Strony WWW', description: 'Projektowanie i tworzenie responsywnych stron internetowych dopasowanych do celu firmy.' },
     { slug: 'oferta/aplikacje', kicker: 'Wspólna oferta', title: 'Aplikacje', description: 'Aplikacje webowe, desktopowe i mobilne dopasowane do procesu w firmie.' },
     { slug: 'oferta/opieka-it', kicker: 'Wspólna oferta', title: 'Opieka IT', description: 'Bieżące wsparcie, aktualizacje, monitoring i pomoc techniczna.' },
     { slug: 'oferta/sieci', kicker: 'Wspólna oferta', title: 'Sieci LAN, Wi-Fi i VPN', description: 'Projektowanie, konfiguracja i diagnoza sieci dla firm oraz domów.' },
@@ -719,7 +783,7 @@ function renderOfferHub() {
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
-    '  <link rel="stylesheet" href="/oferta.css?v=3">',
+    '  <link rel="stylesheet" href="/oferta.css?v=4">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
     '  <script defer src="/analytics.js?v=9"></script>',
     '  <script defer src="/oferta.js?v=3"></script>',
@@ -733,10 +797,10 @@ function renderOfferHub() {
     '  </div></header>',
     '  <main id="main">',
     '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">Oferta</li></ol></div>',
-    '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Rozwiązania internetowe i IT dla Twojej firmy</h1><p class="hero-lead">Wybierz lokalną stronę dla Środy Śląskiej, Miękini i Lutyni albo Wrocławia — lub przejdź bezpośrednio do wspólnej usługi. Cennik i zasady współpracy są takie same niezależnie od miasta.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=Wycena">Zapytaj o wycenę</a><a class="button button-secondary" href="#lokalnie">Wybierz lokalizację</a></div></div></section>',
+    '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Rozwiązania internetowe i IT dla Twojej firmy</h1><p class="hero-lead">Wybierz lokalną stronę dla Środy Śląskiej, Miękini i Lutyni albo Wrocławia — lub przejdź bezpośrednio do wspólnej usługi. Cennik i zasady współpracy są takie same niezależnie od miasta.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Zapytaj o wycenę</a><a class="button button-secondary" href="#lokalnie">Wybierz lokalizację</a></div></div></section>',
     '    <section class="section section-muted" id="lokalnie"><div class="container"><div class="section-heading"><p class="section-kicker">Strony lokalne</p><h2>Wybierz rynek, na którym działasz</h2><p>Każda strona ma własny kontekst i treść, ale prowadzi do jednej wspólnej oferty oraz kontaktu.</p></div><div class="offer-grid offer-grid-locations">' + locations.map(renderHubCard).join('') + '</div></div></section>',
     '    <section class="section"><div class="container"><div class="section-heading"><p class="section-kicker">Usługi wspólne</p><h2>Jedna oferta dla wszystkich lokalizacji</h2><p>Nie powielam cennika ani tych samych opisów usług dla każdego miasta. Dzięki temu struktura jest czytelna dla klientów i wyszukiwarki.</p></div><div class="offer-grid">' + services.map(renderHubCard).join('') + '</div></div></section>',
-    '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/?temat=Wycena">Przejdź do kontaktu</a></div></div></section>',
+    '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div></section>',
     '  </main>',
     '  <footer class="foot">',
     '    <span>© <span id="year" data-year></span> i-JANICKI</span>',

@@ -115,7 +115,7 @@ function defaultIssuer() {
     businessName: 'Igor Janicki',
     address: 'ul.Pułtuska 20/9 53-116 Wrocław',
     email: 'kontakt@i-janicki.pl',
-    phone: '575757817',
+    phone: '57 57 57 817',
     nip: '8993047085',
     bankAccount: '',
     vatMode: 'zw',

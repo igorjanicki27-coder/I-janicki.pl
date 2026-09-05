@@ -46,7 +46,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=20" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -155,80 +155,6 @@
     "image": "https://i-janicki.pl/icons/icon.png",
     "priceRange": "od 49 zł/mies.",
     "sameAs": ["https://i-janicki.pl/"]
-  }
-  </script>
-
-  <!-- Structured Data — FAQPage (rich results w Google) -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Jakie usługi oferuje i-JANICKI?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "i-JANICKI to kompleksowe usługi IT: tworzenie stron internetowych oraz aplikacji webowych, desktopowych i mobilnych na zamówienie, projektowanie logo i identyfikacji wizualnej, konfiguracja sieci LAN/WLAN i VPN, a także bieżąca opieka IT w abonamencie."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Ile kosztuje wykonanie strony internetowej na zamówienie?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Abonament za stronę internetową zaczyna się od 49 zł miesięcznie za prostą stronę wizytówkową lub portfolio. Rozbudowane serwisy wyceniam indywidualnie po krótkiej rozmowie o zakresie i funkcjonalnościach."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Jak długo trwa stworzenie strony internetowej?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Czas realizacji zależy od złożoności projektu. Prosta strona wizytówkowa jest gotowa zazwyczaj w 1–2 tygodnie, a rozbudowany portal lub aplikacja — w 4–12 tygodni. Na każdym etapie informuję o postępach i konsultuję kluczowe decyzje projektowe."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Czy tworzysz strony internetowe dla firm ze Środy Śląskiej i okolic?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tak — tworzę strony internetowe dla firm ze Środy Śląskiej, powiatu średzkiego i całego Dolnego Śląska, a projekty realizuję również zdalnie dla klientów z całej Polski. Każda strona jest responsywna, szybka i przygotowana pod wyszukiwarki."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Czy strony internetowe tworzone przez i-JANICKI są responsywne i szybkie?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tak. Każda strona, którą tworzę, działa poprawnie na smartfonach, tabletach i komputerach. Dbam o szybkie ładowanie, lekki kod i optymalizację grafik — co przekłada się na lepsze wyniki w Google PageSpeed i wyższe pozycje w wyszukiwarce."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Czy tworzysz aplikacje webowe, desktopowe i mobilne na zamówienie?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tak. Projektuję i wdrażam aplikacje webowe, programy desktopowe oraz aplikacje mobilne z logiką biznesową i integracjami API. Platformę dobieram do użytkowników, urządzeń i celu projektu."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Jak wygląda współpraca przy tworzeniu strony internetowej?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Proces przebiega w 5 krokach: (1) wstępna rozmowa o celach i zakresie, (2) wycena i podpisanie umowy, (3) realizacja etapami z regularnym raportowaniem, (4) testy na różnych urządzeniach i przeglądarkach z poprawkami, (5) wdrożenie i wsparcie po starcie. Zero niespodzianek."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Czy oferujesz opiekę IT i wsparcie po oddaniu strony?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tak — w ramach abonamentu IT oferuję bieżące wsparcie techniczne, aktualizacje, monitoring bezpieczeństwa i drobne modyfikacje strony. To idealne rozwiązanie dla firm, które chcą mieć pewność, że ich strona internetowa zawsze działa sprawnie i bezpiecznie."
-        }
-      }
-    ]
   }
   </script>
 
@@ -1222,35 +1148,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════ MODAL ZGODY RODO (przed wysłaniem formularza) ═══════════════ -->
-  <div class="consent-overlay" id="consentOverlay" role="dialog" aria-modal="true"
-       aria-label="Zgoda na przetwarzanie danych" aria-hidden="true" hidden>
-    <div class="consent-backdrop" data-consent-close></div>
-    <div class="consent-panel">
-      <button class="consent-close" data-consent-close aria-label="Zamknij">✕</button>
-      <div class="consent-body">
-        <p>
-          Zapoznałem się z Polityką prywatności serwisu i-janicki.pl oraz wyrażam zgodę
-          na przetwarzanie udostępnionych przeze mnie danych osobowych na zasadach opisanych
-          w <a href="./dokumenty" target="_blank">Polityce prywatności</a>.
-          Oświadczam, że są mi znane cele przetwarzania danych oraz moje uprawnienia.
-          Niniejsza zgoda może być wycofana w dowolnym czasie poprzez kontakt mailowy:
-          <a href="mailto:kontakt@i-janicki.pl">kontakt@i-janicki.pl</a>,
-          bez wpływu na zgodność z prawem przetwarzania, którego dokonano na podstawie zgody
-          przed jej cofnięciem.
-        </p>
-        <p>
-          Więcej informacji dotyczących przetwarzania danych oraz obowiązek informacyjny:
-          <a href="./dokumenty" target="_blank">Dokumenty</a>.
-        </p>
-        <div class="consent-actions">
-          <button class="consent-btn consent-btn-accept" id="consentAccept">Akceptuj</button>
-          <button class="consent-btn consent-btn-cancel" id="consentCancel">Anuluj</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ═══════════════ PANEL COOKIES ═══════════════ -->
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
        aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>
@@ -1275,7 +1172,7 @@
     <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-about">O mnie</h2>
     <div class="about-card">
       <div class="about-ico">
-        <img src="./icons/Igor-home-v2.png" alt="Igor Janicki" data-i18n-alt="about-photo-alt" />
+        <img src="./icons/Igor-home-v3.webp" alt="Igor Janicki" data-i18n-alt="about-photo-alt" />
       </div>
       <h3>Igor Janicki</h3>
       <p class="about-handle" data-i18n="about-handle">@i-janicki · Środa Śląska · Miękinia/Lutynia · Wrocław</p>
@@ -1301,7 +1198,7 @@
         <h3 data-i18n="services-design-title">Projektowanie i Marketing</h3>
         <p data-i18n="services-design-desc">Projektuję logo, ikony i materiały firmowe. Przygotowuję między innymi banery i wizytówki, dbając o spójny wizerunek marki.</p>
       </div>
-      <a class="svc" href="/oferta/">
+      <a class="svc" href="/oferta/strony-www/">
         <div class="svc-ico">⟨⟩</div>
         <h3 data-i18n="services-web-title">Strony internetowe</h3>
         <p data-i18n="services-web-desc">Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.</p>
@@ -1420,12 +1317,13 @@
 
   <template id="tpl-contact">
     <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-contact">Kontakt</h2>
-    <p class="section-lead">Formularz, e-mail i numer telefonu znajdziesz teraz na osobnej stronie kontaktowej.</p>
+    <p class="section-lead">Wybierz najwygodniejszy bezpośredni sposób kontaktu.</p>
     <div class="svc-grid">
       <a class="svc" href="mailto:kontakt@i-janicki.pl"><div class="svc-ico">@</div><h3>E-mail</h3><p>kontakt@i-janicki.pl</p></a>
-      <a class="svc" href="tel:+48575757817"><div class="svc-ico">☎</div><h3>Telefon</h3><p>575 757 817</p></a>
+      <a class="svc" href="tel:+48575757817"><div class="svc-ico">☎</div><h3>Telefon</h3><p>57 57 57 817</p></a>
+      <a class="svc" href="https://wa.me/48575757817" target="_blank" rel="noopener noreferrer"><div class="svc-ico">◉</div><h3>WhatsApp</h3><p>57 57 57 817</p></a>
     </div>
-    <p class="price-note"><a href="/kontakt/">Przejdź do formularza kontaktowego →</a></p>
+    <p class="price-note"><a href="/kontakt/">Zobacz wszystkie dane kontaktowe →</a></p>
   </template>
 
   <template id="tpl-reviews">
@@ -1484,7 +1382,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
-  <script defer src="script.min.js?v=23"></script>
+  <script defer src="script.min.js?v=24"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;
