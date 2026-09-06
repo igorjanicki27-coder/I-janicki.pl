@@ -18,7 +18,16 @@ service cloud.firestore {
     function isAllowedAnalyticsType(type) {
       return type == 'page_visit'
         || type == 'tutorial_complete'
-        || type == 'session_duration';
+        || type == 'session_duration'
+        || type == 'contact_click';
+    }
+
+    function isAllowedContactChannel(channel) {
+      return channel == 'phone'
+        || channel == 'whatsapp'
+        || channel == 'facebook'
+        || channel == 'contact_page'
+        || channel == 'email';
     }
 
     function hasAnalyticsDuration() {
@@ -32,7 +41,8 @@ service cloud.firestore {
           'timestamp',
           'page',
           'source',
-          'durationSeconds'
+          'durationSeconds',
+          'channel'
         ])
         && request.resource.data.keys().hasAll(['type', 'path', 'timestamp'])
         && request.resource.data.type is string
@@ -46,6 +56,14 @@ service cloud.firestore {
         && (
           !request.resource.data.keys().hasAny(['source'])
           || request.resource.data.source is string
+        )
+        && (
+          (request.resource.data.type == 'contact_click'
+            && request.resource.data.keys().hasAny(['channel'])
+            && request.resource.data.channel is string
+            && isAllowedContactChannel(request.resource.data.channel))
+          || (request.resource.data.type != 'contact_click'
+            && !request.resource.data.keys().hasAny(['channel']))
         )
         && (
           (request.resource.data.type == 'session_duration' && hasAnalyticsDuration())

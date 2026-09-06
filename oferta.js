@@ -225,7 +225,10 @@
     writeStorage(STORAGE.external, value);
     applyConsentToAnalytics();
     persistConsent(accept ? 'accept_all' : 'reject_all');
-    if (accept && window.IJanickiAnalytics) window.IJanickiAnalytics.loadGA();
+    if (accept && window.IJanickiAnalytics) {
+      window.IJanickiAnalytics.loadGA();
+      window.IJanickiAnalytics.maybeTrackPageVisit?.();
+    }
     closeCookiePanel();
   }
 
@@ -239,7 +242,10 @@
     writeStorage(STORAGE.external, external && external.checked ? 'true' : 'false');
     applyConsentToAnalytics();
     persistConsent('save_preferences');
-    if (analytics && analytics.checked && window.IJanickiAnalytics) window.IJanickiAnalytics.loadGA();
+    if (analytics && analytics.checked && window.IJanickiAnalytics) {
+      window.IJanickiAnalytics.loadGA();
+      window.IJanickiAnalytics.maybeTrackPageVisit?.();
+    }
     closeCookiePanel();
   }
 

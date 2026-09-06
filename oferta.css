@@ -963,7 +963,7 @@ h2 {
 }
 
 .contact-channel-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .contact-method {
@@ -988,6 +988,11 @@ h2 {
 .contact-method-whatsapp {
   background: linear-gradient(145deg, rgba(141, 87, 255, 0.13), rgba(90, 48, 190, 0.09));
   border-color: rgba(166, 111, 255, 0.4);
+}
+
+.contact-method-facebook {
+  background: linear-gradient(145deg, rgba(64, 111, 255, 0.13), rgba(141, 87, 255, 0.09));
+  border-color: rgba(92, 144, 255, 0.42);
 }
 
 .contact-method span {
@@ -1018,7 +1023,7 @@ h2 {
   outline-offset: 3px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1180px) {
   .nav-toggle {
     display: inline-flex;
   }
@@ -1045,6 +1050,9 @@ h2 {
   .nav-links .nav-cta {
     margin-left: 0;
   }
+}
+
+@media (max-width: 980px) {
 
   .hero-grid,
   .scope-grid,

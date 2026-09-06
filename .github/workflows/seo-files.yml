@@ -5,6 +5,8 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
 
 permissions:
   contents: write
@@ -24,16 +26,22 @@ jobs:
         with:
           node-version: 20
 
+      - name: Publish scheduled blog posts
+        run: npm run build:blog
+
       - name: Generate sitemap.xml and robots.txt
         run: npm run seo
 
+      - name: Check local SEO content separation
+        run: npm run audit:seo
+
       - name: Commit and push changes
         run: |
-          if [ -n "$(git status --porcelain -- sitemap.xml robots.txt)" ]; then
+          if [ -n "$(git status --porcelain -- blog sitemap.xml robots.txt)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add sitemap.xml robots.txt
-            git commit -m "chore(seo): auto-update sitemap and robots"
+            git add blog sitemap.xml robots.txt
+            git commit -m "chore(seo): publish scheduled content"
             git push
           else
             echo "No SEO file changes to commit."

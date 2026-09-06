@@ -2176,9 +2176,9 @@ function injectFaqBtn() {
   links.className = 'panel-quick-links';
   links.setAttribute('aria-label', currentLang === 'en' ? 'Local offers' : 'Oferty lokalne');
   links.innerHTML = `
+    <a class="panel-location-btn" href="/oferta/wroclaw/">Wrocław</a>
     <a class="panel-location-btn" href="/oferta/sroda-slaska/">Środa Śląska</a>
     <a class="panel-location-btn" href="/oferta/miekinia-lutynia/">Miękinia/Lutynia</a>
-    <a class="panel-location-btn" href="/oferta/wroclaw/">Wrocław</a>
   `;
   panel.appendChild(faqLink);
   panel.appendChild(links);

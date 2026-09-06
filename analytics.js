@@ -17,9 +17,28 @@
   const KEY_MARKETING  = 'ijanek_cookie_marketing';  // 'true' | 'false'
   const KEY_EXTERNAL   = 'ijanek_cookie_external';   // 'true' | 'false'
 
-  const HOME_VISIT_KEY = 'ijanek_metric_home_visit_logged';
+  const PAGE_VISIT_KEY_PREFIX = 'ijanek_metric_page_visit_logged:';
   const TUTORIAL_COMPLETE_KEY = 'ijanek_metric_tutorial_complete_logged';
   const HOME_PATHS = new Set(['/', '/index.html']);
+
+  const EXCLUDED_ANALYTICS_PREFIXES = [
+    '/stats',
+    '/firma',
+    '/firmy',
+    '/kalkulator',
+    '/dokumenty',
+  ];
+
+  function normalizedPath() {
+    const pathname = window.location.pathname || '/';
+    if (pathname === '/index.html') return '/';
+    return pathname.length > 1 ? pathname.replace(/\/index\.html$/, '/').replace(/\/+$/, '/') : '/';
+  }
+
+  function shouldTrackCurrentPage() {
+    const pathname = normalizedPath();
+    return !EXCLUDED_ANALYTICS_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
+  }
 
   function isHomePath() {
     return HOME_PATHS.has(window.location.pathname || '/');
@@ -167,7 +186,8 @@
 
   async function oncePerSession(storageKey, writer) {
     try {
-      if (sessionStorage.getItem(storageKey) === 'true') return false;
+      const currentState = sessionStorage.getItem(storageKey);
+      if (currentState === 'true' || currentState === 'pending') return false;
       sessionStorage.setItem(storageKey, 'pending');
     } catch (_) { /* ignore */ }
 
@@ -182,26 +202,55 @@
     }
   }
 
-  function maybeTrackHomeVisit() {
-    if (!hasAnalyticsConsent() || !isHomePath()) return Promise.resolve(false);
+  function maybeTrackPageVisit() {
+    if (!hasAnalyticsConsent() || !shouldTrackCurrentPage()) return Promise.resolve(false);
 
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (isMobile) {
-      const trackOnInteraction = () => {
-        oncePerSession(HOME_VISIT_KEY, () =>
-          writeAnalyticsEvent('page_visit', { page: 'home', source: 'user_interaction' })
-        );
-        document.removeEventListener('click', trackOnInteraction);
-        document.removeEventListener('scroll', trackOnInteraction);
-      };
-      document.addEventListener('click', trackOnInteraction, { once: true });
-      document.addEventListener('scroll', trackOnInteraction, { once: true, passive: true });
-      return Promise.resolve(false);
+    const pathname = normalizedPath();
+    const page = pathname === '/' ? 'home' : pathname;
+    return oncePerSession(PAGE_VISIT_KEY_PREFIX + pathname, () =>
+      writeAnalyticsEvent('page_visit', { page, source: 'page_entry', path: pathname })
+    );
+  }
+
+  function maybeTrackHomeVisit() {
+    return maybeTrackPageVisit();
+  }
+
+  function contactChannelFromLink(link) {
+    const rawHref = String(link.getAttribute('href') || '').trim();
+    if (!rawHref) return null;
+
+    const lowerHref = rawHref.toLowerCase();
+    if (lowerHref.startsWith('tel:')) return 'phone';
+    if (lowerHref.startsWith('mailto:')) return 'email';
+
+    try {
+      const url = new URL(rawHref, window.location.href);
+      const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+      if (hostname === 'wa.me' || hostname === 'whatsapp.com' || hostname.endsWith('.whatsapp.com')) return 'whatsapp';
+      if (hostname === 'facebook.com' || hostname === 'fb.com' || hostname.endsWith('.facebook.com')) return 'facebook';
+      if (url.origin === window.location.origin && (url.pathname === '/kontakt' || url.pathname.startsWith('/kontakt/'))) return 'contact_page';
+    } catch (_) {
+      return null;
     }
 
-    return oncePerSession(HOME_VISIT_KEY, () =>
-      writeAnalyticsEvent('page_visit', { page: 'home', source: 'home_entry' })
-    );
+    return null;
+  }
+
+  function trackContactClick(channel) {
+    if (!hasAnalyticsConsent() || !channel) return Promise.resolve(false);
+
+    loadGA();
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'contact_click', { channel, page_path: normalizedPath() });
+    }
+
+    return writeAnalyticsEvent('contact_click', {
+      channel,
+      page: normalizedPath() === '/' ? 'home' : normalizedPath(),
+      source: 'contact_link',
+      path: normalizedPath(),
+    });
   }
 
   function trackTutorialComplete() {
@@ -251,6 +300,7 @@
     hasExternalConsent,
     buildConsentUpdate,
     loadGA,
+    maybeTrackPageVisit,
     maybeTrackHomeVisit,
     trackTutorialComplete,
     trackAnalyticsEvent,
@@ -260,6 +310,7 @@
   // Legacy exports
   window.hasAnalyticsConsent = hasAnalyticsConsent;
   window.loadGA = loadGA;
+  window.maybeTrackPageVisit = maybeTrackPageVisit;
   window.maybeTrackHomeVisit = maybeTrackHomeVisit;
   window.trackTutorialComplete = trackTutorialComplete;
   window.trackAnalyticsEvent = trackAnalyticsEvent;
@@ -268,7 +319,15 @@
   // Jeśli zgoda już udzielona — załaduj GA (lekkie), Firebase dopiero na demand
   if (hasAnalyticsConsent()) {
     loadGA();
+    maybeTrackPageVisit();
   }
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest && event.target.closest('a[href]');
+    if (!link) return;
+    const channel = contactChannelFromLink(link);
+    if (channel) trackContactClick(channel);
+  }, true);
 
   window.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {

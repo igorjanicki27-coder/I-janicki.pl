@@ -7,12 +7,13 @@ const EMAIL = 'kontakt@i-janicki.pl';
 
 const navigation = [
   ['oferta', 'Oferta'],
+  ['oferta/wroclaw', 'Wrocław'],
   ['oferta/sroda-slaska', 'Środa Śląska'],
   ['oferta/miekinia-lutynia', 'Miękinia i Lutynia'],
-  ['oferta/wroclaw', 'Wrocław'],
   ['oferta/cennik', 'Cennik'],
   ['oferta/strony-www', 'Strony WWW'],
-  ['oferta/aplikacje', 'Aplikacje']
+  ['oferta/aplikacje', 'Aplikacje'],
+  ['blog', 'Blog']
 ];
 
 const relatedServices = [
@@ -475,11 +476,42 @@ const miekiniaLutyniaPage = {
     ['Wygodny kontakt z telefonu', 'Najważniejsze usługi oraz bezpośrednie odnośniki do telefonu, e-maila i WhatsApp są łatwo dostępne dla osób szukających wykonawcy w drodze lub na miejscu.'],
     ['Fundament lokalnego SEO', 'Osobny adres, właściwe metadane, linkowanie i dane strukturalne przygotowują stronę do rozwoju widoczności w Miękini, Lutyni i całej gminie.']
   ],
+  facts: [
+    ['Cena', 'od 49 zł/mies.'],
+    ['Obszar', 'Miękinia i Lutynia'],
+    ['Priorytet', 'kontakt mobilny'],
+    ['Współpraca', 'lokalnie lub online']
+  ],
+  scopeTitle: 'Zakres przygotowany dla firmy z gminy Miękinia',
+  scopeLead: 'Najpierw wybieramy usługi i miejscowości, które rzeczywiście generują zapytania. Na tej podstawie powstaje czytelna struktura zamiast strony przeładowanej nazwami lokalizacji.',
+  scope: [
+    'Plan treści dopasowany do usług i obszaru dojazdu',
+    'Wyraźne przedstawienie Miękini, Lutyni i pozostałych obsługiwanych miejscowości',
+    'Projekt wygodny dla klientów korzystających ze smartfona',
+    'Bezpośrednie przyciski telefonu, WhatsApp i e-maila',
+    'Miejsce na realizacje, opinie oraz odpowiedzi na lokalne pytania',
+    'Szybkie grafiki i techniczna optymalizacja kodu',
+    'Metadane, dane strukturalne i linkowanie do wspólnej oferty',
+    'Możliwość późniejszego rozwoju o nowe usługi lub poradniki'
+  ],
+  processTitle: 'Jak przygotowuję lokalną stronę dla Miękini i Lutyni',
+  process: [
+    ['Mapa oferty', 'Ustalamy, które usługi są najważniejsze i dokąd faktycznie dojeżdża firma.'],
+    ['Treść lokalna', 'Porządkuję argumenty, obszar obsługi i pytania klientów bez mechanicznego powtarzania miejscowości.'],
+    ['Projekt mobilny', 'Buduję widoki od telefonu, bo lokalne zapytania często powstają poza biurem.'],
+    ['Kontrola i start', 'Sprawdzam linki kontaktowe, szybkość, indeksowanie i dopiero wtedy publikuję witrynę.']
+  ],
   localTitle: 'Miękinia, Lutynia i zachodnia część aglomeracji wrocławskiej',
   localText: ['Projektuję strony dla firm, które pozyskują klientów w Miękini, Lutyni, Brzezince Średzkiej, Wilkszynie i pozostałych miejscowościach gminy. Treść porządkuję według realnego zasięgu usługi, bez sztucznego powielania nazw miejscowości.', 'Miękinia i Lutynia są na tej stronie równorzędnymi obszarami oferty. Ustalenia możemy prowadzić zdalnie, a jeśli charakter projektu tego wymaga — umówić spotkanie lub działania na miejscu.'],
   localPanelTitle: 'Obszar obsługi',
   localPanelText: 'Miękinia, Lutynia i gmina Miękinia, a projekty stron internetowych również dla firm obsługujących Wrocław oraz klientów z całej Polski.',
   areas: ['Miękinia', 'Lutynia', 'Wilkszyn', 'Brzezinka Średzka', 'Gmina Miękinia', 'Wrocław'],
+  priceTitle: 'Koszt strony dla firmy z Miękini lub Lutyni',
+  priceLead: 'Prosta strona w abonamencie zaczyna się od 49 zł miesięcznie. Budżet rośnie, gdy potrzebne są osobne opisy wielu usług, rozbudowane portfolio, integracje albo większa liczba widoków.',
+  priceCards: [
+    ['Lokalna strona na start', 'od 49 zł/mies.', 'Najważniejsza oferta, rzeczywisty obszar obsługi i szybki kontakt w układzie dopasowanym do telefonu.'],
+    ['Serwis dla szerszego obszaru', 'wycena indywidualna', 'Więcej usług, realizacji i treści dla firmy obsługującej gminę Miękinia, Wrocław lub kolejne rynki.']
+  ],
   faq: [
     ['Ile trwa przygotowanie strony?', 'Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Większe realizacje wymagają więcej czasu, zależnie od liczby podstron, materiałów i integracji.'],
     ['Czy przygotujesz treści pod Miękinię, Lutynię i okoliczne miejscowości?', 'Tak. Najpierw ustalam realny obszar obsługi firmy, a następnie porządkuję treść tak, aby była użyteczna dla klienta i nie wyglądała jak sztuczna lista miejscowości.'],
@@ -506,11 +538,42 @@ const wroclawPage = {
     ['Szybkość na każdym ekranie', 'Wydajny kod i projekt mobile-first ograniczają frustrację użytkowników korzystających z telefonu oraz wspierają techniczne SEO.'],
     ['Struktura gotowa do rozwoju', 'Oddzielne usługi, lokalne konteksty i przemyślane linkowanie pozwalają później rozwijać widoczność bez przebudowy od zera.']
   ],
+  facts: [
+    ['Cena', 'od 49 zł/mies.'],
+    ['Rynek', 'Wrocław'],
+    ['Priorytet', 'szybkość + konwersja'],
+    ['Współpraca', 'zdalnie lub na miejscu']
+  ],
+  scopeTitle: 'Elementy strony, która ma konkurować we Wrocławiu',
+  scopeLead: 'Zakres wynika ze specjalizacji firmy i sposobu porównywania ofert przez jej klientów. Najważniejsze argumenty muszą być dostępne szybko, bez przedzierania się przez ogólniki.',
+  scope: [
+    'Architektura oparta na najważniejszych usługach i typach klientów',
+    'Komunikat wyróżniający firmę na tle wrocławskiej konkurencji',
+    'Projekt mobile-first z krótką drogą do zapytania',
+    'Sekcje realizacji, opinii i dowodów doświadczenia',
+    'Czytelne widełki cenowe lub sposób uzyskania wyceny',
+    'Optymalizacja wydajności grafik, fontów i interakcji',
+    'Techniczne SEO, dane strukturalne i logiczne linkowanie',
+    'Struktura przygotowana na dalsze usługi lub wersje językowe'
+  ],
+  processTitle: 'Od wyróżnika firmy do gotowej witryny',
+  process: [
+    ['Analiza odbiorcy', 'Określamy, komu firma pomaga i z jakimi ofertami klient porównuje ją we Wrocławiu.'],
+    ['Priorytety komunikacji', 'Wybieramy argumenty, realizacje i informacje, które powinny pojawić się przed kontaktem.'],
+    ['Projekt oraz wdrożenie', 'Buduję kolejne widoki, sprawdzając czy użytkownik zawsze rozumie następny krok.'],
+    ['Test rynku', 'Po kontroli urządzeń i technicznego SEO publikujemy stronę i obserwujemy odwiedzane podstrony oraz kliknięcia.']
+  ],
   localTitle: 'Współpraca z firmami z Wrocławia i aglomeracji',
   localText: ['Realizuję strony dla usługodawców, małych firm i zespołów działających we Wrocławiu oraz w gminach sąsiadujących z miastem. W treści uwzględniam tylko te lokalizacje i dzielnice, które rzeczywiście wynikają z oferty.', 'Proces może przebiegać całkowicie zdalnie. Spotkanie na miejscu ustalamy wtedy, gdy pomaga ono zebrać materiały, poznać usługę lub sprawniej zaplanować serwis.'],
   localPanelTitle: 'Obszar obsługi',
   localPanelText: 'Wrocław i aglomeracja wrocławska, ze szczególnym uwzględnieniem zachodniej części miasta oraz kierunku Miękinia–Środa Śląska.',
   areas: ['Wrocław', 'Fabryczna', 'Leśnica', 'Aglomeracja wrocławska', 'Miękinia', 'Dolny Śląsk'],
+  priceTitle: 'Budżet strony dla wrocławskiej firmy',
+  priceLead: 'Abonament za prostą witrynę zaczyna się od 49 zł miesięcznie. Rozbudowana oferta, wiele specjalizacji, wersje językowe lub integracje wymagają osobnego zakresu i wyceny.',
+  priceCards: [
+    ['Czytelna strona usługowa', 'od 49 zł/mies.', 'Skupiona prezentacja specjalizacji, wiarygodności oraz kontaktu dla firmy rozpoczynającej rozwój widoczności.'],
+    ['Serwis na konkurencyjny rynek', 'wycena indywidualna', 'Osobne usługi, rozbudowane realizacje, treści poradnikowe, języki lub funkcje dobierane do strategii firmy.']
+  ],
   faq: [
     ['Ile trwa przygotowanie strony?', 'Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Termin większego serwisu zależy od liczby podstron, materiałów, integracji i etapów akceptacji.'],
     ['Jak wyróżnić stronę firmy we Wrocławiu?', 'Najpierw trzeba jasno określić specjalizację i odbiorcę. Następnie warto pokazać konkretne realizacje, obszar obsługi, dowody wiarygodności i odpowiedzi na pytania klientów.'],
@@ -639,10 +702,10 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
-    '  <link rel="stylesheet" href="/oferta.css?v=4">',
+    '  <link rel="stylesheet" href="/oferta.css?v=5">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
-    '  <script defer src="/analytics.js?v=9"></script>',
-    '  <script defer src="/oferta.js?v=3"></script>',
+    '  <script defer src="/analytics.js?v=10"></script>',
+    '  <script defer src="/oferta.js?v=4"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
@@ -733,9 +796,9 @@ function renderHubCard(item) {
 
 function renderOfferHub() {
   const locations = [
+    { slug: 'oferta/wroclaw', kicker: 'Lokalnie', title: 'Wrocław', description: 'Strony internetowe dla firm działających na konkurencyjnym rynku Wrocławia.' },
     { slug: 'oferta/sroda-slaska', kicker: 'Lokalnie', title: 'Środa Śląska', description: 'Strony internetowe dla firm ze Środy Śląskiej i powiatu średzkiego.' },
-    { slug: 'oferta/miekinia-lutynia', kicker: 'Lokalnie', title: 'Miękinia i Lutynia', description: 'Jedna mocna strona WWW dla firm obsługujących Miękinię, Lutynię i pozostałe miejscowości gminy.' },
-    { slug: 'oferta/wroclaw', kicker: 'Lokalnie', title: 'Wrocław', description: 'Strony internetowe dla firm działających na konkurencyjnym rynku Wrocławia.' }
+    { slug: 'oferta/miekinia-lutynia', kicker: 'Lokalnie', title: 'Miękinia i Lutynia', description: 'Jedna mocna strona WWW dla firm obsługujących Miękinię, Lutynię i pozostałe miejscowości gminy.' }
   ];
   const services = [
     { slug: 'oferta/cennik', kicker: 'Wspólna oferta', title: 'Cennik', description: 'Strony od 49 zł/mies., aplikacje od 99 zł/mies. i pozostałe ceny orientacyjne.' },
@@ -783,10 +846,10 @@ function renderOfferHub() {
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
-    '  <link rel="stylesheet" href="/oferta.css?v=4">',
+    '  <link rel="stylesheet" href="/oferta.css?v=5">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
-    '  <script defer src="/analytics.js?v=9"></script>',
-    '  <script defer src="/oferta.js?v=3"></script>',
+    '  <script defer src="/analytics.js?v=10"></script>',
+    '  <script defer src="/oferta.js?v=4"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',

@@ -1,8 +1,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const ROOT = process.cwd();
 const SITE_URL = (process.env.SITE_URL ?? 'https://i-janicki.pl').replace(/\/+$/, '');
+const execFileAsync = promisify(execFile);
 
 const EXCLUDED_DIRS = new Set([
   '.git',
@@ -78,8 +81,7 @@ async function buildSitemapEntries() {
   for (const filePath of htmlFiles) {
     const relativePath = path.relative(ROOT, filePath).replace(/\\/g, '/');
     const route = filePathToRoute(relativePath);
-    const stat = await fs.stat(filePath);
-    const lastmod = stat.mtime.toISOString().slice(0, 10);
+    const lastmod = await getLastModified(filePath);
 
     entries.push({
       route,
@@ -90,6 +92,22 @@ async function buildSitemapEntries() {
 
   entries.sort((a, b) => a.route.localeCompare(b.route));
   return entries;
+}
+
+async function getLastModified(filePath) {
+  const relativePath = path.relative(ROOT, filePath).replace(/\\/g, '/');
+  try {
+    const { stdout: status } = await execFileAsync('git', ['status', '--porcelain', '--', relativePath], { cwd: ROOT });
+    if (!status.trim()) {
+      const { stdout: commitDate } = await execFileAsync('git', ['log', '-1', '--format=%cs', '--', relativePath], { cwd: ROOT });
+      if (/^\d{4}-\d{2}-\d{2}$/.test(commitDate.trim())) return commitDate.trim();
+    }
+  } catch (_) {
+    // Fall back to filesystem timestamps outside a Git checkout.
+  }
+
+  const stat = await fs.stat(filePath);
+  return stat.mtime.toISOString().slice(0, 10);
 }
 
 async function writeSitemap(entries) {

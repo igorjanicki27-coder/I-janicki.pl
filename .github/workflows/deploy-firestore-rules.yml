@@ -1,0 +1,46 @@
+name: Deploy Firestore Rules
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - firestore.rules
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-firestore-rules.yml
+      - scripts/prepare-firebase-credentials.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-firestore-rules-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy rules to i-janicki
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: firebase
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}
+          FIREBASE_PROJECT_ID: i-janicki
+        run: node scripts/prepare-firebase-credentials.mjs
+
+      - name: Deploy Firestore rules
+        run: npx --yes firebase-tools@15.11.0 deploy --only firestore:rules --project i-janicki --non-interactive

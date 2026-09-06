@@ -14,7 +14,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="../analytics.js"></script>
+  <script src="../analytics.js?v=10"></script>
   <style>
     :root {
       --bg-0: #000000;
@@ -257,6 +257,77 @@
       color: var(--text);
     }
 
+    .breakdown-grid {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .breakdown-card {
+      padding: 0;
+    }
+
+    .breakdown-heading {
+      position: relative;
+      z-index: 1;
+      padding: 24px 24px 16px;
+    }
+
+    .breakdown-heading h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.2rem, 3vw, 1.65rem);
+      margin-bottom: 8px;
+    }
+
+    .breakdown-heading p {
+      margin: 0;
+    }
+
+    .table-scroll {
+      position: relative;
+      z-index: 1;
+      overflow-x: auto;
+      padding: 0 24px 24px;
+    }
+
+    .stats-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(127, 64, 255, 0.16);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .stats-table th:first-child,
+    .stats-table td:first-child {
+      text-align: left;
+      white-space: normal;
+    }
+
+    .stats-table th {
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stats-table td:first-child {
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .stats-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
     .status {
       margin-top: 12px;
       font-family: 'JetBrains Mono', monospace;
@@ -274,6 +345,9 @@
       }
       .back-link { width: 100%; justify-content: center; }
       .hero, .card, .footnote { padding: 22px; }
+      .breakdown-card { padding: 0; }
+      .breakdown-heading { padding: 22px 22px 14px; }
+      .table-scroll { padding: 0 22px 22px; }
     }
   </style>
 </head>
@@ -308,7 +382,7 @@
         <article class="card">
           <div class="eyebrow">01 · Wejścia</div>
           <div class="metric" id="visitsValue">-</div>
-          <p>Liczba sesji wejscia na strone glowna po zaakceptowaniu analityki.</p>
+          <p>Liczba zarejestrowanych odwiedzin wszystkich publicznych podstron po zaakceptowaniu analityki.</p>
         </article>
 
         <article class="card">
@@ -376,8 +450,38 @@
         </article>
       </section>
 
+      <section class="breakdown-grid" aria-label="Szczegółowe statystyki">
+        <article class="card breakdown-card">
+          <div class="breakdown-heading">
+            <div class="eyebrow">06 · Podstrony</div>
+            <h2>Odwiedziny konkretnych podstron</h2>
+            <p>Jedna wizyta na danej podstronie jest liczona raz w obrębie sesji przeglądarki.</p>
+          </div>
+          <div class="table-scroll">
+            <table class="stats-table">
+              <thead><tr><th>Podstrona</th><th>Dziś</th><th>7 dni</th><th>Miesiąc</th><th>Łącznie</th></tr></thead>
+              <tbody id="pageVisitsRows"><tr><td colspan="5">Ładowanie…</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card breakdown-card">
+          <div class="breakdown-heading">
+            <div class="eyebrow">07 · Kontakt</div>
+            <h2>Kliknięcia kontaktowe</h2>
+            <p>Kliknięcia w telefon, WhatsApp, Facebook, e-mail oraz odnośniki prowadzące do strony kontaktowej.</p>
+          </div>
+          <div class="table-scroll">
+            <table class="stats-table">
+              <thead><tr><th>Kanał</th><th>Dziś</th><th>7 dni</th><th>Miesiąc</th><th>Łącznie</th></tr></thead>
+              <tbody id="contactClicksRows"><tr><td colspan="5">Ładowanie…</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
       <section class="footnote">
-        <p><strong>Jak czytac dane:</strong> zakres <strong>miesiac</strong> i <strong>rok</strong> dotyczy biezacego miesiaca i biezacego roku. Opinie liczone sa jako zatwierdzone (<code>approved = true</code>).</p>
+        <p><strong>Jak czytać dane:</strong> zakres <strong>miesiąc</strong> i <strong>rok</strong> dotyczy bieżącego miesiąca i bieżącego roku. Zdarzenia są zapisywane wyłącznie po zgodzie na analitykę, więc nie obejmują wszystkich odwiedzających. Opinie liczone są jako zatwierdzone (<code>approved = true</code>).</p>
       </section>
 
     </main>
@@ -464,8 +568,10 @@
           const type = doc.get('type');
           const timestampMs = parseTimestampToMs(doc.get('timestamp'));
           const durationSeconds = Number(doc.get('durationSeconds'));
+          const path = doc.get('path') || (doc.get('page') === 'home' ? '/' : doc.get('page')) || '/';
+          const channel = doc.get('channel') || '';
 
-          return { type, timestampMs, durationSeconds };
+          return { type, timestampMs, durationSeconds, path, channel };
         }).filter((entry) => Number.isFinite(entry.timestampMs));
       }
 
@@ -530,6 +636,82 @@
         setValue(`${periodPrefix}Tutorial`, formatCount(stats.tutorialCompletions));
         setValue(`${periodPrefix}AvgTime`, formatDuration(stats.averageDuration));
         setValue(`${periodPrefix}Reviews`, formatCount(stats.reviews));
+      }
+
+      const PAGE_LABELS = {
+        '/': 'Strona główna',
+        '/oferta/': 'Oferta',
+        '/oferta/strony-www/': 'Strony WWW',
+        '/oferta/wroclaw/': 'Wrocław',
+        '/oferta/sroda-slaska/': 'Środa Śląska',
+        '/oferta/miekinia-lutynia/': 'Miękinia i Lutynia',
+        '/oferta/cennik/': 'Cennik',
+        '/oferta/aplikacje/': 'Aplikacje',
+        '/oferta/seo/': 'SEO',
+        '/oferta/opieka-it/': 'Opieka IT',
+        '/oferta/sieci/': 'Sieci',
+        '/kontakt/': 'Kontakt',
+        '/faq/': 'FAQ',
+        '/blog/': 'Blog',
+      };
+
+      const PAGE_ORDER = Object.keys(PAGE_LABELS);
+      const CONTACT_CHANNELS = [
+        ['phone', 'Telefon'],
+        ['whatsapp', 'WhatsApp'],
+        ['facebook', 'Facebook'],
+        ['contact_page', 'Przejście do kontaktu'],
+        ['email', 'E-mail'],
+      ];
+
+      function normalizeEventPath(value) {
+        const path = String(value || '/').split('?')[0].split('#')[0];
+        if (path === '/' || path === '/index.html') return '/';
+        return path.replace(/\/index\.html$/, '/').replace(/\/+$/, '/') || '/';
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function countEvents(events, type, field, value, periodKey, now) {
+        const nowMs = now.getTime();
+        const startMs = getPeriodStartMs(periodKey, now);
+        return events.filter((event) => {
+          if (event.type !== type || !isInPeriod(event.timestampMs, periodKey, nowMs, startMs)) return false;
+          const eventValue = field === 'path' ? normalizeEventPath(event[field]) : event[field];
+          return eventValue === value;
+        }).length;
+      }
+
+      function renderBreakdownRows(bodyId, rows, analyticsEvents, type, field, now) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+
+        body.innerHTML = rows.map(([value, label]) => {
+          const counts = ['today', 'days7', 'month', 'all'].map((period) =>
+            formatCount(countEvents(analyticsEvents, type, field, value, period, now))
+          );
+          return `<tr><td>${escapeHtml(label)}</td>${counts.map((count) => `<td>${count}</td>`).join('')}</tr>`;
+        }).join('');
+      }
+
+      function renderDetailedStats(analyticsEvents, now) {
+        const discoveredPaths = analyticsEvents
+          .filter((event) => event.type === 'page_visit')
+          .map((event) => normalizeEventPath(event.path));
+        const extraPaths = [...new Set(discoveredPaths)]
+          .filter((path) => !PAGE_ORDER.includes(path))
+          .sort((a, b) => a.localeCompare(b, 'pl'));
+        const pageRows = [...PAGE_ORDER, ...extraPaths].map((path) => [path, PAGE_LABELS[path] || path]);
+
+        renderBreakdownRows('pageVisitsRows', pageRows, analyticsEvents, 'page_visit', 'path', now);
+        renderBreakdownRows('contactClicksRows', CONTACT_CHANNELS, analyticsEvents, 'contact_click', 'channel', now);
       }
 
       function formatLockTime(msLeft) {
@@ -707,6 +889,7 @@
           setPeriodValues('month', buildPeriodStats('month', analyticsEvents, approvedReviews, now));
           setPeriodValues('year', buildPeriodStats('year', analyticsEvents, approvedReviews, now));
           setPeriodValues('all', globalStats);
+          renderDetailedStats(analyticsEvents, now);
 
           setStatus(`Ostatnie odświeżenie: ${new Date().toLocaleString('pl-PL')}`);
         } catch (err) {
@@ -720,6 +903,10 @@
             setValue(`${prefix}AvgTime`, 'Blad');
             setValue(`${prefix}Reviews`, 'Blad');
           });
+          const pageRows = document.getElementById('pageVisitsRows');
+          const contactRows = document.getElementById('contactClicksRows');
+          if (pageRows) pageRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
+          if (contactRows) contactRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
           setStatus('Nie udalo sie pobrac danych z Firestore. Sprawdz reguly kolekcji analytics_events.');
         }
       }
