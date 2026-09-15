@@ -28,6 +28,15 @@ const relatedServices = [
   ['oferta/seo', 'Pozycjonowanie i SEO']
 ];
 
+const footerNavigation = [
+  ['oferta/strony-www', 'Strony WWW'],
+  ['oferta/aplikacje', 'Aplikacje'],
+  ['oferta/seo', 'SEO'],
+  ['oferta/sieci', 'Sieci'],
+  ['oferta/opieka-it', 'Opieka IT'],
+  ['faq', 'FAQ']
+];
+
 const pages = [
   {
     slug: 'oferta/sroda-slaska',
@@ -637,6 +646,12 @@ function renderRelated(currentSlug) {
   }).join('\n          ');
 }
 
+function renderFooterNavigation() {
+  return footerNavigation.map(function (item) {
+    return '<a href="/' + item[0] + '/">' + item[1] + '</a>';
+  }).join('');
+}
+
 function renderStructuredData(page) {
   const service = {
     '@context': 'https://schema.org',
@@ -701,7 +716,8 @@ function renderPage(page) {
     '  <link rel="icon" type="image/svg+xml" href="/favicon.svg">',
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-    '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
+    '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
+    '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
     '  <link rel="stylesheet" href="/oferta.css?v=5">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
@@ -711,7 +727,7 @@ function renderPage(page) {
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
     '  <header class="site-header">',
     '    <div class="nav-shell">',
-    '      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
+    '      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
     '      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>',
     '      <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>',
     '          ' + renderNavigation(page.slug),
@@ -781,6 +797,7 @@ function renderPage(page) {
     '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
     '    <span class="foot-sep">·</span>',
     '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
+    '    <nav class="foot-links" aria-label="Najważniejsze podstrony">' + renderFooterNavigation() + '</nav>',
     '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
     '  </footer>',
     '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',
@@ -845,7 +862,8 @@ function renderOfferHub() {
     '  <link rel="icon" type="image/svg+xml" href="/favicon.svg">',
     '  <link rel="preconnect" href="https://fonts.googleapis.com">',
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-    '  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">',
+    '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
+    '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
     '  <link rel="stylesheet" href="/oferta.css?v=5">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
@@ -854,7 +872,7 @@ function renderOfferHub() {
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
     '  <header class="site-header"><div class="nav-shell">',
-    '    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
+    '    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
     '    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>',
     '    <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>' + renderNavigation('oferta') + '<a class="nav-cta" href="/kontakt/">Kontakt</a></nav>',
     '  </div></header>',
@@ -871,6 +889,7 @@ function renderOfferHub() {
     '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
     '    <span class="foot-sep">·</span>',
     '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
+    '    <nav class="foot-links" aria-label="Najważniejsze podstrony">' + renderFooterNavigation() + '</nav>',
     '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
     '  </footer>',
     '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',

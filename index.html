@@ -46,7 +46,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.min.css?v=27" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1389,7 +1389,10 @@
     (function () {
       var INTRO_REVEAL_START_MS = 1650;
       var INTRO_INTERACTIVE_MS = 3300;
-      var INTRO_VIDEO_VERSION = "20260525-1910";
+      var INTRO_VIDEO_VERSION = "20260908-1825";
+      var introStartedAt = performance.now();
+      var realViewReady = false;
+      var unlockScheduled = false;
 
       var INTRO_VIDEO_DESKTOP = {
         webm: "assets/intro/tlo-16-9.webm?v=" + INTRO_VIDEO_VERSION,
@@ -1414,8 +1417,24 @@
       }
 
       function unlockPage() {
+        if (!realViewReady) return;
         document.body.classList.remove("intro-active");
       }
+
+      function scheduleUnlockWhenReady() {
+        if (!realViewReady || unlockScheduled) return;
+        unlockScheduled = true;
+        var elapsed = performance.now() - introStartedAt;
+        window.setTimeout(unlockPage, Math.max(0, INTRO_INTERACTIVE_MS - elapsed));
+      }
+
+      window.iJanickiMarkRealViewReady = function () {
+        var panelContent = document.getElementById("panelContent");
+        if (!panelContent || !panelContent.firstElementChild) return false;
+        realViewReady = true;
+        scheduleUnlockWhenReady();
+        return true;
+      };
 
       function freezeLastFrame(video, frozenLayer) {
         if (!video || !frozenLayer) return;
@@ -1466,9 +1485,7 @@
         window.setTimeout(function () {
           document.body.classList.add("intro-revealing");
         }, INTRO_REVEAL_START_MS);
-        window.setTimeout(function () {
-          unlockPage();
-        }, INTRO_INTERACTIVE_MS);
+        scheduleUnlockWhenReady();
 
         if (!canPlayVp9Webm(video)) {
           showStaticFallback();

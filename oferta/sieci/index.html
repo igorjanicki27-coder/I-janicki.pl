@@ -23,7 +23,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="/oferta.css?v=5">
   <script type="application/ld+json">[{"@context":"https://schema.org","@type":"Service","@id":"https://i-janicki.pl/oferta/sieci/#service","name":"Konfiguracja sieci dla firmy i domu","description":"Projektowanie i konfiguracja sieci LAN, Wi-Fi oraz VPN dla firm i domów. Środa Śląska, Miękinia, Wrocław i okolice.","url":"https://i-janicki.pl/oferta/sieci/","provider":{"@id":"https://i-janicki.pl/#business"},"areaServed":[{"@type":"AdministrativeArea","name":"Środa Śląska"},{"@type":"AdministrativeArea","name":"Miękinia"},{"@type":"AdministrativeArea","name":"Wrocław"},{"@type":"AdministrativeArea","name":"Dolny Śląsk"}]},{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strona główna","item":"https://i-janicki.pl/"},{"@type":"ListItem","position":2,"name":"Oferta","item":"https://i-janicki.pl/oferta/"},{"@type":"ListItem","position":3,"name":"Sieci","item":"https://i-janicki.pl/oferta/sieci/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Czy poprawisz zasięg Wi-Fi bez wymiany routera?","acceptedAnswer":{"@type":"Answer","text":"Czasem wystarczy poprawić ustawienia lub położenie urządzeń, ale zależy to od warunków i możliwości obecnego sprzętu. Decyzję warto podjąć po diagnozie."}},{"@type":"Question","name":"Czy konfigurujesz sieci dla domów?","acceptedAnswer":{"@type":"Answer","text":"Tak. Zakres może obejmować dom, małe biuro lub firmę, zależnie od liczby urządzeń i potrzeb użytkowników."}},{"@type":"Question","name":"Czy pomagasz dobrać sprzęt?","acceptedAnswer":{"@type":"Answer","text":"Tak. Dobór urządzeń może być częścią usługi, ale zakup i koszt sprzętu są rozliczane oddzielnie od konfiguracji."}},{"@type":"Question","name":"Czy konfigurujesz VPN?","acceptedAnswer":{"@type":"Answer","text":"Tak, jeżeli używane urządzenia i łącza pozwalają na wdrożenie bezpiecznego rozwiązania dopasowanego do sposobu dostępu."}},{"@type":"Question","name":"Czy wykonujesz okablowanie?","acceptedAnswer":{"@type":"Answer","text":"Podstawowa oferta dotyczy projektu i konfiguracji sieci. Ewentualne prace instalacyjne lub budowlane wymagają osobnego ustalenia."}}]}]</script>
   <script defer src="/analytics.js?v=10"></script>
@@ -33,7 +34,7 @@
   <a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>
       <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>
           <a href="/oferta/">Oferta</a>
@@ -134,6 +135,7 @@
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>

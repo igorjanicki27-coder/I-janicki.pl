@@ -19,7 +19,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="/oferta.css?v=5">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Oferta i-JANICKI","description":"Strony internetowe, aplikacje, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.","url":"https://i-janicki.pl/oferta/","mainEntity":{"@type":"ItemList","itemListElement":[{"@type":"ListItem","position":1,"name":"Wrocław","url":"https://i-janicki.pl/oferta/wroclaw/"},{"@type":"ListItem","position":2,"name":"Środa Śląska","url":"https://i-janicki.pl/oferta/sroda-slaska/"},{"@type":"ListItem","position":3,"name":"Miękinia i Lutynia","url":"https://i-janicki.pl/oferta/miekinia-lutynia/"},{"@type":"ListItem","position":4,"name":"Cennik","url":"https://i-janicki.pl/oferta/cennik/"},{"@type":"ListItem","position":5,"name":"Strony WWW","url":"https://i-janicki.pl/oferta/strony-www/"},{"@type":"ListItem","position":6,"name":"Aplikacje","url":"https://i-janicki.pl/oferta/aplikacje/"},{"@type":"ListItem","position":7,"name":"Opieka IT","url":"https://i-janicki.pl/oferta/opieka-it/"},{"@type":"ListItem","position":8,"name":"Sieci LAN, Wi-Fi i VPN","url":"https://i-janicki.pl/oferta/sieci/"},{"@type":"ListItem","position":9,"name":"Pozycjonowanie i SEO","url":"https://i-janicki.pl/oferta/seo/"}]}}</script>
   <script defer src="/analytics.js?v=10"></script>
@@ -28,7 +29,7 @@
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header"><div class="nav-shell">
-    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>
     <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav><a href="/oferta/" aria-current="page">Oferta</a>
           <a href="/oferta/wroclaw/">Wrocław</a>
@@ -52,6 +53,7 @@
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>

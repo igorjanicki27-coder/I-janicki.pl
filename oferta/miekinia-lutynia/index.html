@@ -23,7 +23,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="/oferta.css?v=5">
   <script type="application/ld+json">[{"@context":"https://schema.org","@type":"Service","@id":"https://i-janicki.pl/oferta/miekinia-lutynia/#service","name":"Strony internetowe dla firm z Miękini i Lutyni","description":"Nowoczesne strony internetowe dla firm z Miękini, Lutyni i gminy Miękinia. Indywidualny projekt, szybkość, wersja mobilna i podstawy SEO.","url":"https://i-janicki.pl/oferta/miekinia-lutynia/","provider":{"@id":"https://i-janicki.pl/#business"},"areaServed":[{"@type":"AdministrativeArea","name":"Miękinia"},{"@type":"AdministrativeArea","name":"Lutynia"},{"@type":"AdministrativeArea","name":"gmina Miękinia"},{"@type":"AdministrativeArea","name":"powiat średzki"}]},{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strona główna","item":"https://i-janicki.pl/"},{"@type":"ListItem","position":2,"name":"Oferta","item":"https://i-janicki.pl/oferta/"},{"@type":"ListItem","position":3,"name":"Miękinia i Lutynia","item":"https://i-janicki.pl/oferta/miekinia-lutynia/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ile trwa przygotowanie strony?","acceptedAnswer":{"@type":"Answer","text":"Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Większe realizacje wymagają więcej czasu, zależnie od liczby podstron, materiałów i integracji."}},{"@type":"Question","name":"Czy przygotujesz treści pod Miękinię, Lutynię i okoliczne miejscowości?","acceptedAnswer":{"@type":"Answer","text":"Tak. Najpierw ustalam realny obszar obsługi firmy, a następnie porządkuję treść tak, aby była użyteczna dla klienta i nie wyglądała jak sztuczna lista miejscowości."}},{"@type":"Question","name":"Czy strona będzie widoczna w Google?","acceptedAnswer":{"@type":"Answer","text":"Strona otrzymuje poprawne podstawy techniczne SEO. Pozycje zależą także od konkurencji, jakości treści, historii domeny, profilu firmy i dalszych działań."}},{"@type":"Question","name":"Czy możemy spotkać się na miejscu?","acceptedAnswer":{"@type":"Answer","text":"Tak, jeśli zakres projektu wymaga spotkania. Większość ustaleń możemy też sprawnie przeprowadzić zdalnie."}},{"@type":"Question","name":"Czy później można dodać kolejne usługi?","acceptedAnswer":{"@type":"Answer","text":"Tak. Strukturę można przygotować tak, aby rozwijać ofertę, realizacje, poradniki oraz kolejne funkcje bez przebudowy całej witryny."}}]}]</script>
   <script defer src="/analytics.js?v=10"></script>
@@ -33,7 +34,7 @@
   <a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>
       <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>
           <a href="/oferta/">Oferta</a>
@@ -134,6 +135,7 @@
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>

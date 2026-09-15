@@ -5,6 +5,11 @@ const ROOT = process.cwd();
 const OUTPUT_ROOT = process.env.BLOG_OUTPUT_ROOT ? path.resolve(process.env.BLOG_OUTPUT_ROOT) : ROOT;
 const SITE_URL = 'https://i-janicki.pl';
 const EMAIL = 'kontakt@i-janicki.pl';
+const FOOTER_LINKS = [
+  ['/oferta/strony-www/', 'Strony WWW'], ['/oferta/aplikacje/', 'Aplikacje'],
+  ['/oferta/seo/', 'SEO'], ['/oferta/sieci/', 'Sieci'],
+  ['/oferta/opieka-it/', 'Opieka IT'], ['/faq/', 'FAQ']
+];
 
 const posts = [
   {
@@ -232,6 +237,7 @@ function renderFooter() {
     <a href="mailto:${EMAIL}" class="foot-mail">${EMAIL}</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony">${FOOTER_LINKS.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')}</nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>`;
 }
@@ -255,7 +261,8 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="/oferta.css?v=5">
   <link rel="stylesheet" href="/blog.css?v=1">
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
@@ -266,7 +273,7 @@ function renderShellHead({ title, description, canonical, structuredData, type =
 function renderHeader(currentPath = '/blog/') {
   return `<a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header"><div class="nav-shell">
-    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Menu</button>
     <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>${renderNavigation(currentPath)}<a class="nav-cta" href="/kontakt/">Kontakt</a></nav>
   </div></header>`;

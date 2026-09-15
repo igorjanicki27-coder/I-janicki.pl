@@ -649,6 +649,22 @@ h2 {
   opacity: 0.5;
 }
 
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 12px;
+  width: 100%;
+}
+
+.foot-links a {
+  color: rgba(219, 229, 255, 0.72);
+  text-decoration: none;
+}
+
+.foot-links a:hover { color: var(--cyan); }
+
 .cookie-foot-btn {
   position: absolute;
   top: 50%;

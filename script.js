@@ -145,6 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       startTutorial();
     }
+    requestAnimationFrame(() => {
+      window.iJanickiMarkRealViewReady?.();
+    });
   });
 
   // Nie wysyłaj home_visit event - oszczędza 102KB Firebase SDK na initial load

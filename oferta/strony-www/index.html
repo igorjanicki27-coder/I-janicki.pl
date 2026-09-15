@@ -23,7 +23,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="/oferta.css?v=5">
   <script type="application/ld+json">[{"@context":"https://schema.org","@type":"Service","@id":"https://i-janicki.pl/oferta/strony-www/#service","name":"Strony internetowe dopasowane do Twojej firmy","description":"Projektowanie i tworzenie stron WWW dla firm. Indywidualny układ, responsywność, szybkie działanie, bezpośredni kontakt i techniczne podstawy SEO.","url":"https://i-janicki.pl/oferta/strony-www/","provider":{"@id":"https://i-janicki.pl/#business"},"areaServed":[{"@type":"AdministrativeArea","name":"Polska"}]},{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strona główna","item":"https://i-janicki.pl/"},{"@type":"ListItem","position":2,"name":"Oferta","item":"https://i-janicki.pl/oferta/"},{"@type":"ListItem","position":3,"name":"Strony WWW","item":"https://i-janicki.pl/oferta/strony-www/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Jakie rodzaje stron internetowych tworzysz?","acceptedAnswer":{"@type":"Answer","text":"Realizuję strony wizytówkowe, strony firmowe, portfolio i rozbudowane serwisy usługowe. Zakres wynika z celu, treści i potrzeb odbiorców."}},{"@type":"Question","name":"Czy mogę korzystać z własnej domeny?","acceptedAnswer":{"@type":"Answer","text":"Tak. Strona może działać pod posiadaną domeną lub mogę pomóc w wyborze i poprawnej konfiguracji nowego adresu."}},{"@type":"Question","name":"Czy strona będzie działać na telefonie?","acceptedAnswer":{"@type":"Answer","text":"Tak. Każdy projekt przygotowuję responsywnie, aby treść i najważniejsze działania były wygodne na smartfonie, tablecie oraz komputerze."}},{"@type":"Question","name":"Czy strona będzie przygotowana pod SEO?","acceptedAnswer":{"@type":"Answer","text":"Tak. W ramach realizacji przygotowuję techniczne podstawy SEO. Dalsze pozycjonowanie zależy również od treści, konkurencji, historii domeny i regularnego rozwoju serwisu."}},{"@type":"Question","name":"Czy po publikacji można rozbudować stronę?","acceptedAnswer":{"@type":"Answer","text":"Tak. Strukturę można przygotować tak, aby później dodawać kolejne usługi, realizacje, artykuły, wersje językowe lub integracje."}}]}]</script>
   <script defer src="/analytics.js?v=10"></script>
@@ -33,7 +34,7 @@
   <a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon.png" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle>Oferta</button>
       <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>
           <a href="/oferta/">Oferta</a>
@@ -135,6 +136,7 @@
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>

@@ -91,6 +91,12 @@
         "headers": [
           { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
         ]
+      },
+      {
+        "source": "Szablony/**",
+        "headers": [
+          { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
+        ]
       }
     ]
   }
