@@ -2,9 +2,29 @@ export type UserRole = 'master' | 'slave'
 export type ThemeMode = 'dark' | 'light'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type DeviceHealthState = 'healthy' | 'warning' | 'alert' | 'offline'
-export type CommandShell = 'powershell' | 'cmd'
+export type CommandShell = 'powershell' | 'cmd' | 'shell'
 export type RemoteActionType = 'notify' | 'restart_prompt' | 'launch_rustdesk'
 export type TelemetryMode = 'standard' | 'aggressive'
+export type UpdateChannel = 'test' | 'beta' | 'stable'
+export type ServiceRequestPriority = 'low' | 'normal' | 'high' | 'critical'
+export type ServiceRequestStatus = 'open' | 'in_progress' | 'resolved'
+export type ReadinessStatus = 'ok' | 'warning' | 'error' | 'skipped'
+export type DiagnosticLogLevel = 'info' | 'warning' | 'error'
+
+export interface ReadinessCheckResult {
+  id: string
+  label: string
+  status: ReadinessStatus
+  message: string
+}
+
+export interface DiagnosticBundleSummary {
+  readiness: ReadinessCheckResult[]
+  offlineQueueCount: number
+  signedIn: boolean
+  role?: UserRole
+  deviceApproval?: ApprovalStatus | null
+}
 
 export interface MetricThreshold {
   warning: number
@@ -25,6 +45,36 @@ export interface RemoteMasterSettings {
   thresholds: MetricThresholds
   telemetryMode: TelemetryMode
   companyOptions: string[]
+  remoteAccessKey?: RemoteAccessPublicKey
+}
+
+export interface RemoteAccessPublicKey {
+  keyId: string
+  jwk: Record<string, unknown>
+  createdAt: number
+}
+
+export interface MasterSecurityConfig {
+  publicKey: RemoteAccessPublicKey
+  encryptedPrivateKey: string
+  salt: string
+  iv: string
+  iterations: number
+  createdAt: number
+}
+
+export interface EncryptedRemoteAccess {
+  keyId: string
+  algorithm: 'RSA-OAEP-256'
+  ciphertext: string
+  updatedAt: number
+}
+
+export interface RemoteAccessCredential {
+  deviceId: string
+  rustdeskId: string
+  password: string
+  issuedAt: number
 }
 
 export interface AppUser {
@@ -33,7 +83,15 @@ export interface AppUser {
   displayName: string
   photoURL?: string | null
   role: UserRole
+  companyName?: string
+  installationLocation?: string
   accessToken?: string
+}
+
+export interface RegistrationDetails {
+  fullName: string
+  companyName: string
+  installationLocation?: string
 }
 
 export interface ClientProfile {
@@ -42,6 +100,8 @@ export interface ClientProfile {
   displayName: string
   photoURL?: string | null
   role: UserRole
+  companyName: string
+  installationLocation: string
   createdAt: number
   updatedAt: number
   lastLoginAt: number
@@ -67,9 +127,12 @@ export interface DeviceRecord extends DeviceIdentity {
   ownerUid: string
   ownerEmail: string
   companyName?: string
+  contactName?: string
+  installationLocation?: string
   deviceAlias?: string
   aliasCustomizedAt?: number | null
   approvalStatus: ApprovalStatus
+  updateChannel?: UpdateChannel
   lastSeenAt: number
   createdAt: number
   updatedAt: number
@@ -86,7 +149,7 @@ export interface DeviceRecord extends DeviceIdentity {
     updatedAt: number
   }
   inventoryCapturedAt?: number
-  inventoryReportUrl?: string
+  inventoryReportId?: string
   approvedBy?: string
   rustdesk?: RustDeskState
   updateRequest?: UpdateRequest | null
@@ -223,6 +286,53 @@ export interface AlertEvent {
   acknowledgedBy?: string
 }
 
+export interface ServiceRequest {
+  id: string
+  ownerUid: string
+  ownerEmail: string
+  deviceId: string
+  deviceLabel: string
+  companyName: string
+  title: string
+  description: string
+  priority: ServiceRequestPriority
+  status: ServiceRequestStatus
+  createdAt: number
+  updatedAt: number
+  resolvedAt?: number | null
+}
+
+export interface ServiceRequestInternalComment {
+  id: string
+  requestId: string
+  authorUid: string
+  authorEmail: string
+  body: string
+  createdAt: number
+}
+
+export interface UsageDailyRollup {
+  id: string
+  ownerUid: string
+  deviceId: string
+  dayKey: string
+  observedSeconds: number
+  cpuObservedSeconds: number
+  cpuOver80Seconds: number
+  gpuObservedSeconds: number
+  gpuOver80Seconds: number
+  ramObservedSeconds: number
+  ramOver80Seconds: number
+  diskObservedSeconds: number
+  diskOver80Seconds: number
+  anyOver80Seconds: number
+  restartCount: number
+  sampleCount: number
+  updatedAt: number
+}
+
+export type UsageRollupDelta = Omit<UsageDailyRollup, 'id' | 'ownerUid' | 'deviceId' | 'updatedAt'>
+
 export interface RemoteActionRequest {
   id: string
   type: RemoteActionType
@@ -237,11 +347,18 @@ export interface ConsentRecord {
   acceptedAt: number
   policyVersion: string
   diagnosticsConsent: boolean
+  remoteCommandConsent: boolean
+  unattendedAccessConsent: boolean
 }
 
 export interface RustDeskState {
   binaryPath?: string
   installed: boolean
+  platform?: string
+  unattendedReady?: boolean
+  requiresPermissions?: boolean
+  permissionHint?: string
+  encryptedAccess?: EncryptedRemoteAccess
   lastLaunchAt?: number
   sessionHint?: string
   accessCode?: string

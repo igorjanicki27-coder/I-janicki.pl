@@ -1,11 +1,15 @@
 import {
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithCredential,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
+  updateProfile,
   type User
 } from 'firebase/auth'
 import {
@@ -13,18 +17,20 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   getFirestore,
+  increment,
   limit,
   onSnapshot,
   orderBy,
   query,
   setDoc,
   updateDoc,
+  writeBatch,
   where
 } from 'firebase/firestore'
-import { getDownloadURL, ref as storageRef, uploadString } from 'firebase/storage'
 import { off, onValue, query as dbQuery, ref, set } from 'firebase/database'
 import type {
   AlertEvent,
@@ -39,9 +45,18 @@ import type {
   DeviceRecord,
   DeviceTelemetry,
   InventoryReport,
+  MasterSecurityConfig,
   RemoteMasterSettings,
   RemoteActionRequest,
-  TerminalCommand
+  RegistrationDetails,
+  ServiceRequest,
+  ServiceRequestInternalComment,
+  ServiceRequestPriority,
+  ServiceRequestStatus,
+  TerminalCommand,
+  UsageDailyRollup,
+  UsageRollupDelta,
+  UpdateChannel
 } from '@shared/contracts'
 import { DEFAULT_MASTER_EMAIL, DEFAULT_SYNC_FILE_MB } from '@shared/constants'
 import { firebaseServices, hasFirebaseCoreConfig, hasRealtimeDatabaseConfig } from './firebase'
@@ -52,7 +67,11 @@ export interface BackendClient {
   isMock: boolean
   subscribeAuth: (callback: (user: AppUser | null) => void) => Unsubscribe
   signInWithGoogle: () => Promise<AppUser>
+  signInWithEmail: (email: string, password: string) => Promise<AppUser>
+  registerWithEmail: (email: string, password: string, details: RegistrationDetails) => Promise<AppUser>
+  sendPasswordReset: (email: string) => Promise<void>
   signOut: () => Promise<void>
+  healthCheck: () => Promise<void>
   ensureUserProfile: (user: AppUser) => Promise<ClientProfile>
   isDeviceIdAvailable: (deviceId: string) => Promise<boolean>
   ensureDeviceRecord: (user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) => Promise<DeviceRecord>
@@ -66,15 +85,25 @@ export interface BackendClient {
   deleteDeviceRecord: (deviceId: string) => Promise<void>
   subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[]) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
+  subscribeServiceRequests: (user: AppUser, callback: (requests: ServiceRequest[]) => void) => Unsubscribe
+  subscribeServiceRequestComments: (callback: (comments: ServiceRequestInternalComment[]) => void) => Unsubscribe
   subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
   subscribeRemoteMasterSettings: (callback: (settings: Partial<RemoteMasterSettings> | null) => void) => Unsubscribe
   sendCompanyChatMessage: (ownerUid: string, message: CompanyChatMessage) => Promise<void>
   saveRemoteMasterSettings: (settings: RemoteMasterSettings) => Promise<void>
+  getMasterSecurity: () => Promise<MasterSecurityConfig | null>
+  saveMasterSecurity: (config: MasterSecurityConfig) => Promise<void>
   updateApprovalStatus: (deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) => Promise<void>
   updateDeviceAlias: (deviceId: string, deviceAlias: string) => Promise<void>
   updateDeviceCompanyName: (deviceId: string, companyName: string) => Promise<void>
+  updateDeviceRegistrationDetails: (
+    deviceId: string,
+    details: { contactName: string; companyName: string; installationLocation: string }
+  ) => Promise<void>
+  updateDeviceUpdateChannel: (deviceId: string, updateChannel: UpdateChannel) => Promise<void>
   publishTelemetry: (device: DeviceRecord, telemetry: DeviceTelemetry) => Promise<void>
   publishInventory: (device: DeviceRecord, inventory: InventoryReport) => Promise<void>
+  getInventory: (device: DeviceRecord) => Promise<InventoryReport | null>
   publishBackupSnapshot: (device: DeviceRecord, snapshot: BackupSnapshot) => Promise<void>
   publishBackupProgress: (
     device: DeviceRecord,
@@ -94,6 +123,14 @@ export interface BackendClient {
   pushAlert: (device: DeviceRecord, alert: AlertEvent) => Promise<void>
   removeAlert: (alertId: string) => Promise<void>
   removeActiveAlerts: (deviceId: string, types: AlertEvent['type'][]) => Promise<void>
+  createServiceRequest: (
+    device: DeviceRecord,
+    payload: { title: string; description: string; priority: ServiceRequestPriority }
+  ) => Promise<void>
+  updateServiceRequestStatus: (requestId: string, status: ServiceRequestStatus) => Promise<void>
+  addServiceRequestComment: (requestId: string, body: string, author: AppUser) => Promise<void>
+  recordUsageRollup: (device: DeviceRecord, delta: UsageRollupDelta) => Promise<void>
+  getUsageRollups: (deviceId: string, fromDayKey: string) => Promise<UsageDailyRollup[]>
   setPresence: (device: DeviceRecord, role: AppUser['role'], online: boolean) => Promise<void>
 }
 
@@ -124,10 +161,82 @@ function defaultBackupPolicy(_hostname: string): BackupPolicy {
   }
 }
 
+const INVENTORY_CHUNK_MAX_BYTES = 700 * 1024
+const INVENTORY_MAX_BATCH_WRITES = 450
+
+function sanitizeForFirestore<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
+function chunkInventoryItems<T>(items: T[]) {
+  const encoder = new TextEncoder()
+  const chunks: T[][] = []
+  let current: T[] = []
+  let currentBytes = 2
+
+  for (const rawItem of items) {
+    const item = sanitizeForFirestore(rawItem)
+    const itemBytes = encoder.encode(JSON.stringify(item)).byteLength + (current.length ? 1 : 0)
+    if (itemBytes > INVENTORY_CHUNK_MAX_BYTES) {
+      throw new Error('Pojedynczy element raportu inwentaryzacji przekracza bezpieczny limit Firestore.')
+    }
+    if (current.length && currentBytes + itemBytes > INVENTORY_CHUNK_MAX_BYTES) {
+      chunks.push(current)
+      current = []
+      currentBytes = 2
+    }
+    current.push(item)
+    currentBytes += itemBytes
+  }
+
+  if (current.length || chunks.length === 0) chunks.push(current)
+  return chunks
+}
+
+function inventoryChunkId(kind: 'installedApps' | 'windowsUpdates', index: number) {
+  return `${kind}-${String(index).padStart(3, '0')}`
+}
+
 class FirebaseBackend implements BackendClient {
   isMock = false
   private providerAccessToken?: string
   private providerAccessTokenUid: string | null = null
+  private pendingRegistrationDetails: RegistrationDetails | null = null
+  private activeRegistrationDetails: { uid: string; details: RegistrationDetails } | null = null
+
+  private async writeAuditLog(
+    action: string,
+    payload: { deviceId?: string; ownerUid?: string; details?: Record<string, string | number | boolean | null> } = {}
+  ) {
+    const currentUser = firebaseServices!.auth.currentUser
+    if (!currentUser) return
+
+    const deviceId = payload.deviceId ?? 'global'
+    let ownerUid = payload.ownerUid
+    if (!ownerUid && deviceId !== 'global') {
+      const deviceSnapshot = await getDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
+      ownerUid = deviceSnapshot.exists() ? (deviceSnapshot.data() as DeviceRecord).ownerUid : undefined
+    }
+
+    await addDoc(collection(firebaseServices!.firestore, 'auditLogs'), {
+      ownerUid: ownerUid ?? currentUser.uid,
+      deviceId,
+      action,
+      actorUid: currentUser.uid,
+      actorEmail: currentUser.email ?? 'unknown@example.com',
+      details: payload.details ?? {},
+      createdAt: Date.now()
+    })
+  }
+
+  private queueAuditLog(
+    action: string,
+    payload: { deviceId?: string; ownerUid?: string; details?: Record<string, string | number | boolean | null> } = {}
+  ) {
+    void this.writeAuditLog(action, payload).catch((error) => {
+      console.warn(`[i-JANEK] Nie udało się zapisać audytu (${action}):`, error)
+    })
+  }
 
   private clearProviderAccessToken() {
     this.providerAccessToken = undefined
@@ -167,7 +276,26 @@ class FirebaseBackend implements BackendClient {
           return
         }
 
-        callback(toAppUser(user, this.getProviderAccessToken(user)))
+        if (user.isAnonymous) {
+          this.clearProviderAccessToken()
+          callback(null)
+          void firebaseSignOut(auth)
+          return
+        }
+
+        const registrationDetails = this.activeRegistrationDetails?.uid === user.uid
+          ? this.activeRegistrationDetails.details
+          : this.pendingRegistrationDetails
+        callback({
+          ...toAppUser(user, this.getProviderAccessToken(user)),
+          ...(registrationDetails
+            ? {
+                displayName: registrationDetails.fullName,
+                companyName: registrationDetails.companyName,
+                installationLocation: registrationDetails.installationLocation ?? ''
+              }
+            : {})
+        })
       })
     })()
 
@@ -224,9 +352,51 @@ class FirebaseBackend implements BackendClient {
     }
   }
 
+  async signInWithEmail(email: string, password: string) {
+    this.clearProviderAccessToken()
+    const result = await signInWithEmailAndPassword(firebaseServices!.auth, email.trim(), password)
+    return toAppUser(result.user)
+  }
+
+  async registerWithEmail(email: string, password: string, details: RegistrationDetails) {
+    this.clearProviderAccessToken()
+    const normalizedDetails: RegistrationDetails = {
+      fullName: details.fullName.trim(),
+      companyName: details.companyName.trim(),
+      installationLocation: details.installationLocation?.trim() ?? ''
+    }
+    this.pendingRegistrationDetails = normalizedDetails
+    try {
+      const result = await createUserWithEmailAndPassword(firebaseServices!.auth, email.trim(), password)
+      this.activeRegistrationDetails = { uid: result.user.uid, details: normalizedDetails }
+      await updateProfile(result.user, { displayName: normalizedDetails.fullName })
+      const registeredUser: AppUser = {
+        ...toAppUser(result.user),
+        displayName: normalizedDetails.fullName,
+        companyName: normalizedDetails.companyName,
+        installationLocation: normalizedDetails.installationLocation
+      }
+      await this.ensureUserProfile(registeredUser)
+      return registeredUser
+    } finally {
+      this.pendingRegistrationDetails = null
+    }
+  }
+
+  async sendPasswordReset(email: string) {
+    await sendPasswordResetEmail(firebaseServices!.auth, email.trim())
+  }
+
   async signOut() {
     this.clearProviderAccessToken()
+    this.activeRegistrationDetails = null
     await firebaseSignOut(firebaseServices!.auth)
+  }
+
+  async healthCheck() {
+    const currentUser = firebaseServices!.auth.currentUser
+    if (!currentUser) throw new Error('Brak aktywnej sesji Firebase.')
+    await getDoc(doc(firebaseServices!.firestore, 'clients', currentUser.uid))
   }
 
   async ensureUserProfile(user: AppUser) {
@@ -241,6 +411,8 @@ class FirebaseBackend implements BackendClient {
       displayName: user.displayName,
       photoURL: user.photoURL ?? null,
       role: user.role,
+      companyName: user.companyName ?? existing?.companyName ?? '',
+      installationLocation: user.installationLocation ?? existing?.installationLocation ?? '',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       lastLoginAt: now
@@ -267,6 +439,7 @@ class FirebaseBackend implements BackendClient {
       ownerUid: user.uid,
       ownerEmail: user.email,
       approvalStatus: existing?.approvalStatus ?? 'pending',
+      updateChannel: existing?.updateChannel ?? 'stable',
       createdAt: existing?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
       lastSeenAt: Date.now(),
@@ -275,7 +448,9 @@ class FirebaseBackend implements BackendClient {
       deviceAlias: existing?.deviceAlias ?? context.hostname,
       aliasCustomizedAt: existing?.aliasCustomizedAt ?? null,
       backupPolicy: existing?.backupPolicy ?? defaultBackupPolicy(context.hostname),
-      companyName: existing?.companyName ?? '',
+      companyName: existing?.companyName ?? user.companyName ?? '',
+      contactName: existing?.contactName ?? user.displayName,
+      installationLocation: existing?.installationLocation ?? user.installationLocation ?? '',
       rustdesk: existing?.rustdesk ?? { installed: false },
       updateRequest: existing?.updateRequest ?? null,
       lastHandledUpdateRequestId: existing?.lastHandledUpdateRequestId ?? null,
@@ -359,6 +534,35 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
+  subscribeServiceRequests(user: AppUser, callback: (requests: ServiceRequest[]) => void) {
+    const requestsQuery =
+      user.role === 'master'
+        ? query(collection(firebaseServices!.firestore, 'serviceRequests'), orderBy('createdAt', 'desc'), limit(250))
+        : query(collection(firebaseServices!.firestore, 'serviceRequests'), where('ownerUid', '==', user.uid))
+
+    return onSnapshot(requestsQuery, (snapshot) => {
+      const requests = snapshot.docs
+        .map((entry) => ({ id: entry.id, ...(entry.data() as Omit<ServiceRequest, 'id'>) }))
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 250)
+      callback(requests)
+    })
+  }
+
+  subscribeServiceRequestComments(callback: (comments: ServiceRequestInternalComment[]) => void) {
+    const commentsQuery = query(
+      collection(firebaseServices!.firestore, 'serviceRequestInternalComments'),
+      orderBy('createdAt', 'asc'),
+      limit(1000)
+    )
+    return onSnapshot(commentsQuery, (snapshot) => {
+      callback(snapshot.docs.map((entry) => ({
+        id: entry.id,
+        ...(entry.data() as Omit<ServiceRequestInternalComment, 'id'>)
+      })))
+    })
+  }
+
   subscribeCompanyChats(ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) {
     if (!firebaseServices!.database) {
       callback([])
@@ -391,6 +595,17 @@ class FirebaseBackend implements BackendClient {
 
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {
     await setDoc(doc(firebaseServices!.firestore, 'appConfig', 'masterSettings'), settings, { merge: true })
+    this.queueAuditLog('master_settings_updated')
+  }
+
+  async getMasterSecurity() {
+    const snapshot = await getDoc(doc(firebaseServices!.firestore, 'appConfig', 'masterSecurity'))
+    return snapshot.exists() ? (snapshot.data() as MasterSecurityConfig) : null
+  }
+
+  async saveMasterSecurity(config: MasterSecurityConfig) {
+    await setDoc(doc(firebaseServices!.firestore, 'appConfig', 'masterSecurity'), config, { merge: false })
+    this.queueAuditLog('master_security_updated', { details: { keyId: config.publicKey.keyId } })
   }
 
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) {
@@ -407,6 +622,7 @@ class FirebaseBackend implements BackendClient {
     }
 
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), payload)
+    this.queueAuditLog('device_approval_changed', { deviceId, details: { approvalStatus } })
   }
 
   async updateDeviceAlias(deviceId: string, deviceAlias: string) {
@@ -424,6 +640,26 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
+  async updateDeviceRegistrationDetails(
+    deviceId: string,
+    details: { contactName: string; companyName: string; installationLocation: string }
+  ) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      contactName: details.contactName.trim(),
+      companyName: details.companyName.trim(),
+      installationLocation: details.installationLocation.trim(),
+      updatedAt: Date.now()
+    })
+  }
+
+  async updateDeviceUpdateChannel(deviceId: string, updateChannel: UpdateChannel) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      updateChannel,
+      updatedAt: Date.now()
+    })
+    this.queueAuditLog('device_update_channel_changed', { deviceId, details: { updateChannel } })
+  }
+
   async publishTelemetry(device: DeviceRecord, telemetry: DeviceTelemetry) {
     if (firebaseServices!.database) {
       await set(ref(firebaseServices!.database, `telemetry/${device.ownerUid}/${device.deviceId}/latest`), telemetry)
@@ -437,15 +673,133 @@ class FirebaseBackend implements BackendClient {
   }
 
   async publishInventory(device: DeviceRecord, inventory: InventoryReport) {
-    const payload = JSON.stringify(inventory, null, 2)
-    const reportRef = storageRef(firebaseServices!.storage, `inventory/${device.ownerUid}/${device.deviceId}/${inventory.capturedAt}.json`)
-    await uploadString(reportRef, payload)
-    const reportUrl = await getDownloadURL(reportRef)
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', device.deviceId), {
-      inventoryCapturedAt: inventory.capturedAt,
-      inventoryReportUrl: reportUrl,
-      updatedAt: Date.now()
+    const firestore = firebaseServices!.firestore
+    const reportId = device.deviceId
+    const reportRef = doc(firestore, 'inventoryReports', reportId)
+    const sectionsRef = collection(reportRef, 'sections')
+    const previousSnapshot = await getDoc(reportRef)
+    const previousData = previousSnapshot.exists() ? previousSnapshot.data() : null
+    const installedAppsChunks = chunkInventoryItems(inventory.installedApps)
+    const windowsUpdatesChunks = chunkInventoryItems(inventory.windowsUpdates)
+    const previousInstalledAppsChunks = Number(previousData?.installedAppsChunkCount ?? 0)
+    const previousWindowsUpdatesChunks = Number(previousData?.windowsUpdatesChunkCount ?? 0)
+    const now = Date.now()
+    const batch = writeBatch(firestore)
+
+    batch.set(reportRef, {
+      reportId,
+      ownerUid: device.ownerUid,
+      deviceId: device.deviceId,
+      capturedAt: inventory.capturedAt,
+      updatedAt: now,
+      schemaVersion: 1,
+      installedAppsCount: inventory.installedApps.length,
+      installedAppsChunkCount: installedAppsChunks.length,
+      windowsUpdatesCount: inventory.windowsUpdates.length,
+      windowsUpdatesChunkCount: windowsUpdatesChunks.length
     })
+    batch.set(doc(sectionsRef, 'hardware'), {
+      ownerUid: device.ownerUid,
+      deviceId: device.deviceId,
+      capturedAt: inventory.capturedAt,
+      kind: 'hardware',
+      chunkIndex: 0,
+      chunkCount: 1,
+      data: sanitizeForFirestore(inventory.hardware)
+    })
+    batch.set(doc(sectionsRef, 'defender'), {
+      ownerUid: device.ownerUid,
+      deviceId: device.deviceId,
+      capturedAt: inventory.capturedAt,
+      kind: 'defender',
+      chunkIndex: 0,
+      chunkCount: 1,
+      data: sanitizeForFirestore(inventory.defender)
+    })
+
+    installedAppsChunks.forEach((data, index) => {
+      batch.set(doc(sectionsRef, inventoryChunkId('installedApps', index)), {
+        ownerUid: device.ownerUid,
+        deviceId: device.deviceId,
+        capturedAt: inventory.capturedAt,
+        kind: 'installedApps',
+        chunkIndex: index,
+        chunkCount: installedAppsChunks.length,
+        data
+      })
+    })
+    windowsUpdatesChunks.forEach((data, index) => {
+      batch.set(doc(sectionsRef, inventoryChunkId('windowsUpdates', index)), {
+        ownerUid: device.ownerUid,
+        deviceId: device.deviceId,
+        capturedAt: inventory.capturedAt,
+        kind: 'windowsUpdates',
+        chunkIndex: index,
+        chunkCount: windowsUpdatesChunks.length,
+        data
+      })
+    })
+
+    for (let index = installedAppsChunks.length; index < previousInstalledAppsChunks; index += 1) {
+      batch.delete(doc(sectionsRef, inventoryChunkId('installedApps', index)))
+    }
+    for (let index = windowsUpdatesChunks.length; index < previousWindowsUpdatesChunks; index += 1) {
+      batch.delete(doc(sectionsRef, inventoryChunkId('windowsUpdates', index)))
+    }
+
+    batch.update(doc(firestore, 'devices', device.deviceId), {
+      inventoryCapturedAt: inventory.capturedAt,
+      inventoryReportId: reportId,
+      updatedAt: now
+    })
+    const writeCount = 4
+      + installedAppsChunks.length
+      + windowsUpdatesChunks.length
+      + Math.max(0, previousInstalledAppsChunks - installedAppsChunks.length)
+      + Math.max(0, previousWindowsUpdatesChunks - windowsUpdatesChunks.length)
+    if (writeCount > INVENTORY_MAX_BATCH_WRITES) {
+      throw new Error('Raport inwentaryzacji wymaga zbyt wielu fragmentów Firestore.')
+    }
+    await batch.commit()
+  }
+
+  async getInventory(device: DeviceRecord) {
+    const reportId = device.inventoryReportId || device.deviceId
+    const reportRef = doc(firebaseServices!.firestore, 'inventoryReports', reportId)
+    const [reportSnapshot, sectionsSnapshot] = await Promise.all([
+      getDoc(reportRef),
+      getDocs(query(collection(reportRef, 'sections'), where('ownerUid', '==', device.ownerUid)))
+    ])
+    if (!reportSnapshot.exists()) return null
+
+    const reportData = reportSnapshot.data()
+    let hardware: InventoryReport['hardware'] = { ramSlots: [], disks: [] }
+    let defender: InventoryReport['defender'] = {}
+    const installedAppsChunks: Array<{ index: number; data: InventoryReport['installedApps'] }> = []
+    const windowsUpdatesChunks: Array<{ index: number; data: InventoryReport['windowsUpdates'] }> = []
+
+    sectionsSnapshot.docs.forEach((sectionSnapshot) => {
+      const section = sectionSnapshot.data()
+      if (section.kind === 'hardware' && section.data && typeof section.data === 'object') {
+        hardware = section.data as InventoryReport['hardware']
+      } else if (section.kind === 'defender' && section.data && typeof section.data === 'object') {
+        defender = section.data as InventoryReport['defender']
+      } else if (section.kind === 'installedApps' && Array.isArray(section.data)) {
+        installedAppsChunks.push({ index: Number(section.chunkIndex ?? 0), data: section.data as InventoryReport['installedApps'] })
+      } else if (section.kind === 'windowsUpdates' && Array.isArray(section.data)) {
+        windowsUpdatesChunks.push({ index: Number(section.chunkIndex ?? 0), data: section.data as InventoryReport['windowsUpdates'] })
+      }
+    })
+
+    installedAppsChunks.sort((left, right) => left.index - right.index)
+    windowsUpdatesChunks.sort((left, right) => left.index - right.index)
+    return {
+      capturedAt: Number(reportData.capturedAt),
+      hardware,
+      installedApps: installedAppsChunks.flatMap((chunk) => chunk.data),
+      windowsUpdates: windowsUpdatesChunks.flatMap((chunk) => chunk.data),
+      defender
+    }
   }
 
   async publishBackupSnapshot(device: DeviceRecord, snapshot: BackupSnapshot) {
@@ -479,6 +833,14 @@ class FirebaseBackend implements BackendClient {
       monitoringEnabled: Boolean(consent?.diagnosticsConsent),
       updatedAt: Date.now()
     })
+    this.queueAuditLog('device_consent_updated', {
+      deviceId,
+      details: {
+        diagnosticsConsent: Boolean(consent?.diagnosticsConsent),
+        remoteCommandConsent: Boolean(consent?.remoteCommandConsent),
+        unattendedAccessConsent: Boolean(consent?.unattendedAccessConsent)
+      }
+    })
   }
 
   async updateRustDeskState(deviceId: string, state: DeviceRecord['rustdesk']) {
@@ -498,6 +860,7 @@ class FirebaseBackend implements BackendClient {
       },
       updatedAt: Date.now()
     })
+    this.queueAuditLog('device_update_requested', { deviceId, details: { requestId, requestedBy } })
     return requestId
   }
 
@@ -507,12 +870,17 @@ class FirebaseBackend implements BackendClient {
       lastUpdateResult: result,
       updatedAt: Date.now()
     })
+    this.queueAuditLog('device_update_completed', { deviceId, details: { requestId, result } })
   }
 
   async requestRemoteAction(deviceId: string, request: RemoteActionRequest) {
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
       remoteActionRequest: request,
       updatedAt: Date.now()
+    })
+    this.queueAuditLog('remote_action_requested', {
+      deviceId,
+      details: { requestId: request.id, type: request.type, requestedBy: request.requestedBy }
     })
     return request.id
   }
@@ -523,6 +891,7 @@ class FirebaseBackend implements BackendClient {
       lastRemoteActionResult: result,
       updatedAt: Date.now()
     })
+    this.queueAuditLog('remote_action_completed', { deviceId, details: { requestId, result } })
   }
 
   async queueCommand(device: DeviceRecord, payload: Pick<TerminalCommand, 'shell' | 'command' | 'requestedBy'>) {
@@ -537,6 +906,11 @@ class FirebaseBackend implements BackendClient {
       status: 'queued'
     }
     await set(ref(firebaseServices!.database, `commands/${device.ownerUid}/${device.deviceId}/${command.id}`), command)
+    this.queueAuditLog('terminal_command_queued', {
+      deviceId: device.deviceId,
+      ownerUid: device.ownerUid,
+      details: { commandId: command.id, shell: command.shell, requestedBy: command.requestedBy }
+    })
   }
 
   subscribePendingCommands(device: DeviceRecord, callback: (commands: TerminalCommand[]) => void) {
@@ -576,6 +950,11 @@ class FirebaseBackend implements BackendClient {
   async completeCommand(device: DeviceRecord, command: TerminalCommand) {
     if (!firebaseServices!.database) return
     await set(ref(firebaseServices!.database, `commands/${device.ownerUid}/${device.deviceId}/${command.id}`), command)
+    this.queueAuditLog('terminal_command_completed', {
+      deviceId: device.deviceId,
+      ownerUid: device.ownerUid,
+      details: { commandId: command.id, status: command.status }
+    })
   }
 
   async pushAlert(device: DeviceRecord, alert: AlertEvent) {
@@ -603,6 +982,90 @@ class FirebaseBackend implements BackendClient {
     await Promise.all(tasks)
   }
 
+  async createServiceRequest(
+    device: DeviceRecord,
+    payload: { title: string; description: string; priority: ServiceRequestPriority }
+  ) {
+    const now = Date.now()
+    await addDoc(collection(firebaseServices!.firestore, 'serviceRequests'), {
+      ownerUid: device.ownerUid,
+      ownerEmail: device.ownerEmail,
+      deviceId: device.deviceId,
+      deviceLabel: device.deviceAlias?.trim() || device.hostname,
+      companyName: device.companyName?.trim() || device.ownerEmail,
+      title: payload.title.trim(),
+      description: payload.description.trim(),
+      priority: payload.priority,
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+      resolvedAt: null
+    } satisfies Omit<ServiceRequest, 'id'>)
+    this.queueAuditLog('service_request_created', {
+      deviceId: device.deviceId,
+      ownerUid: device.ownerUid,
+      details: { priority: payload.priority, title: payload.title.trim() }
+    })
+  }
+
+  async updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
+    await updateDoc(doc(firebaseServices!.firestore, 'serviceRequests', requestId), {
+      status,
+      updatedAt: Date.now(),
+      resolvedAt: status === 'resolved' ? Date.now() : null
+    })
+    this.queueAuditLog('service_request_status_changed', { details: { requestId, status } })
+  }
+
+  async addServiceRequestComment(requestId: string, body: string, author: AppUser) {
+    const normalizedBody = body.trim()
+    if (!normalizedBody) return
+    await addDoc(collection(firebaseServices!.firestore, 'serviceRequestInternalComments'), {
+      requestId,
+      authorUid: author.uid,
+      authorEmail: author.email,
+      body: normalizedBody,
+      createdAt: Date.now()
+    } satisfies Omit<ServiceRequestInternalComment, 'id'>)
+    this.queueAuditLog('service_request_internal_comment_created', {
+      details: { requestId, commentLength: normalizedBody.length }
+    })
+  }
+
+  async recordUsageRollup(device: DeviceRecord, delta: UsageRollupDelta) {
+    const rollupId = `${device.deviceId}_${delta.dayKey}`
+    await setDoc(doc(firebaseServices!.firestore, 'usageDaily', rollupId), {
+      ownerUid: device.ownerUid,
+      deviceId: device.deviceId,
+      dayKey: delta.dayKey,
+      observedSeconds: increment(delta.observedSeconds),
+      cpuObservedSeconds: increment(delta.cpuObservedSeconds),
+      cpuOver80Seconds: increment(delta.cpuOver80Seconds),
+      gpuObservedSeconds: increment(delta.gpuObservedSeconds),
+      gpuOver80Seconds: increment(delta.gpuOver80Seconds),
+      ramObservedSeconds: increment(delta.ramObservedSeconds),
+      ramOver80Seconds: increment(delta.ramOver80Seconds),
+      diskObservedSeconds: increment(delta.diskObservedSeconds),
+      diskOver80Seconds: increment(delta.diskOver80Seconds),
+      anyOver80Seconds: increment(delta.anyOver80Seconds),
+      restartCount: increment(delta.restartCount),
+      sampleCount: increment(delta.sampleCount),
+      updatedAt: Date.now()
+    }, { merge: true })
+  }
+
+  async getUsageRollups(deviceId: string, fromDayKey: string) {
+    const snapshot = await getDocs(query(
+      collection(firebaseServices!.firestore, 'usageDaily'),
+      where(documentId(), '>=', `${deviceId}_${fromDayKey}`),
+      where(documentId(), '<=', `${deviceId}_\uf8ff`),
+      orderBy(documentId(), 'asc')
+    ))
+    return snapshot.docs
+      .map((entry) => ({ id: entry.id, ...(entry.data() as Omit<UsageDailyRollup, 'id'>) }))
+      .filter((entry) => entry.deviceId === deviceId && entry.dayKey >= fromDayKey)
+  }
+
   async setPresence(device: DeviceRecord, role: AppUser['role'], online: boolean) {
     if (!firebaseServices!.database) return
     await set(ref(firebaseServices!.database, `presence/${device.ownerUid}/${device.deviceId}`), {
@@ -618,10 +1081,15 @@ class MockBackend implements BackendClient {
   private authListeners = new Set<(user: AppUser | null) => void>()
   private deviceListeners = new Set<(devices: DeviceRecord[]) => void>()
   private alertListeners = new Set<(alerts: AlertEvent[]) => void>()
+  private serviceRequestListeners = new Set<() => void>()
+  private serviceRequestCommentListeners = new Set<(comments: ServiceRequestInternalComment[]) => void>()
   private masterSettingsListeners = new Set<(settings: Partial<RemoteMasterSettings> | null) => void>()
   private chatListeners = new Map<string, Set<(messages: CompanyChatMessage[]) => void>>()
   private commandListeners = new Map<string, Set<(commands: TerminalCommand[]) => void>>()
   private clientProfiles = new Map<string, ClientProfile>()
+  private inventories = new Map<string, InventoryReport>()
+  private serviceRequestComments: ServiceRequestInternalComment[] = []
+  private usageRollups = new Map<string, UsageDailyRollup>()
   private currentUser: AppUser | null = null
   private devices: DeviceRecord[] = [
     {
@@ -634,6 +1102,7 @@ class MockBackend implements BackendClient {
       arch: 'x64',
       appVersion: '0.1.0',
       approvalStatus: 'pending',
+      updateChannel: 'stable',
       createdAt: Date.now() - 86_400_000,
       updatedAt: Date.now(),
       lastSeenAt: Date.now(),
@@ -814,6 +1283,38 @@ class MockBackend implements BackendClient {
       createdAt: Date.now() - 140_000
     }
   ]
+  private serviceRequests: ServiceRequest[] = [
+    {
+      id: 'mock-request-1',
+      ownerUid: 'mock-client-2',
+      ownerEmail: 'biuro@firma.pl',
+      deviceId: 'BIURO-MOCK003',
+      deviceLabel: 'Biuro-PC',
+      companyName: 'Firma Klienta',
+      title: 'Komputer bardzo wolno się uruchamia',
+      description: 'Od dzisiaj start systemu trwa około dziesięciu minut, a po zalogowaniu aplikacje przestają odpowiadać.',
+      priority: 'high',
+      status: 'open',
+      createdAt: Date.now() - 95_000,
+      updatedAt: Date.now() - 95_000,
+      resolvedAt: null
+    },
+    {
+      id: 'mock-request-2',
+      ownerUid: 'mock-client',
+      ownerEmail: 'klient@example.com',
+      deviceId: 'LAPTOP-MOCK002',
+      deviceLabel: 'Laptop Serwis',
+      companyName: 'i-JANEK Demo',
+      title: 'Brak dostępu do drukarki',
+      description: 'Drukarka sieciowa jest widoczna, ale każde zadanie kończy się błędem połączenia.',
+      priority: 'normal',
+      status: 'in_progress',
+      createdAt: Date.now() - 3_600_000,
+      updatedAt: Date.now() - 1_800_000,
+      resolvedAt: null
+    }
+  ]
   private chats = new Map<string, CompanyChatMessage[]>()
   private remoteMasterSettings: RemoteMasterSettings = {
     telemetryMode: 'standard',
@@ -828,6 +1329,7 @@ class MockBackend implements BackendClient {
       backupAgeHours: { warning: 24, critical: 72 }
     }
   }
+  private masterSecurity: MasterSecurityConfig | null = null
   private commandQueue = new Map<string, TerminalCommand[]>()
 
   subscribeAuth(callback: (user: AppUser | null) => void) {
@@ -839,6 +1341,29 @@ class MockBackend implements BackendClient {
   async signInWithGoogle() {
     return this.signInDemo('slave')
   }
+
+  async signInWithEmail(email: string, _password: string) {
+    const role = toRole(email)
+    const user: AppUser = {
+      uid: role === 'master' ? 'mock-master' : 'mock-client',
+      email: email.trim(),
+      displayName: email.split('@')[0] || 'i-JANEK User',
+      role
+    }
+    this.currentUser = user
+    this.authListeners.forEach((listener) => listener(user))
+    return user
+  }
+
+  async registerWithEmail(email: string, password: string, details: RegistrationDetails) {
+    const user = await this.signInWithEmail(email, password)
+    user.displayName = details.fullName.trim()
+    user.companyName = details.companyName.trim()
+    user.installationLocation = details.installationLocation?.trim() ?? ''
+    return user
+  }
+
+  async sendPasswordReset(_email: string) {}
 
   async signInDemo(role: 'master' | 'slave') {
     this.currentUser = {
@@ -857,6 +1382,10 @@ class MockBackend implements BackendClient {
     this.authListeners.forEach((listener) => listener(null))
   }
 
+  async healthCheck() {
+    return
+  }
+
   async ensureUserProfile(user: AppUser) {
     const now = Date.now()
     const profile = this.clientProfiles.get(user.uid) ?? {
@@ -865,6 +1394,8 @@ class MockBackend implements BackendClient {
       displayName: user.displayName,
       photoURL: user.photoURL ?? null,
       role: user.role,
+      companyName: user.companyName ?? '',
+      installationLocation: user.installationLocation ?? '',
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now
@@ -876,6 +1407,8 @@ class MockBackend implements BackendClient {
       displayName: user.displayName,
       photoURL: user.photoURL ?? null,
       role: user.role,
+      companyName: user.companyName ?? profile.companyName,
+      installationLocation: user.installationLocation ?? profile.installationLocation,
       updatedAt: now,
       lastLoginAt: now
     }
@@ -906,7 +1439,9 @@ class MockBackend implements BackendClient {
       consentAcceptedAt: consent?.acceptedAt,
       consent: consent ?? null,
       deviceAlias: context.hostname,
-      companyName: '',
+      companyName: user.companyName ?? '',
+      contactName: user.displayName,
+      installationLocation: user.installationLocation ?? '',
       aliasCustomizedAt: null,
       backupPolicy: defaultBackupPolicy(context.hostname),
       rustdesk: { installed: false },
@@ -975,6 +1510,24 @@ class MockBackend implements BackendClient {
     return () => this.alertListeners.delete(callback)
   }
 
+  subscribeServiceRequests(user: AppUser, callback: (requests: ServiceRequest[]) => void) {
+    const emit = () => {
+      const visible = user.role === 'master'
+        ? this.serviceRequests
+        : this.serviceRequests.filter((request) => request.ownerUid === user.uid)
+      callback([...visible].sort((left, right) => right.createdAt - left.createdAt))
+    }
+    this.serviceRequestListeners.add(emit)
+    emit()
+    return () => this.serviceRequestListeners.delete(emit)
+  }
+
+  subscribeServiceRequestComments(callback: (comments: ServiceRequestInternalComment[]) => void) {
+    this.serviceRequestCommentListeners.add(callback)
+    callback([...this.serviceRequestComments])
+    return () => this.serviceRequestCommentListeners.delete(callback)
+  }
+
   subscribeCompanyChats(ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) {
     const key = ownerUid
     const listeners = this.chatListeners.get(key) ?? new Set()
@@ -1000,6 +1553,14 @@ class MockBackend implements BackendClient {
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {
     this.remoteMasterSettings = settings
     this.masterSettingsListeners.forEach((listener) => listener(this.remoteMasterSettings))
+  }
+
+  async getMasterSecurity() {
+    return this.masterSecurity
+  }
+
+  async saveMasterSecurity(config: MasterSecurityConfig) {
+    this.masterSecurity = config
   }
 
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus) {
@@ -1035,6 +1596,31 @@ class MockBackend implements BackendClient {
     this.emitDevices()
   }
 
+  async updateDeviceRegistrationDetails(
+    deviceId: string,
+    details: { contactName: string; companyName: string; installationLocation: string }
+  ) {
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId
+        ? {
+            ...device,
+            contactName: details.contactName.trim(),
+            companyName: details.companyName.trim(),
+            installationLocation: details.installationLocation.trim(),
+            updatedAt: Date.now()
+          }
+        : device
+    )
+    this.emitDevices()
+  }
+
+  async updateDeviceUpdateChannel(deviceId: string, updateChannel: UpdateChannel) {
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId ? { ...device, updateChannel, updatedAt: Date.now() } : device
+    )
+    this.emitDevices()
+  }
+
   async publishTelemetry(device: DeviceRecord, telemetry: DeviceTelemetry) {
     this.devices = this.devices.map((entry) =>
       entry.deviceId === device.deviceId ? { ...entry, telemetry, lastSeenAt: Date.now(), updatedAt: Date.now() } : entry
@@ -1043,6 +1629,7 @@ class MockBackend implements BackendClient {
   }
 
   async publishInventory(device: DeviceRecord, inventory: InventoryReport) {
+    this.inventories.set(device.deviceId, inventory)
     this.devices = this.devices.map((entry) =>
       entry.deviceId === device.deviceId
         ? {
@@ -1053,6 +1640,10 @@ class MockBackend implements BackendClient {
         : entry
     )
     this.emitDevices()
+  }
+
+  async getInventory(device: DeviceRecord) {
+    return this.inventories.get(device.deviceId) ?? null
   }
 
   async publishBackupSnapshot(device: DeviceRecord, snapshot: BackupSnapshot) {
@@ -1198,6 +1789,97 @@ class MockBackend implements BackendClient {
     if (!types.length) return
     this.alerts = this.alerts.filter((entry) => !(entry.deviceId === deviceId && entry.severity === 'critical' && types.includes(entry.type)))
     this.alertListeners.forEach((listener) => listener(this.alerts))
+  }
+
+  async createServiceRequest(
+    device: DeviceRecord,
+    payload: { title: string; description: string; priority: ServiceRequestPriority }
+  ) {
+    const now = Date.now()
+    this.serviceRequests.unshift({
+      id: crypto.randomUUID(),
+      ownerUid: device.ownerUid,
+      ownerEmail: device.ownerEmail,
+      deviceId: device.deviceId,
+      deviceLabel: device.deviceAlias?.trim() || device.hostname,
+      companyName: device.companyName?.trim() || device.ownerEmail,
+      title: payload.title.trim(),
+      description: payload.description.trim(),
+      priority: payload.priority,
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+      resolvedAt: null
+    })
+    this.serviceRequestListeners.forEach((listener) => listener())
+  }
+
+  async updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
+    const now = Date.now()
+    this.serviceRequests = this.serviceRequests.map((request) =>
+      request.id === requestId
+        ? { ...request, status, updatedAt: now, resolvedAt: status === 'resolved' ? now : null }
+        : request
+    )
+    this.serviceRequestListeners.forEach((listener) => listener())
+  }
+
+  async addServiceRequestComment(requestId: string, body: string, author: AppUser) {
+    this.serviceRequestComments.push({
+      id: crypto.randomUUID(),
+      requestId,
+      authorUid: author.uid,
+      authorEmail: author.email,
+      body: body.trim(),
+      createdAt: Date.now()
+    })
+    this.serviceRequestCommentListeners.forEach((listener) => listener([...this.serviceRequestComments]))
+  }
+
+  async recordUsageRollup(device: DeviceRecord, delta: UsageRollupDelta) {
+    const id = `${device.deviceId}_${delta.dayKey}`
+    const current = this.usageRollups.get(id)
+    const base: UsageDailyRollup = current ?? {
+      id,
+      ownerUid: device.ownerUid,
+      deviceId: device.deviceId,
+      dayKey: delta.dayKey,
+      observedSeconds: 0,
+      cpuObservedSeconds: 0,
+      cpuOver80Seconds: 0,
+      gpuObservedSeconds: 0,
+      gpuOver80Seconds: 0,
+      ramObservedSeconds: 0,
+      ramOver80Seconds: 0,
+      diskObservedSeconds: 0,
+      diskOver80Seconds: 0,
+      anyOver80Seconds: 0,
+      restartCount: 0,
+      sampleCount: 0,
+      updatedAt: Date.now()
+    }
+    this.usageRollups.set(id, {
+      ...base,
+      observedSeconds: base.observedSeconds + delta.observedSeconds,
+      cpuObservedSeconds: base.cpuObservedSeconds + delta.cpuObservedSeconds,
+      cpuOver80Seconds: base.cpuOver80Seconds + delta.cpuOver80Seconds,
+      gpuObservedSeconds: base.gpuObservedSeconds + delta.gpuObservedSeconds,
+      gpuOver80Seconds: base.gpuOver80Seconds + delta.gpuOver80Seconds,
+      ramObservedSeconds: base.ramObservedSeconds + delta.ramObservedSeconds,
+      ramOver80Seconds: base.ramOver80Seconds + delta.ramOver80Seconds,
+      diskObservedSeconds: base.diskObservedSeconds + delta.diskObservedSeconds,
+      diskOver80Seconds: base.diskOver80Seconds + delta.diskOver80Seconds,
+      anyOver80Seconds: base.anyOver80Seconds + delta.anyOver80Seconds,
+      restartCount: base.restartCount + delta.restartCount,
+      sampleCount: base.sampleCount + delta.sampleCount,
+      updatedAt: Date.now()
+    })
+  }
+
+  async getUsageRollups(deviceId: string, fromDayKey: string) {
+    return [...this.usageRollups.values()]
+      .filter((entry) => entry.deviceId === deviceId && entry.dayKey >= fromDayKey)
+      .sort((left, right) => left.dayKey.localeCompare(right.dayKey))
   }
 
   async setPresence(device: DeviceRecord, _role: AppUser['role'], online: boolean) {

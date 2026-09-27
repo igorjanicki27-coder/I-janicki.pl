@@ -1,17 +1,8 @@
-param(
-  [string]$CertPath
-)
-
 $ErrorActionPreference = "SilentlyContinue"
 $appName = "i-JANEK"
 
 $runKey = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 Remove-ItemProperty -Path $runKey -Name $appName
-
-if (Test-Path $CertPath) {
-  $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertPath)
-  Get-ChildItem "Cert:\\LocalMachine\\Root" | Where-Object { $_.Thumbprint -eq $cert.Thumbprint } | Remove-Item
-}
 
 $cleanupPaths = @(
   (Join-Path $env:USERPROFILE "i-JANEK"),
@@ -54,5 +45,3 @@ foreach ($target in $rustDeskTargets) {
     icacls $target /inheritance:e | Out-Null
   }
 }
-
-[Environment]::SetEnvironmentVariable("RUSTDESK_IDENTITY", $null, "Machine")

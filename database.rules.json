@@ -1,0 +1,51 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "cookie_consents": {
+      "$anonymous_user_id": {
+        "$consent_id": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['consent_id', 'created_at', 'updated_at', 'policy_version', 'essential', 'analytics', 'marketing', 'external_media', 'action', 'anonymous_user_id', 'analytics_storage', 'ad_storage', 'ad_user_data', 'ad_personalization']) && newData.child('consent_id').val() === $consent_id && newData.child('anonymous_user_id').val() === $anonymous_user_id && newData.child('essential').val() === true && newData.child('analytics').isBoolean() && newData.child('marketing').isBoolean() && newData.child('external_media').isBoolean() && newData.child('policy_version').isString() && newData.child('created_at').isString() && newData.child('updated_at').isString() && newData.child('action').isString() && newData.child('analytics_storage').isString() && newData.child('ad_storage').isString() && newData.child('ad_user_data').isString() && newData.child('ad_personalization').isString()"
+        }
+      }
+    },
+    "ownerChats": {
+      "$ownerUid": {
+        ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+        "$messageId": {
+          ".write": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+          ".validate": "newData.hasChildren(['id', 'ownerUid', 'ownerEmail', 'senderRole', 'senderEmail', 'body', 'createdAt']) && newData.child('id').val() === $messageId && newData.child('ownerUid').val() === $ownerUid && newData.child('senderEmail').val() === auth.token.email && newData.child('body').isString() && newData.child('body').val().length <= 4000 && newData.child('createdAt').isNumber()"
+        }
+      }
+    },
+    "commands": {
+      "$ownerUid": {
+        "$deviceId": {
+          ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+          "$commandId": {
+            ".write": "auth != null && ((auth.token.email === 'kontakt@i-janicki.pl' && !data.exists() && newData.child('status').val() === 'queued') || (auth.uid === $ownerUid && data.exists() && data.child('status').val() === 'queued' && (newData.child('status').val() === 'completed' || newData.child('status').val() === 'failed')))",
+            ".validate": "newData.hasChildren(['id', 'deviceId', 'shell', 'command', 'requestedBy', 'requestedAt', 'status']) && newData.child('id').val() === $commandId && newData.child('deviceId').val() === $deviceId && (newData.child('shell').val() === 'powershell' || newData.child('shell').val() === 'cmd' || newData.child('shell').val() === 'shell') && newData.child('command').isString() && newData.child('command').val().length <= 12000 && newData.child('requestedAt').isNumber()"
+          }
+        }
+      }
+    },
+    "presence": {
+      "$ownerUid": {
+        ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+        "$deviceId": {
+          ".write": "auth != null && auth.uid === $ownerUid",
+          ".validate": "newData.hasChildren(['role', 'online', 'lastSeenAt']) && newData.child('online').isBoolean() && newData.child('lastSeenAt').isNumber()"
+        }
+      }
+    },
+    "telemetry": {
+      "$ownerUid": {
+        ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+        "$deviceId": {
+          ".write": "auth != null && auth.uid === $ownerUid"
+        }
+      }
+    }
+  }
+}

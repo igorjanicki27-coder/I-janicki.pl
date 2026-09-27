@@ -1,0 +1,8 @@
+extends: ./electron-builder.yml
+extraResources:
+  - from: resources/
+    to: resources
+  - from: build/icon.png
+    to: resources/icon.png
+  - from: build/icon.ico
+    to: resources/icon.ico

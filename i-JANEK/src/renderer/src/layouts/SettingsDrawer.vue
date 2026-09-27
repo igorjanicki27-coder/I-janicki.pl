@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronDown, LogOut, Send, Trash2, X } from 'lucide-vue-next'
+import { ChevronDown, Download, LogOut, RefreshCw, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -10,12 +10,17 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
-const aesDraft = ref('')
+const remoteAccessPassphrase = ref('')
+const remoteAccessPassphraseConfirmation = ref('')
+const remoteSecurityBusy = ref(false)
+const remoteSecurityMessage = ref('')
+const replacingRemoteAccessKey = ref(false)
 const companyDraft = ref('')
 const checkingUpdates = ref(false)
 const pickingFolder = ref(false)
 const refreshingRustDesk = ref(false)
 const rotatingRustDeskPassword = ref(false)
+const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
 
@@ -42,12 +47,18 @@ watch(
   () => props.open,
   (open) => {
     if (!open) return
-    aesDraft.value = store.masterSettings.aesKey
+    remoteAccessPassphrase.value = ''
+    remoteAccessPassphraseConfirmation.value = ''
+    remoteSecurityMessage.value = ''
+    replacingRemoteAccessKey.value = false
     if (!store.pendingDeviceAlias) {
       store.pendingDeviceAlias = slaveDevice.value?.deviceAlias ?? slaveDevice.value?.hostname ?? ''
     }
     if (!store.pendingCompanyName) {
       store.pendingCompanyName = slaveDevice.value?.companyName?.trim() || store.masterSettings.companyOptions[0] || ''
+    }
+    if (!store.pendingInstallationLocation) {
+      store.pendingInstallationLocation = slaveDevice.value?.installationLocation?.trim() || ''
     }
     if (store.user?.role === 'slave') {
       void refreshRustDeskState()
@@ -102,14 +113,60 @@ async function confirmRemoveBackupFolder() {
   }
 }
 
-async function saveMasterAes() {
-  const next = aesDraft.value.trim()
-  if (!next || next === store.masterSettings.aesKey) return
-  const accepted = window.confirm(
-    'Nowy klucz zostanie zapisany, a poprzedni pozostanie jako zapasowy klucz do odczytu starszych danych. Kontynuować?'
-  )
-  if (!accepted) return
-  await store.updateMasterAesKey(next)
+async function configureRemoteAccessSecurity() {
+  const passphrase = remoteAccessPassphrase.value
+  if (passphrase.length < 12) {
+    remoteSecurityMessage.value = 'Hasło musi mieć co najmniej 12 znaków.'
+    return
+  }
+  if (passphrase !== remoteAccessPassphraseConfirmation.value) {
+    remoteSecurityMessage.value = 'Hasła nie są identyczne.'
+    return
+  }
+  if (store.masterSecurity && !window.confirm('Utworzenie nowego klucza unieważni zaszyfrowane dane dostępu przesłane wcześniej przez urządzenia. Kontynuować?')) return
+
+  remoteSecurityBusy.value = true
+  remoteSecurityMessage.value = ''
+  try {
+    await store.setupRemoteAccessSecurity(passphrase)
+    remoteSecurityMessage.value = 'Klucz utworzony i odblokowany. Urządzenia zaszyfrują dane przy następnym odświeżeniu RustDesk.'
+    remoteAccessPassphrase.value = ''
+    remoteAccessPassphraseConfirmation.value = ''
+    replacingRemoteAccessKey.value = false
+  } catch (error) {
+    remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się skonfigurować klucza.'
+  } finally {
+    remoteSecurityBusy.value = false
+  }
+}
+
+function startReplacingRemoteAccessKey() {
+  replacingRemoteAccessKey.value = true
+  remoteAccessPassphrase.value = ''
+  remoteAccessPassphraseConfirmation.value = ''
+  remoteSecurityMessage.value = 'Wpisz i potwierdź nowe hasło klucza.'
+}
+
+function cancelReplacingRemoteAccessKey() {
+  replacingRemoteAccessKey.value = false
+  remoteAccessPassphrase.value = ''
+  remoteAccessPassphraseConfirmation.value = ''
+  remoteSecurityMessage.value = ''
+}
+
+async function unlockRemoteAccessSecurity() {
+  if (!remoteAccessPassphrase.value) return
+  remoteSecurityBusy.value = true
+  remoteSecurityMessage.value = ''
+  try {
+    await store.unlockRemoteAccessSecurity(remoteAccessPassphrase.value)
+    remoteSecurityMessage.value = 'Klucz odblokowany na czas tej sesji.'
+    remoteAccessPassphrase.value = ''
+  } catch (error) {
+    remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się odblokować klucza.'
+  } finally {
+    remoteSecurityBusy.value = false
+  }
 }
 
 async function addCompanyOption() {
@@ -133,6 +190,25 @@ async function checkForUpdatesNow() {
   } finally {
     checkingUpdates.value = false
   }
+}
+
+async function saveDiagnostics() {
+  if (savingDiagnostics.value) return
+  savingDiagnostics.value = true
+  try {
+    await store.sendDiagnosticsLogs()
+  } catch (error) {
+    window.alert(`Nie udało się utworzyć paczki diagnostycznej: ${String(error)}`)
+  } finally {
+    savingDiagnostics.value = false
+  }
+}
+
+function readinessDot(status: 'ok' | 'warning' | 'error' | 'skipped') {
+  if (status === 'ok') return 'bg-emerald-400'
+  if (status === 'warning') return 'bg-amber-400'
+  if (status === 'error') return 'bg-rose-400'
+  return 'bg-slate-400'
 }
 
 async function addCustomFolderFromPicker() {
@@ -282,16 +358,48 @@ function formatRotationDate(timestamp?: number) {
           </section>
 
           <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Bezpieczenstwo</div>
+            <div class="text-sm font-semibold text-white">Bezpieczeństwo zdalnego dostępu</div>
             <div class="mt-4 space-y-4">
               <label class="block text-sm text-[var(--text-dim)]">
-                <span class="mb-2 block">Klucz Master AES</span>
-                <div class="flex gap-2">
-                  <input v-model="aesDraft" class="soft-input" type="text" />
-                  <button class="glass-button !px-4" type="button" @click="saveMasterAes">Zapisz</button>
-                </div>
+                <span class="mb-2 block">Hasło klucza Mastera</span>
+                <input v-model="remoteAccessPassphrase" class="soft-input" type="password" autocomplete="current-password" placeholder="Minimum 12 znaków" />
+                <input
+                  v-if="!store.masterSecurity || replacingRemoteAccessKey"
+                  v-model="remoteAccessPassphraseConfirmation"
+                  class="soft-input mt-2"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Powtórz hasło"
+                />
+                <button
+                  class="glass-button mt-3 w-full !px-4"
+                  type="button"
+                  :disabled="remoteSecurityBusy"
+                  @click="store.masterSecurity && !replacingRemoteAccessKey ? unlockRemoteAccessSecurity() : configureRemoteAccessSecurity()"
+                >
+                  {{ remoteSecurityBusy ? 'Proszę czekać...' : store.masterSecurity && !replacingRemoteAccessKey ? 'Odblokuj dane RustDesk' : replacingRemoteAccessKey ? 'Zapisz nowy klucz' : 'Utwórz klucz zdalnego dostępu' }}
+                </button>
+                <button
+                  v-if="store.masterSecurity && !replacingRemoteAccessKey"
+                  class="ghost-button mt-2 w-full !rounded-xl"
+                  type="button"
+                  :disabled="remoteSecurityBusy"
+                  @click="startReplacingRemoteAccessKey()"
+                >
+                  Wygeneruj nowy klucz
+                </button>
+                <button
+                  v-if="replacingRemoteAccessKey"
+                  class="ghost-button mt-2 w-full !rounded-xl"
+                  type="button"
+                  :disabled="remoteSecurityBusy"
+                  @click="cancelReplacingRemoteAccessKey()"
+                >
+                  Anuluj zmianę klucza
+                </button>
+                <p v-if="remoteSecurityMessage" class="mt-2 text-xs text-cyan-100">{{ remoteSecurityMessage }}</p>
                 <p class="mt-2 text-xs text-amber-200/90">
-                  Zmiana klucza zachowuje poprzedni klucz w historii, więc starsze zaszyfrowane dane nadal pozostają odczytywalne.
+                  Hasło nie jest wysyłane do Firebase. Prywatny klucz jest szyfrowany lokalnie hasłem, a urządzenia zapisują wyłącznie zaszyfrowane ID i hasło RustDesk.
                 </p>
               </label>
             </div>
@@ -336,6 +444,8 @@ function formatRotationDate(timestamp?: number) {
                 <div class="font-medium text-white">{{ formatDeviceLabelForMaster(device) }}</div>
                 <div class="mono mt-1 text-[11px] text-[var(--text-dim)]">{{ device.hostname }}</div>
                 <div class="mono mt-1 text-[11px] text-[var(--text-dim)]">{{ device.ownerEmail }}</div>
+                <div v-if="device.contactName" class="mt-1 text-xs text-[var(--text-dim)]">Osoba: {{ device.contactName }}</div>
+                <div v-if="device.installationLocation" class="mt-1 text-xs text-[var(--text-dim)]">Miejsce: {{ device.installationLocation }}</div>
                 <div class="mt-3 flex gap-2">
                   <button class="glass-button !px-3 !py-2 !text-xs" type="button" @click="store.approveDevice(device.deviceId, 'approved')">
                     Zatwierdz
@@ -367,10 +477,12 @@ function formatRotationDate(timestamp?: number) {
               <div class="flex items-center gap-3">
                 <span class="shrink-0">Firma</span>
                 <div class="flex min-w-0 flex-1 gap-2">
-                  <select v-model="store.pendingCompanyName" class="soft-input min-w-0 !py-2">
-                    <option v-for="company in store.masterSettings.companyOptions" :key="company" :value="company">{{ company }}</option>
-                  </select>
+                  <input v-model="store.pendingCompanyName" class="soft-input min-w-0 !py-2" placeholder="Nazwa firmy" />
                 </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="shrink-0">Miejsce</span>
+                <input v-model="store.pendingInstallationLocation" class="soft-input min-w-0 !py-2" placeholder="Opcjonalnie" />
               </div>
               <div class="flex items-center gap-3">
                 <span class="shrink-0">Nazwa urzadzenia</span>
@@ -541,6 +653,18 @@ function formatRotationDate(timestamp?: number) {
                   <span>Autostart</span>
                   <input :checked="store.slaveSettings.autostart" type="checkbox" @change="store.toggleAutostart(($event.target as HTMLInputElement).checked)" />
                 </label>
+                <label class="flex items-start justify-between gap-4">
+                  <span>
+                    <span class="block">Zdalny pulpit bez pytania</span>
+                    <span class="mt-1 block text-xs leading-5 text-white/40">Po wyłączeniu każde połączenie będzie wymagało Twojej zgody.</span>
+                  </span>
+                  <input
+                    class="mt-1 shrink-0"
+                    :checked="Boolean(store.consent?.unattendedAccessConsent)"
+                    type="checkbox"
+                    @change="store.updateUnattendedAccessConsent(($event.target as HTMLInputElement).checked)"
+                  />
+                </label>
                 <label class="flex items-center justify-between">
                   <span>Ciche aktualizacje</span>
                   <input
@@ -550,14 +674,6 @@ function formatRotationDate(timestamp?: number) {
                   />
                 </label>
               </div>
-              <button
-                class="ghost-button mt-4 w-full justify-center !rounded-2xl !px-4 !py-3 text-sm"
-                type="button"
-                @click="store.sendDiagnosticsLogs()"
-              >
-                <Send class="mr-2 h-4 w-4" />
-                Wyslij logi diagnostyczne
-              </button>
               <button
                 class="glass-button mt-2 w-full justify-center"
                 type="button"
@@ -569,6 +685,64 @@ function formatRotationDate(timestamp?: number) {
             </section>
           </div>
         </template>
+
+        <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold text-white">Gotowość i diagnostyka</div>
+              <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">
+                Test jest bezpieczny: nie uruchamia poleceń zdalnych i nie wysyła zawartości plików.
+              </p>
+            </div>
+            <span class="mono rounded-full border border-white/10 px-2 py-1 text-[10px] text-[var(--text-dim)]">
+              kolejka: {{ store.offlineQueueCount }}
+            </span>
+          </div>
+
+          <div v-if="store.readinessChecks.length" class="mt-3 space-y-2">
+            <div
+              v-for="check in store.readinessChecks"
+              :key="check.id"
+              class="rounded-2xl border border-white/10 bg-black/10 px-3 py-2"
+            >
+              <div class="flex items-center gap-2 text-xs font-medium text-white">
+                <span class="h-2 w-2 rounded-full" :class="readinessDot(check.status)" />
+                {{ check.label }}
+              </div>
+              <div class="mt-1 pl-4 text-[11px] leading-5 text-[var(--text-dim)]">{{ check.message }}</div>
+            </div>
+          </div>
+
+          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              class="ghost-button w-full justify-center !rounded-2xl !px-4 !py-3 text-sm"
+              type="button"
+              :disabled="store.readinessRunning"
+              @click="store.runReadinessChecks()"
+            >
+              <RefreshCw class="mr-2 h-4 w-4" :class="store.readinessRunning ? 'animate-spin' : ''" />
+              {{ store.readinessRunning ? 'Sprawdzanie...' : 'Test gotowości' }}
+            </button>
+            <button
+              class="glass-button w-full justify-center !rounded-2xl !px-4 !py-3 text-sm"
+              type="button"
+              :disabled="savingDiagnostics"
+              @click="saveDiagnostics()"
+            >
+              <Download class="mr-2 h-4 w-4" />
+              {{ savingDiagnostics ? 'Zapisywanie...' : 'Zapisz diagnostykę' }}
+            </button>
+          </div>
+          <button
+            v-if="store.offlineQueueCount"
+            class="ghost-button mt-2 w-full justify-center !rounded-2xl !px-4 !py-2 text-xs"
+            type="button"
+            :disabled="store.flushingOfflineQueue || store.offline"
+            @click="store.flushOfflineQueue(true)"
+          >
+            {{ store.flushingOfflineQueue ? 'Synchronizowanie...' : store.offline ? 'Synchronizacja po powrocie sieci' : 'Ponów synchronizację teraz' }}
+          </button>
+        </section>
 
         <AppFooterLink class="mt-4 pb-2 pt-1" />
       </div>

@@ -1,9 +1,10 @@
 import './env'
+import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
 import electronUpdater from 'electron-updater'
-import type { BackupPolicy, CommandShell } from '@shared/contracts'
+import type { BackupPolicy, CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
@@ -12,6 +13,7 @@ import { enforceRustDeskPolicy, getRustDeskState, launchRustDesk, rotateRustDesk
 import { listBackupFiles, removeBackupPathFromCloud, restoreBackup, syncBackup } from './services/backup-service'
 import { signInWithGoogleDesktop } from './services/google-auth-service'
 import { localStore } from './store'
+import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -19,9 +21,34 @@ let forceQuit = false
 let updaterEventsBound = false
 const restartReminderHandles = new Set<NodeJS.Timeout>()
 let rustDeskPolicyInterval: NodeJS.Timeout | null = null
+let automaticUpdateInterval: NodeJS.Timeout | null = null
+let updateInstallReminder: NodeJS.Timeout | null = null
+let updateCheckInFlight: Promise<{ status: string; message: string }> | null = null
+let updateInstallPromptOpen = false
+let downloadedUpdateVersion: string | null = null
+const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
+const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
 const startInTray = process.argv.includes('--tray')
+
+function getPostInstallUpdateMarkerPath() {
+  return path.join(app.getPath('userData'), 'post-install-update.pending')
+}
+
+function hasPendingPostInstallUpdateCheck() {
+  return process.platform === 'win32' && fs.existsSync(getPostInstallUpdateMarkerPath())
+}
+
+function clearPostInstallUpdateMarker() {
+  try {
+    fs.unlinkSync(getPostInstallUpdateMarkerPath())
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[i-JANEK] Nie udało się usunąć znacznika kontroli aktualizacji:', error)
+    }
+  }
+}
 
 function focusMainWindow() {
   if (!mainWindow) return
@@ -83,10 +110,12 @@ function createWindow() {
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('[i-JANEK] Renderer load failed:', { errorCode, errorDescription, validatedURL })
+    void writeDiagnosticLog('error', 'renderer_load_failed', { errorCode, errorDescription, validatedURL })
   })
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[i-JANEK] Renderer process gone:', details)
+    void writeDiagnosticLog('error', 'renderer_process_gone', details as unknown as Record<string, unknown>)
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -146,23 +175,73 @@ function createTray() {
 }
 
 function bindUpdaterEvents() {
+  autoUpdater.autoDownload = true
+  configureUpdaterChannel()
   if (updaterEventsBound) return
   updaterEventsBound = true
-  autoUpdater.autoDownload = true
-  autoUpdater.on('update-downloaded', () => {
-    if (Notification.isSupported()) {
-      new Notification({
-        title: 'i-JANEK',
-        body: 'Aktualizacja została pobrana. Uruchom aplikację ponownie, aby ją zastosować.'
-      }).show()
-    }
+  autoUpdater.on('update-downloaded', (updateInfo) => {
+    downloadedUpdateVersion = updateInfo.version
+    void promptInstallDownloadedUpdate(updateInfo.version)
   })
   autoUpdater.on('error', (error) => {
     console.error('[i-JANEK] Auto update error:', error)
+    void writeDiagnosticLog('error', 'auto_update_error', { error })
   })
 }
 
-async function checkForUpdates(silent: boolean) {
+function configureUpdaterChannel() {
+  const channel = localStore.get('updateChannel') ?? 'stable'
+  autoUpdater.allowPrerelease = channel !== 'stable'
+  autoUpdater.channel = channel === 'stable' ? 'latest' : channel
+}
+
+function clearUpdateInstallReminder() {
+  if (!updateInstallReminder) return
+  clearTimeout(updateInstallReminder)
+  updateInstallReminder = null
+}
+
+function scheduleUpdateInstallReminder() {
+  clearUpdateInstallReminder()
+  updateInstallReminder = setTimeout(() => {
+    updateInstallReminder = null
+    if (downloadedUpdateVersion) {
+      void promptInstallDownloadedUpdate(downloadedUpdateVersion)
+    }
+  }, UPDATE_INSTALL_REMINDER_MS)
+}
+
+async function promptInstallDownloadedUpdate(version: string) {
+  if (updateInstallPromptOpen) return
+  updateInstallPromptOpen = true
+
+  try {
+    const parentWindow = mainWindow?.isVisible() ? mainWindow : undefined
+    const response = await dialog.showMessageBox(parentWindow, {
+      type: 'info',
+      title: 'Aktualizacja i-JANEK',
+      message: `Aktualizacja ${version} jest gotowa do instalacji.`,
+      detail: 'Aplikacja zostanie zamknięta, zaktualizowana i uruchomiona ponownie.',
+      buttons: ['Zainstaluj i uruchom ponownie', 'Później'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    })
+
+    if (response.response === 0) {
+      clearUpdateInstallReminder()
+      forceQuit = true
+      autoUpdater.quitAndInstall(false, true)
+      return
+    }
+
+    scheduleUpdateInstallReminder()
+  } finally {
+    updateInstallPromptOpen = false
+  }
+}
+
+async function runUpdateCheck(silent: boolean) {
   if (!app.isPackaged) {
     return { status: 'skipped', message: 'Tryb developerski: aktualizacje są wyłączone.' }
   }
@@ -182,6 +261,31 @@ async function checkForUpdates(silent: boolean) {
     }
     return { status: 'error', message }
   }
+}
+
+function checkForUpdates(silent: boolean) {
+  if (updateCheckInFlight) return updateCheckInFlight
+
+  const pending = runUpdateCheck(silent)
+  updateCheckInFlight = pending
+  const clearPending = () => {
+    if (updateCheckInFlight === pending) updateCheckInFlight = null
+  }
+  void pending.then(clearPending, clearPending)
+  return pending
+}
+
+function startAutomaticUpdateChecks() {
+  if (automaticUpdateInterval) clearInterval(automaticUpdateInterval)
+  const isPostInstallCheck = hasPendingPostInstallUpdateCheck()
+  void checkForUpdates(!isPostInstallCheck).then((result) => {
+    if (isPostInstallCheck && result.status !== 'error') {
+      clearPostInstallUpdateMarker()
+    }
+  })
+  automaticUpdateInterval = setInterval(() => {
+    void checkForUpdates(true)
+  }, AUTOMATIC_UPDATE_INTERVAL_MS)
 }
 
 function requestWindowsRestart() {
@@ -259,6 +363,9 @@ function registerIpc() {
       new Notification({ title, body }).show()
     }
   })
+  ipcMain.handle('system:hide-main-window', async () => {
+    mainWindow?.hide()
+  })
   ipcMain.handle('system:get-consent', async () => localStore.get('consent') ?? null)
   ipcMain.handle('system:set-consent', async (_event, consent) => {
     localStore.set('consent', consent)
@@ -284,6 +391,26 @@ function registerIpc() {
     await enforceRustDeskPolicy()
   })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
+  ipcMain.handle('system:set-update-channel', async (_event, channel: UpdateChannel) => {
+    if (!['test', 'beta', 'stable'].includes(channel)) {
+      throw new Error('Nieobsługiwany kanał aktualizacji.')
+    }
+    const previousChannel = localStore.get('updateChannel') ?? 'stable'
+    localStore.set('updateChannel', channel)
+    bindUpdaterEvents()
+    if (previousChannel !== channel) {
+      void writeDiagnosticLog('info', 'update_channel_changed', { previousChannel, channel })
+      void checkForUpdates(true)
+    }
+  })
+  ipcMain.handle('system:create-diagnostic-bundle', async (_event, summary: DiagnosticBundleSummary) =>
+    createDiagnosticBundle(summary, mainWindow)
+  )
+  ipcMain.handle(
+    'system:log-event',
+    async (_event, level: DiagnosticLogLevel, event: string, details?: Record<string, unknown>) =>
+      writeDiagnosticLog(level, event, details)
+  )
   ipcMain.handle('system:select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
       properties: ['openDirectory', 'createDirectory', 'dontAddToRecent']
@@ -342,9 +469,15 @@ app.whenReady().then(() => {
     args: ['--tray']
   })
   registerIpc()
+  void writeDiagnosticLog('info', 'application_started', {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    platform: process.platform,
+    arch: process.arch
+  })
   createTray()
   createWindow()
-  void checkForUpdates(true)
+  startAutomaticUpdateChecks()
   void enforceRustDeskPolicy()
   rustDeskPolicyInterval = setInterval(() => {
     void enforceRustDeskPolicy(undefined, { forceRotate: false, rotationReason: 'daily' })
@@ -362,6 +495,11 @@ app.on('before-quit', () => {
     clearInterval(rustDeskPolicyInterval)
     rustDeskPolicyInterval = null
   }
+  if (automaticUpdateInterval) {
+    clearInterval(automaticUpdateInterval)
+    automaticUpdateInterval = null
+  }
+  clearUpdateInstallReminder()
 })
 
 app.on('window-all-closed', () => {

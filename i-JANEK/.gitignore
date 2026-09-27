@@ -2,7 +2,9 @@ node_modules/
 .npm-cache/
 out/
 dist/
+dist-web/
 dist-electron/
+INSTALATORY/
 .env
 build/iJanekPriv.key
 resources/google-oauth-desktop.local.json

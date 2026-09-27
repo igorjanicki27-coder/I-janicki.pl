@@ -9,19 +9,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-BUILDER_EXTRA_ARGS=()
-if ! command -v wine >/dev/null 2>&1 && ! command -v wine64 >/dev/null 2>&1; then
-  echo "[WARN] Brak Wine. Powstanie poprawny, niepodpisany instalator testowy bez edycji metadanych pliku .exe."
-  BUILDER_EXTRA_ARGS+=("-c.win.signAndEditExecutable=false")
-fi
-
-if ! command -v mono >/dev/null 2>&1; then
-  echo "[ERROR] Brak Mono. Do budowy NSIS na macOS zainstaluj Mono."
-  echo "        Przykład: brew install mono"
-  exit 1
-fi
-
-echo "[1/3] Typecheck"
+echo "[1/4] Typecheck"
 npm run typecheck
 
 if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
@@ -42,8 +30,9 @@ echo "[2/4] Prepare icons"
 echo "[3/4] Build renderer/main"
 npx electron-vite build
 
-echo "[4/4] Build Windows installer (.exe, NSIS)"
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.private.yml --win nsis --x64 --publish never "${BUILDER_EXTRA_ARGS[@]}"
+echo "[4/4] Build macOS installer (.dmg) and updater payload (.zip)"
+npx electron-builder --config electron-builder.private.yml --mac dmg zip --publish never
 
-echo "\n[OK] Gotowe. Szukaj instalatora w katalogu:"
-echo "  $ROOT_DIR/dist/i-JANEK-Setup-*.exe"
+echo "\n[OK] Instalator dla użytkownika:"
+echo "  $ROOT_DIR/dist/i-JANEK-*.dmg"
+echo "[INFO] Plik .zip jest technicznym pakietem wymaganym przez auto-update macOS, a nie instalatorem dla użytkownika."

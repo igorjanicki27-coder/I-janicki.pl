@@ -19,6 +19,24 @@ const AUTH_TIMEOUT_MS = 3 * 60 * 1000
 const GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE = 'resources/google-oauth-desktop.local.json'
 const GOOGLE_DESKTOP_CREDENTIALS_FILENAME = 'google-oauth-desktop.local.json'
 
+function provisionPackagedGoogleCredentials() {
+  if (!app.isPackaged) return
+
+  const source = path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE)
+  const destination = path.join(app.getPath('userData'), GOOGLE_DESKTOP_CREDENTIALS_FILENAME)
+  if (!fs.existsSync(source)) return
+
+  try {
+    const sourceContents = fs.readFileSync(source)
+    if (fs.existsSync(destination) && sourceContents.equals(fs.readFileSync(destination))) return
+    fs.mkdirSync(path.dirname(destination), { recursive: true })
+    fs.copyFileSync(source, destination)
+    fs.chmodSync(destination, 0o600)
+  } catch (error) {
+    console.error('[i-JANEK] Nie udało się utrwalić konfiguracji Google OAuth:', error)
+  }
+}
+
 function getEnvValue(...keys: string[]) {
   for (const key of keys) {
     const value = process.env[key]?.trim()
@@ -29,6 +47,7 @@ function getEnvValue(...keys: string[]) {
 }
 
 function getResourceCandidates() {
+  provisionPackagedGoogleCredentials()
   const candidates = [
     getEnvValue('GOOGLE_DESKTOP_CREDENTIALS_PATH'),
     path.join(app.getPath('userData'), GOOGLE_DESKTOP_CREDENTIALS_FILENAME),
@@ -36,7 +55,9 @@ function getResourceCandidates() {
     path.join(app.getPath('appData'), 'i-JANEK', GOOGLE_DESKTOP_CREDENTIALS_FILENAME)
   ]
 
-  if (!app.isPackaged) {
+  if (app.isPackaged) {
+    candidates.push(path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
+  } else {
     candidates.push(path.resolve(app.getAppPath(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
     candidates.push(path.resolve(process.cwd(), GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE))
   }
@@ -223,6 +244,13 @@ export async function signInWithGoogleDesktop(): Promise<GoogleOAuthTokens> {
       const code = requestUrl.searchParams.get('code')
       const providerError = requestUrl.searchParams.get('error')
       const providerErrorDescription = requestUrl.searchParams.get('error_description')
+
+      const hasOAuthResponse = Boolean(providerError || state || code)
+      if (!hasOAuthResponse) {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        response.end(renderAuthPage('Logowanie w toku', 'Oczekiwanie na odpowiedź Google. Nie zamykaj jeszcze tej karty.'))
+        return
+      }
 
       if (providerError) {
         response.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })

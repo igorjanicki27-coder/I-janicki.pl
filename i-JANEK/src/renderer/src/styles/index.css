@@ -167,6 +167,125 @@ body {
   font-family: 'Orbitron', sans-serif;
 }
 
+.master-dashboard {
+  background:
+    radial-gradient(circle at 72% -10%, rgba(124, 60, 255, 0.12), transparent 34%),
+    radial-gradient(circle at 105% 85%, rgba(101, 215, 255, 0.06), transparent 28%),
+    rgba(5, 4, 14, 0.94);
+}
+
+.summary-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(101, 215, 255, 0.24);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.summary-icon {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+}
+
+.summary-label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--text);
+  font-size: 1.65rem;
+  line-height: 1.15;
+}
+
+.summary-card small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.content-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.organization-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.organization-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(174, 72, 255, 0.28);
+  background: linear-gradient(145deg, rgba(124, 60, 255, 0.08), rgba(101, 215, 255, 0.035));
+}
+
+.metric-card {
+  min-height: 104px;
+  border-width: 1px;
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+}
+
+.metric-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.metric-value {
+  margin-top: 0.55rem;
+  font-size: 1.55rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.metric-value small {
+  margin-left: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+html[data-theme='light'] .master-dashboard {
+  background:
+    radial-gradient(circle at 72% -10%, rgba(124, 60, 255, 0.08), transparent 34%),
+    rgba(246, 249, 255, 0.94);
+}
+
+html[data-theme='light'] .summary-card,
+html[data-theme='light'] .content-card,
+html[data-theme='light'] .organization-card {
+  border-color: rgba(53, 82, 118, 0.14);
+  background-color: rgba(255, 255, 255, 0.58);
+}
+
 .scrollbar-glass {
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 60, 255, 0.64) transparent;

@@ -5,11 +5,14 @@ import type {
   CommandShell,
   ConsentRecord,
   DeviceTelemetry,
+  DiagnosticBundleSummary,
+  DiagnosticLogLevel,
   GoogleOAuthTokens,
   InventoryReport,
   RustDeskState,
   SystemContext,
-  TerminalCommand
+  TerminalCommand,
+  UpdateChannel
 } from './contracts'
 
 export interface JanekApi {
@@ -17,11 +20,15 @@ export interface JanekApi {
     getContext: () => Promise<SystemContext>
     setAutoLaunch: (enabled: boolean) => Promise<void>
     notify: (title: string, body: string) => Promise<void>
+    hideMainWindow: () => Promise<void>
     getConsent: () => Promise<ConsentRecord | null>
     setConsent: (consent: ConsentRecord | null) => Promise<void>
     getMasterAesKey: () => Promise<string>
     setMasterAesKey: (key: string) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
+    setUpdateChannel: (channel: UpdateChannel) => Promise<void>
+    createDiagnosticBundle: (summary: DiagnosticBundleSummary) => Promise<{ saved: boolean; path?: string }>
+    logEvent: (level: DiagnosticLogLevel, event: string, details?: Record<string, unknown>) => Promise<void>
     signInWithGoogle: () => Promise<GoogleOAuthTokens>
     selectFolder: () => Promise<string | null>
     setRegisteredDeviceId: (deviceId: string | null) => Promise<void>

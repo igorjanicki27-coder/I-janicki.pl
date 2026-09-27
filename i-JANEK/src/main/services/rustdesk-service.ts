@@ -2,9 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import crypto from 'node:crypto'
-import os from 'node:os'
 import { app } from 'electron'
-import nodeMachineId from 'node-machine-id'
 import type { RustDeskState } from '@shared/contracts'
 import { localStore } from '../store'
 
@@ -12,41 +10,66 @@ const RUSTDESK_COMMAND_TIMEOUT_MS = 20_000
 const PASSWORD_ROTATION_INTERVAL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_LENGTH = 20
 const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
-
-const { machineIdSync } = nodeMachineId
+const RUSTDESK_CONFIG_FILENAME = 'rustdesk-config.local.txt'
 
 function resolveBinaryPath() {
   const configured = process.env.RUSTDESK_BINARY_PATH || localStore.get('rustdeskBinaryPath')
   if (configured && fs.existsSync(configured)) return configured
 
-  const packagedCandidate = path.join(process.resourcesPath, 'resources', 'rd-core.exe')
-  if (fs.existsSync(packagedCandidate)) return packagedCandidate
+  const candidates = process.platform === 'darwin'
+    ? [
+        path.join(process.resourcesPath, 'resources', 'RustDesk.app', 'Contents', 'MacOS', 'RustDesk'),
+        path.join(app.getAppPath(), 'resources', 'RustDesk.app', 'Contents', 'MacOS', 'RustDesk'),
+        '/Applications/RustDesk.app/Contents/MacOS/RustDesk'
+      ]
+    : [
+        path.join(process.resourcesPath, 'resources', 'rd-core.exe'),
+        path.join(app.getAppPath(), 'resources', 'rd-core.exe'),
+        path.join(process.env.ProgramFiles || 'C:\\Program Files', 'RustDesk', 'rustdesk.exe'),
+        path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'RustDesk', 'rustdesk.exe')
+      ]
 
-  const devCandidate = path.join(app.getAppPath(), 'resources', 'rd-core.exe')
-  if (fs.existsSync(devCandidate)) return devCandidate
+  return candidates.find((candidate) => fs.existsSync(candidate))
 
-  return undefined
 }
 
-function resolveRustDeskIdentity() {
-  const envIdentity = process.env.RUSTDESK_IDENTITY?.trim().toUpperCase()
-  if (envIdentity) {
-    localStore.set('rustdeskIdentity', envIdentity)
-    return envIdentity
+function provisionPackagedRustDeskConfig() {
+  if (!app.isPackaged) return
+
+  const source = path.join(process.resourcesPath, 'resources', RUSTDESK_CONFIG_FILENAME)
+  const destination = path.join(app.getPath('userData'), RUSTDESK_CONFIG_FILENAME)
+  if (!fs.existsSync(source) || fs.existsSync(destination)) return
+
+  try {
+    fs.mkdirSync(path.dirname(destination), { recursive: true })
+    fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL)
+    fs.chmodSync(destination, 0o600)
+  } catch (error) {
+    console.error('[i-JANEK] Nie udało się utrwalić konfiguracji RustDesk:', error)
+  }
+}
+
+function getConfigCandidates() {
+  provisionPackagedRustDeskConfig()
+  return [
+    path.join(app.getPath('userData'), RUSTDESK_CONFIG_FILENAME),
+    path.join(process.resourcesPath, 'resources', RUSTDESK_CONFIG_FILENAME),
+    path.join(app.getAppPath(), 'resources', RUSTDESK_CONFIG_FILENAME)
+  ]
+}
+
+function readConfigStringFromFile() {
+  for (const candidate of getConfigCandidates()) {
+    if (!fs.existsSync(candidate)) continue
+    const value = fs.readFileSync(candidate, 'utf8').trim()
+    if (value && !value.startsWith('#')) return value
   }
 
-  const persisted = localStore.get('rustdeskIdentity')?.trim().toUpperCase()
-  if (persisted) return persisted
-
-  const hostname = os.hostname().replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-  const machineId = machineIdSync(true).replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-  const generated = `${hostname}_${machineId}`.slice(0, 48) || machineId || hostname || 'I_JANEK_DEVICE'
-  localStore.set('rustdeskIdentity', generated)
-  return generated
+  return ''
 }
 
 function getConfigString() {
-  return process.env.RUSTDESK_CONFIG_STRING?.trim() || ''
+  return process.env.RUSTDESK_CONFIG_STRING?.trim() || readConfigStringFromFile()
 }
 
 function shouldLockConfig() {
@@ -146,6 +169,53 @@ function runRustDeskCommand(binaryPath: string, args: string[]) {
   })
 }
 
+function runRustDeskCommandWithOutput(binaryPath: string, args: string[]) {
+  return new Promise<string>((resolve) => {
+    let finished = false
+    let stdout = ''
+    const child = spawn(binaryPath, args, {
+      detached: false,
+      windowsHide: true
+    })
+
+    child.stdout?.on('data', (chunk) => {
+      stdout += chunk.toString()
+    })
+
+    const finish = (value: string) => {
+      if (finished) return
+      finished = true
+      clearTimeout(timer)
+      resolve(value.trim())
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        // no-op
+      }
+      finish('')
+    }, RUSTDESK_COMMAND_TIMEOUT_MS)
+
+    child.once('error', () => finish(''))
+    child.once('close', (code) => finish(code === 0 ? stdout : ''))
+  })
+}
+
+async function resolveRustDeskIdentity(binaryPath?: string) {
+  if (binaryPath) {
+    const output = await runRustDeskCommandWithOutput(binaryPath, ['--get-id'])
+    const actualId = output.split(/\r?\n/u).map((entry) => entry.trim()).find(Boolean)
+    if (actualId) {
+      localStore.set('rustdeskIdentity', actualId)
+      return actualId
+    }
+  }
+
+  return localStore.get('rustdeskIdentity')?.trim() || undefined
+}
+
 function escapePowerShell(value: string) {
   return value.replace(/'/g, "''")
 }
@@ -240,26 +310,35 @@ interface EnforceOptions {
   rotationReason?: 'manual' | 'daily' | 'post_connection'
 }
 
-export function getRustDeskState(_deviceId?: string): RustDeskState {
-  const rustdeskIdentity = resolveRustDeskIdentity()
+export async function getRustDeskState(_deviceId?: string): Promise<RustDeskState> {
   const binaryPath = resolveBinaryPath()
+  const rustdeskIdentity = await resolveRustDeskIdentity(binaryPath)
   const managedPassword = resolveManagedPassword(false)
   const hasConfigString = Boolean(getConfigString())
+  const policyReady = Boolean(localStore.get('rustdeskPolicyReady'))
+  const requiresPermissions = process.platform === 'darwin'
   return {
     binaryPath,
     installed: Boolean(binaryPath),
+    platform: process.platform,
     accessCode: managedPassword.password,
     accessIdentity: rustdeskIdentity,
     passwordLastRotatedAt: managedPassword.rotatedAt,
     publicKeyConfigured: Boolean(process.env.RUSTDESK_PUBLIC_KEY),
-    policyReady: hasConfigString
+    policyReady,
+    unattendedReady: Boolean(binaryPath && rustdeskIdentity && managedPassword.password && hasConfigString && policyReady),
+    requiresPermissions,
+    permissionHint: requiresPermissions
+      ? 'Na macOS użytkownik musi jednorazowo nadać RustDesk uprawnienia Dostępność i Nagrywanie ekranu.'
+      : undefined
   }
 }
 
 export async function enforceRustDeskPolicy(_deviceId?: string, options: EnforceOptions = {}): Promise<RustDeskState> {
   const managedPassword = resolveManagedPassword(Boolean(options.forceRotate))
-  const state = getRustDeskState()
+  const state = await getRustDeskState()
   if (!state.binaryPath) {
+    localStore.set('rustdeskPolicyReady', false)
     return {
       ...state,
       sessionHint: 'RustDesk nie znaleziony.'
@@ -267,6 +346,8 @@ export async function enforceRustDeskPolicy(_deviceId?: string, options: Enforce
   }
 
   const policy = await applyManagedConfig(state.binaryPath, managedPassword.password)
+  const policyReady = Boolean(policy.configApplied && policy.passwordApplied)
+  localStore.set('rustdeskPolicyReady', policyReady)
   const policyMessages: string[] = []
 
   if (policy.hasConfigString) {
@@ -299,6 +380,8 @@ export async function enforceRustDeskPolicy(_deviceId?: string, options: Enforce
     passwordLastRotatedAt: managedPassword.rotatedAt,
     configEnforced: policy.configApplied,
     configLocked: policy.lockApplied,
+    policyReady,
+    unattendedReady: Boolean(state.accessIdentity && policyReady),
     sessionHint: policyMessages.join(' ')
   }
 }

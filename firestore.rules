@@ -84,7 +84,11 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.auth.token.email != null
         && request.resource.data.ownerEmail == request.auth.token.email
-        && request.resource.data.approvalStatus == 'pending';
+        && request.resource.data.approvalStatus == 'pending'
+        && (
+          !request.resource.data.keys().hasAny(['updateChannel'])
+          || request.resource.data.updateChannel == 'stable'
+        );
     }
 
     function isDeviceOwner() {
@@ -106,10 +110,13 @@ service cloud.firestore {
           'telemetry',
           'offline',
           'inventoryCapturedAt',
-          'inventoryReportUrl',
+          'inventoryReportId',
           'backupSnapshot',
           'backupSyncProgress',
           'backupPolicy',
+          'contactName',
+          'companyName',
+          'installationLocation',
           'consent',
           'consentAcceptedAt',
           'monitoringEnabled',
@@ -122,6 +129,62 @@ service cloud.firestore {
     function isCreatingOwnEvent() {
       return isAuthenticated()
         && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    function isCreatingOwnServiceRequest() {
+      return isAuthenticated()
+        && request.auth.token.email != null
+        && request.resource.data.keys().hasOnly([
+          'ownerUid',
+          'ownerEmail',
+          'deviceId',
+          'deviceLabel',
+          'companyName',
+          'title',
+          'description',
+          'priority',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'resolvedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'ownerUid',
+          'ownerEmail',
+          'deviceId',
+          'deviceLabel',
+          'companyName',
+          'title',
+          'description',
+          'priority',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'resolvedAt'
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerEmail == request.auth.token.email
+        && request.resource.data.deviceId is string
+        && exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId))
+        && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.ownerUid == request.auth.uid
+        && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.approvalStatus == 'approved'
+        && request.resource.data.deviceLabel is string
+        && request.resource.data.deviceLabel.size() >= 1
+        && request.resource.data.deviceLabel.size() <= 120
+        && request.resource.data.companyName is string
+        && request.resource.data.companyName.size() >= 1
+        && request.resource.data.companyName.size() <= 160
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 5
+        && request.resource.data.description.size() <= 4000
+        && request.resource.data.priority in ['low', 'normal', 'high', 'critical']
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt is int
+        && request.resource.data.updatedAt == request.resource.data.createdAt
+        && request.resource.data.resolvedAt == null;
     }
 
     function isPinFormat(pin) {
@@ -303,6 +366,112 @@ service cloud.firestore {
       allow delete: if isMaster() || isDeviceOwner();
     }
 
+    match /inventoryReports/{deviceId} {
+      function isValidOwnedInventoryReport() {
+        return isAuthenticated()
+        && request.resource.data.keys().hasOnly([
+          'reportId',
+          'ownerUid',
+          'deviceId',
+          'capturedAt',
+          'updatedAt',
+          'schemaVersion',
+          'installedAppsCount',
+          'installedAppsChunkCount',
+          'windowsUpdatesCount',
+          'windowsUpdatesChunkCount'
+        ])
+        && request.resource.data.keys().hasAll([
+          'reportId',
+          'ownerUid',
+          'deviceId',
+          'capturedAt',
+          'updatedAt',
+          'schemaVersion',
+          'installedAppsCount',
+          'installedAppsChunkCount',
+          'windowsUpdatesCount',
+          'windowsUpdatesChunkCount'
+        ])
+        && request.resource.data.reportId == deviceId
+        && request.resource.data.deviceId == deviceId
+        && request.resource.data.ownerUid == request.auth.uid
+        && exists(/databases/$(database)/documents/devices/$(deviceId))
+        && get(/databases/$(database)/documents/devices/$(deviceId)).data.ownerUid == request.auth.uid
+        && get(/databases/$(database)/documents/devices/$(deviceId)).data.approvalStatus == 'approved'
+        && request.resource.data.capturedAt is int
+        && request.resource.data.updatedAt is int
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.installedAppsCount is int
+        && request.resource.data.installedAppsCount >= 0
+        && request.resource.data.installedAppsChunkCount is int
+        && request.resource.data.installedAppsChunkCount >= 1
+        && request.resource.data.installedAppsChunkCount <= 128
+        && request.resource.data.windowsUpdatesCount is int
+        && request.resource.data.windowsUpdatesCount >= 0
+        && request.resource.data.windowsUpdatesChunkCount is int
+        && request.resource.data.windowsUpdatesChunkCount >= 1
+        && request.resource.data.windowsUpdatesChunkCount <= 128;
+      }
+
+      allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidOwnedInventoryReport();
+      allow update: if resource.data.ownerUid == request.auth.uid && isValidOwnedInventoryReport();
+      allow delete: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+
+      match /sections/{sectionId} {
+        allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+        allow create, update: if isAuthenticated()
+          && request.resource.data.keys().hasOnly([
+            'ownerUid',
+            'deviceId',
+            'capturedAt',
+            'kind',
+            'chunkIndex',
+            'chunkCount',
+            'data'
+          ])
+          && request.resource.data.keys().hasAll([
+            'ownerUid',
+            'deviceId',
+            'capturedAt',
+            'kind',
+            'chunkIndex',
+            'chunkCount',
+            'data'
+          ])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.deviceId == deviceId
+          && request.resource.data.capturedAt is int
+          && request.resource.data.kind in ['hardware', 'defender', 'installedApps', 'windowsUpdates']
+          && request.resource.data.chunkIndex is int
+          && request.resource.data.chunkIndex >= 0
+          && request.resource.data.chunkCount is int
+          && request.resource.data.chunkCount >= 1
+          && request.resource.data.chunkCount <= 128
+          && getAfter(/databases/$(database)/documents/inventoryReports/$(deviceId)).data.ownerUid == request.auth.uid
+          && (
+            (sectionId == 'hardware'
+              && request.resource.data.kind == 'hardware'
+              && request.resource.data.chunkIndex == 0
+              && request.resource.data.chunkCount == 1
+              && request.resource.data.data is map)
+            || (sectionId == 'defender'
+              && request.resource.data.kind == 'defender'
+              && request.resource.data.chunkIndex == 0
+              && request.resource.data.chunkCount == 1
+              && request.resource.data.data is map)
+            || (sectionId.matches('^installedApps-[0-9]{3}$')
+              && request.resource.data.kind == 'installedApps'
+              && request.resource.data.data is list)
+            || (sectionId.matches('^windowsUpdates-[0-9]{3}$')
+              && request.resource.data.kind == 'windowsUpdates'
+              && request.resource.data.data is list)
+          );
+        allow delete: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      }
+    }
+
     match /clients/{clientId} {
       allow read: if isMaster() || isOwner(clientId);
       allow create, update: if isMaster()
@@ -314,6 +483,8 @@ service cloud.firestore {
             'displayName',
             'photoURL',
             'role',
+            'companyName',
+            'installationLocation',
             'createdAt',
             'updatedAt',
             'lastLoginAt'
@@ -321,6 +492,14 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.email == request.auth.token.email
           && request.resource.data.displayName is string
+          && (
+            !request.resource.data.keys().hasAny(['companyName'])
+            || request.resource.data.companyName is string
+          )
+          && (
+            !request.resource.data.keys().hasAny(['installationLocation'])
+            || request.resource.data.installationLocation is string
+          )
           && request.resource.data.role in ['master', 'slave']
           && request.resource.data.createdAt is int
           && request.resource.data.updatedAt is int
@@ -332,6 +511,177 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       allow create: if isMaster() || isCreatingOwnEvent();
+      allow delete: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    match /serviceRequests/{requestId} {
+      allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isCreatingOwnServiceRequest();
+      allow update: if isMaster()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'updatedAt', 'resolvedAt'])
+        && request.resource.data.status in ['open', 'in_progress', 'resolved']
+        && request.resource.data.updatedAt is int
+        && (
+          (request.resource.data.status == 'resolved' && request.resource.data.resolvedAt is int)
+          || (request.resource.data.status != 'resolved' && request.resource.data.resolvedAt == null)
+        );
+      allow delete: if isMaster();
+    }
+
+    match /serviceRequestInternalComments/{commentId} {
+      allow read: if isMaster();
+      allow create: if isMaster()
+        && request.resource.data.keys().hasOnly([
+          'requestId',
+          'authorUid',
+          'authorEmail',
+          'body',
+          'createdAt'
+        ])
+        && request.resource.data.requestId is string
+        && exists(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId))
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorEmail == request.auth.token.email
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1
+        && request.resource.data.body.size() <= 2000
+        && request.resource.data.createdAt is int;
+      allow update, delete: if false;
+    }
+
+    match /usageDaily/{rollupId} {
+      function hasValidUsageFields() {
+        return request.resource.data.keys().hasOnly([
+          'ownerUid',
+          'deviceId',
+          'dayKey',
+          'observedSeconds',
+          'cpuObservedSeconds',
+          'cpuOver80Seconds',
+          'gpuObservedSeconds',
+          'gpuOver80Seconds',
+          'ramObservedSeconds',
+          'ramOver80Seconds',
+          'diskObservedSeconds',
+          'diskOver80Seconds',
+          'anyOver80Seconds',
+          'restartCount',
+          'sampleCount',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'ownerUid',
+          'deviceId',
+          'dayKey',
+          'observedSeconds',
+          'cpuObservedSeconds',
+          'cpuOver80Seconds',
+          'gpuObservedSeconds',
+          'gpuOver80Seconds',
+          'ramObservedSeconds',
+          'ramOver80Seconds',
+          'diskObservedSeconds',
+          'diskOver80Seconds',
+          'anyOver80Seconds',
+          'restartCount',
+          'sampleCount',
+          'updatedAt'
+        ])
+        && request.resource.data.ownerUid is string
+        && request.resource.data.deviceId is string
+        && rollupId == request.resource.data.deviceId + '_' + request.resource.data.dayKey
+        && request.resource.data.dayKey is string
+        && request.resource.data.dayKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.observedSeconds is int
+        && request.resource.data.observedSeconds >= 0
+        && request.resource.data.observedSeconds <= 86400
+        && request.resource.data.cpuObservedSeconds is int
+        && request.resource.data.cpuObservedSeconds >= 0
+        && request.resource.data.cpuObservedSeconds <= request.resource.data.observedSeconds
+        && request.resource.data.cpuOver80Seconds is int
+        && request.resource.data.cpuOver80Seconds >= 0
+        && request.resource.data.cpuOver80Seconds <= request.resource.data.cpuObservedSeconds
+        && request.resource.data.gpuObservedSeconds is int
+        && request.resource.data.gpuObservedSeconds >= 0
+        && request.resource.data.gpuObservedSeconds <= request.resource.data.observedSeconds
+        && request.resource.data.gpuOver80Seconds is int
+        && request.resource.data.gpuOver80Seconds >= 0
+        && request.resource.data.gpuOver80Seconds <= request.resource.data.gpuObservedSeconds
+        && request.resource.data.ramObservedSeconds is int
+        && request.resource.data.ramObservedSeconds >= 0
+        && request.resource.data.ramObservedSeconds <= request.resource.data.observedSeconds
+        && request.resource.data.ramOver80Seconds is int
+        && request.resource.data.ramOver80Seconds >= 0
+        && request.resource.data.ramOver80Seconds <= request.resource.data.ramObservedSeconds
+        && request.resource.data.diskObservedSeconds is int
+        && request.resource.data.diskObservedSeconds >= 0
+        && request.resource.data.diskObservedSeconds <= request.resource.data.observedSeconds
+        && request.resource.data.diskOver80Seconds is int
+        && request.resource.data.diskOver80Seconds >= 0
+        && request.resource.data.diskOver80Seconds <= request.resource.data.diskObservedSeconds
+        && request.resource.data.anyOver80Seconds is int
+        && request.resource.data.anyOver80Seconds >= 0
+        && request.resource.data.anyOver80Seconds <= request.resource.data.observedSeconds
+        && request.resource.data.restartCount is int
+        && request.resource.data.restartCount >= 0
+        && request.resource.data.restartCount <= 50
+        && request.resource.data.sampleCount is int
+        && request.resource.data.sampleCount >= 1
+        && request.resource.data.sampleCount <= 1000
+        && request.resource.data.updatedAt is int;
+      }
+
+      function isApprovedUsageOwner() {
+        return isAuthenticated()
+          && request.resource.data.ownerUid == request.auth.uid
+          && exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId))
+          && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.ownerUid == request.auth.uid
+          && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.approvalStatus == 'approved';
+      }
+
+      allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isApprovedUsageOwner() && hasValidUsageFields();
+      allow update: if isApprovedUsageOwner()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.deviceId == resource.data.deviceId
+        && request.resource.data.dayKey == resource.data.dayKey
+        && request.resource.data.observedSeconds >= resource.data.observedSeconds
+        && request.resource.data.cpuObservedSeconds >= resource.data.cpuObservedSeconds
+        && request.resource.data.cpuOver80Seconds >= resource.data.cpuOver80Seconds
+        && request.resource.data.gpuObservedSeconds >= resource.data.gpuObservedSeconds
+        && request.resource.data.gpuOver80Seconds >= resource.data.gpuOver80Seconds
+        && request.resource.data.ramObservedSeconds >= resource.data.ramObservedSeconds
+        && request.resource.data.ramOver80Seconds >= resource.data.ramOver80Seconds
+        && request.resource.data.diskObservedSeconds >= resource.data.diskObservedSeconds
+        && request.resource.data.diskOver80Seconds >= resource.data.diskOver80Seconds
+        && request.resource.data.anyOver80Seconds >= resource.data.anyOver80Seconds
+        && request.resource.data.restartCount >= resource.data.restartCount
+        && request.resource.data.sampleCount > resource.data.sampleCount
+        && hasValidUsageFields();
+      allow delete: if isMaster();
+    }
+
+    match /appConfig/masterSettings {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isMaster();
+    }
+
+    match /appConfig/masterSecurity {
+      allow read, create, update, delete: if isMaster();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isMaster()
+        || (
+          isAuthenticated()
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.deviceId is string
+          && request.resource.data.action is string
+          && request.resource.data.createdAt is int
+        );
+      allow update, delete: if false;
     }
 
     match /firmy_sessions/{uid} {

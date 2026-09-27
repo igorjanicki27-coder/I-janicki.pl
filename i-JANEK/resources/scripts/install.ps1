@@ -1,7 +1,3 @@
-param(
-  [string]$CertPath
-)
-
 $ErrorActionPreference = "Stop"
 $appName = "i-JANEK"
 $userDataDirs = @(
@@ -10,12 +6,9 @@ $userDataDirs = @(
 )
 $oauthSource = Join-Path $PSScriptRoot "..\google-oauth-desktop.local.json"
 
-if (Test-Path $CertPath) {
-  Import-Certificate -FilePath $CertPath -CertStoreLocation "Cert:\\LocalMachine\\Root" | Out-Null
-}
-
 foreach ($userDataDir in $userDataDirs) {
   $null = New-Item -ItemType Directory -Path $userDataDir -Force
+  Set-Content -Path (Join-Path $userDataDir "post-install-update.pending") -Value (Get-Date).ToUniversalTime().ToString("o") -Encoding ASCII -Force
   if (Test-Path $oauthSource) {
     Copy-Item -Path $oauthSource -Destination (Join-Path $userDataDir "google-oauth-desktop.local.json") -Force
   }
@@ -42,26 +35,6 @@ function Resolve-RustDeskBinary {
   }
 
   return $null
-}
-
-function Get-RustDeskIdentity {
-  $machineGuid = ""
-  try {
-    $machineGuid = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Cryptography" -Name "MachineGuid").MachineGuid
-  } catch {
-    $machineGuid = ""
-  }
-
-  $hostToken = ($env:COMPUTERNAME -replace '[^A-Za-z0-9]', '').ToUpperInvariant()
-  $machineToken = ($machineGuid -replace '[^A-Za-z0-9]', '').ToUpperInvariant()
-  $raw = "$hostToken`_$machineToken"
-  if (-not $raw) {
-    $raw = "I_JANEK_DEVICE"
-  }
-  if ($raw.Length -gt 48) {
-    $raw = $raw.Substring(0, 48)
-  }
-  return $raw
 }
 
 function Get-RustDeskPassword {
@@ -103,11 +76,6 @@ function Set-RustDeskLock {
 }
 
 $rustDeskBinary = Resolve-RustDeskBinary
-$rustDeskIdentity = [Environment]::GetEnvironmentVariable("RUSTDESK_IDENTITY", "Machine")
-if (-not $rustDeskIdentity) {
-  $rustDeskIdentity = Get-RustDeskIdentity
-  [Environment]::SetEnvironmentVariable("RUSTDESK_IDENTITY", $rustDeskIdentity, "Machine")
-}
 $rustDeskPassword = Get-RustDeskPassword -Length 20
 $rustDeskConfigString = [Environment]::GetEnvironmentVariable("RUSTDESK_CONFIG_STRING", "Machine")
 if (-not $rustDeskConfigString) {

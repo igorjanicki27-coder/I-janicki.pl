@@ -18,10 +18,17 @@ const classes = computed(() => {
       return 'border-fuchsia-400/20 bg-fuchsia-500/10 text-fuchsia-100'
   }
 })
+
+const displayLabel = computed(() => {
+  if (props.label === 'pending') return 'Oczekuje'
+  if (props.label === 'approved') return 'Zatwierdzono'
+  if (props.label === 'rejected') return 'Odrzucono'
+  return props.label
+})
 </script>
 
 <template>
   <span class="mono inline-flex items-center rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em]" :class="classes">
-    {{ label }}
+    {{ displayLabel }}
   </span>
 </template>

@@ -1,26 +1,45 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { AlertTriangle, ChevronDown, Settings } from 'lucide-vue-next'
-import MasterLayout from '@/layouts/MasterLayout.vue'
+import { AlertTriangle, Clock3, KeyRound, Minimize2, Settings, ShieldCheck, UserPlus } from 'lucide-vue-next'
+import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
 import { useAppStore } from '@/stores/app'
+import { CURRENT_CONSENT_POLICY_VERSION } from '@shared/constants'
 
 const store = useAppStore()
 const settingsOpen = ref(false)
-const consentAccepted = ref(true)
+const consentAccepted = ref(false)
+const remoteCommandsAccepted = ref(false)
+const unattendedAccessAccepted = ref(false)
 const MIN_DEVICE_ALIAS_LENGTH = 3
 const consentValidationMessage = ref('')
+const authMode = ref<'login' | 'register'>('login')
+const authEmail = ref('')
+const authPassword = ref('')
+const authPasswordConfirmation = ref('')
+const authFullName = ref('')
+const authCompanyName = ref('')
+const authInstallationLocation = ref('')
+const authValidationMessage = ref('')
 
-const needsConsent = computed(() => store.user?.role === 'slave' && !store.consent)
+const needsConsent = computed(
+  () => store.user?.role === 'slave' && store.isDesktopAgent && (
+    !store.consent ||
+    store.consent.policyVersion !== CURRENT_CONSENT_POLICY_VERSION ||
+    !store.consent.diagnosticsConsent ||
+    !store.consent.remoteCommandConsent
+  )
+)
 const isApprovalBlocked = computed(() => store.isApprovalBlocked)
+const isBrowserClient = computed(() => Boolean(store.user && !store.isMaster && !store.isDesktopAgent))
 const aliasTooShort = computed(() => {
   const currentLength = store.pendingDeviceAlias.trim().length
   return currentLength > 0 && currentLength < MIN_DEVICE_ALIAS_LENGTH
 })
 const headerOnlineCount = computed(() => store.devices.filter((device) => Date.now() - device.lastSeenAt < 5 * 60 * 1000).length)
-const headerCompanyCount = computed(() => new Set(store.devices.map((device) => device.ownerUid)).size)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
+const hasOpenServiceRequests = computed(() => store.openServiceRequests.length > 0)
 const slaveHeaderDeviceName = computed(
   () => store.selectedDevice?.deviceAlias || store.selectedDevice?.hostname || store.selfDevice?.deviceAlias || store.selfDevice?.hostname || 'Urządzenie'
 )
@@ -32,6 +51,60 @@ const slaveHeaderAlertsCount = computed(() => {
 
 function openSlaveAlertModal() {
   window.dispatchEvent(new CustomEvent('i-janek:open-slave-alert-modal'))
+}
+
+function openServiceRequests() {
+  window.dispatchEvent(new CustomEvent('i-janek:open-service-requests'))
+}
+
+async function handleEmailAuth() {
+  const email = authEmail.value.trim()
+  if (!email || !email.includes('@')) {
+    authValidationMessage.value = 'Wpisz poprawny adres e-mail.'
+    return
+  }
+  if (!authPassword.value) {
+    authValidationMessage.value = 'Wpisz hasło.'
+    return
+  }
+  if (authMode.value === 'register' && authPassword.value.length < 6) {
+    authValidationMessage.value = 'Hasło musi mieć co najmniej 6 znaków.'
+    return
+  }
+  if (authMode.value === 'register' && authFullName.value.trim().length < 2) {
+    authValidationMessage.value = 'Podaj imię i nazwisko.'
+    return
+  }
+  if (authMode.value === 'register' && authCompanyName.value.trim().length < 2) {
+    authValidationMessage.value = 'Podaj nazwę firmy.'
+    return
+  }
+  if (authMode.value === 'register' && authPassword.value !== authPasswordConfirmation.value) {
+    authValidationMessage.value = 'Hasła nie są identyczne.'
+    return
+  }
+
+  authValidationMessage.value = ''
+  if (authMode.value === 'register') {
+    await store.registerWithEmail(email, authPassword.value, {
+      fullName: authFullName.value.trim(),
+      companyName: authCompanyName.value.trim(),
+      installationLocation: authInstallationLocation.value.trim()
+    })
+  }
+  else await store.signInWithEmail(email, authPassword.value)
+}
+
+async function resetPassword() {
+  const email = authEmail.value.trim()
+  if (!email || !email.includes('@')) {
+    authValidationMessage.value = 'Najpierw wpisz adres e-mail konta.'
+    return
+  }
+  authValidationMessage.value = ''
+  if (await store.sendPasswordReset(email)) {
+    authValidationMessage.value = 'Wysłaliśmy wiadomość z linkiem do ustawienia nowego hasła.'
+  }
 }
 
 async function handleAcceptConsent() {
@@ -53,8 +126,24 @@ async function handleAcceptConsent() {
     return
   }
 
+  if (!remoteCommandsAccepted.value) {
+    consentValidationMessage.value = 'Zaznacz zgodę na polecenia diagnostyczne i naprawcze.'
+    return
+  }
+
   consentValidationMessage.value = ''
-  await store.acceptConsent()
+  await store.acceptConsent(unattendedAccessAccepted.value)
+}
+
+async function acknowledgeApprovalWait() {
+  await window.janek.system.hideMainWindow()
+}
+
+function approvalStatusLabel(status: string | null) {
+  if (status === 'pending') return 'Oczekuje na decyzję'
+  if (status === 'approved') return 'Zatwierdzono'
+  if (status === 'rejected') return 'Odrzucono'
+  return 'Brak statusu'
 }
 
 onMounted(() => {
@@ -62,7 +151,7 @@ onMounted(() => {
 })
 
 watch(
-  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted],
+  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted, remoteCommandsAccepted, unattendedAccessAccepted],
   () => {
     if (!consentValidationMessage.value) return
     consentValidationMessage.value = ''
@@ -72,7 +161,7 @@ watch(
 
 <template>
   <div class="flex h-screen overflow-hidden flex-col">
-    <header v-if="store.user && !needsConsent && !isApprovalBlocked" class="px-5 pt-5">
+    <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
         class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
@@ -98,12 +187,17 @@ watch(
             <span class="text-base font-semibold text-white">{{ store.devices.length }}</span>
           </div>
         </div>
-        <div class="rounded-[14px] border border-white/10 bg-white/5 px-3 py-2">
+        <button
+          class="rounded-[14px] border px-3 py-2 text-left transition"
+          :class="hasOpenServiceRequests ? 'border-fuchsia-300/45 bg-fuchsia-500/15 shadow-[0_0_18px_rgba(217,70,239,0.22)]' : 'border-white/10 bg-white/5 hover:border-white/20'"
+          type="button"
+          @click="openServiceRequests()"
+        >
           <div class="mono flex items-center justify-between whitespace-nowrap text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
-            <span>Firmy</span>
-            <span class="text-base font-semibold text-white">{{ headerCompanyCount }}</span>
+            <span>Zadania</span>
+            <span class="text-base font-semibold text-white">{{ store.openServiceRequests.length }}</span>
           </div>
-        </div>
+        </button>
         <div class="justify-self-end flex items-center gap-2">
           <button
             class="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--text-dim)] transition hover:text-white"
@@ -172,7 +266,7 @@ watch(
               Aplikacja do administrowania Twoim komputerem.
             </p>
 
-            <div class="mt-10 flex justify-center">
+            <div class="mt-8 flex justify-center">
               <button class="google-auth-shell" :disabled="store.signingIn" type="button" @click="store.signInWithGoogle()">
                 <span class="google-auth-inner">
                   <span class="google-auth-core">
@@ -204,6 +298,74 @@ watch(
               </button>
             </div>
 
+            <div class="mx-auto my-6 flex max-w-md items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+              <span class="h-px flex-1 bg-white/10" />
+              albo e-mail
+              <span class="h-px flex-1 bg-white/10" />
+            </div>
+
+            <form class="mx-auto max-w-md rounded-[28px] border border-white/10 bg-white/[0.035] p-4 text-left" @submit.prevent="handleEmailAuth()">
+              <div class="mb-4 grid grid-cols-2 rounded-2xl bg-black/20 p-1">
+                <button
+                  class="rounded-xl px-3 py-2 text-sm transition"
+                  :class="authMode === 'login' ? 'bg-white/10 text-white' : 'text-[var(--text-dim)]'"
+                  type="button"
+                  @click="authMode = 'login'; authValidationMessage = ''"
+                >
+                  Logowanie
+                </button>
+                <button
+                  class="rounded-xl px-3 py-2 text-sm transition"
+                  :class="authMode === 'register' ? 'bg-white/10 text-white' : 'text-[var(--text-dim)]'"
+                  type="button"
+                  @click="authMode = 'register'; authValidationMessage = ''"
+                >
+                  Nowe konto
+                </button>
+              </div>
+              <template v-if="authMode === 'register'">
+                <label class="block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                  Imię i nazwisko
+                  <input v-model="authFullName" class="soft-input mt-2" autocomplete="name" placeholder="Jan Kowalski" />
+                </label>
+                <label class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                  Nazwa firmy
+                  <input v-model="authCompanyName" class="soft-input mt-2" autocomplete="organization" placeholder="Firma Sp. z o.o." />
+                </label>
+                <label class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                  Miejsce komputera <span class="normal-case tracking-normal">(opcjonalnie)</span>
+                  <input v-model="authInstallationLocation" class="soft-input mt-2" placeholder="np. Biuro Poznań, recepcja" />
+                </label>
+              </template>
+              <label class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                E-mail
+                <input v-model="authEmail" class="soft-input mt-2" type="email" autocomplete="email" placeholder="klient@firma.pl" />
+              </label>
+              <label class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                Hasło
+                <input
+                  v-model="authPassword"
+                  class="soft-input mt-2"
+                  type="password"
+                  :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'"
+                  :placeholder="authMode === 'register' ? 'Minimum 6 znaków' : 'Twoje hasło'"
+                />
+              </label>
+              <label v-if="authMode === 'register'" class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                Powtórz hasło
+                <input v-model="authPasswordConfirmation" class="soft-input mt-2" type="password" autocomplete="new-password" />
+              </label>
+              <p v-if="authValidationMessage" class="mt-3 text-sm text-amber-300">{{ authValidationMessage }}</p>
+              <button class="glass-button mt-4 w-full" :disabled="store.signingIn" type="submit">
+                <UserPlus v-if="authMode === 'register'" class="mr-2 h-4 w-4" />
+                <KeyRound v-else class="mr-2 h-4 w-4" />
+                {{ store.signingIn ? 'Proszę czekać...' : authMode === 'register' ? 'Utwórz konto' : 'Zaloguj się' }}
+              </button>
+              <button v-if="authMode === 'login'" class="mt-3 w-full text-center text-xs text-cyan-200/80 hover:text-cyan-100" type="button" @click="resetPassword()">
+                Nie pamiętam hasła
+              </button>
+            </form>
+
             <p v-if="store.lastError" class="mt-5 text-sm text-rose-300">{{ store.lastError }}</p>
           </div>
         </div>
@@ -218,17 +380,28 @@ watch(
         </a>
       </section>
 
+      <section v-else-if="isBrowserClient" class="mx-auto flex h-full max-w-3xl items-center justify-center">
+        <div class="glass-panel w-full rounded-[36px] border border-cyan-300/20 p-7 text-center">
+          <div class="mono text-xs uppercase tracking-[0.3em] text-cyan-200">Panel webowy</div>
+          <h2 class="mt-3 text-2xl font-semibold text-white">Monitoring wymaga aplikacji na komputerze</h2>
+          <p class="mx-auto mt-3 max-w-xl text-sm leading-7 text-[var(--text-dim)]">
+            Konto zostało utworzone poprawnie. Zaloguj się tym samym kontem w aplikacji i-JANEK na Windows lub macOS, aby zarejestrować komputer i przesyłać telemetrię. W przeglądarce funkcje systemowe są celowo niedostępne.
+          </p>
+          <button class="ghost-button mt-6" type="button" @click="store.signOut()">Wyloguj</button>
+        </div>
+      </section>
+
       <section v-else-if="needsConsent" class="mx-auto flex h-full max-w-4xl items-center justify-center">
         <div class="glass-panel w-full rounded-[36px] p-6 lg:p-7">
-          <div class="mono text-xs uppercase tracking-[0.3em] text-fuchsia-300">RODO / Consent</div>
+          <div class="mono text-xs uppercase tracking-[0.3em] text-fuchsia-300">Zgody i bezpieczeństwo</div>
           <h2 class="mt-2 text-2xl font-semibold text-white">Zgoda na opiekę informatyczną i-JANEK</h2>
           <div class="mt-3 space-y-3 text-sm leading-6 text-[var(--text-dim)]">
-            <p>Klikając „Akceptuję”, wyrażasz zgodę na:</p>
+            <p>Dwie pierwsze zgody są wymagane do działania opieki informatycznej. Trzecia jest dobrowolna i decyduje, czy zdalny pulpit ma pytać Cię o zgodę przy każdym połączeniu.</p>
             <ul class="space-y-1.5">
               <li>Uruchamianie zdalnych skryptów naprawczych w celu optymalizacji systemu.</li>
               <li>Synchronizację wybranych folderów z Twoim kontem Google Drive w celach backupu.</li>
               <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
-              <li>Pełny dostęp administratora do komputera, w tym zawartych w nim plików, haseł i danych osobowych.</li>
+              <li>Zdalny pulpit bez kolejnego pytania podczas każdej sesji — tylko po akceptacji urządzenia przez administratora.</li>
               <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-JANICKI.pl.</li>
               <li>Przetwarzanie danych, zgodnie z Polityką Prywatności i cookies, a także RODO, które znajdziesz na stronie i-JANICKI.pl.</li>
             </ul>
@@ -239,12 +412,7 @@ watch(
               <span>Nazwa komputera</span>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <div class="relative">
-                <select v-model="store.pendingCompanyName" class="soft-input !py-2 !pr-10 appearance-none">
-                  <option v-for="company in store.masterSettings.companyOptions" :key="company" :value="company">{{ company }}</option>
-                </select>
-                <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dim)]" />
-              </div>
+              <input v-model="store.pendingCompanyName" class="soft-input !py-2" placeholder="Nazwa firmy" />
               <input
                 v-model="store.pendingDeviceAlias"
                 class="soft-input !py-2"
@@ -255,10 +423,27 @@ watch(
                 Nazwa komputera musi mieć co najmniej 3 znaki.
               </p>
             </div>
+            <label class="mt-2 block text-sm text-[var(--text-dim)]">
+              Miejsce komputera <span class="text-xs">(opcjonalnie)</span>
+              <input
+                v-model="store.pendingInstallationLocation"
+                class="soft-input mt-2 !py-2"
+                placeholder="np. Biuro Poznań, recepcja"
+                maxlength="120"
+              />
+            </label>
           </div>
           <label class="mt-3 flex items-center gap-3 rounded-[24px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
             <input v-model="consentAccepted" type="checkbox" class="h-4 w-4 shrink-0 accent-fuchsia-500" />
-            <span class="whitespace-nowrap text-[13px]">Akceptuję politykę prywatności i wyrażam zgodę na diagnostykę, zdalny serwis i backup zgodnie z powyższą informacją.</span>
+            <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Akceptuję politykę prywatności oraz diagnostykę i backup zgodnie z powyższą informacją.</span>
+          </label>
+          <label class="mt-2 flex items-start gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
+            <input v-model="remoteCommandsAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />
+            <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Zezwalam zaakceptowanemu administratorowi na uruchamianie poleceń diagnostycznych i naprawczych. Każde polecenie i wynik są zapisywane w historii audytowej.</span>
+          </label>
+          <label class="mt-2 flex items-start gap-3 rounded-[20px] border border-cyan-300/20 bg-cyan-400/5 p-3 text-[var(--text-dim)]">
+            <input v-model="unattendedAccessAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-cyan-400" />
+            <span class="text-[13px] leading-5"><strong class="text-cyan-100">Opcjonalne.</strong> Zezwalam na zdalny pulpit bez pytania przy każdej sesji. Bez tej zgody aplikacja poprosi mnie o potwierdzenie każdego połączenia. Ustawienie można później zmienić.</span>
           </label>
           <p v-if="consentValidationMessage" class="mt-3 text-center text-sm text-amber-300">
             {{ consentValidationMessage }}
@@ -276,38 +461,53 @@ watch(
       </section>
 
       <section v-else-if="isApprovalBlocked" class="mx-auto flex h-full max-w-4xl items-center justify-center">
-        <div class="glass-panel w-full rounded-[36px] border border-amber-300/30 bg-black/35 p-6 lg:p-7">
-          <div class="mono text-xs uppercase tracking-[0.3em] text-amber-200">Dostęp Zablokowany</div>
-          <h2 class="mt-2 text-2xl font-semibold text-white">
-            {{ store.approvalGateStatus === 'pending' ? 'Urządzenie czeka na akceptację Mastera' : 'Urządzenie wymaga ponownej rejestracji' }}
-          </h2>
-          <p class="mt-3 text-sm leading-6 text-[var(--text-dim)]">
-            Aplikacja jest tymczasowo zablokowana do czasu zatwierdzenia urządzenia. Status jest odświeżany automatycznie.
-          </p>
-          <div class="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-dim)]">
+        <div class="glass-panel relative w-full overflow-hidden rounded-[36px] border border-amber-300/25 bg-black/35 p-7 lg:p-10">
+          <div class="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+          <div class="relative flex flex-col items-center text-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/30 bg-amber-400/10 text-amber-100 shadow-[0_0_35px_rgba(251,191,36,0.12)]">
+              <Clock3 v-if="store.approvalGateStatus === 'pending'" class="h-8 w-8" />
+              <ShieldCheck v-else class="h-8 w-8" />
+            </div>
+            <div class="mono mt-5 text-xs uppercase tracking-[0.3em] text-amber-200">Weryfikacja urządzenia</div>
+            <h2 class="mt-3 text-3xl font-semibold text-white">
+              {{ store.approvalGateStatus === 'pending' ? 'Prośba została wysłana' : 'Administrator odrzucił rejestrację' }}
+            </h2>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-[var(--text-dim)]">
+              {{ store.approvalGateStatus === 'pending'
+                ? 'Możesz bezpiecznie zminimalizować aplikację. Gdy administrator zaakceptuje lub odrzuci urządzenie, otrzymasz powiadomienie systemowe.'
+                : 'Sprawdź dane urządzenia albo skontaktuj się z administratorem. Możesz wyrejestrować komputer i wysłać nową prośbę.' }}
+            </p>
+          </div>
+          <div class="relative mx-auto mt-7 max-w-2xl rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-dim)]">
             <div class="flex items-center justify-between">
               <span>Status</span>
-              <span class="mono text-white">{{ store.approvalGateStatus ?? 'brak' }}</span>
+              <span class="mono text-amber-100">{{ approvalStatusLabel(store.approvalGateStatus) }}</span>
             </div>
             <div class="mt-2 flex items-center justify-between">
               <span>Urządzenie</span>
               <span class="mono text-white">{{ store.selfDevice?.deviceId ?? store.systemContext?.deviceId ?? 'brak' }}</span>
             </div>
           </div>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <button class="glass-button" type="button" @click="store.deregisterAndSignOut()">
-              Wyrejestruj i wyloguj
+          <div class="relative mt-7 flex flex-col items-center gap-5">
+            <button class="glass-button min-w-64 justify-center shadow-[0_0_28px_rgba(217,70,239,0.24)]" type="button" @click="acknowledgeApprovalWait()">
+              <Minimize2 class="mr-2 h-4 w-4" />
+              Zrozumiałem — minimalizuj
             </button>
-            <button class="ghost-button" type="button" @click="store.signOut()">
-              Tylko wyloguj
-            </button>
+            <div class="flex flex-wrap justify-center gap-x-5 gap-y-2">
+              <button class="px-2 py-1 text-xs text-white/30 transition hover:text-white/55" type="button" @click="store.signOut()">
+                Wyloguj
+              </button>
+              <button class="px-2 py-1 text-xs text-white/25 transition hover:text-rose-200/60" type="button" @click="store.deregisterAndSignOut()">
+                Wyrejestruj urządzenie i wyloguj
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      <MasterLayout v-else-if="store.isMaster" />
+      <MasterDashboard v-else-if="store.isMaster" @open-settings="settingsOpen = true" />
       <SlaveLayout v-else />
     </main>
-    <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked" :open="settingsOpen" @close="settingsOpen = false" />
+    <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked && !isBrowserClient" :open="settingsOpen" @close="settingsOpen = false" />
   </div>
 </template>

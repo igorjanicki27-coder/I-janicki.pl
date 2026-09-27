@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  BarChart3,
+  ChevronRight,
+  ClipboardList,
   CloudCog,
   Cpu,
   HardDrive,
+  KeyRound,
   LaptopMinimalCheck,
   MemoryStick,
+  MessageSquarePlus,
   RefreshCcw,
   Send,
   ShieldAlert,
@@ -18,7 +23,7 @@ import StatusPill from '@/components/StatusPill.vue'
 import { buildConversationTimeline } from '@/services/chat'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
-import type { CompanyChatMessage, DeviceRecord } from '@shared/contracts'
+import type { CompanyChatMessage, DeviceRecord, ServiceRequestPriority, ServiceRequestStatus, UpdateChannel } from '@shared/contracts'
 
 const CHAT_READS_KEY = 'i-janek-master-chat-reads'
 const tabs = ['overview', 'terminal', 'backup', 'inventory'] as const
@@ -111,6 +116,74 @@ const canSendMessageToActiveCompany = computed(() => Boolean(activeCompany.value
 const orderedDevices = computed(() =>
   [...store.devices].sort((left, right) => devicePriorityScore(right) - devicePriorityScore(left) || right.updatedAt - left.updatedAt)
 )
+const selectedRemoteAccess = computed(() => {
+  const deviceId = store.selectedDevice?.deviceId
+  return deviceId ? store.revealedRemoteAccess[deviceId] ?? null : null
+})
+
+function changeSelectedDeviceUpdateChannel(event: Event) {
+  const deviceId = store.selectedDevice?.deviceId
+  if (!deviceId) return
+  const updateChannel = (event.target as HTMLSelectElement).value as UpdateChannel
+  void store.updateDeviceUpdateChannel(deviceId, updateChannel)
+}
+const selectedInventory = computed(() => {
+  const deviceId = store.selectedDevice?.deviceId
+  return deviceId ? store.inventory[deviceId] ?? null : null
+})
+const remoteAccessMessage = ref('')
+const revealingRemoteAccess = ref(false)
+const serviceRequestsOpen = ref(false)
+const serviceRequestError = ref('')
+const serviceRequestCommentDrafts = ref<Record<string, string>>({})
+const serviceRequestCommentBusyId = ref('')
+const usageRangeDays = ref<7 | 30 | 90>(30)
+const orderedServiceRequests = computed(() => [...store.serviceRequests].sort((left, right) => right.createdAt - left.createdAt))
+const resolvedServiceRequestsCount = computed(() => store.serviceRequests.filter((request) => request.status === 'resolved').length)
+const selectedUsageRows = computed(() => {
+  const deviceId = store.selectedDevice?.deviceId
+  return deviceId ? store.usageHistory[deviceId] ?? [] : []
+})
+const usageSummary = computed(() => selectedUsageRows.value.reduce((summary, row) => ({
+  observedSeconds: summary.observedSeconds + row.observedSeconds,
+  cpuObservedSeconds: summary.cpuObservedSeconds + row.cpuObservedSeconds,
+  cpuOver80Seconds: summary.cpuOver80Seconds + row.cpuOver80Seconds,
+  gpuObservedSeconds: summary.gpuObservedSeconds + row.gpuObservedSeconds,
+  gpuOver80Seconds: summary.gpuOver80Seconds + row.gpuOver80Seconds,
+  ramObservedSeconds: summary.ramObservedSeconds + row.ramObservedSeconds,
+  ramOver80Seconds: summary.ramOver80Seconds + row.ramOver80Seconds,
+  diskObservedSeconds: summary.diskObservedSeconds + row.diskObservedSeconds,
+  diskOver80Seconds: summary.diskOver80Seconds + row.diskOver80Seconds,
+  anyOver80Seconds: summary.anyOver80Seconds + row.anyOver80Seconds,
+  restartCount: summary.restartCount + row.restartCount,
+  sampleCount: summary.sampleCount + row.sampleCount
+}), {
+  observedSeconds: 0,
+  cpuObservedSeconds: 0,
+  cpuOver80Seconds: 0,
+  gpuObservedSeconds: 0,
+  gpuOver80Seconds: 0,
+  ramObservedSeconds: 0,
+  ramOver80Seconds: 0,
+  diskObservedSeconds: 0,
+  diskOver80Seconds: 0,
+  anyOver80Seconds: 0,
+  restartCount: 0,
+  sampleCount: 0
+}))
+const overloadDaysCount = computed(() => selectedUsageRows.value.filter((row) => row.anyOver80Seconds > 0).length)
+const dailyUsageTrend = computed(() => selectedUsageRows.value.map((row) => ({
+  dayKey: row.dayKey,
+  ratio: row.observedSeconds ? Math.min(1, row.anyOver80Seconds / row.observedSeconds) : 0,
+  overSeconds: row.anyOver80Seconds,
+  observedSeconds: row.observedSeconds
+})))
+const usageMetrics = computed(() => [
+  { label: 'CPU > 80%', observed: usageSummary.value.cpuObservedSeconds, over: usageSummary.value.cpuOver80Seconds },
+  { label: 'GPU > 80%', observed: usageSummary.value.gpuObservedSeconds, over: usageSummary.value.gpuOver80Seconds },
+  { label: 'RAM > 80%', observed: usageSummary.value.ramObservedSeconds, over: usageSummary.value.ramOver80Seconds },
+  { label: 'Dysk > 80%', observed: usageSummary.value.diskObservedSeconds, over: usageSummary.value.diskOver80Seconds }
+])
 
 watch(
   () => groupedCompanies.value.map((entry) => entry.key).join('|'),
@@ -130,6 +203,22 @@ watch(
     chatReads.value = { ...chatReads.value, [ownerUid]: Date.now() }
     localStorage.setItem(CHAT_READS_KEY, JSON.stringify(chatReads.value))
   }
+)
+
+watch(
+  [activeTab, () => store.selectedDeviceId],
+  ([tab, deviceId]) => {
+    if (tab === 'inventory' && deviceId) void store.loadInventory(deviceId)
+  },
+  { immediate: true }
+)
+
+watch(
+  [() => store.selectedDeviceId, usageRangeDays],
+  ([deviceId, days]) => {
+    if (deviceId) void store.loadUsageHistory(deviceId, days)
+  },
+  { immediate: true }
 )
 
 watch(
@@ -189,6 +278,31 @@ function selectDevice(deviceId: string, ownerUid: string) {
   store.selectedDeviceId = deviceId
   store.selectedConversationOwnerUid = ownerUid
   activeTab.value = 'overview'
+  remoteAccessMessage.value = ''
+}
+
+async function revealRemoteAccess() {
+  const device = store.selectedDevice
+  if (!device || revealingRemoteAccess.value) return
+  revealingRemoteAccess.value = true
+  remoteAccessMessage.value = ''
+  try {
+    await store.revealRemoteAccessCredential(device)
+    remoteAccessMessage.value = 'Dane odszyfrowano tylko na czas tej sesji.'
+  } catch (error) {
+    remoteAccessMessage.value = error instanceof Error ? error.message : 'Nie udało się odszyfrować danych połączenia.'
+  } finally {
+    revealingRemoteAccess.value = false
+  }
+}
+
+async function copyRemoteAccessValue(value: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+    remoteAccessMessage.value = `${label} skopiowano do schowka.`
+  } catch {
+    remoteAccessMessage.value = `Nie udało się skopiować pola: ${label}.`
+  }
 }
 
 function maxDiskUsage() {
@@ -210,6 +324,38 @@ function formatFileSize(sizeBytes: number) {
     idx += 1
   }
   return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`
+}
+
+function formatTrackedDuration(seconds: number) {
+  if (!seconds) return '0 min'
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.round((seconds % 3600) / 60)
+  if (!hours) return `${minutes} min`
+  return `${hours} h ${minutes} min`
+}
+
+function usagePercent(over: number, observed: number) {
+  if (!observed) return 'brak danych'
+  return `${((over / observed) * 100).toFixed(1)}% czasu pomiaru`
+}
+
+function commentsForRequest(requestId: string) {
+  return store.serviceRequestComments.filter((comment) => comment.requestId === requestId)
+}
+
+async function addInternalComment(requestId: string) {
+  const body = serviceRequestCommentDrafts.value[requestId]?.trim() ?? ''
+  if (!body || serviceRequestCommentBusyId.value) return
+  serviceRequestCommentBusyId.value = requestId
+  serviceRequestError.value = ''
+  try {
+    await store.addServiceRequestComment(requestId, body)
+    serviceRequestCommentDrafts.value = { ...serviceRequestCommentDrafts.value, [requestId]: '' }
+  } catch (error) {
+    serviceRequestError.value = error instanceof Error ? error.message : 'Nie udało się dodać komentarza.'
+  } finally {
+    serviceRequestCommentBusyId.value = ''
+  }
 }
 
 function metricClasses(value: number | null | undefined, warning: number, critical: number) {
@@ -257,6 +403,55 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
 
   return 'firma'
 }
+
+function serviceRequestStatusLabel(status: ServiceRequestStatus) {
+  if (status === 'in_progress') return 'W trakcie'
+  if (status === 'resolved') return 'Zakończone'
+  return 'Nowe'
+}
+
+function serviceRequestPriorityLabel(priority: ServiceRequestPriority) {
+  if (priority === 'critical') return 'Krytyczny'
+  if (priority === 'high') return 'Wysoki'
+  if (priority === 'low') return 'Niski'
+  return 'Normalny'
+}
+
+function serviceRequestPriorityClass(priority: ServiceRequestPriority) {
+  if (priority === 'critical') return 'border-rose-400/40 bg-rose-500/15 text-rose-100'
+  if (priority === 'high') return 'border-amber-400/35 bg-amber-500/12 text-amber-100'
+  if (priority === 'low') return 'border-white/10 bg-white/5 text-[var(--text-dim)]'
+  return 'border-cyan-400/30 bg-cyan-500/10 text-cyan-100'
+}
+
+function openServiceRequests() {
+  serviceRequestError.value = ''
+  serviceRequestsOpen.value = true
+}
+
+async function changeServiceRequestStatus(requestId: string, event: Event) {
+  const status = (event.target as HTMLSelectElement).value as ServiceRequestStatus
+  serviceRequestError.value = ''
+  try {
+    await store.updateServiceRequestStatus(requestId, status)
+  } catch (error) {
+    serviceRequestError.value = error instanceof Error ? error.message : 'Nie udało się zmienić statusu zadania.'
+  }
+}
+
+function goToServiceRequestDevice(deviceId: string, ownerUid: string) {
+  if (!store.devices.some((device) => device.deviceId === deviceId)) return
+  selectDevice(deviceId, ownerUid)
+  serviceRequestsOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('i-janek:open-service-requests', openServiceRequests)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('i-janek:open-service-requests', openServiceRequests)
+})
 </script>
 
 <template>
@@ -288,6 +483,8 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <StatusPill :label="store.selectedDevice.approvalStatus" />
               <StatusPill :label="store.selectedDevice.ownerEmail" />
+              <StatusPill v-if="store.selectedDevice.contactName" :label="store.selectedDevice.contactName" />
+              <StatusPill v-if="store.selectedDevice.installationLocation" :label="store.selectedDevice.installationLocation" />
               <StatusPill :label="store.selectedDevice.rustdesk?.installed ? 'RustDesk ready' : 'RustDesk brak'" :tone="store.selectedDevice.rustdesk?.installed ? 'success' : 'warning'" />
             </div>
             <p class="mt-3 text-sm leading-7 text-[var(--text-dim)]">
@@ -298,6 +495,18 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
           </div>
 
           <div class="grid gap-2 sm:grid-cols-2">
+            <label class="sm:col-span-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-[var(--text-dim)]">
+              <span class="mb-2 block uppercase tracking-[0.16em]">Kanał aktualizacji</span>
+              <select
+                class="soft-input !py-2"
+                :value="store.selectedDevice.updateChannel ?? 'stable'"
+                @change="changeSelectedDeviceUpdateChannel"
+              >
+                <option value="test">Test — pierwszy komputer</option>
+                <option value="beta">Beta — wybrana grupa</option>
+                <option value="stable">Stable — produkcja</option>
+              </select>
+            </label>
             <button class="glass-button justify-between" type="button" @click="store.requestRustDeskLaunch()">
               <span>Zdalny pulpit</span>
               <LaptopMinimalCheck class="h-4 w-4" />
@@ -377,6 +586,50 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
               <div class="mt-2 text-2xl font-semibold">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</div>
             </div>
           </div>
+
+          <section class="rounded-[20px] border border-cyan-300/15 bg-black/15 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2 text-sm font-medium text-white"><BarChart3 class="h-4 w-4" /> Historia obciążenia</div>
+                <div class="mt-1 text-xs text-[var(--text-dim)]">
+                  Zarejestrowany czas pracy: <strong class="text-white">{{ formatTrackedDuration(usageSummary.observedSeconds) }}</strong>
+                  · dowolny parametr ponad 80%: <strong class="text-amber-100">{{ formatTrackedDuration(usageSummary.anyOver80Seconds) }}</strong>
+                  · dni z przeciążeniem: <strong class="text-white">{{ overloadDaysCount }}</strong>
+                  · restarty: <strong class="text-white">{{ usageSummary.restartCount }}</strong>
+                </div>
+              </div>
+              <select v-model.number="usageRangeDays" class="soft-input !w-auto !py-2 text-xs">
+                <option :value="7">7 dni</option>
+                <option :value="30">30 dni</option>
+                <option :value="90">90 dni</option>
+              </select>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div v-for="metric in usageMetrics" :key="metric.label" class="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3">
+                <div class="text-xs text-[var(--text-dim)]">{{ metric.label }}</div>
+                <div class="mt-1 text-lg font-semibold text-white">{{ formatTrackedDuration(metric.over) }}</div>
+                <div class="mt-1 text-[11px] text-cyan-100/70">{{ usagePercent(metric.over, metric.observed) }}</div>
+              </div>
+            </div>
+            <div v-if="dailyUsageTrend.length" class="mt-4">
+              <div class="mb-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">Dzienny udział pracy z dowolnym parametrem ponad 80%</div>
+              <div class="flex h-28 min-w-0 items-end gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-black/10 px-3 pb-2 pt-3">
+                <div
+                  v-for="day in dailyUsageTrend"
+                  :key="day.dayKey"
+                  class="group flex h-full min-w-[18px] flex-1 flex-col items-center justify-end"
+                  :title="`${day.dayKey}: ${formatTrackedDuration(day.overSeconds)} z ${formatTrackedDuration(day.observedSeconds)}`"
+                >
+                  <div class="w-full min-w-[10px] rounded-t bg-gradient-to-t from-cyan-500 to-amber-300 transition group-hover:brightness-125" :style="{ height: `${Math.max(3, day.ratio * 100)}%` }" />
+                  <span class="mono mt-1 text-[8px] text-[var(--text-dim)]">{{ day.dayKey.slice(8) }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="store.loadingUsageHistory" class="mt-3 text-xs text-[var(--text-dim)]">Pobieranie historii...</div>
+            <div v-else-if="!selectedUsageRows.length" class="mt-3 text-xs text-[var(--text-dim)]">
+              Dane zaczną się pojawiać po dwóch kolejnych pomiarach telemetrii. Historia jest liczona od wdrożenia tej funkcji.
+            </div>
+          </section>
 
           <div class="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
             <div class="rounded-[20px] border border-white/10 bg-black/15 p-4">
@@ -509,7 +762,62 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
           </div>
         </div>
 
-        <div v-else class="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <div v-else class="mt-4 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4">
+            <div>
+              <div class="text-sm font-medium text-white">Inwentaryzacja Firestore</div>
+              <div class="mt-1 text-xs text-[var(--text-dim)]">Najnowszy raport urządzenia · {{ formatDateTime(selectedInventory?.capturedAt ?? store.selectedDevice.inventoryCapturedAt) }}</div>
+            </div>
+            <button
+              class="ghost-button !rounded-xl !px-3 !py-2 text-xs"
+              type="button"
+              :disabled="store.loadingInventory"
+              @click="store.loadInventory()"
+            >
+              <RefreshCcw class="mr-2 h-4 w-4" :class="store.loadingInventory ? 'animate-spin' : ''" />
+              {{ store.loadingInventory ? 'Pobieranie…' : 'Odśwież raport' }}
+            </button>
+          </div>
+
+          <div v-if="store.loadingInventory && !selectedInventory" class="rounded-[20px] border border-white/10 bg-white/5 p-5 text-sm text-[var(--text-dim)]">
+            Pobieranie raportu inwentaryzacji…
+          </div>
+          <div v-else-if="!selectedInventory" class="rounded-[20px] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-[var(--text-dim)]">
+            Brak raportu. Pojawi się po pierwszym cyklu inwentaryzacji klienta.
+          </div>
+          <div v-else class="grid gap-4 xl:grid-cols-2">
+            <div class="rounded-[20px] border border-white/10 bg-white/5 p-4">
+              <div class="text-sm font-medium text-white">Sprzęt</div>
+              <div class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
+                <div class="flex items-center justify-between gap-3"><span>Producent</span><span class="mono text-right text-white">{{ selectedInventory.hardware.manufacturer ?? '—' }}</span></div>
+                <div class="flex items-center justify-between gap-3"><span>Model</span><span class="mono text-right text-white">{{ selectedInventory.hardware.model ?? '—' }}</span></div>
+                <div class="flex items-center justify-between gap-3"><span>Numer seryjny</span><span class="mono text-right text-white">{{ selectedInventory.hardware.serial ?? '—' }}</span></div>
+                <div class="flex items-center justify-between gap-3"><span>BIOS</span><span class="mono text-right text-white">{{ selectedInventory.hardware.biosVersion ?? '—' }}</span></div>
+                <div class="flex items-center justify-between"><span>Moduły RAM</span><span class="mono text-white">{{ selectedInventory.hardware.ramSlots.length }}</span></div>
+                <div class="flex items-center justify-between"><span>Dyski</span><span class="mono text-white">{{ selectedInventory.hardware.disks.length }}</span></div>
+              </div>
+            </div>
+
+            <div class="rounded-[20px] border border-white/10 bg-white/5 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-sm font-medium text-white">Oprogramowanie i zabezpieczenia</div>
+                <span class="mono text-xs text-cyan-100">{{ selectedInventory.installedApps.length }} aplikacji</span>
+              </div>
+              <div class="mt-4 max-h-48 space-y-2 overflow-auto pr-1 text-sm [scrollbar-width:thin]">
+                <div v-for="appEntry in selectedInventory.installedApps.slice(0, 40)" :key="`${appEntry.name}:${appEntry.version ?? ''}`" class="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
+                  <span class="truncate text-white">{{ appEntry.name }}</span>
+                  <span class="mono shrink-0 text-xs text-[var(--text-dim)]">{{ appEntry.version ?? '—' }}</span>
+                </div>
+                <div v-if="!selectedInventory.installedApps.length" class="text-[var(--text-dim)]">Brak wykrytych aplikacji.</div>
+              </div>
+              <div class="mt-4 grid gap-2 text-xs text-[var(--text-dim)] sm:grid-cols-2">
+                <div class="rounded-xl border border-white/10 px-3 py-2">Aktualizacje systemu: <span class="mono text-white">{{ selectedInventory.windowsUpdates.length }}</span></div>
+                <div class="rounded-xl border border-white/10 px-3 py-2">Pola Defendera: <span class="mono text-white">{{ Object.keys(selectedInventory.defender).length }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <div class="rounded-[20px] border border-white/10 bg-white/5 p-4">
             <div class="text-sm font-medium text-white">Sprzęt i system</div>
             <div class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
@@ -526,12 +834,47 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
             <div class="text-sm font-medium text-white">Podsumowanie</div>
             <div class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
               <div class="flex items-center justify-between"><span>Właściciel</span><span class="mono text-white">{{ store.selectedDevice.ownerEmail }}</span></div>
-              <div class="flex items-center justify-between"><span>RustDesk</span><span class="mono text-white">{{ store.selectedDevice.rustdesk?.installed ? 'gotowy' : 'brak' }}</span></div>
-              <div class="flex items-center justify-between"><span>ID RustDesk</span><span class="mono max-w-[220px] truncate text-white">{{ store.selectedDevice.rustdesk?.accessIdentity ?? 'brak' }}</span></div>
-              <div class="flex items-center justify-between"><span>Kod serwisowy</span><span class="mono text-white">{{ store.selectedDevice.rustdesk?.accessCode ?? 'widoczny lokalnie u użytkownika' }}</span></div>
+              <div class="flex items-center justify-between"><span>RustDesk</span><span class="mono text-white">{{ store.selectedDevice.rustdesk?.unattendedReady ? 'dostęp bezobsługowy gotowy' : store.selectedDevice.rustdesk?.installed ? 'wymaga konfiguracji' : 'brak' }}</span></div>
+              <div class="flex items-center justify-between gap-3">
+                <span>ID RustDesk</span>
+                <button
+                  v-if="selectedRemoteAccess"
+                  class="mono max-w-[220px] truncate text-cyan-100 hover:text-white"
+                  type="button"
+                  title="Skopiuj ID RustDesk"
+                  @click="copyRemoteAccessValue(selectedRemoteAccess.rustdeskId, 'ID RustDesk')"
+                >
+                  {{ selectedRemoteAccess.rustdeskId }}
+                </button>
+                <span v-else class="mono text-white/60">zaszyfrowane</span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span>Hasło połączenia</span>
+                <button
+                  v-if="selectedRemoteAccess"
+                  class="mono max-w-[220px] truncate text-cyan-100 hover:text-white"
+                  type="button"
+                  title="Skopiuj hasło RustDesk"
+                  @click="copyRemoteAccessValue(selectedRemoteAccess.password, 'Hasło RustDesk')"
+                >
+                  {{ selectedRemoteAccess.password }}
+                </button>
+                <span v-else class="mono text-white/60">zaszyfrowane</span>
+              </div>
+              <button
+                class="ghost-button w-full !rounded-xl !px-3 !py-2 text-xs"
+                type="button"
+                :disabled="revealingRemoteAccess || !store.selectedDevice.rustdesk?.encryptedAccess"
+                @click="revealRemoteAccess()"
+              >
+                <KeyRound class="mr-2 h-4 w-4" />
+                {{ revealingRemoteAccess ? 'Odszyfrowywanie...' : selectedRemoteAccess ? 'Odśwież dane połączenia' : 'Pokaż dane połączenia' }}
+              </button>
+              <p v-if="remoteAccessMessage" class="text-xs leading-5 text-cyan-100">{{ remoteAccessMessage }}</p>
               <div class="flex items-center justify-between"><span>Backup</span><span class="mono text-white">{{ formatDateTime(store.selectedDevice.backupSnapshot?.scannedAt) }}</span></div>
               <div class="flex items-center justify-between"><span>Uptime</span><span class="mono text-white">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</span></div>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -638,5 +981,115 @@ function getMessageDeviceLabel(message: CompanyChatMessage) {
         </div>
       </div>
     </section>
+
+    <div
+      v-if="serviceRequestsOpen"
+      class="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 px-4 py-6"
+      @click.self="serviceRequestsOpen = false"
+    >
+      <div class="glass-panel flex max-h-[90vh] w-full max-w-5xl flex-col rounded-[30px] border border-fuchsia-300/25 p-5">
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4">
+          <div>
+            <div class="mono flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-fuchsia-200">
+              <ClipboardList class="h-4 w-4" /> Globalne zadania klientów
+            </div>
+            <h2 class="mt-1 text-xl font-semibold text-white">Zgłoszenia serwisowe — chronologicznie</h2>
+            <p class="mt-1 text-sm text-[var(--text-dim)]">Najnowsze zgłoszenia są na górze. Lista obejmuje wszystkie firmy i urządzenia.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs text-amber-100">Aktywne: {{ store.openServiceRequests.length }}</span>
+            <span class="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100">Zakończone: {{ resolvedServiceRequestsCount }}</span>
+            <button class="ghost-button !rounded-xl !px-3 !py-2 !text-xs" type="button" @click="serviceRequestsOpen = false">Zamknij</button>
+          </div>
+        </div>
+
+        <p v-if="serviceRequestError" class="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+          {{ serviceRequestError }}
+        </p>
+
+        <div class="mt-4 min-h-0 flex-1 space-y-3 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <article
+            v-for="request in orderedServiceRequests"
+            :key="request.id"
+            class="rounded-[22px] border p-4"
+            :class="request.status === 'resolved' ? 'border-white/10 bg-white/[0.025] opacity-75' : 'border-white/15 bg-black/15'"
+          >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.13em]" :class="serviceRequestPriorityClass(request.priority)">
+                    {{ serviceRequestPriorityLabel(request.priority) }}
+                  </span>
+                  <span class="mono text-[11px] text-[var(--text-dim)]">{{ formatDateTime(request.createdAt) }}</span>
+                  <span v-if="request.status === 'resolved' && request.resolvedAt" class="mono text-[11px] text-emerald-200/70">zamknięto {{ formatDateTime(request.resolvedAt) }}</span>
+                </div>
+                <h3 class="mt-2 text-base font-semibold text-white">{{ request.title }}</h3>
+                <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/85">{{ request.description }}</p>
+                <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[var(--text-dim)]">
+                  <span>Firma: <strong class="font-medium text-white">{{ request.companyName }}</strong></span>
+                  <span>Klient: <strong class="font-medium text-white">{{ request.ownerEmail }}</strong></span>
+                  <span>Komputer: <strong class="font-medium text-white">{{ request.deviceLabel }}</strong></span>
+                </div>
+                <div class="mt-4 rounded-2xl border border-fuchsia-300/15 bg-fuchsia-500/[0.045] p-3">
+                  <div class="flex items-center gap-2 text-xs font-medium text-fuchsia-100">
+                    <MessageSquarePlus class="h-4 w-4" /> Komentarze wewnętrzne — tylko Master
+                  </div>
+                  <div v-if="commentsForRequest(request.id).length" class="mt-2 space-y-2">
+                    <div v-for="comment in commentsForRequest(request.id)" :key="comment.id" class="rounded-xl border border-white/10 bg-black/15 px-3 py-2">
+                      <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--text-dim)]">
+                        <span>{{ comment.authorEmail }}</span>
+                        <span class="mono">{{ formatDateTime(comment.createdAt) }}</span>
+                      </div>
+                      <p class="mt-1 whitespace-pre-wrap text-xs leading-5 text-white/85">{{ comment.body }}</p>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex gap-2">
+                    <textarea
+                      v-model="serviceRequestCommentDrafts[request.id]"
+                      class="soft-input min-h-[72px] flex-1 resize-y !py-2 text-xs"
+                      maxlength="2000"
+                      placeholder="Notatka techniczna niewidoczna dla klienta..."
+                    />
+                    <button
+                      class="glass-button self-end !rounded-xl !px-3 !py-2 !text-xs"
+                      type="button"
+                      :disabled="serviceRequestCommentBusyId === request.id || !serviceRequestCommentDrafts[request.id]?.trim()"
+                      @click="addInternalComment(request.id)"
+                    >
+                      Dodaj
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex shrink-0 flex-wrap items-center gap-2 lg:w-[260px] lg:justify-end">
+                <select
+                  class="soft-input !w-auto !min-w-[140px] !py-2 text-sm"
+                  :value="request.status"
+                  :aria-label="`Status: ${serviceRequestStatusLabel(request.status)}`"
+                  @change="changeServiceRequestStatus(request.id, $event)"
+                >
+                  <option value="open">Nowe</option>
+                  <option value="in_progress">W trakcie</option>
+                  <option value="resolved">Zakończone</option>
+                </select>
+                <button
+                  class="ghost-button !rounded-xl !px-3 !py-2 !text-xs"
+                  type="button"
+                  :disabled="!store.devices.some((device) => device.deviceId === request.deviceId)"
+                  @click="goToServiceRequestDevice(request.deviceId, request.ownerUid)"
+                >
+                  Otwórz komputer
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <div v-if="!orderedServiceRequests.length" class="rounded-[24px] border border-dashed border-white/10 p-8 text-center text-sm text-[var(--text-dim)]">
+            Brak zgłoszeń serwisowych. Nowe zadania klientów pojawią się tutaj automatycznie.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

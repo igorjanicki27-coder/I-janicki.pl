@@ -12,24 +12,50 @@ import type {
   DeviceIdentity,
   DeviceRecord,
   InventoryReport,
+  MasterSecurityConfig,
   MetricThreshold,
   MetricThresholds,
   RemoteMasterSettings,
+  RemoteAccessCredential,
+  RemoteAccessPublicKey,
   RemoteActionRequest,
+  RegistrationDetails,
+  ReadinessCheckResult,
   RustDeskState,
+  ServiceRequest,
+  ServiceRequestInternalComment,
+  ServiceRequestPriority,
+  ServiceRequestStatus,
   TerminalCommand,
   TelemetryMode,
   DeviceTelemetry,
+  UsageDailyRollup,
+  UsageRollupDelta,
   ThemeMode
 } from '@shared/contracts'
 import {
   DEFAULT_ALERT_CPU_TEMP,
+  CURRENT_CONSENT_POLICY_VERSION,
   DEFAULT_MASTER_EMAIL,
   DEFAULT_TELEMETRY_INTERVAL_MIN
 } from '@shared/constants'
 import { buildDeviceId } from '@shared/device-id'
 import { createBackendClient, type BackendClient } from '@/services/backend'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
+import {
+  createMasterSecurityConfig,
+  decryptRemoteAccessCredential,
+  encryptRemoteAccessCredential,
+  unlockMasterPrivateKey
+} from '@/services/remote-access-crypto'
+import {
+  countUserFacingOfflineOperations,
+  enqueueOfflineOperation,
+  markOfflineOperationAttempt,
+  readOfflineQueue,
+  removeOfflineOperation,
+  type OfflineOperation
+} from '@/services/offline-queue'
 
 interface MasterSettings {
   thresholds: MetricThresholds
@@ -37,6 +63,7 @@ interface MasterSettings {
   companyOptions: string[]
   aesKey: string
   glassIntensity: number
+  remoteAccessKey?: RemoteAccessPublicKey
 }
 
 interface SlaveSettings {
@@ -60,6 +87,8 @@ interface BackupRestoreResult {
 
 const MASTER_SETTINGS_KEY = 'i-janek-master-settings'
 const SLAVE_SETTINGS_KEY = 'i-janek-slave-settings'
+const TELEMETRY_SAMPLE_KEY = 'i-janek-last-telemetry-sample-v1'
+const USAGE_ROLLUP_FLUSH_INTERVAL_MS = 60 * 60 * 1000
 const DEFAULT_REMOTE_RESTART_REMINDER_MIN = 30
 const FIXED_GLASS_INTENSITY = 70
 const SUPPORTED_BACKUP_FOLDERS: Array<'Desktop' | 'Documents'> = ['Desktop', 'Documents']
@@ -97,11 +126,13 @@ function createDefaultThresholds(): MetricThresholds {
 }
 
 function toRemoteMasterSettings(settings: MasterSettings): RemoteMasterSettings {
-  return {
+  const remote: RemoteMasterSettings = {
     thresholds: settings.thresholds,
     telemetryMode: settings.telemetryMode,
     companyOptions: settings.companyOptions
   }
+  if (settings.remoteAccessKey) remote.remoteAccessKey = settings.remoteAccessKey
+  return remote
 }
 
 function normalizeCompanyOptions(options: string[] | null | undefined) {
@@ -130,6 +161,35 @@ function normalizeSlaveSettings(settings: Partial<SlaveSettings>): SlaveSettings
   }
 }
 
+function friendlyAuthError(error: unknown, fallback: string) {
+  const code = typeof error === 'object' && error && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : ''
+
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Nieprawidłowy adres e-mail lub hasło.'
+    case 'auth/invalid-email':
+      return 'Adres e-mail ma nieprawidłowy format.'
+    case 'auth/email-already-in-use':
+      return 'Konto z tym adresem e-mail już istnieje. Zaloguj się albo użyj opcji „Nie pamiętam hasła”.'
+    case 'auth/weak-password':
+      return 'Hasło jest za krótkie. Użyj co najmniej 6 znaków.'
+    case 'auth/too-many-requests':
+      return 'Wykonano zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.'
+    case 'auth/network-request-failed':
+      return 'Nie udało się połączyć z serwerem logowania. Sprawdź internet i spróbuj ponownie.'
+    case 'auth/popup-closed-by-user':
+      return 'Okno logowania zostało zamknięte przed zakończeniem.'
+    case 'auth/operation-not-allowed':
+      return 'Ta metoda logowania nie jest obecnie dostępna. Skontaktuj się z administratorem.'
+    default:
+      return error instanceof Error && !/^Firebase:\s*Error/i.test(error.message) ? error.message : fallback
+  }
+}
+
 function toDeviceIdentity(baseContext: NonNullable<Awaited<ReturnType<typeof window.janek.system.getContext>>>, deviceId: string): DeviceIdentity {
   return {
     deviceId,
@@ -151,13 +211,6 @@ function cloneForIpc<T>(value: T): T {
   }
 }
 
-function stripRustDeskSecret(state: RustDeskState): RustDeskState {
-  return {
-    ...state,
-    accessCode: undefined
-  }
-}
-
 export const useAppStore = defineStore('app', () => {
   const ready = ref(false)
   const theme = ref<ThemeMode>('dark')
@@ -166,6 +219,9 @@ export const useAppStore = defineStore('app', () => {
   const user = ref<AppUser | null>(null)
   const devices = ref<DeviceRecord[]>([])
   const alerts = ref<AlertEvent[]>([])
+  const serviceRequests = ref<ServiceRequest[]>([])
+  const serviceRequestComments = ref<ServiceRequestInternalComment[]>([])
+  const usageHistory = ref<Record<string, UsageDailyRollup[]>>({})
   const inventory = ref<Record<string, InventoryReport>>({})
   const companyChats = ref<Record<string, CompanyChatMessage[]>>({})
   const commandHistory = ref<Record<string, TerminalCommand[]>>({})
@@ -173,6 +229,9 @@ export const useAppStore = defineStore('app', () => {
   const backupSyncProgress = ref<Record<string, { totalFiles: number; processedFiles: number; uploadedFiles: number }>>({})
   const backupFiles = ref<Record<string, BackupRemoteFile[]>>({})
   const localRustDeskState = ref<RustDeskState | null>(null)
+  const masterSecurity = ref<MasterSecurityConfig | null>(null)
+  const unlockedMasterPrivateKey = ref<CryptoKey | null>(null)
+  const revealedRemoteAccess = ref<Record<string, RemoteAccessCredential>>({})
   const selectedDeviceId = ref<string>('')
   const selectedConversationOwnerUid = ref<string>('')
   const offline = ref(!navigator.onLine)
@@ -183,16 +242,24 @@ export const useAppStore = defineStore('app', () => {
   const pendingRemoteNotification = ref('')
   const pendingDeviceAlias = ref('')
   const pendingCompanyName = ref('')
+  const pendingInstallationLocation = ref('')
   const signingIn = ref(false)
+  const loadingInventory = ref(false)
+  const loadingUsageHistory = ref(false)
   const loadingBackupFiles = ref(false)
   const restoringBackup = ref(false)
+  const readinessChecks = ref<ReadinessCheckResult[]>([])
+  const readinessRunning = ref(false)
+  const offlineQueueCount = ref(countUserFacingOfflineOperations())
+  const flushingOfflineQueue = ref(false)
   const lastBackupRestore = ref<BackupRestoreResult | null>(null)
   const masterSettings = ref<MasterSettings>({
     thresholds: createDefaultThresholds(),
     telemetryMode: 'standard',
     companyOptions: [...DEFAULT_COMPANY_OPTIONS],
     aesKey: '',
-    glassIntensity: FIXED_GLASS_INTENSITY
+    glassIntensity: FIXED_GLASS_INTENSITY,
+    remoteAccessKey: undefined
   })
   const slaveSettings = ref<SlaveSettings>({
     autostart: true,
@@ -217,7 +284,10 @@ export const useAppStore = defineStore('app', () => {
   const commandHistoryCleanup = new Map<string, () => void>()
   const initializedCompanyChats = new Set<string>()
   const seenAlertIds = new Set<string>()
+  const seenServiceRequestIds = new Set<string>()
   let alertsSnapshotReady = false
+  let serviceRequestsSnapshotReady = false
+  let lastSelfApprovalStatus: ApprovalStatus | null = null
   const telemetryAlertSignatures = new Map<string, string>()
   const workerDeviceId = ref('')
 
@@ -239,7 +309,9 @@ export const useAppStore = defineStore('app', () => {
   })
   const approvalQueue = computed(() => devices.value.filter((device) => device.approvalStatus === 'pending'))
   const criticalAlerts = computed(() => alerts.value.filter((alert) => alert.severity === 'critical'))
+  const openServiceRequests = computed(() => serviceRequests.value.filter((request) => request.status !== 'resolved'))
   const isMaster = computed(() => user.value?.email?.toLowerCase() === (import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL).toLowerCase())
+  const isDesktopAgent = computed(() => systemContext.value?.platform !== 'web')
   const approvalGateStatus = computed<'approved' | 'pending' | 'rejected' | null>(() => {
     if (user.value?.role !== 'slave') return null
     return selfDevice.value?.approvalStatus ?? null
@@ -313,10 +385,12 @@ export const useAppStore = defineStore('app', () => {
   function applyRemoteMasterSettings(remoteSettings: Partial<RemoteMasterSettings> | null) {
     if (!remoteSettings) return
 
+    const previousRemoteAccessKeyId = masterSettings.value.remoteAccessKey?.keyId
     masterSettings.value = {
       ...masterSettings.value,
       ...remoteSettings,
       companyOptions: normalizeCompanyOptions(remoteSettings.companyOptions ?? masterSettings.value.companyOptions),
+      remoteAccessKey: remoteSettings.remoteAccessKey ?? masterSettings.value.remoteAccessKey,
       thresholds: {
         ...createDefaultThresholds(),
         ...masterSettings.value.thresholds,
@@ -362,6 +436,15 @@ export const useAppStore = defineStore('app', () => {
     persistMasterSettings()
     if (!pendingCompanyName.value) {
       pendingCompanyName.value = masterSettings.value.companyOptions[0] ?? ''
+    }
+    const nextRemoteAccessKeyId = masterSettings.value.remoteAccessKey?.keyId
+    if (
+      nextRemoteAccessKeyId &&
+      nextRemoteAccessKeyId !== previousRemoteAccessKeyId &&
+      user.value?.role === 'slave' &&
+      selfDevice.value
+    ) {
+      void refreshRustDeskState().catch(() => undefined)
     }
   }
 
@@ -494,6 +577,7 @@ export const useAppStore = defineStore('app', () => {
     teardownSession()
     devices.value = []
     alerts.value = []
+    serviceRequests.value = []
     inventory.value = {}
     companyChats.value = {}
     commandHistory.value = {}
@@ -501,16 +585,23 @@ export const useAppStore = defineStore('app', () => {
     backupSyncProgress.value = {}
     backupFiles.value = {}
     localRustDeskState.value = null
+    masterSecurity.value = null
+    unlockedMasterPrivateKey.value = null
+    revealedRemoteAccess.value = {}
     selectedDeviceId.value = ''
     selectedConversationOwnerUid.value = ''
     pendingDeviceAlias.value = ''
     pendingCompanyName.value = ''
+    pendingInstallationLocation.value = ''
     workerDeviceId.value = ''
     handledUpdateRequests.clear()
     handledRemoteActionRequests.clear()
     initializedCompanyChats.clear()
     seenAlertIds.clear()
+    seenServiceRequestIds.clear()
     alertsSnapshotReady = false
+    serviceRequestsSnapshotReady = false
+    lastSelfApprovalStatus = null
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
   }
@@ -525,11 +616,15 @@ export const useAppStore = defineStore('app', () => {
           teardownSession()
           devices.value = []
           alerts.value = []
+          serviceRequests.value = []
+          serviceRequestComments.value = []
+          usageHistory.value = {}
           companyChats.value = {}
           localRustDeskState.value = null
           selectedConversationOwnerUid.value = ''
           pendingDeviceAlias.value = ''
           pendingCompanyName.value = ''
+          pendingInstallationLocation.value = ''
           return
         }
 
@@ -639,6 +734,9 @@ export const useAppStore = defineStore('app', () => {
     teardownSession()
     devices.value = []
     alerts.value = []
+    serviceRequests.value = []
+    serviceRequestComments.value = []
+    usageHistory.value = {}
     companyChats.value = {}
     commandHistory.value = {}
     selectedDeviceId.value = ''
@@ -648,11 +746,28 @@ export const useAppStore = defineStore('app', () => {
     handledRemoteActionRequests.clear()
     initializedCompanyChats.clear()
     seenAlertIds.clear()
+    seenServiceRequestIds.clear()
     alertsSnapshotReady = false
+    serviceRequestsSnapshotReady = false
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
 
-    await backend.value!.ensureUserProfile(nextUser)
+    const profile = await backend.value!.ensureUserProfile(nextUser)
+    nextUser.displayName = profile.displayName
+    nextUser.companyName = profile.companyName
+    nextUser.installationLocation = profile.installationLocation
+    user.value = { ...nextUser }
+    if (!pendingCompanyName.value) pendingCompanyName.value = profile.companyName
+    if (!pendingInstallationLocation.value) pendingInstallationLocation.value = profile.installationLocation
+
+    if (nextUser.role === 'master') {
+      masterSecurity.value = await backend.value!.getMasterSecurity()
+    }
+
+    if (nextUser.role === 'slave' && systemContext.value?.platform === 'web') {
+      lastError.value = ''
+      return
+    }
 
     const masterSettingsCleanup = backend.value!.subscribeRemoteMasterSettings((remoteSettings) => {
       applyRemoteMasterSettings(remoteSettings)
@@ -662,6 +777,7 @@ export const useAppStore = defineStore('app', () => {
     const deviceCleanup = backend.value!.subscribeDevices(nextUser, (nextDevices) => {
       devices.value = nextDevices
       lastSyncAt.value = Date.now()
+      if (!offline.value) void flushOfflineQueue()
       if (!selectedDeviceId.value && nextDevices.length) {
         selectedDeviceId.value = nextDevices[0].deviceId
       }
@@ -678,15 +794,18 @@ export const useAppStore = defineStore('app', () => {
       if (nextUser.role === 'slave' && systemContext.value) {
         const selfDevice = nextDevices.find((entry) => entry.deviceId === systemContext.value?.deviceId)
         if (selfDevice) {
-          if (selfDevice.approvalStatus === 'rejected' && consent.value) {
-            consent.value = null
-            void window.janek.system.setConsent(null)
-            void backend.value?.updateConsent(selfDevice.deviceId, null)
+          const previousApprovalStatus = lastSelfApprovalStatus
+          lastSelfApprovalStatus = selfDevice.approvalStatus
+          if (previousApprovalStatus === 'pending' && selfDevice.approvalStatus === 'approved') {
             void window.janek.system.notify(
-              'i-JANEK',
-              'Twoja prośba o dostęp została odrzucona. Uzupełnij dane i wyślij prośbę ponownie.'
+              'i-JANEK — urządzenie zatwierdzone',
+              'Administrator zaakceptował komputer. Możesz już korzystać z aplikacji.'
             )
-            return
+          } else if (previousApprovalStatus === 'pending' && selfDevice.approvalStatus === 'rejected') {
+            void window.janek.system.notify(
+              'i-JANEK — rejestracja odrzucona',
+              'Administrator odrzucił prośbę. Otwórz aplikację, aby sprawdzić dalsze kroki.'
+            )
           }
           if (!pendingDeviceAlias.value) {
             pendingDeviceAlias.value = selfDevice.deviceAlias ?? selfDevice.hostname
@@ -694,11 +813,12 @@ export const useAppStore = defineStore('app', () => {
           if (!pendingCompanyName.value) {
             pendingCompanyName.value = selfDevice.companyName?.trim() || masterSettings.value.companyOptions[0] || ''
           }
+          void window.janek.system.setUpdateChannel(selfDevice.updateChannel ?? 'stable')
           void window.janek.rustdesk
             .getState(selfDevice.deviceId)
             .then((state) => {
               localRustDeskState.value = state
-              return backend.value?.updateRustDeskState(selfDevice.deviceId, stripRustDeskSecret(state))
+              return prepareAndPublishRustDeskState(selfDevice.deviceId, state)
             })
             .catch(() => undefined)
           void backend.value?.setPresence(selfDevice, nextUser.role, true)
@@ -733,7 +853,37 @@ export const useAppStore = defineStore('app', () => {
     })
     sessionCleanup.add(alertsCleanup)
 
-    if (nextUser.role === 'slave' && systemContext.value) {
+    const serviceRequestsCleanup = backend.value!.subscribeServiceRequests(nextUser, (nextRequests) => {
+      const previousIds = new Set(seenServiceRequestIds)
+      serviceRequests.value = nextRequests
+      lastSyncAt.value = Date.now()
+
+      if (!serviceRequestsSnapshotReady) {
+        nextRequests.forEach((request) => seenServiceRequestIds.add(request.id))
+        serviceRequestsSnapshotReady = true
+        return
+      }
+
+      const newRequests = nextRequests.filter((request) => request.status === 'open' && !previousIds.has(request.id))
+      nextRequests.forEach((request) => seenServiceRequestIds.add(request.id))
+      if (nextUser.role !== 'master' || !isDesktopAgent.value) return
+      for (const request of newRequests) {
+        void window.janek.system.notify(
+          `Nowe zgłoszenie: ${request.companyName}`,
+          `${request.deviceLabel}: ${request.title}`
+        )
+      }
+    })
+    sessionCleanup.add(serviceRequestsCleanup)
+
+    if (nextUser.role === 'master') {
+      const commentsCleanup = backend.value!.subscribeServiceRequestComments((comments) => {
+        serviceRequestComments.value = comments
+      })
+      sessionCleanup.add(commentsCleanup)
+    }
+
+    if (nextUser.role === 'slave' && systemContext.value && consent.value) {
       const ensured = await backend.value!.ensureDeviceRecord(nextUser, systemContext.value, consent.value ?? undefined)
       selectedDeviceId.value = ensured.deviceId
       selectedConversationOwnerUid.value = ensured.ownerUid
@@ -748,6 +898,58 @@ export const useAppStore = defineStore('app', () => {
     syncState.value = offline.value ? 'offline' : 'connected'
     if (!offline.value) {
       lastSyncAt.value = Date.now()
+      void flushOfflineQueue(true)
+    }
+  }
+
+  function queueOfflineOperation(operation: Omit<OfflineOperation, 'id' | 'createdAt' | 'attempts'>) {
+    offlineQueueCount.value = enqueueOfflineOperation(operation)
+    if (operation.kind === 'usage_rollup') return
+    void window.janek.system.logEvent('warning', 'offline_operation_queued', {
+      kind: operation.kind,
+      deviceId: operation.deviceId,
+      queueCount: offlineQueueCount.value
+    })
+  }
+
+  async function flushOfflineQueue(forceUsageRollups = false) {
+    if (flushingOfflineQueue.value || offline.value || !backend.value || !user.value) return
+    flushingOfflineQueue.value = true
+    try {
+      for (const operation of readOfflineQueue()) {
+        if (
+          operation.kind === 'usage_rollup'
+          && !forceUsageRollups
+          && Date.now() - operation.createdAt < USAGE_ROLLUP_FLUSH_INTERVAL_MS
+        ) {
+          continue
+        }
+        const device = devices.value.find((entry) => entry.deviceId === operation.deviceId)
+        if (!device) continue
+        try {
+          if (operation.kind === 'telemetry') {
+            await backend.value.publishTelemetry(device, operation.payload)
+          } else if (operation.kind === 'inventory') {
+            await backend.value.publishInventory(device, operation.payload)
+          } else if (operation.kind === 'service_request') {
+            await backend.value.createServiceRequest(device, operation.payload)
+          } else {
+            await backend.value.recordUsageRollup(device, operation.payload)
+          }
+          offlineQueueCount.value = removeOfflineOperation(operation.id)
+        } catch (error) {
+          offlineQueueCount.value = markOfflineOperationAttempt(operation.id)
+          void window.janek.system.logEvent('warning', 'offline_operation_flush_failed', {
+            kind: operation.kind,
+            deviceId: operation.deviceId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+          break
+        }
+      }
+      if (offlineQueueCount.value === 0) lastSyncAt.value = Date.now()
+    } finally {
+      flushingOfflineQueue.value = false
     }
   }
 
@@ -759,9 +961,51 @@ export const useAppStore = defineStore('app', () => {
       const signedIn = await backend.value!.signInWithGoogle()
       user.value = signedIn
     } catch (error) {
-      lastError.value = error instanceof Error ? error.message : 'Nie udało się zalogować przez Google.'
+      lastError.value = friendlyAuthError(error, 'Nie udało się zalogować przez Google. Spróbuj ponownie.')
     } finally {
       signingIn.value = false
+    }
+  }
+
+  async function signInWithEmail(email: string, password: string) {
+    if (signingIn.value) return
+    try {
+      signingIn.value = true
+      lastError.value = ''
+      user.value = await backend.value!.signInWithEmail(email, password)
+    } catch (error) {
+      lastError.value = friendlyAuthError(error, 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.')
+    } finally {
+      signingIn.value = false
+    }
+  }
+
+  async function registerWithEmail(email: string, password: string, details: RegistrationDetails) {
+    if (signingIn.value) return
+    try {
+      signingIn.value = true
+      lastError.value = ''
+      pendingCompanyName.value = details.companyName.trim()
+      pendingInstallationLocation.value = details.installationLocation?.trim() ?? ''
+      user.value = await backend.value!.registerWithEmail(email, password, details)
+    } catch (error) {
+      lastError.value = friendlyAuthError(error, 'Nie udało się utworzyć konta. Sprawdź dane i spróbuj ponownie.')
+    } finally {
+      signingIn.value = false
+    }
+  }
+
+  async function sendPasswordReset(email: string) {
+    try {
+      lastError.value = ''
+      await backend.value!.sendPasswordReset(email)
+      if (isDesktopAgent.value) {
+        await window.janek.system.notify('i-JANEK', 'Wysłaliśmy wiadomość pozwalającą ustawić nowe hasło.')
+      }
+      return true
+    } catch (error) {
+      lastError.value = friendlyAuthError(error, 'Nie udało się wysłać wiadomości resetującej hasło.')
+      return false
     }
   }
 
@@ -802,7 +1046,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function acceptConsent() {
+  async function acceptConsent(unattendedAccessConsent = false) {
     const companyName = pendingCompanyName.value.trim()
     const aliasName = pendingDeviceAlias.value.trim()
     if (!companyName || !aliasName || aliasName.length < MIN_DEVICE_ALIAS_LENGTH) {
@@ -818,7 +1062,9 @@ export const useAppStore = defineStore('app', () => {
     consent.value = {
       acceptedAt: Date.now(),
       diagnosticsConsent: true,
-      policyVersion: '2026-05-04'
+      remoteCommandConsent: true,
+      unattendedAccessConsent,
+      policyVersion: CURRENT_CONSENT_POLICY_VERSION
     }
     await window.janek.system.setConsent(cloneForIpc(consent.value))
 
@@ -834,6 +1080,11 @@ export const useAppStore = defineStore('app', () => {
         }
 
         const migrated = await backend.value!.migrateDeviceRecord(user.value, currentDevice, requestedIdentity, aliasName, companyName)
+        await backend.value?.updateDeviceRegistrationDetails(migrated.deviceId, {
+          contactName: user.value.displayName,
+          companyName,
+          installationLocation: pendingInstallationLocation.value.trim()
+        })
         await backend.value?.updateApprovalStatus(migrated.deviceId, 'pending', user.value.email)
         await window.janek.system.setRegisteredDeviceId(migrated.deviceId)
         systemContext.value = { ...systemContext.value, deviceId: migrated.deviceId }
@@ -858,7 +1109,11 @@ export const useAppStore = defineStore('app', () => {
 
       const ensured = await backend.value!.ensureDeviceRecord(user.value, requestedIdentity, consent.value)
       await backend.value?.updateDeviceAlias(requestedDeviceId, aliasName)
-      await backend.value?.updateDeviceCompanyName(requestedDeviceId, companyName)
+      await backend.value?.updateDeviceRegistrationDetails(requestedDeviceId, {
+        contactName: user.value.displayName,
+        companyName,
+        installationLocation: pendingInstallationLocation.value.trim()
+      })
       await backend.value?.updateApprovalStatus(ensured.deviceId, 'pending', user.value.email)
       await window.janek.system.setRegisteredDeviceId(requestedDeviceId)
       systemContext.value = { ...systemContext.value, deviceId: requestedDeviceId }
@@ -902,11 +1157,78 @@ export const useAppStore = defineStore('app', () => {
     pendingChatMessage.value = ''
   }
 
+  async function createServiceRequest(
+    title: string,
+    description: string,
+    priority: ServiceRequestPriority
+  ) {
+    const device = selfDevice.value ?? selectedDevice.value
+    if (!device || user.value?.role !== 'slave') {
+      throw new Error('Nie znaleziono urządzenia przypisanego do zgłoszenia.')
+    }
+    const normalizedTitle = title.trim()
+    const normalizedDescription = description.trim()
+    if (normalizedTitle.length < 3 || normalizedDescription.length < 5) {
+      throw new Error('Uzupełnij temat i opis zgłoszenia.')
+    }
+    const payload = {
+      title: normalizedTitle,
+      description: normalizedDescription,
+      priority
+    }
+    if (offline.value) {
+      queueOfflineOperation({ kind: 'service_request', deviceId: device.deviceId, payload })
+      return 'queued' as const
+    }
+    try {
+      await backend.value!.createServiceRequest(device, payload)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!navigator.onLine || /network|offline|unavailable|timeout/i.test(message)) {
+        queueOfflineOperation({ kind: 'service_request', deviceId: device.deviceId, payload })
+        return 'queued' as const
+      }
+      throw error
+    }
+    return 'sent' as const
+  }
+
+  async function updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
+    if (!isMaster.value) throw new Error('Tylko Master może zmieniać status zgłoszenia.')
+    await backend.value!.updateServiceRequestStatus(requestId, status)
+  }
+
+  async function addServiceRequestComment(requestId: string, body: string) {
+    if (!isMaster.value || !user.value) throw new Error('Komentarze wewnętrzne są dostępne tylko dla Mastera.')
+    const normalizedBody = body.trim()
+    if (!normalizedBody) return
+    if (normalizedBody.length > 2000) throw new Error('Komentarz może mieć maksymalnie 2000 znaków.')
+    await backend.value!.addServiceRequestComment(requestId, normalizedBody, user.value)
+  }
+
+  async function loadUsageHistory(deviceId = selectedDeviceId.value, days = 30) {
+    if (!deviceId || !backend.value || !isMaster.value) return []
+    loadingUsageHistory.value = true
+    try {
+      const fromDate = new Date()
+      fromDate.setUTCDate(fromDate.getUTCDate() - Math.max(1, days - 1))
+      const fromDayKey = fromDate.toISOString().slice(0, 10)
+      const rows = await backend.value.getUsageRollups(deviceId, fromDayKey)
+      usageHistory.value = { ...usageHistory.value, [deviceId]: rows }
+      return rows
+    } catch (error) {
+      lastError.value = error instanceof Error ? error.message : 'Nie udało się pobrać historii obciążenia.'
+      return []
+    } finally {
+      loadingUsageHistory.value = false
+    }
+  }
+
   async function queueTerminalCommand() {
     const device = selectedDevice.value
     if (!device || !user.value || !pendingTerminalCommand.value.trim()) return
     await backend.value?.queueCommand(device, {
-      shell: 'powershell',
+      shell: device.platform === 'darwin' ? 'shell' : 'powershell',
       command: pendingTerminalCommand.value.trim(),
       requestedBy: user.value.email
     })
@@ -923,14 +1245,14 @@ export const useAppStore = defineStore('app', () => {
     if (user.value?.role !== 'slave' || !selfDevice.value) return
     const state = await window.janek.rustdesk.getState(selfDevice.value.deviceId)
     localRustDeskState.value = state
-    await backend.value?.updateRustDeskState(selfDevice.value.deviceId, stripRustDeskSecret(state))
+    await prepareAndPublishRustDeskState(selfDevice.value.deviceId, state)
   }
 
   async function rotateRustDeskPasswordManually() {
     if (user.value?.role !== 'slave' || !selfDevice.value) return
     const state = await window.janek.rustdesk.rotatePassword('manual')
     localRustDeskState.value = state
-    await backend.value?.updateRustDeskState(selfDevice.value.deviceId, stripRustDeskSecret(state))
+    await prepareAndPublishRustDeskState(selfDevice.value.deviceId, state)
     await window.janek.system.notify('i-JANEK', 'Hasło RustDesk zostało obrócone.')
   }
 
@@ -997,6 +1319,52 @@ export const useAppStore = defineStore('app', () => {
     if (!trimmed) return
     await window.janek.system.setMasterAesKey(trimmed)
     await updateMasterSettings({ aesKey: trimmed })
+  }
+
+  async function setupRemoteAccessSecurity(passphrase: string) {
+    if (!user.value || user.value.role !== 'master') return
+    const { config, privateKey } = await createMasterSecurityConfig(passphrase)
+    await backend.value!.saveMasterSecurity(config)
+    masterSecurity.value = config
+    unlockedMasterPrivateKey.value = privateKey
+    revealedRemoteAccess.value = {}
+    await updateMasterSettings({ remoteAccessKey: config.publicKey })
+  }
+
+  async function unlockRemoteAccessSecurity(passphrase: string) {
+    if (!masterSecurity.value) throw new Error('Najpierw skonfiguruj klucz zdalnego dostępu.')
+    unlockedMasterPrivateKey.value = await unlockMasterPrivateKey(masterSecurity.value, passphrase)
+  }
+
+  async function revealRemoteAccessCredential(device: DeviceRecord) {
+    const encrypted = device.rustdesk?.encryptedAccess
+    if (!encrypted) throw new Error('Urządzenie nie przesłało jeszcze zaszyfrowanych danych RustDesk.')
+    if (!unlockedMasterPrivateKey.value) throw new Error('Odblokuj klucz zdalnego dostępu w ustawieniach Mastera.')
+    if (masterSecurity.value?.publicKey.keyId !== encrypted.keyId) {
+      throw new Error('Dane urządzenia są zaszyfrowane starszym kluczem. Odśwież RustDesk na urządzeniu klienta.')
+    }
+    const credential = await decryptRemoteAccessCredential(unlockedMasterPrivateKey.value, encrypted.ciphertext)
+    revealedRemoteAccess.value = { ...revealedRemoteAccess.value, [device.deviceId]: credential }
+    return credential
+  }
+
+  async function prepareAndPublishRustDeskState(deviceId: string, state: RustDeskState) {
+    let encryptedAccess = state.encryptedAccess
+    const publicKey = masterSettings.value.remoteAccessKey
+    if (publicKey && state.accessIdentity && state.accessCode) {
+      encryptedAccess = await encryptRemoteAccessCredential(publicKey, {
+        deviceId,
+        rustdeskId: state.accessIdentity,
+        password: state.accessCode,
+        issuedAt: Date.now()
+      })
+    }
+    await backend.value?.updateRustDeskState(deviceId, {
+      ...state,
+      accessCode: undefined,
+      accessIdentity: undefined,
+      encryptedAccess
+    })
   }
 
   async function applySlaveBackupSettings() {
@@ -1105,6 +1473,11 @@ export const useAppStore = defineStore('app', () => {
     const previousDeviceId = selfDevice.value.deviceId
     const nextIdentity = toDeviceIdentity(systemContext.value, nextDeviceId)
     const migrated = await backend.value!.migrateDeviceRecord(user.value, selfDevice.value, nextIdentity, alias, companyName)
+    await backend.value?.updateDeviceRegistrationDetails(migrated.deviceId, {
+      contactName: user.value.displayName,
+      companyName,
+      installationLocation: pendingInstallationLocation.value.trim()
+    })
     await backend.value?.updateApprovalStatus(migrated.deviceId, 'pending', user.value.email)
     await window.janek.system.setRegisteredDeviceId(migrated.deviceId)
     systemContext.value = { ...systemContext.value, deviceId: migrated.deviceId }
@@ -1126,6 +1499,18 @@ export const useAppStore = defineStore('app', () => {
     persistSlaveSettings()
   }
 
+  async function updateUnattendedAccessConsent(enabled: boolean) {
+    if (!consent.value || user.value?.role !== 'slave') return
+    consent.value = {
+      ...consent.value,
+      unattendedAccessConsent: enabled
+    }
+    await window.janek.system.setConsent(cloneForIpc(consent.value))
+    if (selfDevice.value) {
+      await backend.value?.updateConsent(selfDevice.value.deviceId, consent.value)
+    }
+  }
+
   async function toggleAutostart(enabled: boolean) {
     slaveSettings.value.autostart = enabled
     persistSlaveSettings()
@@ -1136,6 +1521,29 @@ export const useAppStore = defineStore('app', () => {
     const device = selectedDevice.value
     if (!device) return
     await runBackupCycle(device)
+  }
+
+  async function loadInventory(deviceId = selectedDeviceId.value) {
+    const device = devices.value.find((entry) => entry.deviceId === deviceId)
+    if (!device || !backend.value) return null
+
+    loadingInventory.value = true
+    try {
+      const report = await backend.value.getInventory(device)
+      if (report) {
+        inventory.value = { ...inventory.value, [device.deviceId]: report }
+      } else {
+        const nextInventory = { ...inventory.value }
+        delete nextInventory[device.deviceId]
+        inventory.value = nextInventory
+      }
+      return report
+    } catch (error) {
+      lastError.value = error instanceof Error ? error.message : 'Nie udało się pobrać raportu inwentaryzacji.'
+      return null
+    } finally {
+      loadingInventory.value = false
+    }
   }
 
   async function removeAlertById(alertId: string) {
@@ -1192,19 +1600,133 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function runReadinessChecks() {
+    if (readinessRunning.value) return
+    readinessRunning.value = true
+    const checks: ReadinessCheckResult[] = []
+    try {
+      checks.push({
+        id: 'runtime',
+        label: 'Środowisko aplikacji',
+        status: systemContext.value ? 'ok' : 'error',
+        message: systemContext.value
+          ? `${systemContext.value.platform}/${systemContext.value.arch}, wersja ${systemContext.value.appVersion}`
+          : 'Brak kontekstu systemowego.'
+      })
+      checks.push({
+        id: 'network',
+        label: 'Połączenie z siecią',
+        status: offline.value ? 'error' : 'ok',
+        message: offline.value ? 'Brak połączenia — dane trafią do kolejki offline.' : 'Urządzenie jest online.'
+      })
+      checks.push({
+        id: 'firebase-session',
+        label: 'Sesja Firebase',
+        status: user.value ? 'ok' : 'error',
+        message: user.value ? `Zalogowano jako ${user.value.role}.` : 'Użytkownik nie jest zalogowany.'
+      })
+      if (user.value && backend.value && !offline.value) {
+        try {
+          await backend.value.healthCheck()
+          checks.push({ id: 'firestore', label: 'Dostęp do Firestore', status: 'ok', message: 'Odczyt kontrolny zakończony poprawnie.' })
+        } catch (error) {
+          checks.push({
+            id: 'firestore',
+            label: 'Dostęp do Firestore',
+            status: 'error',
+            message: error instanceof Error ? error.message : String(error)
+          })
+        }
+      } else {
+        checks.push({
+          id: 'firestore',
+          label: 'Dostęp do Firestore',
+          status: 'skipped',
+          message: offline.value ? 'Test odłożony do powrotu sieci.' : 'Zaloguj się, aby wykonać test.'
+        })
+      }
+      checks.push({
+        id: 'device-approval',
+        label: 'Rejestracja urządzenia',
+        status: user.value?.role === 'master' || selfDevice.value?.approvalStatus === 'approved' ? 'ok' : 'warning',
+        message:
+          user.value?.role === 'master'
+            ? 'Konto Master nie wymaga akceptacji urządzenia.'
+            : selfDevice.value
+              ? `Status: ${selfDevice.value.approvalStatus}.`
+              : 'Urządzenie nie jest jeszcze zarejestrowane.'
+      })
+      checks.push({
+        id: 'offline-queue',
+        label: 'Kolejka synchronizacji',
+        status: offlineQueueCount.value ? 'warning' : 'ok',
+        message: offlineQueueCount.value
+          ? `Oczekujące operacje: ${offlineQueueCount.value}.`
+          : 'Brak oczekujących operacji.'
+      })
+
+      if (user.value?.role === 'slave' && isDesktopAgent.value) {
+        try {
+          const state = await window.janek.rustdesk.getState(selfDevice.value?.deviceId)
+          localRustDeskState.value = state
+          checks.push({
+            id: 'rustdesk',
+            label: 'Zdalny dostęp',
+            status: state.installed && state.unattendedReady !== false ? 'ok' : 'warning',
+            message: state.installed
+              ? state.unattendedReady === false
+                ? state.permissionHint || 'RustDesk wymaga dokończenia konfiguracji.'
+                : 'RustDesk jest dostępny.'
+              : 'RustDesk nie został znaleziony.'
+          })
+        } catch (error) {
+          checks.push({ id: 'rustdesk', label: 'Zdalny dostęp', status: 'error', message: String(error) })
+        }
+      } else {
+        checks.push({ id: 'rustdesk', label: 'Zdalny dostęp', status: 'skipped', message: 'Test dotyczy urządzenia klienta.' })
+      }
+
+      if (systemContext.value?.platform === 'web') {
+        checks.push({ id: 'updates', label: 'Aktualizacje', status: 'skipped', message: 'Panel webowy aktualizuje się automatycznie.' })
+      } else {
+        try {
+          const update = await window.janek.system.checkForUpdates(true)
+          checks.push({
+            id: 'updates',
+            label: 'Kanał aktualizacji',
+            status: update.status === 'error' ? 'error' : update.status === 'skipped' ? 'warning' : 'ok',
+            message: update.message
+          })
+        } catch (error) {
+          checks.push({
+            id: 'updates',
+            label: 'Kanał aktualizacji',
+            status: 'error',
+            message: error instanceof Error ? error.message : String(error)
+          })
+        }
+      }
+      readinessChecks.value = checks
+      void window.janek.system.logEvent('info', 'readiness_check_completed', {
+        checks: checks.map(({ id, status }) => ({ id, status }))
+      })
+    } finally {
+      readinessRunning.value = false
+    }
+  }
+
   async function sendDiagnosticsLogs() {
-    const device = selectedDevice.value
-    if (!device || !user.value) return
-    await runInventoryCycle(device)
-    await backend.value?.pushAlert(device, {
-      id: crypto.randomUUID(),
-      deviceId: device.deviceId,
-      type: 'system',
-      title: `${device.hostname}: raport diagnostyczny`,
-      message: `Wyslano reczny raport diagnostyczny przez ${user.value.email}.`,
-      severity: 'info',
-      createdAt: Date.now()
+    if (!readinessChecks.value.length) await runReadinessChecks()
+    const result = await window.janek.system.createDiagnosticBundle({
+      readiness: cloneForIpc(readinessChecks.value),
+      offlineQueueCount: offlineQueueCount.value,
+      signedIn: Boolean(user.value),
+      role: user.value?.role,
+      deviceApproval: approvalGateStatus.value
     })
+    if (result.saved) {
+      await window.janek.system.notify('i-JANEK', 'Bezpieczna paczka diagnostyczna została zapisana.')
+    }
   }
 
   async function requestRemoteNotification() {
@@ -1265,6 +1787,12 @@ export const useAppStore = defineStore('app', () => {
     await window.janek.system.notify('i-JANEK', `Wysłano prośbę o aktualizację dla ${device.deviceAlias ?? device.hostname}.`)
   }
 
+  async function updateDeviceUpdateChannel(deviceId: string, updateChannel: 'test' | 'beta' | 'stable') {
+    if (!user.value || user.value.role !== 'master') return
+    await backend.value?.updateDeviceUpdateChannel(deviceId, updateChannel)
+    await window.janek.system.notify('i-JANEK', `Kanał aktualizacji urządzenia ustawiono na ${updateChannel}.`)
+  }
+
   async function forceUpdateAllClients() {
     if (!user.value || user.value.role !== 'master') return
     let count = 0
@@ -1296,6 +1824,15 @@ export const useAppStore = defineStore('app', () => {
 
     const commandsCleanup = backend.value!.subscribePendingCommands(device, async (commands) => {
       for (const queued of commands) {
+        if (!device.consent?.remoteCommandConsent) {
+          await backend.value?.completeCommand(device, {
+            ...queued,
+            status: 'failed',
+            error: 'Brak zgody właściciela urządzenia na zdalne polecenia.',
+            finishedAt: Date.now()
+          })
+          continue
+        }
         const result = await window.janek.terminal.execute(queued.shell, queued.command, queued.deviceId, queued.requestedBy)
         const completed = { ...queued, ...result, deviceId: device.deviceId }
         const current = commandHistory.value[device.deviceId] ?? []
@@ -1310,7 +1847,25 @@ export const useAppStore = defineStore('app', () => {
     const telemetry = await window.janek.telemetry.collect()
     const evaluation = evaluateTelemetryState(telemetry)
     const normalizedTelemetry = { ...telemetry, state: evaluation.state }
-    await backend.value?.publishTelemetry(device, normalizedTelemetry)
+    const usageDelta = buildUsageRollupDelta(device, normalizedTelemetry)
+    if (usageDelta.observedSeconds > 0) {
+      queueOfflineOperation({ kind: 'usage_rollup', deviceId: device.deviceId, payload: usageDelta })
+    }
+    if (offline.value) {
+      queueOfflineOperation({ kind: 'telemetry', deviceId: device.deviceId, payload: normalizedTelemetry })
+      return
+    }
+    try {
+      await backend.value?.publishTelemetry(device, normalizedTelemetry)
+    } catch (error) {
+      queueOfflineOperation({ kind: 'telemetry', deviceId: device.deviceId, payload: normalizedTelemetry })
+      void window.janek.system.logEvent('warning', 'telemetry_publish_failed', {
+        deviceId: device.deviceId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return
+    }
+    await flushOfflineQueue()
 
     const temperatureCauses = evaluation.criticalCauses.filter((cause) => cause.key === 'cpuTemp' || cause.key === 'gpuTemp')
     const usageCauses = evaluation.criticalCauses.filter((cause) => cause.key !== 'cpuTemp' && cause.key !== 'gpuTemp')
@@ -1364,7 +1919,77 @@ export const useAppStore = defineStore('app', () => {
   async function runInventoryCycle(device: DeviceRecord) {
     const report = await window.janek.telemetry.inventory()
     inventory.value[device.deviceId] = report
-    await backend.value?.publishInventory(device, report)
+    if (offline.value) {
+      queueOfflineOperation({ kind: 'inventory', deviceId: device.deviceId, payload: report })
+      return
+    }
+    try {
+      await backend.value?.publishInventory(device, report)
+    } catch (error) {
+      queueOfflineOperation({ kind: 'inventory', deviceId: device.deviceId, payload: report })
+      void window.janek.system.logEvent('warning', 'inventory_publish_failed', {
+        deviceId: device.deviceId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  function buildUsageRollupDelta(device: DeviceRecord, telemetry: DeviceTelemetry): UsageRollupDelta {
+    const key = `${TELEMETRY_SAMPLE_KEY}:${device.deviceId}`
+    let previous: { capturedAt: number; uptimeSeconds: number } | null = null
+    try {
+      const raw = localStorage.getItem(key)
+      previous = raw ? JSON.parse(raw) as { capturedAt: number; uptimeSeconds: number } : null
+    } catch {
+      previous = null
+    }
+
+    const telemetryMinutes = masterSettings.value.telemetryMode === 'aggressive'
+      ? 10
+      : Number(import.meta.env.VITE_TELEMETRY_INTERVAL_MIN || DEFAULT_TELEMETRY_INTERVAL_MIN)
+    const maximumGapSeconds = Math.max(20 * 60, telemetryMinutes * 90)
+    const wallSeconds = previous ? Math.floor((telemetry.capturedAt - previous.capturedAt) / 1000) : 0
+    const uptimeSeconds = previous ? Math.floor(telemetry.uptimeSeconds - previous.uptimeSeconds) : 0
+    const observedSeconds = previous && wallSeconds > 0 && uptimeSeconds > 0
+      ? Math.max(0, Math.min(wallSeconds, uptimeSeconds, maximumGapSeconds))
+      : 0
+
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        capturedAt: telemetry.capturedAt,
+        uptimeSeconds: telemetry.uptimeSeconds
+      }))
+    } catch {
+      // Brak pamięci lokalnej nie powinien zatrzymywać telemetrii.
+    }
+
+    const cpuAvailable = Number.isFinite(telemetry.cpuUsagePercent)
+    const gpuValue = telemetry.gpu?.usagePercent
+    const gpuAvailable = typeof gpuValue === 'number' && Number.isFinite(gpuValue)
+    const ramAvailable = Number.isFinite(telemetry.memoryUsedPercent)
+    const diskValues = telemetry.disks.map((entry) => entry.usedPercent).filter(Number.isFinite)
+    const diskAvailable = diskValues.length > 0
+    const diskValue = diskAvailable ? Math.max(...diskValues) : null
+    const anyOver80 = telemetry.cpuUsagePercent > 80
+      || (gpuAvailable && gpuValue > 80)
+      || telemetry.memoryUsedPercent > 80
+      || (diskValue !== null && diskValue > 80)
+
+    return {
+      dayKey: new Date(telemetry.capturedAt).toISOString().slice(0, 10),
+      observedSeconds,
+      cpuObservedSeconds: cpuAvailable ? observedSeconds : 0,
+      cpuOver80Seconds: cpuAvailable && telemetry.cpuUsagePercent > 80 ? observedSeconds : 0,
+      gpuObservedSeconds: gpuAvailable ? observedSeconds : 0,
+      gpuOver80Seconds: gpuAvailable && gpuValue > 80 ? observedSeconds : 0,
+      ramObservedSeconds: ramAvailable ? observedSeconds : 0,
+      ramOver80Seconds: ramAvailable && telemetry.memoryUsedPercent > 80 ? observedSeconds : 0,
+      diskObservedSeconds: diskAvailable ? observedSeconds : 0,
+      diskOver80Seconds: diskValue !== null && diskValue > 80 ? observedSeconds : 0,
+      anyOver80Seconds: anyOver80 ? observedSeconds : 0,
+      restartCount: previous && telemetry.uptimeSeconds < previous.uptimeSeconds ? 1 : 0,
+      sampleCount: 1
+    }
   }
 
   async function runBackupCycle(device: DeviceRecord) {
@@ -1441,10 +2066,13 @@ export const useAppStore = defineStore('app', () => {
     }
 
     if (request.type === 'launch_rustdesk') {
-      const decision = await window.janek.system.promptRemoteConnection(
-        'i-JANEK • Prośba o połączenie',
-        `Master (${request.requestedBy}) chce rozpocząć połączenie RustDesk z tym urządzeniem.`
-      )
+      const unattendedAllowed = Boolean(device.consent?.unattendedAccessConsent)
+      const decision = unattendedAllowed
+        ? { accepted: true }
+        : await window.janek.system.promptRemoteConnection(
+            'i-JANEK • Prośba o połączenie',
+            `Master (${request.requestedBy}) chce rozpocząć połączenie RustDesk z tym urządzeniem.`
+          )
 
       if (!decision.accepted) {
         resultMessage = 'Użytkownik odrzucił prośbę o połączenie RustDesk.'
@@ -1452,18 +2080,18 @@ export const useAppStore = defineStore('app', () => {
       } else {
         const state = await window.janek.rustdesk.launch(device.deviceId)
         localRustDeskState.value = state
-        await backend.value?.updateRustDeskState(device.deviceId, stripRustDeskSecret(state))
+        await prepareAndPublishRustDeskState(device.deviceId, state)
         if (state.installed) {
           window.setTimeout(() => {
             void window.janek.rustdesk
               .rotatePassword('post_connection')
               .then(async (rotatedState) => {
                 localRustDeskState.value = rotatedState
-                await backend.value?.updateRustDeskState(device.deviceId, stripRustDeskSecret(rotatedState))
+                await prepareAndPublishRustDeskState(device.deviceId, rotatedState)
               })
               .catch(() => undefined)
           }, 90_000)
-          resultMessage = `${state.sessionHint ?? 'RustDesk został uruchomiony automatycznie po sygnale od Mastera.'} Rotacja hasła zaplanowana po połączeniu.`
+          resultMessage = `${state.sessionHint ?? 'RustDesk został uruchomiony automatycznie po sygnale od Mastera.'} Dostęp wykorzystuje zgodę udzieloną podczas rejestracji urządzenia.`
         } else {
           resultMessage = 'Nie udało się uruchomić RustDesk, ponieważ komponent nie jest zainstalowany.'
           severity = 'warning'
@@ -1503,12 +2131,17 @@ export const useAppStore = defineStore('app', () => {
     user,
     devices,
     alerts,
+    serviceRequests,
+    serviceRequestComments,
+    usageHistory,
     companyChats,
     inventory,
     commandHistory,
     backupSnapshots,
     backupSyncProgress,
     backupFiles,
+    masterSecurity,
+    revealedRemoteAccess,
     selectedDeviceId,
     selectedConversationOwnerUid,
     selectedDevice,
@@ -1519,6 +2152,7 @@ export const useAppStore = defineStore('app', () => {
     needsDeviceAlias,
     approvalQueue,
     criticalAlerts,
+    openServiceRequests,
     offline,
     lastError,
     consent,
@@ -1526,10 +2160,17 @@ export const useAppStore = defineStore('app', () => {
     pendingRemoteNotification,
     pendingDeviceAlias,
     pendingCompanyName,
+    pendingInstallationLocation,
     pendingTerminalCommand,
     signingIn,
+    loadingInventory,
+    loadingUsageHistory,
     loadingBackupFiles,
     restoringBackup,
+    readinessChecks,
+    readinessRunning,
+    offlineQueueCount,
+    flushingOfflineQueue,
     lastBackupRestore,
     masterSettings,
     slaveSettings,
@@ -1537,6 +2178,7 @@ export const useAppStore = defineStore('app', () => {
     lastSyncAt,
     sessionStatus,
     isMaster,
+    isDesktopAgent,
     approvalGateStatus,
     isApprovalBlocked,
     applyTheme,
@@ -1545,31 +2187,46 @@ export const useAppStore = defineStore('app', () => {
     addCompanyOption,
     removeCompanyOption,
     updateMasterAesKey,
+    setupRemoteAccessSecurity,
+    unlockRemoteAccessSecurity,
+    revealRemoteAccessCredential,
     updateSlaveSettings,
+    updateUnattendedAccessConsent,
     toggleAutostart,
     bootstrap,
     signInWithGoogle,
+    signInWithEmail,
+    registerWithEmail,
+    sendPasswordReset,
     signOut,
     deregisterAndSignOut,
     acceptConsent,
     approveDevice,
     sendChatMessage,
+    createServiceRequest,
+    updateServiceRequestStatus,
+    addServiceRequestComment,
+    loadUsageHistory,
     queueTerminalCommand,
     saveBackupPolicy,
     applySlaveBackupSettings,
     removeBackupFolder,
     saveDeviceAlias,
     syncBackupNow,
+    loadInventory,
     removeAlertById,
     previewBackupFiles,
     restoreBackupNow,
     refreshRustDeskState,
     rotateRustDeskPasswordManually,
     sendDiagnosticsLogs,
+    runReadinessChecks,
+    flushOfflineQueue,
     requestRemoteNotification,
     requestRestartPrompt,
     requestRustDeskLaunch,
     requestSelectedDeviceUpdate,
+    updateDeviceUpdateChannel,
     forceUpdateAllClients
   }
 })

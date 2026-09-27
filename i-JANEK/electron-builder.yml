@@ -1,5 +1,6 @@
 appId: pl.i-janicki.desktop
 productName: i-JANEK
+generateUpdatesFilesForAllChannels: true
 directories:
   buildResources: build
 files:
@@ -8,8 +9,10 @@ files:
 extraResources:
   - from: resources/
     to: resources
-  - from: build/iJanekCert.cer
-    to: resources/certs/iJanekCert.cer
+    filter:
+      - '**/*'
+      - '!google-oauth-desktop.local.json'
+      - '!rustdesk-config.local.txt'
   - from: build/icon.png
     to: resources/icon.png
   - from: build/icon.ico
@@ -22,6 +25,10 @@ win:
   icon: build/icon.ico
 mac:
   icon: build/icon.icns
+  target:
+    - dmg
+    - zip
+  artifactName: i-JANEK-${version}-${arch}.${ext}
 publish:
   provider: github
   owner: igorjanicki27-coder
@@ -29,6 +36,9 @@ publish:
   private: false
 nsis:
   oneClick: false
+  runAfterFinish: true
   allowToChangeInstallationDirectory: true
   artifactName: i-JANEK-Setup-${version}.${ext}
   include: build/installer.nsh
+dmg:
+  title: i-JANEK ${version}

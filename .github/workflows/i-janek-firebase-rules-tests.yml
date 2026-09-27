@@ -1,0 +1,47 @@
+name: i-JANEK Firebase rules tests
+
+on:
+  pull_request:
+    paths:
+      - firestore.rules
+      - database.rules.json
+      - firebase.json
+      - i-JANEK/tests/firebase-rules.test.mjs
+      - i-JANEK/package.json
+      - i-JANEK/package-lock.json
+      - .github/workflows/i-janek-firebase-rules-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - database.rules.json
+      - firebase.json
+      - i-JANEK/tests/firebase-rules.test.mjs
+      - i-JANEK/package.json
+      - i-JANEK/package-lock.json
+      - .github/workflows/i-janek-firebase-rules-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    name: Firestore and RTDB security rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: i-JANEK/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install application test dependencies
+        run: npm ci --prefix i-JANEK
+      - name: Test Firebase security rules
+        run: npm run test:rules --prefix i-JANEK

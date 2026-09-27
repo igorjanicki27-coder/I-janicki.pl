@@ -1,0 +1,193 @@
+name: Release i-JANEK
+
+on:
+  push:
+    tags:
+      - 'i-janek-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: i-janek-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Validate release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      channel: ${{ steps.release.outputs.channel }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate tag and select channel
+        id: release
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./i-JANEK/package.json').version")"
+          EXPECTED_TAG="i-janek-v${VERSION}"
+          ACTUAL_TAG="${GITHUB_REF_NAME}"
+          if [[ "$ACTUAL_TAG" != "$EXPECTED_TAG" ]]; then
+            echo "Tag $ACTUAL_TAG does not match package version $VERSION (expected $EXPECTED_TAG)." >&2
+            exit 1
+          fi
+          if [[ "$VERSION" =~ -alpha\.[0-9]+$ ]]; then
+            CHANNEL="test"
+            PRERELEASE="true"
+          elif [[ "$VERSION" =~ -beta\.[0-9]+$ ]]; then
+            CHANNEL="beta"
+            PRERELEASE="true"
+          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            CHANNEL="latest"
+            PRERELEASE="false"
+          else
+            echo "Unsupported version format: $VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+  build-macos:
+    name: Build macOS installer
+    needs: prepare
+    runs-on: macos-latest
+    timeout-minutes: 35
+    env:
+      RELEASE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+      VITE_FIREBASE_API_KEY: ${{ vars.I_JANEK_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.I_JANEK_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.I_JANEK_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.I_JANEK_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.I_JANEK_FIREBASE_APP_ID }}
+      VITE_FIREBASE_DATABASE_URL: ${{ vars.I_JANEK_FIREBASE_DATABASE_URL }}
+      VITE_MASTER_EMAIL: ${{ vars.I_JANEK_MASTER_EMAIL }}
+      CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+    defaults:
+      run:
+        working-directory: i-JANEK
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: i-JANEK/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate public application configuration
+        run: node scripts/validate-release-environment.mjs
+
+      - name: Typecheck and build application
+        run: npm run typecheck && npx electron-vite build
+
+      - name: Build DMG and updater payload
+        run: npx electron-builder --mac dmg zip --universal --publish never "-c.publish.channel=${RELEASE_CHANNEL}"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: i-janek-macos-${{ needs.prepare.outputs.version }}
+          if-no-files-found: error
+          path: |
+            i-JANEK/dist/*.dmg
+            i-JANEK/dist/*.zip
+            i-JANEK/dist/*.blockmap
+            i-JANEK/dist/*-mac.yml
+
+  build-windows:
+    name: Build Windows installer
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      RELEASE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+      VITE_FIREBASE_API_KEY: ${{ vars.I_JANEK_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.I_JANEK_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.I_JANEK_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.I_JANEK_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.I_JANEK_FIREBASE_APP_ID }}
+      VITE_FIREBASE_DATABASE_URL: ${{ vars.I_JANEK_FIREBASE_DATABASE_URL }}
+      VITE_MASTER_EMAIL: ${{ vars.I_JANEK_MASTER_EMAIL }}
+      CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+    defaults:
+      run:
+        working-directory: i-JANEK
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: i-JANEK/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate public application configuration
+        run: node scripts/validate-release-environment.mjs
+
+      - name: Typecheck and build application
+        run: npm run typecheck && npx electron-vite build
+
+      - name: Build NSIS installer and updater payload
+        shell: pwsh
+        run: npx electron-builder --win nsis --x64 --publish never "-c.publish.channel=$env:RELEASE_CHANNEL"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: i-janek-windows-${{ needs.prepare.outputs.version }}
+          if-no-files-found: error
+          path: |
+            i-JANEK/dist/*.exe
+            i-JANEK/dist/*.blockmap
+            i-JANEK/dist/latest.yml
+            i-JANEK/dist/beta.yml
+            i-JANEK/dist/test.yml
+
+  publish:
+    name: Publish GitHub release
+    needs:
+      - prepare
+      - build-macos
+      - build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download installers and updater files
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        shell: bash
+        run: |
+          EXTRA_ARGS=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            EXTRA_ARGS+=(--prerelease)
+          fi
+          gh release create "$TAG" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "i-JANEK $VERSION" \
+            --generate-notes \
+            "${EXTRA_ARGS[@]}"

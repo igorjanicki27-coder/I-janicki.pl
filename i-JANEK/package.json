@@ -10,11 +10,22 @@
     "dev": "electron-vite dev",
     "build": "vue-tsc --noEmit && electron-vite build && electron-builder",
     "build:dir": "vue-tsc --noEmit && electron-vite build && electron-builder --dir",
+    "build:web": "vue-tsc --noEmit && vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts",
     "typecheck": "vue-tsc --noEmit",
+    "test:rules": "npx --yes firebase-tools@15.11.0 emulators:exec --config ../firebase.json --only firestore,database --project demo-i-janicki \"node --test tests/firebase-rules.test.mjs\"",
     "build:prepare-icons": "./scripts/prepare-icons.sh",
     "build:macos:app": "./scripts/build-macos-app.sh",
+    "build:macos:installer": "./scripts/build-macos-installer.sh",
     "build:win:exe:from-macos": "./scripts/build-windows-exe-from-macos.sh",
-    "build:release:from-macos": "./scripts/build-release-macos.sh"
+    "build:installers:from-macos": "./scripts/build-release-macos.sh",
+    "build:release:from-macos": "./scripts/build-release-macos.sh",
+    "release:test": "node scripts/release-channel.mjs test",
+    "release:beta": "node scripts/release-channel.mjs beta",
+    "release:stable": "node scripts/release-channel.mjs stable",
+    "release:test:preview": "node scripts/release-channel.mjs test --dry-run",
+    "release:beta:preview": "node scripts/release-channel.mjs beta --dry-run",
+    "release:stable:preview": "node scripts/release-channel.mjs stable --dry-run"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
@@ -33,6 +44,7 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-vue": "^6.0.6",
