@@ -107,7 +107,7 @@ const relevantDirtyEntries = dirty
   .map((entry) => entry.trimEnd())
   .filter(Boolean)
   .filter((entry) => {
-    const filePath = entry.slice(3).replace(/^"|"$/gu, '')
+    const filePath = entry.replace(/^\s*\S{1,2}\s+/u, '').replace(/^"|"$/gu, '')
     return filePath !== '.DS_Store' && !filePath.endsWith('/.DS_Store')
   })
 if (relevantDirtyEntries.length) {
