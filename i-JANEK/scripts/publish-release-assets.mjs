@@ -72,10 +72,20 @@ function apiRequest({ hostname = 'api.github.com', method = 'GET', path, token, 
   })
 }
 
-function uploadAsset(uploadUrl, filePath, token) {
+function sleep(ms) {
+  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms))
+}
+
+function uploadAssetOnce(uploadUrl, filePath, token) {
   const url = new URL(uploadUrl.replace('{?name,label}', `?name=${encodeURIComponent(basename(filePath))}`))
   const size = statSync(filePath).size
   return new Promise((resolveUpload, rejectUpload) => {
+    let settled = false
+    const finish = (callback, value) => {
+      if (settled) return
+      settled = true
+      callback(value)
+    }
     const req = request({
       hostname: url.hostname,
       method: 'POST',
@@ -94,17 +104,70 @@ function uploadAsset(uploadUrl, filePath, token) {
       response.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8')
         if ((response.statusCode ?? 500) >= 200 && (response.statusCode ?? 500) < 300) {
-          resolveUpload()
+          finish(resolveUpload)
           return
         }
         let message = text
         try { message = JSON.parse(text).message ?? text } catch { /* keep raw response */ }
-        rejectUpload(new Error(`Nie udało się wysłać ${basename(filePath)}: GitHub API ${response.statusCode}: ${message}`))
+        finish(rejectUpload, new Error(`Nie udało się wysłać ${basename(filePath)}: GitHub API ${response.statusCode}: ${message}`))
       })
     })
-    req.on('error', rejectUpload)
-    createReadStream(filePath).pipe(req)
+    const stream = createReadStream(filePath)
+    req.on('error', (error) => {
+      stream.destroy()
+      finish(rejectUpload, error)
+    })
+    stream.on('error', (error) => {
+      req.destroy()
+      finish(rejectUpload, error)
+    })
+    stream.pipe(req)
   })
+}
+
+async function releaseByTag(token) {
+  return apiRequest({
+    path: `/repos/${owner}/${repo}/releases/tags/${tag}`,
+    token
+  })
+}
+
+async function deleteAsset(asset, token) {
+  await apiRequest({
+    method: 'DELETE',
+    path: `/repos/${owner}/${repo}/releases/assets/${asset.id}`,
+    token
+  })
+}
+
+async function uploadAssetWithRetry(release, filePath, token, attempts = 4) {
+  const name = basename(filePath)
+  const size = statSync(filePath).size
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const currentRelease = await releaseByTag(token)
+    const existing = (currentRelease.assets ?? []).find((asset) => asset.name === name)
+    if (existing?.state === 'uploaded' && existing.size === size) {
+      console.log(`[release] Już wysłano ${name}.`)
+      return
+    }
+    if (existing) await deleteAsset(existing, token)
+
+    console.log(`[release] Wysyłam ${name} (próba ${attempt}/${attempts})...`)
+    try {
+      await uploadAssetOnce(release.upload_url, filePath, token)
+      return
+    } catch (error) {
+      const afterFailure = await releaseByTag(token)
+      const completed = (afterFailure.assets ?? []).find(
+        (asset) => asset.name === name && asset.state === 'uploaded' && asset.size === size
+      )
+      if (completed) return
+      if (attempt === attempts) throw error
+      console.warn(`[release] Upload ${name} przerwany: ${error.message}. Ponawiam...`)
+      await sleep(attempt * 2000)
+    }
+  }
 }
 
 const artifacts = [
@@ -126,10 +189,7 @@ if (missing.length) {
 const token = gitCredential()
 let release
 try {
-  release = await apiRequest({
-    path: `/repos/${owner}/${repo}/releases/tags/${tag}`,
-    token
-  })
+  release = await releaseByTag(token)
 } catch (error) {
   if (!String(error).includes('GitHub API 404')) throw error
   release = await apiRequest({
@@ -145,14 +205,8 @@ try {
   })
 }
 
-const existingAssets = new Map((release.assets ?? []).map((asset) => [asset.name, asset]))
 for (const artifact of artifacts) {
-  const existing = existingAssets.get(basename(artifact))
-  if (existing) {
-    await apiRequest({ method: 'DELETE', path: `/repos/${owner}/${repo}/releases/assets/${existing.id}`, token })
-  }
-  console.log(`[release] Wysyłam ${basename(artifact)}...`)
-  await uploadAsset(release.upload_url, artifact, token)
+  await uploadAssetWithRetry(release, artifact, token)
 }
 
 console.log(`[release] Opublikowano: ${release.html_url}`)
