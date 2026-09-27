@@ -102,7 +102,17 @@ const branch = run('git', ['branch', '--show-current'], { capture: true })
 if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)
 
 const dirty = run('git', ['status', '--porcelain'], { capture: true })
-if (dirty) fail('Drzewo robocze zawiera niezapisane zmiany. Najpierw je zatwierdź albo odłóż.')
+const relevantDirtyEntries = dirty
+  .split('\n')
+  .map((entry) => entry.trimEnd())
+  .filter(Boolean)
+  .filter((entry) => {
+    const filePath = entry.slice(3).replace(/^"|"$/gu, '')
+    return filePath !== '.DS_Store' && !filePath.endsWith('/.DS_Store')
+  })
+if (relevantDirtyEntries.length) {
+  fail(`Drzewo robocze zawiera niezapisane zmiany:\n${relevantDirtyEntries.join('\n')}\nNajpierw je zatwierdź albo odłóż.`)
+}
 
 const existingTag = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], {
   cwd: repositoryRoot,
