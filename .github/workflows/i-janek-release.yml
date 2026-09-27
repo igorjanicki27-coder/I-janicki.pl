@@ -1,9 +1,10 @@
 name: Release i-JANEK
 
 on:
-  push:
-    tags:
-      - 'i-janek-v*'
+  # Wydania publikuje lokalny automat `npm run release:*`, ponieważ używa
+  # lokalnego certyfikatu macOS i bezpiecznej konfiguracji aplikacji.
+  # Workflow pozostaje dostępny wyłącznie jako ręczny wariant awaryjny.
+  workflow_dispatch:
 
 permissions:
   contents: write
