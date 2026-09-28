@@ -61,7 +61,7 @@ Ikona builda:
 
 ## Automatyczne wydania test, beta i stable
 
-Na macOS najprościej kliknąć dwukrotnie wykonywalny plik `Nowa wersja` w głównym katalogu i-JANEK. Otworzy się formularz podobny do tego z repozytorium myAriba: numer bazowy, wybór `stable/test/beta`, opis zmian, przycisk podglądu oraz publikacji z widocznym postępem.
+Na macOS najprościej kliknąć dwukrotnie natywną aplikację `Nowa wersja.app` w głównym katalogu i-JANEK. Otworzy się kreator podobny do tego z repozytorium myAriba: numer bazowy, wybór `stable/test/beta`, osobne okno opisu zmian oraz publikacja z widocznym postępem. Aplikacja nie otwiera dodatkowego okna Terminala. Jej kod źródłowy znajduje się w `scripts/release-launcher.m`, a pakiet można ponownie zbudować poleceniem `./scripts/build-release-launcher-macos.sh`.
 
 Wariant terminalowy również pozostaje dostępny. Po jednorazowym skonfigurowaniu repozytorium wydanie uruchamia się lokalnie, bez otwierania GitHuba. Podajesz bazową wersję i opis zmian, a następnie wybierasz z menu `stable`, `test` albo `beta`:
 
