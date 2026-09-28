@@ -13,6 +13,8 @@ const channel = args.find((argument) => !argument.startsWith('--'))
 const dryRun = args.includes('--dry-run')
 const explicitVersionArgument = args.find((argument) => argument.startsWith('--version='))
 const explicitVersion = explicitVersionArgument?.slice('--version='.length)
+const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
+const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
 const semverPattern = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 
 function fail(message) {
@@ -82,7 +84,7 @@ function nextVersion(currentVersion) {
 }
 
 if (!['test', 'beta', 'stable'].includes(channel)) {
-  fail('Użycie: node scripts/release-channel.mjs <test|beta|stable> [--dry-run] [--version=x.y.z[-alpha.N|-beta.N]]')
+  fail('Użycie: node scripts/release-channel.mjs <test|beta|stable> [--dry-run] [--version=x.y.z[-alpha.N|-beta.N]] [--notes="Opis zmian"]')
 }
 
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
@@ -92,6 +94,7 @@ const tag = `i-janek-v${version}`
 console.log(`[release] Kanał: ${channel}`)
 console.log(`[release] Wersja: ${packageJson.version} -> ${version}`)
 console.log(`[release] Tag: ${tag}`)
+if (releaseNotes) console.log(`[release] Opis: ${releaseNotes}`)
 
 if (dryRun) {
   console.log('[release] Podgląd zakończony. Nie zmieniono plików i niczego nie wysłano.')
@@ -124,7 +127,7 @@ run('npm', ['run', 'typecheck'], { cwd: appRoot })
 run('npm', ['version', version, '--no-git-tag-version'], { cwd: appRoot })
 run('git', ['add', 'i-JANEK/package.json', 'i-JANEK/package-lock.json'])
 run('git', ['commit', '-m', `chore(i-janek): release ${version}`])
-run('git', ['tag', '-a', tag, '-m', `i-JANEK ${version}`])
+run('git', ['tag', '-a', tag, '-m', releaseNotes ? `i-JANEK ${version}\n\n${releaseNotes}` : `i-JANEK ${version}`])
 
 const updaterChannel = channel === 'stable' ? 'latest' : channel
 console.log('[release] Buduję lokalnie podpisaną paczkę macOS i paczkę Windows.')
@@ -132,5 +135,7 @@ run('bash', ['scripts/build-public-update-macos.sh', updaterChannel], { cwd: app
 
 console.log('[release] Wysyłam commit i tag do GitHuba.')
 run('git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`])
-run('node', ['scripts/publish-release-assets.mjs', channel], { cwd: appRoot })
+const publishArgs = ['scripts/publish-release-assets.mjs', channel]
+if (releaseNotes) publishArgs.push(`--notes=${releaseNotes}`)
+run('node', publishArgs, { cwd: appRoot })
 console.log(`[release] Gotowe: https://github.com/igorjanicki27-coder/I-janicki.pl/releases/tag/${tag}`)

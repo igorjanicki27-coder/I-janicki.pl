@@ -20,6 +20,7 @@
     "build:win:exe:from-macos": "./scripts/build-windows-exe-from-macos.sh",
     "build:installers:from-macos": "./scripts/build-release-macos.sh",
     "build:release:from-macos": "./scripts/build-release-macos.sh",
+    "release": "./release.sh",
     "release:test": "node scripts/release-channel.mjs test",
     "release:beta": "node scripts/release-channel.mjs beta",
     "release:stable": "node scripts/release-channel.mjs stable",

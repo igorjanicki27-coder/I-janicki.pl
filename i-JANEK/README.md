@@ -61,7 +61,22 @@ Ikona builda:
 
 ## Automatyczne wydania test, beta i stable
 
-Po jednorazowym skonfigurowaniu repozytorium wydanie uruchamia się lokalnie, bez otwierania GitHuba:
+Po jednorazowym skonfigurowaniu repozytorium wydanie uruchamia się lokalnie, bez otwierania GitHuba. Najprostszy wariant działa tak samo jak `release.sh` w repozytorium myAriba: podajesz wersję i opis zmian, a kanał zostanie wybrany na podstawie wersji:
+
+```bash
+# stable
+./release.sh 0.1.2 "Poprawki logowania i aktualizacji"
+
+# beta
+./release.sh 0.2.0-beta.1 "Wersja beta nowego panelu"
+
+# test bez wprowadzania zmian
+./release.sh 0.2.0-alpha.1 "Wersja testowa" --dry-run
+```
+
+Ten sam skrypt można uruchomić przez npm: `npm run release -- 0.1.2 "Opis zmian"`.
+
+Jeżeli wersja ma być wyliczona automatycznie, nadal można użyć komend kanałowych:
 
 ```bash
 # tylko pokaż następną wersję — bez zmian i bez publikacji

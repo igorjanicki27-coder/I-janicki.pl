@@ -10,7 +10,10 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(appRoot, '..')
 const packageJson = JSON.parse(readFileSync(resolve(appRoot, 'package.json'), 'utf8'))
 const version = packageJson.version
-const channel = process.argv[2] ?? 'stable'
+const args = process.argv.slice(2)
+const channel = args.find((argument) => !argument.startsWith('--')) ?? 'stable'
+const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
+const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
 const channelFile = channel === 'stable' ? 'latest' : channel
 const tag = `i-janek-v${version}`
 const owner = 'igorjanicki27-coder'
@@ -199,9 +202,18 @@ try {
     body: {
       tag_name: tag,
       name: `i-JANEK ${version}`,
-      generate_release_notes: true,
+      ...(releaseNotes ? { body: releaseNotes } : { generate_release_notes: true }),
       prerelease: channel !== 'stable'
     }
+  })
+}
+
+if (releaseNotes && release.body !== releaseNotes) {
+  release = await apiRequest({
+    method: 'PATCH',
+    path: `/repos/${owner}/${repo}/releases/${release.id}`,
+    token,
+    body: { body: releaseNotes }
   })
 }
 
