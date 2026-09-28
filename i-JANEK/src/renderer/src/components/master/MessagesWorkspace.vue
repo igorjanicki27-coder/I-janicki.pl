@@ -93,7 +93,7 @@ function messageDeviceLabel(message: CompanyChatMessage) {
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
         <input v-model="searchQuery" class="soft-input !rounded-xl !py-2.5 !pl-9" placeholder="Szukaj firmy..." />
       </label>
-      <div class="mt-3 max-h-[calc(100vh-250px)] space-y-1.5 overflow-y-auto pr-1 scrollbar-glass">
+      <div class="mt-3 space-y-1.5">
         <button
           v-for="conversation in filteredConversations"
           :key="conversation.key"
@@ -116,7 +116,7 @@ function messageDeviceLabel(message: CompanyChatMessage) {
           <h2 class="text-lg font-semibold text-white">{{ activeConversation.companyName }}</h2>
           <p class="mt-1 text-sm text-[var(--text-dim)]">{{ activeConversation.ownerEmail || 'Brak aktywnego klienta' }} · {{ activeConversation.devices.length }} komputerów</p>
         </header>
-        <div class="scrollbar-glass mt-4 max-h-[calc(100vh-350px)] min-h-72 flex-1 space-y-3 overflow-y-auto pr-2">
+        <div class="mt-4 min-h-72 flex-1 space-y-3 pr-2">
           <template v-for="entry in timeline" :key="entry.id">
             <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--text-dim)]"><span class="h-px flex-1 bg-white/10" /><span>{{ entry.label }}</span><span class="h-px flex-1 bg-white/10" /></div>
             <div v-else class="max-w-[82%] rounded-2xl border px-4 py-3 text-sm leading-6" :class="entry.message.senderRole === 'master' ? 'ml-auto border-cyan-400/25 bg-cyan-500/10 text-white' : 'border-white/10 bg-white/[0.04] text-white'">

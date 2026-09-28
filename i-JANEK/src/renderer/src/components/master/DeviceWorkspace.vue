@@ -217,7 +217,7 @@ async function copyRemoteAccessValue(value: string, label: string) {
       </div>
     </header>
 
-    <nav class="flex gap-1 overflow-x-auto border-b border-white/10 px-6 pt-2" aria-label="Szczegóły komputera">
+    <nav class="flex flex-wrap gap-1 border-b border-white/10 px-6 pt-2" aria-label="Szczegóły komputera">
       <button
         v-for="tab in tabs"
         :key="tab"
@@ -231,7 +231,7 @@ async function copyRemoteAccessValue(value: string, label: string) {
       </button>
     </nav>
 
-    <div class="scrollbar-glass max-h-[calc(100vh-315px)] overflow-y-auto p-6">
+    <div class="p-6">
       <div v-if="activeTab === 'overview'" class="space-y-5">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">

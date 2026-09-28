@@ -665,26 +665,41 @@ function formatRotationDate(timestamp?: number) {
                     @change="store.updateUnattendedAccessConsent(($event.target as HTMLInputElement).checked)"
                   />
                 </label>
-                <label class="flex items-center justify-between">
-                  <span>Ciche aktualizacje</span>
-                  <input
-                    :checked="store.slaveSettings.silentUpdates"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ silentUpdates: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
               </div>
-              <button
-                class="glass-button mt-2 w-full justify-center"
-                type="button"
-                :disabled="checkingUpdates"
-                @click="checkForUpdatesNow()"
-              >
-                {{ checkingUpdates ? 'Sprawdzanie...' : 'Sprawdz aktualizacje' }}
-              </button>
             </section>
           </div>
         </template>
+
+        <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold text-white">Aktualizacje aplikacji</div>
+              <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">
+                Wersja {{ store.systemContext?.appVersion ?? '—' }}
+              </p>
+            </div>
+            <label v-if="store.isDesktopAgent" class="flex items-center gap-2 text-xs text-[var(--text-dim)]">
+              <span>Ciche aktualizacje</span>
+              <input
+                :checked="store.slaveSettings.silentUpdates"
+                type="checkbox"
+                @change="store.updateSlaveSettings({ silentUpdates: ($event.target as HTMLInputElement).checked })"
+              />
+            </label>
+          </div>
+          <p class="mt-2 text-xs leading-5 text-[var(--text-dim)]">
+            Jeśli nowa wersja jest dostępna, aplikacja pobierze ją i poprosi o ponowne uruchomienie.
+          </p>
+          <button
+            class="glass-button mt-3 w-full justify-center"
+            type="button"
+            :disabled="checkingUpdates"
+            @click="checkForUpdatesNow()"
+          >
+            <RefreshCw class="mr-2 h-4 w-4" :class="checkingUpdates ? 'animate-spin' : ''" />
+            {{ checkingUpdates ? 'Sprawdzanie...' : 'Sprawdź aktualizacje' }}
+          </button>
+        </section>
 
         <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
           <div class="flex items-start justify-between gap-3">

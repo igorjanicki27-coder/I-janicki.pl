@@ -1314,6 +1314,16 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function updateDeviceCompanyName(deviceId: string, companyName: string) {
+    const normalizedCompanyName = companyName.trim()
+    await backend.value?.updateDeviceCompanyName(deviceId, normalizedCompanyName)
+    devices.value = devices.value.map((device) => (
+      device.deviceId === deviceId
+        ? { ...device, companyName: normalizedCompanyName, updatedAt: Date.now() }
+        : device
+    ))
+  }
+
   async function updateMasterAesKey(nextKey: string) {
     const trimmed = nextKey.trim()
     if (!trimmed) return
@@ -2186,6 +2196,7 @@ export const useAppStore = defineStore('app', () => {
     updateMetricThreshold,
     addCompanyOption,
     removeCompanyOption,
+    updateDeviceCompanyName,
     updateMasterAesKey,
     setupRemoteAccessSecurity,
     unlockRemoteAccessSecurity,
