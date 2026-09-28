@@ -61,7 +61,9 @@ Ikona builda:
 
 ## Automatyczne wydania test, beta i stable
 
-Po jednorazowym skonfigurowaniu repozytorium wydanie uruchamia się lokalnie, bez otwierania GitHuba. Najprostszy wariant działa tak samo jak `release.sh` w repozytorium myAriba: podajesz bazową wersję i opis zmian, a następnie wybierasz z menu `stable`, `test` albo `beta`:
+Na macOS najprościej kliknąć dwukrotnie wykonywalny plik `Nowa wersja` w głównym katalogu i-JANEK. Otworzy się formularz podobny do tego z repozytorium myAriba: numer bazowy, wybór `stable/test/beta`, opis zmian, przycisk podglądu oraz publikacji z widocznym postępem.
+
+Wariant terminalowy również pozostaje dostępny. Po jednorazowym skonfigurowaniu repozytorium wydanie uruchamia się lokalnie, bez otwierania GitHuba. Podajesz bazową wersję i opis zmian, a następnie wybierasz z menu `stable`, `test` albo `beta`:
 
 ```bash
 ./release.sh 0.1.2 "Poprawki logowania i aktualizacji"

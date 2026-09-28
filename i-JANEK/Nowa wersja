@@ -1,0 +1,312 @@
+#!/usr/bin/python3
+
+import json
+import os
+import queue
+import re
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+os.environ.setdefault("TK_SILENCE_DEPRECATION", "1")
+
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+
+    TK_AVAILABLE = True
+except Exception:
+    tk = None
+    messagebox = None
+    TK_AVAILABLE = False
+
+
+ROOT_DIR = Path(__file__).resolve().parent
+PACKAGE_FILE = ROOT_DIR / "package.json"
+RELEASE_SCRIPT = ROOT_DIR / "release.sh"
+BASE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+CHANNEL_CHOICES = {
+    "stable": "1",
+    "test": "2",
+    "beta": "3",
+}
+
+
+def read_current_version() -> str:
+    try:
+        package = json.loads(PACKAGE_FILE.read_text(encoding="utf-8"))
+        version = str(package["version"]).strip()
+    except Exception as exc:
+        raise RuntimeError(f"Nie udało się odczytać package.json: {exc}") from exc
+
+    base_version = version.split("-", 1)[0]
+    if not BASE_VERSION_RE.match(base_version):
+        raise RuntimeError(f"Nieprawidłowa wersja w package.json: {version}")
+    return version
+
+
+def suggest_base_version(current_version: str) -> str:
+    base_version = current_version.split("-", 1)[0]
+    major, minor, patch = (int(part) for part in base_version.split("."))
+    if "-" in current_version:
+        return f"{major}.{minor}.{patch}"
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def terminal_fallback() -> int:
+    current_version = read_current_version()
+    suggested_version = suggest_base_version(current_version)
+    print("Tryb terminalowy — tkinter jest niedostępny.")
+    print(f"Obecna wersja: {current_version}")
+    base_version = input(f"Wersja bazowa [Enter = {suggested_version}]: ").strip() or suggested_version
+    notes = input("Opis zmian: ").strip()
+    if not notes:
+        print("[BŁĄD] Opis zmian nie może być pusty.", file=sys.stderr)
+        return 1
+    return subprocess.call([str(RELEASE_SCRIPT), base_version, notes], cwd=ROOT_DIR)
+
+
+if TK_AVAILABLE:
+    class ReleaseWindow(tk.Tk):
+        def __init__(self):
+            super().__init__()
+            self.title("Nowa wersja i-JANEK")
+            self.geometry("720x610")
+            self.minsize(620, 540)
+            self.current_version = read_current_version()
+            self.output_queue = queue.Queue()
+            self.process = None
+            self.running = False
+
+            self.columnconfigure(0, weight=1)
+            self.rowconfigure(4, weight=1)
+
+            header = tk.Frame(self)
+            header.grid(row=0, column=0, sticky="ew", padx=18, pady=(18, 10))
+            tk.Label(
+                header,
+                text="Publikowanie aktualizacji i-JANEK",
+                font=("TkDefaultFont", 15, "bold"),
+            ).pack(anchor="w")
+            tk.Label(
+                header,
+                text=f"Obecna wersja: {self.current_version}",
+            ).pack(anchor="w", pady=(4, 0))
+
+            version_frame = tk.LabelFrame(self, text="Wersja bazowa")
+            version_frame.grid(row=1, column=0, sticky="ew", padx=18, pady=6)
+            version_frame.columnconfigure(1, weight=1)
+            tk.Label(version_frame, text="Numer:").grid(row=0, column=0, padx=(12, 8), pady=12)
+            self.version_entry = tk.Entry(version_frame)
+            self.version_entry.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=12)
+            self.version_entry.insert(0, suggest_base_version(self.current_version))
+
+            channel_frame = tk.LabelFrame(self, text="Rodzaj wydania")
+            channel_frame.grid(row=2, column=0, sticky="ew", padx=18, pady=6)
+            self.channel = tk.StringVar(value="stable")
+            options = (
+                ("stable", "Stable", "dla wszystkich klientów"),
+                ("test", "Test", "testy wewnętrzne; skrypt doda -alpha.N"),
+                ("beta", "Beta", "dla grupy beta; skrypt doda -beta.N"),
+            )
+            for index, (value, label, description) in enumerate(options):
+                tk.Radiobutton(
+                    channel_frame,
+                    text=f"{label} — {description}",
+                    variable=self.channel,
+                    value=value,
+                ).grid(row=index, column=0, sticky="w", padx=12, pady=(8 if index == 0 else 3, 8 if index == 2 else 3))
+
+            notes_frame = tk.LabelFrame(self, text="Opis zmian widoczny w GitHub Release")
+            notes_frame.grid(row=3, column=0, sticky="nsew", padx=18, pady=6)
+            notes_frame.columnconfigure(0, weight=1)
+            self.notes_text = tk.Text(notes_frame, height=6, wrap="word")
+            self.notes_text.grid(row=0, column=0, sticky="nsew", padx=12, pady=12)
+
+            log_frame = tk.LabelFrame(self, text="Postęp")
+            log_frame.grid(row=4, column=0, sticky="nsew", padx=18, pady=6)
+            log_frame.columnconfigure(0, weight=1)
+            log_frame.rowconfigure(0, weight=1)
+            self.log = tk.Text(log_frame, height=10, wrap="word", state="disabled")
+            self.log.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
+            scrollbar = tk.Scrollbar(log_frame, command=self.log.yview)
+            scrollbar.grid(row=0, column=1, sticky="ns", padx=(0, 12), pady=12)
+            self.log.configure(yscrollcommand=scrollbar.set)
+
+            footer = tk.Frame(self)
+            footer.grid(row=5, column=0, sticky="ew", padx=18, pady=(6, 18))
+            self.status = tk.StringVar(value="Gotowy do przygotowania aktualizacji.")
+            tk.Label(footer, textvariable=self.status).pack(side="left")
+            self.cancel_button = tk.Button(footer, text="Zamknij", width=11, command=self._close)
+            self.cancel_button.pack(side="right", padx=(8, 0))
+            self.publish_button = tk.Button(
+                footer,
+                text="Opublikuj",
+                width=12,
+                command=lambda: self._start_release(False),
+            )
+            self.publish_button.pack(side="right", padx=(8, 0))
+            self.preview_button = tk.Button(
+                footer,
+                text="Tylko sprawdź",
+                width=12,
+                command=lambda: self._start_release(True),
+            )
+            self.preview_button.pack(side="right")
+
+            self.protocol("WM_DELETE_WINDOW", self._close)
+            self.version_entry.focus_set()
+
+        def _append_log(self, text: str):
+            self.log.configure(state="normal")
+            self.log.insert("end", text)
+            self.log.see("end")
+            self.log.configure(state="disabled")
+
+        def _validate_form(self):
+            base_version = self.version_entry.get().strip()
+            notes = self.notes_text.get("1.0", "end").strip()
+            if not BASE_VERSION_RE.match(base_version):
+                messagebox.showerror(
+                    "Błędna wersja",
+                    "Podaj wersję bazową w formacie X.Y.Z, np. 0.2.0.",
+                    parent=self,
+                )
+                return None
+            if not notes:
+                messagebox.showerror("Brak opisu", "Opis zmian nie może być pusty.", parent=self)
+                return None
+            return base_version, notes, self.channel.get()
+
+        def _start_release(self, dry_run: bool):
+            values = self._validate_form()
+            if values is None:
+                return
+            base_version, notes, channel = values
+
+            if not dry_run:
+                confirmed = messagebox.askyesno(
+                    "Potwierdź publikację",
+                    (
+                        f"Wersja bazowa: {base_version}\n"
+                        f"Kanał: {channel}\n\n"
+                        "Skrypt zbuduje instalatory, utworzy commit i tag oraz "
+                        "opublikuje aktualizację na GitHubie. Kontynuować?"
+                    ),
+                    parent=self,
+                )
+                if not confirmed:
+                    return
+
+            self.running = True
+            self.publish_button.configure(state="disabled")
+            self.preview_button.configure(state="disabled")
+            self.cancel_button.configure(text="Trwa publikacja…", state="disabled")
+            self.status.set("Sprawdzanie…" if dry_run else "Publikowanie aktualizacji…")
+            self._append_log("\n" + "=" * 64 + "\n")
+
+            worker = threading.Thread(
+                target=self._run_release,
+                args=(base_version, notes, channel, dry_run),
+                daemon=True,
+            )
+            worker.start()
+            self.after(100, self._poll_output)
+
+        def _run_release(self, base_version: str, notes: str, channel: str, dry_run: bool):
+            args = [str(RELEASE_SCRIPT), base_version, notes]
+            if dry_run:
+                args.append("--dry-run")
+
+            try:
+                self.process = subprocess.Popen(
+                    args,
+                    cwd=ROOT_DIR,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                assert self.process.stdin is not None
+                assert self.process.stdout is not None
+                self.process.stdin.write(CHANNEL_CHOICES[channel] + "\n")
+                self.process.stdin.close()
+                for line in self.process.stdout:
+                    self.output_queue.put(("line", line))
+                return_code = self.process.wait()
+                self.output_queue.put(("done", return_code))
+            except Exception as exc:
+                self.output_queue.put(("error", str(exc)))
+
+        def _poll_output(self):
+            finished = False
+            while True:
+                try:
+                    kind, value = self.output_queue.get_nowait()
+                except queue.Empty:
+                    break
+
+                if kind == "line":
+                    self._append_log(value)
+                elif kind == "done":
+                    finished = True
+                    self._finish(value == 0)
+                elif kind == "error":
+                    finished = True
+                    self._append_log(f"\n[BŁĄD] {value}\n")
+                    self._finish(False)
+
+            if self.running and not finished:
+                self.after(100, self._poll_output)
+
+        def _finish(self, success: bool):
+            self.running = False
+            self.process = None
+            self.publish_button.configure(state="normal")
+            self.preview_button.configure(state="normal")
+            self.cancel_button.configure(text="Zamknij", state="normal")
+            if success:
+                self.status.set("Zakończono pomyślnie.")
+                messagebox.showinfo("Gotowe", "Operacja zakończyła się pomyślnie.", parent=self)
+            else:
+                self.status.set("Operacja zakończyła się błędem.")
+                messagebox.showerror(
+                    "Błąd",
+                    "Nie udało się zakończyć operacji. Szczegóły znajdują się w polu Postęp.",
+                    parent=self,
+                )
+
+        def _close(self):
+            if self.running:
+                messagebox.showwarning(
+                    "Operacja w toku",
+                    "Poczekaj na zakończenie publikacji. Nie zamykaj programu podczas tworzenia wersji.",
+                    parent=self,
+                )
+                return
+            self.destroy()
+
+
+def main() -> int:
+    if not RELEASE_SCRIPT.exists():
+        print(f"[BŁĄD] Brak skryptu: {RELEASE_SCRIPT}", file=sys.stderr)
+        return 1
+    if not TK_AVAILABLE:
+        return terminal_fallback()
+
+    try:
+        app = ReleaseWindow()
+        app.mainloop()
+        return 0
+    except Exception as exc:
+        if messagebox is not None:
+            messagebox.showerror("Błąd", str(exc))
+        else:
+            print(f"[BŁĄD] {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
