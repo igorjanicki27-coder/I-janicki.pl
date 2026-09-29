@@ -138,6 +138,18 @@ function toRole(email: string) {
   return email.toLowerCase() === (import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL).toLowerCase() ? 'master' : 'slave'
 }
 
+function isDeviceOwnedByUser(device: DeviceRecord, user: AppUser) {
+  return device.ownerUid === user.uid
+    || device.ownerEmail.trim().toLowerCase() === user.email.trim().toLowerCase()
+}
+
+function visibleDevicesForUser(devices: DeviceRecord[], user: AppUser) {
+  if (user.role === 'master') {
+    return devices.filter((device) => !isDeviceOwnedByUser(device, user))
+  }
+  return devices.filter((device) => device.ownerUid === user.uid)
+}
+
 function toAppUser(user: User, accessToken?: string): AppUser {
   return {
     uid: user.uid,
@@ -511,8 +523,10 @@ class FirebaseBackend implements BackendClient {
         : query(collection(firestore, 'devices'), where('ownerUid', '==', user.uid))
 
     return onSnapshot(baseQuery, (snapshot) => {
-      const devices = snapshot.docs
-        .map((entry) => entry.data() as DeviceRecord)
+      const devices = visibleDevicesForUser(
+        snapshot.docs.map((entry) => entry.data() as DeviceRecord),
+        user
+      )
         .sort((a, b) => b.updatedAt - a.updatedAt)
       callback(devices, !snapshot.metadata.fromCache)
     })
@@ -1497,7 +1511,7 @@ class MockBackend implements BackendClient {
 
   subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) {
     const wrapped = () => {
-      callback(user.role === 'master' ? this.devices : this.devices.filter((device) => device.ownerUid === user.uid), true)
+      callback(visibleDevicesForUser(this.devices, user), true)
     }
     this.deviceListeners.add(wrapped)
     wrapped()
