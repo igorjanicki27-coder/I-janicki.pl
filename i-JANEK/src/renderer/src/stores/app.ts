@@ -288,6 +288,7 @@ export const useAppStore = defineStore('app', () => {
   let serviceRequestsSnapshotReady = false
   let lastSelfApprovalStatus: ApprovalStatus | null = null
   let pendingNewAccountEmail: string | null = null
+  let deviceRegistrationInFlight = false
   const telemetryAlertSignatures = new Map<string, string>()
   const workerDeviceId = ref('')
 
@@ -602,6 +603,7 @@ export const useAppStore = defineStore('app', () => {
     alertsSnapshotReady = false
     serviceRequestsSnapshotReady = false
     lastSelfApprovalStatus = null
+    deviceRegistrationInFlight = false
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
   }
@@ -749,6 +751,7 @@ export const useAppStore = defineStore('app', () => {
     seenServiceRequestIds.clear()
     alertsSnapshotReady = false
     serviceRequestsSnapshotReady = false
+    deviceRegistrationInFlight = false
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
 
@@ -767,8 +770,8 @@ export const useAppStore = defineStore('app', () => {
         const provisionalDeviceId =
           buildDeviceId(
             profile.companyName || 'KLIENT',
-            `${systemContext.value.hostname}-${nextUser.uid.slice(0, 8)}`
-          ) || `${systemContext.value.hostname}-${nextUser.uid.slice(0, 8)}`
+            `${systemContext.value.hostname}-${systemContext.value.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
+          ) || `${systemContext.value.hostname}-${systemContext.value.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
         consent.value = null
         await window.janek.system.setConsent(null)
         await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
@@ -790,7 +793,7 @@ export const useAppStore = defineStore('app', () => {
     })
     sessionCleanup.add(masterSettingsCleanup)
 
-    const deviceCleanup = backend.value!.subscribeDevices(nextUser, (nextDevices) => {
+    const deviceCleanup = backend.value!.subscribeDevices(nextUser, (nextDevices, isAuthoritative) => {
       devices.value = nextDevices
       lastSyncAt.value = Date.now()
       if (!offline.value) void flushOfflineQueue()
@@ -808,7 +811,45 @@ export const useAppStore = defineStore('app', () => {
         syncCommandHistorySubscriptions(nextDevices)
       }
       if (nextUser.role === 'slave' && systemContext.value) {
-        const selfDevice = nextDevices.find((entry) => entry.deviceId === systemContext.value?.deviceId)
+        let selfDevice = nextDevices.find((entry) => entry.deviceId === systemContext.value?.deviceId)
+        if (!selfDevice) {
+          selfDevice = nextDevices.find((entry) => entry.machineId === systemContext.value?.machineId)
+          if (selfDevice) {
+            systemContext.value = { ...systemContext.value, deviceId: selfDevice.deviceId }
+            void window.janek.system.setRegisteredDeviceId(selfDevice.deviceId)
+          }
+        }
+
+        if (!selfDevice && isAuthoritative && !deviceRegistrationInFlight) {
+          deviceRegistrationInFlight = true
+          const context = systemContext.value
+          const provisionalDeviceId =
+            buildDeviceId(
+              nextUser.companyName || 'KLIENT',
+              `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
+            ) || `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
+          consent.value = null
+          void (async () => {
+            try {
+              await window.janek.system.setConsent(null)
+              await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
+              systemContext.value = { ...context, deviceId: provisionalDeviceId }
+              const ensured = await backend.value!.ensureDeviceRecord(
+                nextUser,
+                toDeviceIdentity(context, provisionalDeviceId)
+              )
+              selectedDeviceId.value = ensured.deviceId
+              selectedConversationOwnerUid.value = ensured.ownerUid
+            } catch (error) {
+              lastError.value = error instanceof Error
+                ? error.message
+                : 'Nie udało się wysłać urządzenia do akceptacji administratora.'
+            } finally {
+              deviceRegistrationInFlight = false
+            }
+          })()
+        }
+
         if (selfDevice) {
           const previousApprovalStatus = lastSelfApprovalStatus
           lastSelfApprovalStatus = selfDevice.approvalStatus
@@ -901,14 +942,6 @@ export const useAppStore = defineStore('app', () => {
       sessionCleanup.add(commentsCleanup)
     }
 
-    if (nextUser.role === 'slave' && systemContext.value) {
-      const ensured = await backend.value!.ensureDeviceRecord(nextUser, systemContext.value, consent.value ?? undefined)
-      selectedDeviceId.value = ensured.deviceId
-      selectedConversationOwnerUid.value = ensured.ownerUid
-      if (!pendingCompanyName.value) {
-        pendingCompanyName.value = ensured.companyName?.trim() || masterSettings.value.companyOptions[0] || ''
-      }
-    }
   }
 
   function handleConnectivityChange() {

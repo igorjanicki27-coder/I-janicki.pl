@@ -83,7 +83,7 @@ export interface BackendClient {
     nextCompanyName: string
   ) => Promise<DeviceRecord>
   deleteDeviceRecord: (deviceId: string) => Promise<void>
-  subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[]) => void) => Unsubscribe
+  subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
   subscribeServiceRequests: (user: AppUser, callback: (requests: ServiceRequest[]) => void) => Unsubscribe
   subscribeServiceRequestComments: (callback: (comments: ServiceRequestInternalComment[]) => void) => Unsubscribe
@@ -514,7 +514,7 @@ class FirebaseBackend implements BackendClient {
       const devices = snapshot.docs
         .map((entry) => entry.data() as DeviceRecord)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-      callback(devices)
+      callback(devices, !snapshot.metadata.fromCache)
     })
   }
 
@@ -1495,9 +1495,9 @@ class MockBackend implements BackendClient {
     this.emitDevices()
   }
 
-  subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[]) => void) {
+  subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) {
     const wrapped = () => {
-      callback(user.role === 'master' ? this.devices : this.devices.filter((device) => device.ownerUid === user.uid))
+      callback(user.role === 'master' ? this.devices : this.devices.filter((device) => device.ownerUid === user.uid), true)
     }
     this.deviceListeners.add(wrapped)
     wrapped()
