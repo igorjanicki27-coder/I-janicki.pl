@@ -136,10 +136,9 @@ function toRemoteMasterSettings(settings: MasterSettings): RemoteMasterSettings 
 }
 
 function normalizeCompanyOptions(options: string[] | null | undefined) {
-  const source = options?.length ? options : DEFAULT_COMPANY_OPTIONS
+  const source = options == null ? DEFAULT_COMPANY_OPTIONS : options
   const cleaned = source.map((entry) => entry.trim()).filter(Boolean)
-  const unique = [...new Set(cleaned)]
-  return unique.length ? unique : [...DEFAULT_COMPANY_OPTIONS]
+  return [...new Set(cleaned)]
 }
 
 function normalizeSlaveSettings(settings: Partial<SlaveSettings>): SlaveSettings {
