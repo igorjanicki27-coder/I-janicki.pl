@@ -92,6 +92,19 @@ if (!['test', 'beta', 'stable'].includes(channel)) {
   fail('Użycie: node scripts/release-channel.mjs <test|beta|stable> [--dry-run] [--version=x.y.z[-alpha.N|-beta.N]] [--notes="Opis zmian"]')
 }
 
+console.log('[release] Sprawdzam poprawność automatu przed rozpoczęciem wydania.')
+for (const script of [
+  'release.sh',
+  'scripts/build-public-update-macos.sh',
+  'scripts/build-windows-exe-from-macos.sh',
+  'scripts/prepare-icons.sh'
+]) {
+  run('bash', ['-n', script], { cwd: appRoot })
+}
+for (const script of ['scripts/release-channel.mjs', 'scripts/publish-release-assets.mjs']) {
+  run(process.execPath, ['--check', script], { cwd: appRoot })
+}
+
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
 const version = nextVersion(packageJson.version)
 const tag = `i-janek-v${version}`
