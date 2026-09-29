@@ -16,16 +16,19 @@ fi
 
 cd "$ROOT_DIR"
 
-echo "[1/5] Typecheck"
+echo "[1/6] Konfiguracja wydania"
+node scripts/validate-release-environment.mjs
+
+echo "[2/6] Typecheck"
 npm run typecheck
 
-echo "[2/5] Ikony"
+echo "[3/6] Ikony"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
-echo "[3/5] Build aplikacji"
+echo "[4/6] Build aplikacji"
 npx electron-vite build
 
-echo "[4/5] Podpisany macOS DMG + ZIP aktualizacyjny"
+echo "[5/6] Podpisany macOS DMG + ZIP aktualizacyjny"
 npx electron-builder \
   --config electron-builder.yml \
   --mac dmg zip \
@@ -35,7 +38,7 @@ npx electron-builder \
 
 codesign --verify --deep --strict "$ROOT_DIR/dist/mac-arm64/i-JANEK.app"
 
-echo "[5/5] Windows NSIS + metadane aktualizacji"
+echo "[6/6] Windows NSIS + metadane aktualizacji"
 WINDOWS_EXTRA_ARGS=()
 if ! command -v wine >/dev/null 2>&1 && ! command -v wine64 >/dev/null 2>&1; then
   WINDOWS_EXTRA_ARGS+=("-c.win.signExecutable=false")

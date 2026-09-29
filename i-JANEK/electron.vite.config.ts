@@ -24,6 +24,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: ['uuid'] })]
   },
   renderer: {
+    envDir: __dirname,
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src/renderer/src'),

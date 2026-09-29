@@ -21,7 +21,10 @@ if ! command -v mono >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "[1/3] Typecheck"
+echo "[1/5] Konfiguracja wydania"
+node scripts/validate-release-environment.mjs
+
+echo "[2/5] Typecheck"
 npm run typecheck
 
 if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
@@ -36,13 +39,13 @@ if [[ ! -f "$ROOT_DIR/resources/rustdesk-config.local.txt" ]]; then
   exit 1
 fi
 
-echo "[2/4] Prepare icons"
+echo "[3/5] Prepare icons"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
-echo "[3/4] Build renderer/main"
+echo "[4/5] Build renderer/main"
 npx electron-vite build
 
-echo "[4/4] Build Windows installer (.exe, NSIS)"
+echo "[5/5] Build Windows installer (.exe, NSIS)"
 CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.private.yml --win nsis --x64 --publish never "${BUILDER_EXTRA_ARGS[@]}"
 
 echo "\n[OK] Gotowe. Szukaj instalatora w katalogu:"
