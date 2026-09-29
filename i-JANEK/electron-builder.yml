@@ -36,6 +36,7 @@ publish:
   private: false
 nsis:
   oneClick: false
+  selectPerMachineByDefault: true
   runAfterFinish: true
   allowToChangeInstallationDirectory: true
   artifactName: i-JANEK-Setup-${version}.${ext}
