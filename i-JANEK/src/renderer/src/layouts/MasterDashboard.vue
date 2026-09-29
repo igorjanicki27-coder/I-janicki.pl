@@ -18,7 +18,6 @@ const deviceDetailOpen = ref(false)
 const detailReturnSection = ref<Section>('devices')
 const searchQuery = ref('')
 const selectedCompanyKey = ref('all')
-const statusFilter = ref<'all' | 'online' | 'attention' | 'offline'>('all')
 const companyDraft = ref('')
 const companyBusy = ref(false)
 const companyMessage = ref('')
@@ -70,15 +69,11 @@ const pageDevices = computed(() => {
   return [...store.devices]
     .filter((device) => {
       const matchesCompany = selectedCompanyKey.value === 'all' || normalizeCompanyKey(companyNameFor(device)) === selectedCompanyKey.value
-      const matchesStatus = statusFilter.value === 'all'
-        || (statusFilter.value === 'online' && isOnline(device))
-        || (statusFilter.value === 'offline' && !isOnline(device))
-        || (statusFilter.value === 'attention' && needsAttention(device))
       const matchesQuery = !query || [formatDeviceLabelForMaster(device), device.hostname, device.ownerEmail, companyNameFor(device), device.installationLocation]
         .filter(Boolean).join(' ').toLocaleLowerCase('pl').includes(query)
-      return matchesCompany && matchesStatus && matchesQuery
+      return matchesCompany && matchesQuery
     })
-    .sort((left, right) => Number(needsAttention(right)) - Number(needsAttention(left)) || Number(isOnline(right)) - Number(isOnline(left)) || formatDeviceLabelForMaster(left).localeCompare(formatDeviceLabelForMaster(right), 'pl'))
+    .sort((left, right) => deviceSortRank(left) - deviceSortRank(right) || formatDeviceLabelForMaster(left).localeCompare(formatDeviceLabelForMaster(right), 'pl'))
 })
 
 const pageMeta = computed(() => {
@@ -114,6 +109,12 @@ function alertCount(device: DeviceRecord) {
 function needsAttention(device: DeviceRecord) {
   return device.approvalStatus === 'pending' || device.telemetry?.state === 'alert' || device.telemetry?.state === 'warning' || alertCount(device) > 0
 }
+function deviceSortRank(device: DeviceRecord) {
+  if (isOnline(device) && needsAttention(device)) return 0
+  if (isOnline(device)) return 1
+  if (needsAttention(device)) return 2
+  return 3
+}
 function organizationOnlineCount(organization: Organization) {
   return organization.devices.filter(isOnline).length
 }
@@ -129,14 +130,12 @@ function navigate(section: Section) {
 function openOrganization(organization: Organization) {
   selectedCompanyKey.value = organization.key
   searchQuery.value = ''
-  statusFilter.value = 'all'
   activeSection.value = 'devices'
   deviceDetailOpen.value = false
 }
-function openDevices(filter: typeof statusFilter.value = 'all') {
+function openDevices() {
   selectedCompanyKey.value = 'all'
   searchQuery.value = ''
-  statusFilter.value = filter
   activeSection.value = 'devices'
   deviceDetailOpen.value = false
 }
@@ -215,13 +214,6 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
           <span v-if="item.badge" class="mono min-w-6 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-center text-[10px]" :class="item.key === 'tasks' && item.badge ? 'text-amber-200' : 'text-[var(--text-dim)]'">{{ item.badge }}</span>
         </button>
       </nav>
-      <div class="my-4 h-px bg-white/10" />
-      <div class="flex items-center justify-between px-2"><span class="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Firmy</span><button class="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-dim)] transition hover:bg-white/5 hover:text-white" type="button" title="Dodaj firmę" @click="navigate('organizations')"><Plus class="h-4 w-4" /></button></div>
-      <div class="mt-2 space-y-1">
-        <button v-for="organization in organizations" :key="organization.key" class="sidebar-company" :class="activeSection === 'devices' && selectedCompanyKey === organization.key && !deviceDetailOpen ? 'sidebar-company-active' : ''" type="button" @click="openOrganization(organization)">
-          <span class="h-2 w-2 shrink-0 rounded-full" :class="organization.devices.length && organizationOnlineCount(organization) ? 'bg-emerald-400' : 'bg-slate-600'" /><span class="min-w-0 flex-1 truncate">{{ organization.name }}</span><span class="mono text-[10px] text-[var(--muted)]">{{ organization.devices.length }}</span>
-        </button>
-      </div>
       <div class="mt-auto space-y-3 pt-4">
         <div class="rounded-xl border border-white/10 bg-white/[0.025] p-3"><div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><span class="h-2 w-2 rounded-full" :class="store.offline ? 'bg-amber-400' : 'bg-emerald-400'" />{{ store.offline ? 'Tryb offline' : 'Synchronizacja aktywna' }}</div><div class="mt-2 truncate text-xs text-white/70">{{ store.user?.email }}</div></div>
         <button class="sidebar-link" type="button" @click="emit('openSettings')"><Settings class="h-[18px] w-[18px]" /> Ustawienia</button>
@@ -243,13 +235,13 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
           <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <button class="summary-card text-left" type="button" @click="openDevices('online')"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ store.devices.length }} komputerów</small></span></button>
-            <button class="summary-card text-left" type="button" @click="openDevices('attention')"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>{{ pendingDevices.length }} oczekuje na akceptację</small></span></button>
+            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ store.devices.length }} komputerów</small></span></button>
+            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>{{ pendingDevices.length }} oczekuje na akceptację</small></span></button>
             <button class="summary-card text-left" type="button" @click="navigate('tasks')"><span class="summary-icon bg-fuchsia-400/10 text-fuchsia-200"><ClipboardList class="h-5 w-5" /></span><span><span class="summary-label">Otwarte zadania</span><strong class="summary-value">{{ store.openServiceRequests.length }}</strong><small>zgłoszenia klientów</small></span></button>
             <button class="summary-card text-left" type="button" @click="navigate('organizations')"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Building2 class="h-5 w-5" /></span><span><span class="summary-label">Firmy</span><strong class="summary-value">{{ organizations.length }}</strong><small>{{ offlineDevices.length }} komputerów offline</small></span></button>
           </section>
           <section>
-            <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices('all')">Wszystkie komputery</button></div>
+            <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
             <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'overview')" @connect="connectToDevice(device)" /></div>
             <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
@@ -267,7 +259,7 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
         </div>
 
         <div v-else-if="activeSection === 'devices'" class="p-5 lg:p-6">
-          <div class="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"><div class="flex flex-wrap gap-2"><button v-for="option in [{ key: 'all', label: 'Wszystkie' }, { key: 'online', label: 'Online' }, { key: 'attention', label: 'Wymagają uwagi' }, { key: 'offline', label: 'Offline' }]" :key="option.key" class="rounded-xl border px-3 py-2 text-sm transition" :class="statusFilter === option.key ? 'border-cyan-300/30 bg-cyan-400/10 text-white' : 'border-white/10 text-[var(--text-dim)] hover:text-white'" type="button" @click="statusFilter = option.key as typeof statusFilter">{{ option.label }}</button></div><label class="relative block w-full xl:max-w-sm"><Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" /><input v-model="searchQuery" class="soft-input !rounded-xl !py-2.5 !pl-9" placeholder="Szukaj komputera..." /></label></div>
+          <div class="mb-5 flex justify-end"><label class="relative block w-full xl:max-w-sm"><Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" /><input v-model="searchQuery" class="soft-input !rounded-xl !py-2.5 !pl-9" placeholder="Szukaj komputera..." /></label></div>
           <div v-if="pageDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in pageDevices" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'devices')" @connect="connectToDevice(device)" /></div>
           <div v-else class="rounded-2xl border border-dashed border-white/10 p-12 text-center"><Monitor class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Brak komputerów</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Ta firma nie ma jeszcze urządzeń albo żaden komputer nie pasuje do filtra.</p></div>
         </div>
