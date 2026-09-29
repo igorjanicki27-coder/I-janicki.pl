@@ -11,8 +11,8 @@ fi
 
 BUILDER_EXTRA_ARGS=()
 if ! command -v wine >/dev/null 2>&1 && ! command -v wine64 >/dev/null 2>&1; then
-  echo "[WARN] Brak Wine. Powstanie poprawny, niepodpisany instalator testowy bez edycji metadanych pliku .exe."
-  BUILDER_EXTRA_ARGS+=("-c.win.signAndEditExecutable=false")
+  echo "[WARN] Brak Wine. Powstanie niepodpisany instalator z poprawną ikoną i metadanymi aplikacji."
+  BUILDER_EXTRA_ARGS+=("-c.win.signExecutable=false")
 fi
 
 if ! command -v mono >/dev/null 2>&1; then

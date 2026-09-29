@@ -38,7 +38,7 @@ codesign --verify --deep --strict "$ROOT_DIR/dist/mac-arm64/i-JANEK.app"
 echo "[5/5] Windows NSIS + metadane aktualizacji"
 WINDOWS_EXTRA_ARGS=()
 if ! command -v wine >/dev/null 2>&1 && ! command -v wine64 >/dev/null 2>&1; then
-  WINDOWS_EXTRA_ARGS+=("-c.win.signAndEditExecutable=false")
+  WINDOWS_EXTRA_ARGS+=("-c.win.signExecutable=false")
 fi
 
 CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder \
