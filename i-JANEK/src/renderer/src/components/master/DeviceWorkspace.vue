@@ -9,12 +9,15 @@ import {
   KeyRound,
   LaptopMinimalCheck,
   MemoryStick,
+  Pencil,
   RefreshCcw,
+  Save,
   Send,
   ShieldAlert,
   TerminalSquare,
   Thermometer,
-  Workflow
+  Workflow,
+  X
 } from 'lucide-vue-next'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -27,6 +30,15 @@ const activeTab = ref<(typeof tabs)[number]>('overview')
 const usageRangeDays = ref<7 | 30 | 90>(30)
 const remoteAccessMessage = ref('')
 const revealingRemoteAccess = ref(false)
+const editingDetails = ref(false)
+const detailsBusy = ref(false)
+const detailsMessage = ref('')
+const detailsDraft = ref({
+  deviceAlias: '',
+  contactName: '',
+  companyName: '',
+  installationLocation: ''
+})
 
 const selectedAlerts = computed(() => {
   if (!store.selectedDevice) return []
@@ -84,7 +96,48 @@ watch(
 watch(() => store.selectedDeviceId, () => {
   activeTab.value = 'overview'
   remoteAccessMessage.value = ''
+  editingDetails.value = false
+  detailsMessage.value = ''
+  resetDetailsDraft()
 })
+
+function resetDetailsDraft() {
+  const device = store.selectedDevice
+  detailsDraft.value = {
+    deviceAlias: device?.deviceAlias?.trim() || device?.hostname || '',
+    contactName: device?.contactName?.trim() || '',
+    companyName: device?.companyName?.trim() || '',
+    installationLocation: device?.installationLocation?.trim() || ''
+  }
+}
+
+function startEditingDetails() {
+  resetDetailsDraft()
+  detailsMessage.value = ''
+  editingDetails.value = true
+}
+
+function cancelEditingDetails() {
+  editingDetails.value = false
+  detailsMessage.value = ''
+  resetDetailsDraft()
+}
+
+async function saveDetails() {
+  const deviceId = store.selectedDevice?.deviceId
+  if (!deviceId || detailsBusy.value) return
+  detailsBusy.value = true
+  detailsMessage.value = ''
+  try {
+    await store.saveDeviceDetails(deviceId, detailsDraft.value)
+    editingDetails.value = false
+    detailsMessage.value = 'Dane komputera zostały zapisane.'
+  } catch (error) {
+    detailsMessage.value = error instanceof Error ? error.message : 'Nie udało się zapisać danych komputera.'
+  } finally {
+    detailsBusy.value = false
+  }
+}
 
 function changeUpdateChannel(event: Event) {
   const deviceId = store.selectedDevice?.deviceId
@@ -233,6 +286,56 @@ async function copyRemoteAccessValue(value: string, label: string) {
 
     <div class="p-6">
       <div v-if="activeTab === 'overview'" class="space-y-5">
+        <section class="content-card">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Dane komputera</h3>
+              <p class="mt-1 text-xs text-[var(--text-dim)]">Czytelne dane widoczne w panelu. Techniczny identyfikator urządzenia pozostaje bez zmian.</p>
+            </div>
+            <button v-if="!editingDetails" class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" @click="startEditingDetails()">
+              <Pencil class="mr-2 h-3.5 w-3.5" /> Edytuj dane
+            </button>
+          </div>
+
+          <form v-if="editingDetails" class="mt-4" @submit.prevent="saveDetails()">
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="text-xs text-[var(--text-dim)]">
+                Nazwa komputera
+                <input v-model="detailsDraft.deviceAlias" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="48" placeholder="np. Laptop biuro" />
+              </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Firma
+                <input v-model="detailsDraft.companyName" class="soft-input mt-1 !rounded-xl !py-2.5" list="device-company-options" maxlength="80" placeholder="Nazwa firmy" />
+                <datalist id="device-company-options"><option v-for="company in store.masterSettings.companyOptions" :key="company" :value="company" /></datalist>
+              </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Osoba
+                <input v-model="detailsDraft.contactName" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="100" placeholder="Imię i nazwisko" />
+              </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Lokalizacja
+                <input v-model="detailsDraft.installationLocation" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" />
+              </label>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p v-if="detailsMessage" class="text-xs text-amber-200">{{ detailsMessage }}</p>
+              <span v-else />
+              <div class="flex gap-2">
+                <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" :disabled="detailsBusy" @click="cancelEditingDetails()"><X class="mr-1.5 h-3.5 w-3.5" /> Anuluj</button>
+                <button class="glass-button !rounded-xl !px-3 !py-2 !text-xs" type="submit" :disabled="detailsBusy"><Save class="mr-1.5 h-3.5 w-3.5" /> {{ detailsBusy ? 'Zapisywanie…' : 'Zapisz' }}</button>
+              </div>
+            </div>
+          </form>
+
+          <dl v-else class="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Nazwa</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.deviceAlias || store.selectedDevice.hostname }}</dd></div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Firma</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.companyName || '—' }}</dd></div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Osoba</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.contactName || '—' }}</dd></div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Lokalizacja</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.installationLocation || '—' }}</dd></div>
+          </dl>
+          <p v-if="!editingDetails && detailsMessage" class="mt-3 text-xs text-emerald-200">{{ detailsMessage }}</p>
+        </section>
+
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">
             <div class="metric-label"><Cpu class="h-4 w-4" /> CPU</div><div class="metric-value">{{ store.selectedDevice.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuUsagePercent != null">%</small></div>

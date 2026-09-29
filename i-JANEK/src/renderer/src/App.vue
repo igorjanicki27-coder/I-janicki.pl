@@ -619,7 +619,7 @@ watch(
             </div>
             <div class="mt-2 flex items-center justify-between">
               <span>Urządzenie</span>
-              <span class="mono text-white">{{ store.selfDevice?.deviceId ?? store.systemContext?.deviceId ?? 'brak' }}</span>
+              <span class="text-right font-medium text-white">{{ store.selfDevice?.deviceAlias || store.selfDevice?.hostname || store.systemContext?.hostname || 'brak' }}</span>
             </div>
           </div>
           <div class="relative mt-7 flex flex-col items-center gap-5">

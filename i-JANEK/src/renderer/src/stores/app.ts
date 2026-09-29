@@ -200,6 +200,11 @@ function toDeviceIdentity(baseContext: NonNullable<Awaited<ReturnType<typeof win
   }
 }
 
+function suggestedDeviceAlias(displayName: string, email: string) {
+  const ownerName = displayName.trim() || email.split('@')[0]?.trim() || 'użytkownika'
+  return `Komputer ${ownerName}`.slice(0, 48).trim()
+}
+
 function cloneForIpc<T>(value: T): T {
   const rawValue = toRaw(value)
   if (rawValue === undefined || rawValue === null) return rawValue
@@ -763,6 +768,15 @@ export const useAppStore = defineStore('app', () => {
     if (!pendingCompanyName.value) pendingCompanyName.value = profile.companyName
     if (!pendingInstallationLocation.value) pendingInstallationLocation.value = profile.installationLocation
 
+    if (
+      nextUser.role === 'slave'
+      && systemContext.value?.platform !== 'web'
+      && !consent.value
+      && (!pendingDeviceAlias.value || pendingDeviceAlias.value === systemContext.value?.hostname)
+    ) {
+      pendingDeviceAlias.value = suggestedDeviceAlias(profile.displayName, profile.email)
+    }
+
     const isNewAccountRegistration = pendingNewAccountEmail === nextUser.email.trim().toLowerCase()
     if (isNewAccountRegistration) {
       pendingNewAccountEmail = null
@@ -1181,8 +1195,43 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function approveDevice(deviceId: string, approvalStatus: 'approved' | 'rejected') {
+  async function saveDeviceDetails(
+    deviceId: string,
+    details: { deviceAlias: string; contactName: string; companyName: string; installationLocation: string }
+  ) {
+    if (user.value?.role !== 'master') throw new Error('Tylko administrator może zmieniać dane tego komputera.')
+
+    const normalized = {
+      deviceAlias: details.deviceAlias.trim(),
+      contactName: details.contactName.trim(),
+      companyName: details.companyName.trim(),
+      installationLocation: details.installationLocation.trim()
+    }
+    if (normalized.deviceAlias.length < MIN_DEVICE_ALIAS_LENGTH) {
+      throw new Error(`Nazwa komputera musi mieć co najmniej ${MIN_DEVICE_ALIAS_LENGTH} znaki.`)
+    }
+    if (!normalized.companyName) throw new Error('Wpisz nazwę firmy.')
+
+    await backend.value?.updateDeviceRegistrationDetails(deviceId, normalized)
+    devices.value = devices.value.map((device) =>
+      device.deviceId === deviceId
+        ? { ...device, ...normalized, aliasCustomizedAt: Date.now(), updatedAt: Date.now() }
+        : device
+    )
+  }
+
+  async function approveDevice(
+    deviceId: string,
+    approvalStatus: 'approved' | 'rejected',
+    details?: { deviceAlias: string; contactName: string; companyName: string; installationLocation: string }
+  ) {
+    if (details) await saveDeviceDetails(deviceId, details)
     await backend.value?.updateApprovalStatus(deviceId, approvalStatus, user.value?.email ?? DEFAULT_MASTER_EMAIL)
+    devices.value = devices.value.map((device) =>
+      device.deviceId === deviceId
+        ? { ...device, approvalStatus, approvedBy: user.value?.email ?? DEFAULT_MASTER_EMAIL, updatedAt: Date.now() }
+        : device
+    )
   }
 
   async function sendChatMessage(ownerUid = selectedConversationOwnerUid.value) {
@@ -2279,6 +2328,7 @@ export const useAppStore = defineStore('app', () => {
     saveBackupPolicy,
     applySlaveBackupSettings,
     removeBackupFolder,
+    saveDeviceDetails,
     saveDeviceAlias,
     syncBackupNow,
     loadInventory,

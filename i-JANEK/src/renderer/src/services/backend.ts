@@ -98,7 +98,7 @@ export interface BackendClient {
   updateDeviceCompanyName: (deviceId: string, companyName: string) => Promise<void>
   updateDeviceRegistrationDetails: (
     deviceId: string,
-    details: { contactName: string; companyName: string; installationLocation: string }
+    details: { deviceAlias?: string; contactName: string; companyName: string; installationLocation: string }
   ) => Promise<void>
   updateDeviceUpdateChannel: (deviceId: string, updateChannel: UpdateChannel) => Promise<void>
   publishTelemetry: (device: DeviceRecord, telemetry: DeviceTelemetry) => Promise<void>
@@ -657,14 +657,20 @@ class FirebaseBackend implements BackendClient {
 
   async updateDeviceRegistrationDetails(
     deviceId: string,
-    details: { contactName: string; companyName: string; installationLocation: string }
+    details: { deviceAlias?: string; contactName: string; companyName: string; installationLocation: string }
   ) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+    const payload: Record<string, unknown> = {
       contactName: details.contactName.trim(),
       companyName: details.companyName.trim(),
       installationLocation: details.installationLocation.trim(),
       updatedAt: Date.now()
-    })
+    }
+    if (details.deviceAlias !== undefined) {
+      payload.deviceAlias = details.deviceAlias.trim()
+      payload.aliasCustomizedAt = Date.now()
+    }
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), payload)
+    this.queueAuditLog('device_details_updated', { deviceId })
   }
 
   async updateDeviceUpdateChannel(deviceId: string, updateChannel: UpdateChannel) {
@@ -1613,12 +1619,15 @@ class MockBackend implements BackendClient {
 
   async updateDeviceRegistrationDetails(
     deviceId: string,
-    details: { contactName: string; companyName: string; installationLocation: string }
+    details: { deviceAlias?: string; contactName: string; companyName: string; installationLocation: string }
   ) {
     this.devices = this.devices.map((device) =>
       device.deviceId === deviceId
         ? {
             ...device,
+            ...(details.deviceAlias === undefined
+              ? {}
+              : { deviceAlias: details.deviceAlias.trim(), aliasCustomizedAt: Date.now() }),
             contactName: details.contactName.trim(),
             companyName: details.companyName.trim(),
             installationLocation: details.installationLocation.trim(),
