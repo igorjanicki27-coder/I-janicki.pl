@@ -445,6 +445,7 @@ class FirebaseBackend implements BackendClient {
     const snapshot = await getDoc(deviceRef)
     const existing = snapshot.exists() ? (snapshot.data() as DeviceRecord) : undefined
 
+    const consentAcceptedAt = consent?.acceptedAt ?? existing?.consentAcceptedAt
     const nextRecord: DeviceRecord = {
       ...existing,
       ...context,
@@ -455,7 +456,7 @@ class FirebaseBackend implements BackendClient {
       createdAt: existing?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
       lastSeenAt: Date.now(),
-      consentAcceptedAt: consent?.acceptedAt ?? existing?.consentAcceptedAt,
+      ...(consentAcceptedAt == null ? {} : { consentAcceptedAt }),
       consent: consent ?? existing?.consent ?? null,
       deviceAlias: existing?.deviceAlias ?? context.hostname,
       aliasCustomizedAt: existing?.aliasCustomizedAt ?? null,

@@ -264,6 +264,35 @@ test('nowy klient może wybrać tylko domyślny kanał stable', async () => {
   }))
 })
 
+test('nowy klient może wysłać prośbę o akceptację przed zapisaniem zgód', async () => {
+  const db = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
+  await assertSucceeds(setDoc(doc(db, 'devices', 'CLIENT-PC-PENDING'), {
+    deviceId: 'CLIENT-PC-PENDING',
+    machineId: 'machine-pending',
+    hostname: 'CLIENT-PC',
+    platform: 'win32',
+    arch: 'x64',
+    appVersion: '0.1.6',
+    ownerUid: owner.uid,
+    ownerEmail: owner.email,
+    approvalStatus: 'pending',
+    updateChannel: 'stable',
+    createdAt: 1_700_000_000_000,
+    updatedAt: 1_700_000_000_000,
+    lastSeenAt: 1_700_000_000_000,
+    consent: null,
+    deviceAlias: 'CLIENT-PC',
+    aliasCustomizedAt: null,
+    companyName: 'Firma Testowa',
+    contactName: 'Jan Kowalski',
+    installationLocation: '',
+    rustdesk: { installed: false },
+    updateRequest: null,
+    lastHandledUpdateRequestId: null,
+    lastUpdateResult: null
+  }))
+})
+
 test('klient może zapisać dane rejestracyjne swojego profilu', async () => {
   const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
   await assertSucceeds(setDoc(doc(ownerDb, 'clients', owner.uid), {

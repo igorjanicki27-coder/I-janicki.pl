@@ -24,6 +24,8 @@ const authCompanyName = ref('')
 const authInstallationLocation = ref('')
 const authValidationMessage = ref('')
 const updateStatus = ref<UpdateStatusPayload | null>(null)
+const approvalDecisionBusy = ref(false)
+const approvalDecisionError = ref('')
 let updateStatusCleanup: (() => void) | null = null
 let updateStatusDismissTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -68,6 +70,7 @@ const aliasTooShort = computed(() => {
 const headerOnlineCount = computed(() => store.devices.filter((device) => Date.now() - device.lastSeenAt < 5 * 60 * 1000).length)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
 const hasOpenServiceRequests = computed(() => store.openServiceRequests.length > 0)
+const pendingApprovalRequest = computed(() => store.approvalQueue[0] ?? null)
 const slaveHeaderDeviceName = computed(
   () => store.selectedDevice?.deviceAlias || store.selectedDevice?.hostname || store.selfDevice?.deviceAlias || store.selfDevice?.hostname || 'Urządzenie'
 )
@@ -160,11 +163,32 @@ async function handleAcceptConsent() {
   }
 
   consentValidationMessage.value = ''
-  await store.acceptConsent(unattendedAccessAccepted.value)
+  try {
+    await store.acceptConsent(unattendedAccessAccepted.value)
+  } catch (error) {
+    consentValidationMessage.value = error instanceof Error
+      ? error.message
+      : 'Nie udało się zapisać urządzenia. Sprawdź połączenie i spróbuj ponownie.'
+  }
 }
 
 async function acknowledgeApprovalWait() {
   await window.janek.system.hideMainWindow()
+}
+
+async function decideApproval(status: 'approved' | 'rejected') {
+  if (!pendingApprovalRequest.value || approvalDecisionBusy.value) return
+  approvalDecisionBusy.value = true
+  approvalDecisionError.value = ''
+  try {
+    await store.approveDevice(pendingApprovalRequest.value.deviceId, status)
+  } catch (error) {
+    approvalDecisionError.value = error instanceof Error
+      ? error.message
+      : 'Nie udało się zapisać decyzji. Spróbuj ponownie.'
+  } finally {
+    approvalDecisionBusy.value = false
+  }
 }
 
 function approvalStatusLabel(status: string | null) {
@@ -233,6 +257,43 @@ watch(
           <X class="h-4 w-4" />
         </button>
       </div>
+    </Transition>
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="translate-x-4 opacity-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-to-class="translate-x-4 opacity-0"
+    >
+      <aside
+        v-if="store.isMaster && pendingApprovalRequest"
+        class="fixed right-5 top-5 z-[95] w-[min(92vw,430px)] rounded-3xl border border-amber-300/30 bg-[#100d1d]/95 p-5 shadow-2xl backdrop-blur-xl"
+      >
+        <div class="flex items-start gap-3">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-200">
+            <UserPlus class="h-5 w-5" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-medium uppercase tracking-[0.16em] text-amber-200">Prośba o akceptację</div>
+            <h2 class="mt-1 truncate text-lg font-semibold text-white">{{ formatDeviceLabelForMaster(pendingApprovalRequest) }}</h2>
+            <p class="mt-1 truncate text-sm text-[var(--text-dim)]">{{ pendingApprovalRequest.contactName || pendingApprovalRequest.ownerEmail }}</p>
+          </div>
+          <span v-if="store.approvalQueue.length > 1" class="rounded-full bg-amber-300 px-2 py-0.5 text-xs font-semibold text-slate-950">
+            +{{ store.approvalQueue.length - 1 }}
+          </span>
+        </div>
+        <dl class="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs">
+          <dt class="text-[var(--text-dim)]">E-mail</dt><dd class="truncate text-white">{{ pendingApprovalRequest.ownerEmail }}</dd>
+          <dt class="text-[var(--text-dim)]">Firma</dt><dd class="truncate text-white">{{ pendingApprovalRequest.companyName || 'Nie podano' }}</dd>
+          <dt class="text-[var(--text-dim)]">Miejsce</dt><dd class="truncate text-white">{{ pendingApprovalRequest.installationLocation || 'Nie podano' }}</dd>
+        </dl>
+        <p v-if="approvalDecisionError" class="mt-3 text-xs text-rose-300">{{ approvalDecisionError }}</p>
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="decideApproval('rejected')">Odrzuć</button>
+          <button class="glass-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="decideApproval('approved')">
+            {{ approvalDecisionBusy ? 'Zapisywanie…' : 'Zatwierdź' }}
+          </button>
+        </div>
+      </aside>
     </Transition>
     <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient" class="px-5 pt-5">
       <div

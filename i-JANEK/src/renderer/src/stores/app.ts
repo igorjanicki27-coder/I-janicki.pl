@@ -776,6 +776,10 @@ export const useAppStore = defineStore('app', () => {
         await window.janek.system.setConsent(null)
         await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
         systemContext.value = { ...systemContext.value, deviceId: provisionalDeviceId }
+        await backend.value!.ensureDeviceRecord(
+          nextUser,
+          toDeviceIdentity(systemContext.value, provisionalDeviceId)
+        )
       }
     }
 
@@ -1140,7 +1144,6 @@ export const useAppStore = defineStore('app', () => {
           companyName,
           installationLocation: pendingInstallationLocation.value.trim()
         })
-        await backend.value?.updateApprovalStatus(migrated.deviceId, 'pending', user.value.email)
         await window.janek.system.setRegisteredDeviceId(migrated.deviceId)
         systemContext.value = { ...systemContext.value, deviceId: migrated.deviceId }
         pendingDeviceAlias.value = aliasName
@@ -1169,7 +1172,6 @@ export const useAppStore = defineStore('app', () => {
         companyName,
         installationLocation: pendingInstallationLocation.value.trim()
       })
-      await backend.value?.updateApprovalStatus(ensured.deviceId, 'pending', user.value.email)
       await window.janek.system.setRegisteredDeviceId(requestedDeviceId)
       systemContext.value = { ...systemContext.value, deviceId: requestedDeviceId }
       pendingDeviceAlias.value = aliasName
