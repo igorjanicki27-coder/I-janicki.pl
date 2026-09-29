@@ -287,6 +287,7 @@ export const useAppStore = defineStore('app', () => {
   let alertsSnapshotReady = false
   let serviceRequestsSnapshotReady = false
   let lastSelfApprovalStatus: ApprovalStatus | null = null
+  let pendingNewAccountEmail: string | null = null
   const telemetryAlertSignatures = new Map<string, string>()
   const workerDeviceId = ref('')
 
@@ -312,8 +313,8 @@ export const useAppStore = defineStore('app', () => {
   const isMaster = computed(() => user.value?.email?.toLowerCase() === (import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL).toLowerCase())
   const isDesktopAgent = computed(() => systemContext.value?.platform !== 'web')
   const approvalGateStatus = computed<'approved' | 'pending' | 'rejected' | null>(() => {
-    if (user.value?.role !== 'slave') return null
-    return selfDevice.value?.approvalStatus ?? null
+    if (user.value?.role !== 'slave' || !isDesktopAgent.value) return null
+    return selfDevice.value?.approvalStatus ?? 'pending'
   })
   const isApprovalBlocked = computed(() => approvalGateStatus.value === 'pending' || approvalGateStatus.value === 'rejected')
   const sessionStatus = computed(() => {
@@ -759,6 +760,22 @@ export const useAppStore = defineStore('app', () => {
     if (!pendingCompanyName.value) pendingCompanyName.value = profile.companyName
     if (!pendingInstallationLocation.value) pendingInstallationLocation.value = profile.installationLocation
 
+    const isNewAccountRegistration = pendingNewAccountEmail === nextUser.email.trim().toLowerCase()
+    if (isNewAccountRegistration) {
+      pendingNewAccountEmail = null
+      if (nextUser.role === 'slave' && systemContext.value?.platform !== 'web') {
+        const provisionalDeviceId =
+          buildDeviceId(
+            profile.companyName || 'KLIENT',
+            `${systemContext.value.hostname}-${nextUser.uid.slice(0, 8)}`
+          ) || `${systemContext.value.hostname}-${nextUser.uid.slice(0, 8)}`
+        consent.value = null
+        await window.janek.system.setConsent(null)
+        await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
+        systemContext.value = { ...systemContext.value, deviceId: provisionalDeviceId }
+      }
+    }
+
     if (nextUser.role === 'master') {
       masterSecurity.value = await backend.value!.getMasterSecurity()
     }
@@ -813,17 +830,19 @@ export const useAppStore = defineStore('app', () => {
             pendingCompanyName.value = selfDevice.companyName?.trim() || masterSettings.value.companyOptions[0] || ''
           }
           void window.janek.system.setUpdateChannel(selfDevice.updateChannel ?? 'stable')
-          void window.janek.rustdesk
-            .getState(selfDevice.deviceId)
-            .then((state) => {
-              localRustDeskState.value = state
-              return prepareAndPublishRustDeskState(selfDevice.deviceId, state)
-            })
-            .catch(() => undefined)
-          void backend.value?.setPresence(selfDevice, nextUser.role, true)
           void startSlaveWorkers(selfDevice)
-          void processUpdateRequest(selfDevice)
-          void processRemoteAction(selfDevice)
+          if (selfDevice.approvalStatus === 'approved') {
+            void window.janek.rustdesk
+              .getState(selfDevice.deviceId)
+              .then((state) => {
+                localRustDeskState.value = state
+                return prepareAndPublishRustDeskState(selfDevice.deviceId, state)
+              })
+              .catch(() => undefined)
+            void backend.value?.setPresence(selfDevice, nextUser.role, true)
+            void processUpdateRequest(selfDevice)
+            void processRemoteAction(selfDevice)
+          }
         }
       }
     })
@@ -882,7 +901,7 @@ export const useAppStore = defineStore('app', () => {
       sessionCleanup.add(commentsCleanup)
     }
 
-    if (nextUser.role === 'slave' && systemContext.value && consent.value) {
+    if (nextUser.role === 'slave' && systemContext.value) {
       const ensured = await backend.value!.ensureDeviceRecord(nextUser, systemContext.value, consent.value ?? undefined)
       selectedDeviceId.value = ensured.deviceId
       selectedConversationOwnerUid.value = ensured.ownerUid
@@ -981,13 +1000,16 @@ export const useAppStore = defineStore('app', () => {
 
   async function registerWithEmail(email: string, password: string, details: RegistrationDetails) {
     if (signingIn.value) return
+    const normalizedEmail = email.trim().toLowerCase()
     try {
       signingIn.value = true
       lastError.value = ''
+      pendingNewAccountEmail = normalizedEmail
       pendingCompanyName.value = details.companyName.trim()
       pendingInstallationLocation.value = details.installationLocation?.trim() ?? ''
       user.value = await backend.value!.registerWithEmail(email, password, details)
     } catch (error) {
+      pendingNewAccountEmail = null
       lastError.value = friendlyAuthError(error, 'Nie udało się utworzyć konta. Sprawdź dane i spróbuj ponownie.')
     } finally {
       signingIn.value = false
@@ -1079,6 +1101,7 @@ export const useAppStore = defineStore('app', () => {
         }
 
         const migrated = await backend.value!.migrateDeviceRecord(user.value, currentDevice, requestedIdentity, aliasName, companyName)
+        await backend.value?.updateConsent(migrated.deviceId, consent.value)
         await backend.value?.updateDeviceRegistrationDetails(migrated.deviceId, {
           contactName: user.value.displayName,
           companyName,
