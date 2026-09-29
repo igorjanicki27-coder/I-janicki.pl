@@ -16,6 +16,11 @@ const explicitVersion = explicitVersionArgument?.slice('--version='.length)
 const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
 const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
 const semverPattern = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
+const releasePathspec = [
+  'i-JANEK',
+  ':(exclude)i-JANEK/.DS_Store',
+  ':(exclude,glob)i-JANEK/**/.DS_Store'
+]
 
 function fail(message) {
   console.error(`[release] ${message}`)
@@ -104,17 +109,14 @@ if (dryRun) {
 const branch = run('git', ['branch', '--show-current'], { capture: true })
 if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)
 
-const dirty = run('git', ['status', '--porcelain'], { capture: true })
-const relevantDirtyEntries = dirty
-  .split('\n')
-  .map((entry) => entry.trimEnd())
-  .filter(Boolean)
-  .filter((entry) => {
-    const filePath = entry.replace(/^\s*\S{1,2}\s+/u, '').replace(/^"|"$/gu, '')
-    return filePath !== '.DS_Store' && !filePath.endsWith('/.DS_Store')
-  })
-if (relevantDirtyEntries.length) {
-  fail(`Drzewo robocze zawiera niezapisane zmiany:\n${relevantDirtyEntries.join('\n')}\nNajpierw je zatwierdź albo odłóż.`)
+const pendingAppChanges = run(
+  'git',
+  ['status', '--short', '--untracked-files=all', '--', ...releasePathspec],
+  { capture: true }
+)
+if (pendingAppChanges) {
+  console.log('[release] Zmiany aplikacji, które automat doda do commita:')
+  console.log(pendingAppChanges)
 }
 
 const existingTag = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], {
@@ -125,8 +127,14 @@ if (existingTag.status === 0) fail(`Tag ${tag} już istnieje.`)
 
 run('npm', ['run', 'typecheck'], { cwd: appRoot })
 run('npm', ['version', version, '--no-git-tag-version'], { cwd: appRoot })
-run('git', ['add', 'i-JANEK/package.json', 'i-JANEK/package-lock.json'])
-run('git', ['commit', '-m', `chore(i-janek): release ${version}`])
+run('git', ['add', '-A', '--', ...releasePathspec])
+const stagedAppChanges = run(
+  'git',
+  ['diff', '--cached', '--name-only', '--', ...releasePathspec],
+  { capture: true }
+)
+if (!stagedAppChanges) fail('Nie znaleziono zmian aplikacji do zapisania w commicie wydania.')
+run('git', ['commit', '--only', '-m', `chore(i-janek): release ${version}`, '--', ...releasePathspec])
 run('git', ['tag', '-a', tag, '-m', releaseNotes ? `i-JANEK ${version}\n\n${releaseNotes}` : `i-JANEK ${version}`])
 
 const updaterChannel = channel === 'stable' ? 'latest' : channel

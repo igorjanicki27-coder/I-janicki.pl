@@ -95,7 +95,7 @@ npm run release:beta
 npm run release:stable
 ```
 
-Skrypt wymaga czystego drzewa roboczego, gałęzi `main`, zalogowanego Git w systemowym magazynie poświadczeń oraz lokalnego certyfikatu Apple. Kanał test używa wersji `x.y.z-alpha.N`, beta `x.y.z-beta.N`, a stable `x.y.z`. W razie potrzeby można podać wersję ręcznie, np. `npm run release:test -- --version=0.2.0-alpha.1`.
+Skrypt wymaga gałęzi `main`, zalogowanego Git w systemowym magazynie poświadczeń oraz lokalnego certyfikatu Apple. Przy publikowaniu sam dodaje do commita wszystkie zmiany z katalogu `i-JANEK`, aktualizuje numer wersji, tworzy tag i wysyła wydanie. Nie dołącza zmian z pozostałych katalogów repozytorium, plików `.DS_Store`, plików ignorowanych ani lokalnych konfiguracji prywatnych. Kanał test używa wersji `x.y.z-alpha.N`, beta `x.y.z-beta.N`, a stable `x.y.z`. W razie potrzeby można podać wersję ręcznie, np. `npm run release:test -- --version=0.2.0-alpha.1`.
 
 Master przypisuje każdemu komputerowi jeden kanał w panelu urządzenia. Nowe urządzenie zawsze zaczyna na `stable`; urządzenia bez zapisanego kanału również są traktowane jako `stable`. Zalecana promocja wydania to kolejno test na jednym komputerze, beta na małej grupie i dopiero potem stable dla wszystkich klientów.
 
