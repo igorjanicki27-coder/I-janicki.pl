@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { BackupPolicy, CommandShell } from '@shared/contracts'
-import type { JanekApi } from '@shared/ipc'
+import type { JanekApi, UpdateStatusPayload } from '@shared/ipc'
 
 const api: JanekApi = {
   system: {
@@ -13,6 +13,12 @@ const api: JanekApi = {
     getMasterAesKey: () => ipcRenderer.invoke('system:get-master-aes-key'),
     setMasterAesKey: (key) => ipcRenderer.invoke('system:set-master-aes-key', key),
     checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
+    getUpdateStatus: () => ipcRenderer.invoke('system:get-update-status'),
+    onUpdateStatus: (callback) => {
+      const listener = (_event: unknown, status: UpdateStatusPayload) => callback(status)
+      ipcRenderer.on('system:update-status', listener)
+      return () => ipcRenderer.removeListener('system:update-status', listener)
+    },
     setUpdateChannel: (channel) => ipcRenderer.invoke('system:set-update-channel', channel),
     createDiagnosticBundle: (summary) => ipcRenderer.invoke('system:create-diagnostic-bundle', summary),
     logEvent: (level, event, details) => ipcRenderer.invoke('system:log-event', level, event, details),

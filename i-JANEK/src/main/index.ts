@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
 import electronUpdater from 'electron-updater'
 import type { BackupPolicy, CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
+import type { UpdateStatusPayload } from '@shared/ipc'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
@@ -26,6 +27,11 @@ let updateInstallReminder: NodeJS.Timeout | null = null
 let updateCheckInFlight: Promise<{ status: string; message: string }> | null = null
 let updateInstallPromptOpen = false
 let downloadedUpdateVersion: string | null = null
+let latestUpdateStatus: UpdateStatusPayload = {
+  status: 'idle',
+  message: 'Sprawdzanie aktualizacji jeszcze się nie rozpoczęło.'
+}
+let lastPublishedDownloadPercent = -1
 const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
 const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
 const { autoUpdater } = electronUpdater
@@ -118,6 +124,10 @@ function createWindow() {
     void writeDiagnosticLog('error', 'renderer_process_gone', details as unknown as Record<string, unknown>)
   })
 
+  mainWindow.webContents.once('did-finish-load', () => {
+    startAutomaticUpdateChecks()
+  })
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       void shell.openExternal(url)
@@ -145,6 +155,27 @@ function createWindow() {
       focusMainWindow()
     }
   })
+}
+
+function publishUpdateStatus(status: UpdateStatusPayload) {
+  latestUpdateStatus = status
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send('system:update-status', status)
+  }
+}
+
+function friendlyUpdateError(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message : String(error ?? '')
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network|offline/i.test(rawMessage)) {
+    return 'Nie udało się połączyć z serwerem aktualizacji. Sprawdź internet — aplikacja spróbuje ponownie później.'
+  }
+  if (/No published versions/i.test(rawMessage)) {
+    return 'Na serwerze nie ma jeszcze opublikowanej wersji dla tego kanału aktualizacji.'
+  }
+  if (/app-update\.yml|ENOENT/i.test(rawMessage)) {
+    return 'Ta kopia aplikacji nie zawiera konfiguracji aktualizatora. Zainstaluj i-JANEK z oficjalnego instalatora.'
+  }
+  return 'Nie udało się sprawdzić aktualizacji. Aplikacja spróbuje ponownie później.'
 }
 
 function createTray() {
@@ -179,12 +210,67 @@ function bindUpdaterEvents() {
   configureUpdaterChannel()
   if (updaterEventsBound) return
   updaterEventsBound = true
+  autoUpdater.on('checking-for-update', () => {
+    lastPublishedDownloadPercent = -1
+    publishUpdateStatus({
+      status: 'checking',
+      message: 'Sprawdzam, czy jest dostępna nowa wersja i-JANEK.'
+    })
+    void writeDiagnosticLog('info', 'auto_update_check_started', {
+      currentVersion: app.getVersion(),
+      channel: localStore.get('updateChannel') ?? 'stable'
+    })
+  })
+  autoUpdater.on('update-available', (updateInfo) => {
+    publishUpdateStatus({
+      status: 'available',
+      version: updateInfo.version,
+      message: `Dostępna jest wersja ${updateInfo.version}. Rozpoczynam pobieranie.`
+    })
+    void writeDiagnosticLog('info', 'auto_update_available', {
+      currentVersion: app.getVersion(),
+      nextVersion: updateInfo.version
+    })
+  })
+  autoUpdater.on('update-not-available', (updateInfo) => {
+    publishUpdateStatus({
+      status: 'up_to_date',
+      version: updateInfo.version,
+      message: `Masz najnowszą wersję i-JANEK (${app.getVersion()}).`
+    })
+    void writeDiagnosticLog('info', 'auto_update_not_available', {
+      currentVersion: app.getVersion(),
+      serverVersion: updateInfo.version
+    })
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    const percent = Math.max(0, Math.min(100, Math.round(progress.percent)))
+    if (percent !== 100 && percent < lastPublishedDownloadPercent + 5) return
+    lastPublishedDownloadPercent = percent
+    publishUpdateStatus({
+      status: 'downloading',
+      version: latestUpdateStatus.version,
+      percent,
+      message: `Pobieranie aktualizacji: ${percent}%.`
+    })
+  })
   autoUpdater.on('update-downloaded', (updateInfo) => {
     downloadedUpdateVersion = updateInfo.version
+    publishUpdateStatus({
+      status: 'downloaded',
+      version: updateInfo.version,
+      percent: 100,
+      message: `Aktualizacja ${updateInfo.version} jest gotowa do instalacji.`
+    })
+    void writeDiagnosticLog('info', 'auto_update_downloaded', { version: updateInfo.version })
     void promptInstallDownloadedUpdate(updateInfo.version)
   })
   autoUpdater.on('error', (error) => {
     console.error('[i-JANEK] Auto update error:', error)
+    publishUpdateStatus({
+      status: 'error',
+      message: friendlyUpdateError(error)
+    })
     void writeDiagnosticLog('error', 'auto_update_error', { error })
   })
 }
@@ -255,7 +341,7 @@ async function runUpdateCheck(silent: boolean) {
     }
     return { status: 'up_to_date', message: 'Aplikacja jest aktualna.' }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Nie udało się sprawdzić aktualizacji.'
+    const message = friendlyUpdateError(error)
     if (!silent && Notification.isSupported()) {
       new Notification({ title: 'i-JANEK', body: message }).show()
     }
@@ -278,7 +364,7 @@ function checkForUpdates(silent: boolean) {
 function startAutomaticUpdateChecks() {
   if (automaticUpdateInterval) clearInterval(automaticUpdateInterval)
   const isPostInstallCheck = hasPendingPostInstallUpdateCheck()
-  void checkForUpdates(!isPostInstallCheck).then((result) => {
+  void checkForUpdates(false).then((result) => {
     if (isPostInstallCheck && result.status !== 'error') {
       clearPostInstallUpdateMarker()
     }
@@ -391,6 +477,7 @@ function registerIpc() {
     await enforceRustDeskPolicy()
   })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
+  ipcMain.handle('system:get-update-status', async () => latestUpdateStatus)
   ipcMain.handle('system:set-update-channel', async (_event, channel: UpdateChannel) => {
     if (!['test', 'beta', 'stable'].includes(channel)) {
       throw new Error('Nieobsługiwany kanał aktualizacji.')
@@ -477,7 +564,6 @@ app.whenReady().then(() => {
   })
   createTray()
   createWindow()
-  startAutomaticUpdateChecks()
   void enforceRustDeskPolicy()
   rustDeskPolicyInterval = setInterval(() => {
     void enforceRustDeskPolicy(undefined, { forceRotate: false, rotationReason: 'daily' })

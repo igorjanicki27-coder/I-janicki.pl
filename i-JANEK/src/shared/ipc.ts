@@ -15,6 +15,22 @@ import type {
   UpdateChannel
 } from './contracts'
 
+export type UpdateStatusKind =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'up_to_date'
+  | 'error'
+
+export interface UpdateStatusPayload {
+  status: UpdateStatusKind
+  message: string
+  version?: string
+  percent?: number
+}
+
 export interface JanekApi {
   system: {
     getContext: () => Promise<SystemContext>
@@ -26,6 +42,8 @@ export interface JanekApi {
     getMasterAesKey: () => Promise<string>
     setMasterAesKey: (key: string) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
+    getUpdateStatus: () => Promise<UpdateStatusPayload>
+    onUpdateStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
     setUpdateChannel: (channel: UpdateChannel) => Promise<void>
     createDiagnosticBundle: (summary: DiagnosticBundleSummary) => Promise<{ saved: boolean; path?: string }>
     logEvent: (level: DiagnosticLogLevel, event: string, details?: Record<string, unknown>) => Promise<void>

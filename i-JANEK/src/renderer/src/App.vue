@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { AlertTriangle, Clock3, KeyRound, Minimize2, Settings, ShieldCheck, UserPlus } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { AlertCircle, AlertTriangle, CheckCircle2, Clock3, Download, KeyRound, LoaderCircle, Minimize2, Settings, ShieldCheck, UserPlus, X } from 'lucide-vue-next'
 import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
 import { useAppStore } from '@/stores/app'
 import { CURRENT_CONSENT_POLICY_VERSION } from '@shared/constants'
+import type { UpdateStatusPayload } from '@shared/ipc'
 
 const store = useAppStore()
 const settingsOpen = ref(false)
@@ -22,6 +23,33 @@ const authFullName = ref('')
 const authCompanyName = ref('')
 const authInstallationLocation = ref('')
 const authValidationMessage = ref('')
+const updateStatus = ref<UpdateStatusPayload | null>(null)
+let updateStatusCleanup: (() => void) | null = null
+let updateStatusDismissTimer: ReturnType<typeof setTimeout> | null = null
+
+const updateStatusTone = computed(() => {
+  if (updateStatus.value?.status === 'error') return 'border-rose-400/40 bg-rose-950/90 text-rose-100'
+  if (updateStatus.value?.status === 'up_to_date') return 'border-emerald-400/35 bg-emerald-950/90 text-emerald-100'
+  if (updateStatus.value?.status === 'downloaded') return 'border-cyan-300/40 bg-cyan-950/90 text-cyan-100'
+  return 'border-violet-300/35 bg-slate-950/95 text-white'
+})
+
+function clearUpdateStatusTimer() {
+  if (!updateStatusDismissTimer) return
+  clearTimeout(updateStatusDismissTimer)
+  updateStatusDismissTimer = null
+}
+
+function handleUpdateStatus(status: UpdateStatusPayload) {
+  clearUpdateStatusTimer()
+  updateStatus.value = status.status === 'idle' ? null : status
+  if (['up_to_date', 'error'].includes(status.status)) {
+    updateStatusDismissTimer = setTimeout(() => {
+      updateStatus.value = null
+      updateStatusDismissTimer = null
+    }, status.status === 'error' ? 10_000 : 5_000)
+  }
+}
 
 const needsConsent = computed(
   () => store.user?.role === 'slave' && store.isDesktopAgent && (
@@ -146,8 +174,18 @@ function approvalStatusLabel(status: string | null) {
   return 'Brak statusu'
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (window.janek?.system?.onUpdateStatus) {
+    updateStatusCleanup = window.janek.system.onUpdateStatus(handleUpdateStatus)
+    const currentStatus = await window.janek.system.getUpdateStatus()
+    handleUpdateStatus(currentStatus)
+  }
   void store.bootstrap()
+})
+
+onBeforeUnmount(() => {
+  updateStatusCleanup?.()
+  clearUpdateStatusTimer()
 })
 
 watch(
@@ -161,6 +199,41 @@ watch(
 
 <template>
   <div class="flex h-screen overflow-hidden flex-col">
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="-translate-y-3 opacity-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-to-class="-translate-y-3 opacity-0"
+    >
+      <div
+        v-if="updateStatus"
+        class="fixed left-1/2 top-5 z-[100] flex w-[min(92vw,620px)] -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl"
+        :class="updateStatusTone"
+      >
+        <LoaderCircle v-if="updateStatus.status === 'checking'" class="h-5 w-5 shrink-0 animate-spin" />
+        <Download v-else-if="['available', 'downloading', 'downloaded'].includes(updateStatus.status)" class="h-5 w-5 shrink-0" />
+        <CheckCircle2 v-else-if="updateStatus.status === 'up_to_date'" class="h-5 w-5 shrink-0" />
+        <AlertCircle v-else class="h-5 w-5 shrink-0" />
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-semibold">
+            {{ updateStatus.status === 'checking' ? 'Sprawdzanie aktualizacji' : updateStatus.status === 'error' ? 'Błąd aktualizacji' : 'Aktualizacje i-JANEK' }}
+          </div>
+          <div class="mt-0.5 text-xs opacity-80">{{ updateStatus.message }}</div>
+          <div v-if="updateStatus.status === 'downloading'" class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div class="h-full rounded-full bg-cyan-300 transition-all" :style="{ width: `${updateStatus.percent ?? 0}%` }" />
+          </div>
+        </div>
+        <button
+          v-if="!['checking', 'downloading'].includes(updateStatus.status)"
+          class="rounded-lg p-1 text-current opacity-60 transition hover:bg-white/10 hover:opacity-100"
+          type="button"
+          aria-label="Zamknij informację o aktualizacji"
+          @click="updateStatus = null"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+    </Transition>
     <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
