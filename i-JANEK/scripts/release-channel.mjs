@@ -18,6 +18,14 @@ const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
 const semverPattern = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const releasePathspec = [
   'i-JANEK',
+  '.firebaserc',
+  'firebase.json',
+  'firestore.rules',
+  'firestore.indexes.json',
+  'database.rules.json',
+  '.github/workflows/i-janek-firebase-rules-tests.yml',
+  '.github/workflows/deploy-firestore-rules.yml',
+  'scripts/prepare-firebase-credentials.mjs',
   ':(exclude)i-JANEK/.DS_Store',
   ':(exclude,glob)i-JANEK/**/.DS_Store'
 ]

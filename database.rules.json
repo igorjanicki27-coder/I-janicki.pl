@@ -19,6 +19,15 @@
         }
       }
     },
+    "ownerChatStates": {
+      "$ownerUid": {
+        ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
+        "$participant": {
+          ".write": "auth != null && (($participant === 'slave' && auth.uid === $ownerUid) || ($participant === 'master' && auth.token.email === 'kontakt@i-janicki.pl'))",
+          ".validate": "($participant === 'master' || $participant === 'slave') && newData.hasChildren(['role', 'email', 'typing', 'lastDeliveredAt', 'lastReadAt', 'updatedAt']) && newData.child('role').val() === $participant && newData.child('email').val() === auth.token.email && newData.child('typing').isBoolean() && newData.child('lastDeliveredAt').isNumber() && newData.child('lastReadAt').isNumber() && newData.child('updatedAt').isNumber() && (!data.exists() || (newData.child('lastDeliveredAt').val() >= data.child('lastDeliveredAt').val() && newData.child('lastReadAt').val() >= data.child('lastReadAt').val()))"
+        }
+      }
+    },
     "commands": {
       "$ownerUid": {
         "$deviceId": {
