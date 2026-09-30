@@ -91,7 +91,7 @@ const navItems = computed(() => [
   { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length },
   { key: 'organizations' as const, label: 'Firmy', icon: Building2, badge: organizations.value.filter((item) => item.name !== 'Bez firmy').length },
   { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length },
-  { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: 0 }
+  { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount }
 ])
 
 function normalizeCompanyKey(value: string) {

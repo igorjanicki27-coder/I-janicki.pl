@@ -6,18 +6,24 @@ import type { ServiceRequestPriority, ServiceRequestStatus } from '@shared/contr
 
 const emit = defineEmits<{ openDevice: [deviceId: string, ownerUid: string] }>()
 const store = useAppStore()
-const statusFilter = ref<'active' | 'all' | ServiceRequestStatus>('active')
+const showResolved = ref(false)
 const errorMessage = ref('')
 const commentDrafts = ref<Record<string, string>>({})
 const busyCommentId = ref('')
 
-const filteredRequests = computed(() => [...store.serviceRequests]
-  .filter((request) => {
-    if (statusFilter.value === 'all') return true
-    if (statusFilter.value === 'active') return request.status !== 'resolved'
-    return request.status === statusFilter.value
-  })
+const activeRequests = computed(() => store.serviceRequests
+  .filter((request) => request.status !== 'resolved')
+  .slice()
   .sort((left, right) => right.createdAt - left.createdAt))
+
+const resolvedRequests = computed(() => store.serviceRequests
+  .filter((request) => request.status === 'resolved')
+  .slice()
+  .sort((left, right) => (right.resolvedAt ?? right.updatedAt ?? right.createdAt) - (left.resolvedAt ?? left.updatedAt ?? left.createdAt)))
+
+const visibleRequests = computed(() => showResolved.value
+  ? [...activeRequests.value, ...resolvedRequests.value]
+  : activeRequests.value)
 
 function formatDateTime(timestamp?: number | null) {
   if (!timestamp) return 'brak danych'
@@ -76,25 +82,33 @@ async function addComment(requestId: string) {
 <template>
   <div class="p-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="option in [{ key: 'active', label: 'Aktywne' }, { key: 'open', label: 'Nowe' }, { key: 'in_progress', label: 'W trakcie' }, { key: 'resolved', label: 'Zakończone' }, { key: 'all', label: 'Wszystkie' }]"
-          :key="option.key"
-          type="button"
-          class="rounded-xl border px-3 py-2 text-sm transition"
-          :class="statusFilter === option.key ? 'border-cyan-300/35 bg-cyan-400/10 text-white' : 'border-white/10 text-[var(--text-dim)] hover:text-white'"
-          @click="statusFilter = option.key as typeof statusFilter"
-        >
-          {{ option.label }}
-        </button>
+      <label class="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)] transition hover:border-white/20 hover:text-white">
+        <input v-model="showResolved" type="checkbox" class="h-4 w-4 accent-cyan-400" />
+        <span>Pokaż zakończone</span>
+      </label>
+      <div class="text-sm text-[var(--text-dim)]">
+        {{ activeRequests.length }} aktywnych<span v-if="showResolved"> · {{ resolvedRequests.length }} zakończonych</span>
       </div>
-      <div class="text-sm text-[var(--text-dim)]">{{ filteredRequests.length }} zgłoszeń</div>
     </div>
 
     <p v-if="errorMessage" class="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{{ errorMessage }}</p>
 
     <div class="mt-5 space-y-3">
-      <article v-for="request in filteredRequests" :key="request.id" class="content-card" :class="request.status === 'resolved' ? 'opacity-70' : ''">
+      <div v-if="activeRequests.length" class="flex items-center gap-3 px-1 pb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+        <span>Aktywne</span>
+        <span class="h-px flex-1 bg-white/10"></span>
+      </div>
+
+      <template v-for="request in visibleRequests" :key="request.id">
+        <div
+          v-if="showResolved && request.status === 'resolved' && request.id === resolvedRequests[0]?.id"
+          class="flex items-center gap-3 px-1 pb-1 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]"
+        >
+          <span>Zakończone</span>
+          <span class="h-px flex-1 bg-white/10"></span>
+        </div>
+
+        <article class="content-card" :class="request.status === 'resolved' ? 'opacity-70' : ''">
         <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
@@ -135,11 +149,14 @@ async function addComment(requestId: string) {
             </button>
           </div>
         </div>
-      </article>
+        </article>
+      </template>
 
-      <div v-if="!filteredRequests.length" class="rounded-2xl border border-dashed border-white/10 p-10 text-center">
-        <div class="text-base font-semibold text-white">Brak zgłoszeń w tym widoku</div>
-        <p class="mt-2 text-sm text-[var(--text-dim)]">Gdy klient utworzy zadanie, pojawi się tutaj automatycznie.</p>
+      <div v-if="!visibleRequests.length" class="rounded-2xl border border-dashed border-white/10 p-10 text-center">
+        <div class="text-base font-semibold text-white">Brak aktywnych zgłoszeń</div>
+        <p class="mt-2 text-sm text-[var(--text-dim)]">
+          {{ resolvedRequests.length ? 'Możesz wyświetlić zakończone zadania, zaznaczając opcję powyżej.' : 'Gdy klient utworzy zadanie, pojawi się tutaj automatycznie.' }}
+        </p>
       </div>
     </div>
   </div>

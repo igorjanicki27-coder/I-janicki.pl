@@ -8,6 +8,9 @@ import type {
   BackupRemoteFile,
   BackupSnapshot,
   CompanyChatMessage,
+  CompanyChatParticipant,
+  CompanyChatParticipantState,
+  CompanyChatState,
   ConsentRecord,
   DeviceIdentity,
   DeviceRecord,
@@ -228,6 +231,8 @@ export const useAppStore = defineStore('app', () => {
   const usageHistory = ref<Record<string, UsageDailyRollup[]>>({})
   const inventory = ref<Record<string, InventoryReport>>({})
   const companyChats = ref<Record<string, CompanyChatMessage[]>>({})
+  const companyChatStates = ref<Record<string, CompanyChatState>>({})
+  const chatMessageSendStates = ref<Record<string, 'sending' | 'sent' | 'failed'>>({})
   const commandHistory = ref<Record<string, TerminalCommand[]>>({})
   const backupSnapshots = ref<Record<string, BackupSnapshot>>({})
   const backupSyncProgress = ref<Record<string, { totalFiles: number; processedFiles: number; uploadedFiles: number }>>({})
@@ -243,6 +248,7 @@ export const useAppStore = defineStore('app', () => {
   const consent = ref<ConsentRecord | null>(null)
   const pendingTerminalCommand = ref('')
   const pendingChatMessage = ref('')
+  const chatSendError = ref('')
   const pendingRemoteNotification = ref('')
   const pendingDeviceAlias = ref('')
   const pendingCompanyName = ref('')
@@ -285,8 +291,10 @@ export const useAppStore = defineStore('app', () => {
   const handledUpdateRequests = new Set<string>()
   const handledRemoteActionRequests = new Set<string>()
   const companyChatCleanup = new Map<string, () => void>()
+  const companyChatStateCleanup = new Map<string, () => void>()
   const commandHistoryCleanup = new Map<string, () => void>()
   const initializedCompanyChats = new Set<string>()
+  const initializedCompanyChatStates = new Set<string>()
   const seenAlertIds = new Set<string>()
   const seenServiceRequestIds = new Set<string>()
   let alertsSnapshotReady = false
@@ -299,6 +307,14 @@ export const useAppStore = defineStore('app', () => {
 
   const selectedDevice = computed(() => devices.value.find((device) => device.deviceId === selectedDeviceId.value) ?? null)
   const selectedConversationMessages = computed(() => companyChats.value[selectedConversationOwnerUid.value] ?? [])
+  const unreadCompanyChatCount = computed(() => {
+    const role = user.value?.role
+    if (!role) return 0
+    return Object.entries(companyChats.value).reduce((total, [ownerUid, messages]) => {
+      const lastReadAt = companyChatStates.value[ownerUid]?.[role]?.lastReadAt ?? 0
+      return total + messages.filter((message) => message.senderRole !== role && message.createdAt > lastReadAt).length
+    }, 0)
+  })
   const selectedBackupFiles = computed(() => (selectedDevice.value ? backupFiles.value[selectedDevice.value.deviceId] ?? [] : []))
   const selfDevice = computed(() => {
     if (!user.value || user.value.role !== 'slave' || !systemContext.value) return null
@@ -545,6 +561,8 @@ export const useAppStore = defineStore('app', () => {
   function clearCompanyChatSubscriptions() {
     companyChatCleanup.forEach((dispose) => dispose())
     companyChatCleanup.clear()
+    companyChatStateCleanup.forEach((dispose) => dispose())
+    companyChatStateCleanup.clear()
   }
 
   function clearCommandHistorySubscriptions() {
@@ -586,6 +604,8 @@ export const useAppStore = defineStore('app', () => {
     serviceRequests.value = []
     inventory.value = {}
     companyChats.value = {}
+    companyChatStates.value = {}
+    chatMessageSendStates.value = {}
     commandHistory.value = {}
     backupSnapshots.value = {}
     backupSyncProgress.value = {}
@@ -603,6 +623,7 @@ export const useAppStore = defineStore('app', () => {
     handledUpdateRequests.clear()
     handledRemoteActionRequests.clear()
     initializedCompanyChats.clear()
+    initializedCompanyChatStates.clear()
     seenAlertIds.clear()
     seenServiceRequestIds.clear()
     alertsSnapshotReady = false
@@ -627,6 +648,8 @@ export const useAppStore = defineStore('app', () => {
           serviceRequestComments.value = []
           usageHistory.value = {}
           companyChats.value = {}
+          companyChatStates.value = {}
+          chatMessageSendStates.value = {}
           localRustDeskState.value = null
           selectedConversationOwnerUid.value = ''
           pendingDeviceAlias.value = ''
@@ -654,6 +677,14 @@ export const useAppStore = defineStore('app', () => {
       initializedCompanyChats.delete(ownerUid)
     })
 
+    companyChatStateCleanup.forEach((dispose, ownerUid) => {
+      if (uniqueOwnerUids.includes(ownerUid)) return
+      dispose()
+      companyChatStateCleanup.delete(ownerUid)
+      delete companyChatStates.value[ownerUid]
+      initializedCompanyChatStates.delete(ownerUid)
+    })
+
     uniqueOwnerUids.forEach((ownerUid) => {
       if (companyChatCleanup.has(ownerUid)) return
       const cleanup = backend.value!.subscribeCompanyChats(ownerUid, (messages) => {
@@ -664,13 +695,15 @@ export const useAppStore = defineStore('app', () => {
           [ownerUid]: messages
         }
 
+        if (initializedCompanyChatStates.has(ownerUid)) markLatestIncomingDelivered(ownerUid)
+
         if (!initializedCompanyChats.has(ownerUid)) {
           messages.forEach((message) => previousIds.add(message.id))
           initializedCompanyChats.add(ownerUid)
           return
         }
 
-        if (user.value?.role !== 'slave' || slaveSettings.value.muteChatSounds) return
+        if (user.value?.role === 'slave' && slaveSettings.value.muteChatSounds) return
 
         const incomingMessages = messages.filter((message) => !previousIds.has(message.id) && message.senderRole !== user.value?.role)
         for (const message of incomingMessages) {
@@ -681,6 +714,13 @@ export const useAppStore = defineStore('app', () => {
         }
       })
       companyChatCleanup.set(ownerUid, cleanup)
+
+      const stateCleanup = backend.value!.subscribeCompanyChatState(ownerUid, (state) => {
+        companyChatStates.value = { ...companyChatStates.value, [ownerUid]: state }
+        initializedCompanyChatStates.add(ownerUid)
+        markLatestIncomingDelivered(ownerUid)
+      })
+      companyChatStateCleanup.set(ownerUid, stateCleanup)
     })
   }
 
@@ -745,6 +785,8 @@ export const useAppStore = defineStore('app', () => {
     serviceRequestComments.value = []
     usageHistory.value = {}
     companyChats.value = {}
+    companyChatStates.value = {}
+    chatMessageSendStates.value = {}
     commandHistory.value = {}
     selectedDeviceId.value = ''
     selectedConversationOwnerUid.value = ''
@@ -752,6 +794,7 @@ export const useAppStore = defineStore('app', () => {
     handledUpdateRequests.clear()
     handledRemoteActionRequests.clear()
     initializedCompanyChats.clear()
+    initializedCompanyChatStates.clear()
     seenAlertIds.clear()
     seenServiceRequestIds.clear()
     alertsSnapshotReady = false
@@ -1234,12 +1277,96 @@ export const useAppStore = defineStore('app', () => {
     )
   }
 
+  async function updateChatParticipantState(
+    ownerUid: string,
+    participant: CompanyChatParticipant,
+    patch: Partial<Pick<CompanyChatParticipantState, 'typing' | 'lastDeliveredAt' | 'lastReadAt'>>
+  ) {
+    if (!backend.value || !user.value || user.value.role !== participant) return
+    const current = companyChatStates.value[ownerUid]?.[participant]
+    const nextState: CompanyChatParticipantState = {
+      role: participant,
+      email: user.value.email,
+      typing: patch.typing ?? current?.typing ?? false,
+      lastDeliveredAt: Math.max(current?.lastDeliveredAt ?? 0, patch.lastDeliveredAt ?? 0),
+      lastReadAt: Math.max(current?.lastReadAt ?? 0, patch.lastReadAt ?? 0),
+      updatedAt: Date.now()
+    }
+    companyChatStates.value = {
+      ...companyChatStates.value,
+      [ownerUid]: { ...(companyChatStates.value[ownerUid] ?? {}), [participant]: nextState }
+    }
+    try {
+      await backend.value.updateCompanyChatParticipantState(ownerUid, participant, nextState)
+    } catch (error) {
+      console.warn('[i-JANEK] Nie udało się zaktualizować stanu rozmowy:', error)
+    }
+  }
+
+  function markLatestIncomingDelivered(ownerUid: string) {
+    const role = user.value?.role
+    if (!role) return
+    const latestIncomingAt = (companyChats.value[ownerUid] ?? []).reduce(
+      (latest, message) => message.senderRole === role ? latest : Math.max(latest, message.createdAt),
+      0
+    )
+    if (latestIncomingAt > (companyChatStates.value[ownerUid]?.[role]?.lastDeliveredAt ?? 0)) {
+      void updateChatParticipantState(ownerUid, role, { lastDeliveredAt: latestIncomingAt })
+    }
+  }
+
+  async function setChatTyping(ownerUid: string, typing: boolean) {
+    if (!ownerUid || !user.value) return
+    await updateChatParticipantState(ownerUid, user.value.role, { typing })
+  }
+
+  async function markChatRead(ownerUid = selectedConversationOwnerUid.value) {
+    const role = user.value?.role
+    if (!ownerUid || !role) return
+    const latestIncomingAt = (companyChats.value[ownerUid] ?? []).reduce(
+      (latest, message) => message.senderRole === role ? latest : Math.max(latest, message.createdAt),
+      0
+    )
+    if (!latestIncomingAt) return
+    await updateChatParticipantState(ownerUid, role, {
+      lastDeliveredAt: latestIncomingAt,
+      lastReadAt: latestIncomingAt
+    })
+  }
+
+  function getChatMessageStatus(message: CompanyChatMessage) {
+    const localState = chatMessageSendStates.value[message.id]
+    if (localState === 'sending' || localState === 'failed') return localState
+    const recipient: CompanyChatParticipant = message.senderRole === 'master' ? 'slave' : 'master'
+    const recipientState = companyChatStates.value[message.ownerUid]?.[recipient]
+    if ((recipientState?.lastReadAt ?? 0) >= message.createdAt) return 'read' as const
+    if ((recipientState?.lastDeliveredAt ?? 0) >= message.createdAt) return 'delivered' as const
+    return 'sent' as const
+  }
+
+  async function retryChatMessage(message: CompanyChatMessage) {
+    if (!backend.value) return false
+    chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sending' }
+    chatSendError.value = ''
+    try {
+      await backend.value.sendCompanyChatMessage(message.ownerUid, message)
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sent' }
+      return true
+    } catch (error) {
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'failed' }
+      chatSendError.value = error instanceof Error ? error.message : 'Nie udało się wysłać wiadomości.'
+      return false
+    }
+  }
+
   async function sendChatMessage(ownerUid = selectedConversationOwnerUid.value) {
     const device = selectedDevice.value
-    if (!ownerUid || !user.value || !pendingChatMessage.value.trim()) return
+    if (!ownerUid || !user.value || !pendingChatMessage.value.trim()) return false
 
     const ownerDevice = devices.value.find((entry) => entry.ownerUid === ownerUid) ?? device ?? selfDevice.value
-    if (!ownerDevice) return
+    if (!ownerDevice) return false
+
+    const body = pendingChatMessage.value.trim()
 
     const senderDevice =
       user.value.role === 'slave'
@@ -1252,15 +1379,28 @@ export const useAppStore = defineStore('app', () => {
       ownerEmail: ownerDevice.ownerEmail,
       senderRole: user.value.role,
       senderEmail: user.value.email,
-      body: pendingChatMessage.value.trim(),
+      body,
       createdAt: Date.now(),
       delivered: !offline.value,
       deviceId: user.value.role === 'slave' ? selfDevice.value?.deviceId : device?.deviceId,
       deviceLabel: formatDeviceLabelForMaster(senderDevice)
     }
 
-    await backend.value?.sendCompanyChatMessage(ownerUid, message)
     pendingChatMessage.value = ''
+    chatSendError.value = ''
+    chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sending' }
+    await setChatTyping(ownerUid, false)
+
+    try {
+      await backend.value?.sendCompanyChatMessage(ownerUid, message)
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sent' }
+      return true
+    } catch (error) {
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'failed' }
+      chatSendError.value = error instanceof Error ? error.message : 'Nie udało się wysłać wiadomości.'
+      if (!pendingChatMessage.value) pendingChatMessage.value = body
+      return false
+    }
   }
 
   async function createServiceRequest(
@@ -2251,6 +2391,8 @@ export const useAppStore = defineStore('app', () => {
     serviceRequestComments,
     usageHistory,
     companyChats,
+    companyChatStates,
+    chatMessageSendStates,
     inventory,
     commandHistory,
     backupSnapshots,
@@ -2262,6 +2404,7 @@ export const useAppStore = defineStore('app', () => {
     selectedConversationOwnerUid,
     selectedDevice,
     selectedConversationMessages,
+    unreadCompanyChatCount,
     selectedBackupFiles,
     currentRustDeskState,
     selfDevice,
@@ -2273,6 +2416,7 @@ export const useAppStore = defineStore('app', () => {
     lastError,
     consent,
     pendingChatMessage,
+    chatSendError,
     pendingRemoteNotification,
     pendingDeviceAlias,
     pendingCompanyName,
@@ -2320,6 +2464,10 @@ export const useAppStore = defineStore('app', () => {
     acceptConsent,
     approveDevice,
     sendChatMessage,
+    retryChatMessage,
+    setChatTyping,
+    markChatRead,
+    getChatMessageStatus,
     createServiceRequest,
     updateServiceRequestStatus,
     addServiceRequestComment,

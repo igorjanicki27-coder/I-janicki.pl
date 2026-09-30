@@ -39,6 +39,9 @@ import type {
   BackupPolicy,
   BackupSnapshot,
   CompanyChatMessage,
+  CompanyChatParticipant,
+  CompanyChatParticipantState,
+  CompanyChatState,
   ConsentRecord,
   ClientProfile,
   DeviceIdentity,
@@ -88,8 +91,14 @@ export interface BackendClient {
   subscribeServiceRequests: (user: AppUser, callback: (requests: ServiceRequest[]) => void) => Unsubscribe
   subscribeServiceRequestComments: (callback: (comments: ServiceRequestInternalComment[]) => void) => Unsubscribe
   subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
+  subscribeCompanyChatState: (ownerUid: string, callback: (state: CompanyChatState) => void) => Unsubscribe
   subscribeRemoteMasterSettings: (callback: (settings: Partial<RemoteMasterSettings> | null) => void) => Unsubscribe
   sendCompanyChatMessage: (ownerUid: string, message: CompanyChatMessage) => Promise<void>
+  updateCompanyChatParticipantState: (
+    ownerUid: string,
+    participant: CompanyChatParticipant,
+    state: CompanyChatParticipantState
+  ) => Promise<void>
   saveRemoteMasterSettings: (settings: RemoteMasterSettings) => Promise<void>
   getMasterSecurity: () => Promise<MasterSecurityConfig | null>
   saveMasterSecurity: (config: MasterSecurityConfig) => Promise<void>
@@ -595,6 +604,16 @@ class FirebaseBackend implements BackendClient {
     return () => off(messagesRef, 'value', listener)
   }
 
+  subscribeCompanyChatState(ownerUid: string, callback: (state: CompanyChatState) => void) {
+    if (!firebaseServices!.database) {
+      callback({})
+      return () => {}
+    }
+    const stateRef = ref(firebaseServices!.database, `ownerChatStates/${ownerUid}`)
+    const listener = onValue(stateRef, (snapshot) => callback((snapshot.val() ?? {}) as CompanyChatState))
+    return () => off(stateRef, 'value', listener)
+  }
+
   subscribeRemoteMasterSettings(callback: (settings: Partial<RemoteMasterSettings> | null) => void) {
     const settingsRef = doc(firebaseServices!.firestore, 'appConfig', 'masterSettings')
     return onSnapshot(settingsRef, (snapshot) => {
@@ -606,6 +625,15 @@ class FirebaseBackend implements BackendClient {
     if (!firebaseServices!.database) return
     const messagesRef = ref(firebaseServices!.database, `ownerChats/${ownerUid}/${message.id}`)
     await set(messagesRef, message)
+  }
+
+  async updateCompanyChatParticipantState(
+    ownerUid: string,
+    participant: CompanyChatParticipant,
+    state: CompanyChatParticipantState
+  ) {
+    if (!firebaseServices!.database) return
+    await set(ref(firebaseServices!.database, `ownerChatStates/${ownerUid}/${participant}`), state)
   }
 
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {
@@ -1106,6 +1134,7 @@ class MockBackend implements BackendClient {
   private serviceRequestCommentListeners = new Set<(comments: ServiceRequestInternalComment[]) => void>()
   private masterSettingsListeners = new Set<(settings: Partial<RemoteMasterSettings> | null) => void>()
   private chatListeners = new Map<string, Set<(messages: CompanyChatMessage[]) => void>>()
+  private chatStateListeners = new Map<string, Set<(state: CompanyChatState) => void>>()
   private commandListeners = new Map<string, Set<(commands: TerminalCommand[]) => void>>()
   private clientProfiles = new Map<string, ClientProfile>()
   private inventories = new Map<string, InventoryReport>()
@@ -1337,6 +1366,7 @@ class MockBackend implements BackendClient {
     }
   ]
   private chats = new Map<string, CompanyChatMessage[]>()
+  private chatStates = new Map<string, CompanyChatState>()
   private remoteMasterSettings: RemoteMasterSettings = {
     telemetryMode: 'standard',
     companyOptions: ['i-JANEK Demo', 'Firma Klienta', 'Biuro Janicki'],
@@ -1558,6 +1588,14 @@ class MockBackend implements BackendClient {
     return () => listeners.delete(callback)
   }
 
+  subscribeCompanyChatState(ownerUid: string, callback: (state: CompanyChatState) => void) {
+    const listeners = this.chatStateListeners.get(ownerUid) ?? new Set()
+    listeners.add(callback)
+    this.chatStateListeners.set(ownerUid, listeners)
+    callback(this.chatStates.get(ownerUid) ?? {})
+    return () => listeners.delete(callback)
+  }
+
   subscribeRemoteMasterSettings(callback: (settings: Partial<RemoteMasterSettings> | null) => void) {
     this.masterSettingsListeners.add(callback)
     callback(this.remoteMasterSettings)
@@ -1569,6 +1607,16 @@ class MockBackend implements BackendClient {
     current.push(message)
     this.chats.set(ownerUid, current)
     this.chatListeners.get(ownerUid)?.forEach((listener) => listener(current))
+  }
+
+  async updateCompanyChatParticipantState(
+    ownerUid: string,
+    participant: CompanyChatParticipant,
+    state: CompanyChatParticipantState
+  ) {
+    const nextState = { ...(this.chatStates.get(ownerUid) ?? {}), [participant]: state }
+    this.chatStates.set(ownerUid, nextState)
+    this.chatStateListeners.get(ownerUid)?.forEach((listener) => listener(nextState))
   }
 
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {

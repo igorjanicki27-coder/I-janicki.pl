@@ -169,6 +169,34 @@ test('czat właściciela jest prywatny, lecz dostępny dla Mastera', async () =>
   await assertSucceeds(get(ref(masterDb, `ownerChats/${owner.uid}`)))
 })
 
+test('stan komunikatora może aktualizować wyłącznie właściwy uczestnik rozmowy', async () => {
+  const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).database()
+  const strangerDb = environment.authenticatedContext(stranger.uid, { email: stranger.email }).database()
+  const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).database()
+  const slaveState = {
+    role: 'slave',
+    email: owner.email,
+    typing: true,
+    lastDeliveredAt: 1_700_000_000_000,
+    lastReadAt: 1_700_000_000_000,
+    updatedAt: 1_700_000_000_100
+  }
+  const masterState = {
+    ...slaveState,
+    role: 'master',
+    email: master.email,
+    typing: false
+  }
+
+  await assertSucceeds(set(ref(ownerDb, `ownerChatStates/${owner.uid}/slave`), slaveState))
+  await assertFails(set(ref(ownerDb, `ownerChatStates/${owner.uid}/slave`), { ...slaveState, lastReadAt: 1 }))
+  await assertFails(set(ref(ownerDb, `ownerChatStates/${owner.uid}/master`), masterState))
+  await assertSucceeds(set(ref(masterDb, `ownerChatStates/${owner.uid}/master`), masterState))
+  await assertFails(set(ref(strangerDb, `ownerChatStates/${owner.uid}/slave`), { ...slaveState, email: stranger.email }))
+  await assertSucceeds(get(ref(masterDb, `ownerChatStates/${owner.uid}`)))
+  await assertFails(get(ref(strangerDb, `ownerChatStates/${owner.uid}`)))
+})
+
 test('komentarze wewnętrzne może czytać i tworzyć wyłącznie Master', async () => {
   await seedServiceRequest()
   const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).firestore()

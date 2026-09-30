@@ -262,6 +262,19 @@ export interface CompanyChatMessage {
   deviceLabel?: string
 }
 
+export type CompanyChatParticipant = Extract<UserRole, 'master' | 'slave'>
+
+export interface CompanyChatParticipantState {
+  role: CompanyChatParticipant
+  email: string
+  typing: boolean
+  lastDeliveredAt: number
+  lastReadAt: number
+  updatedAt: number
+}
+
+export type CompanyChatState = Partial<Record<CompanyChatParticipant, CompanyChatParticipantState>>
+
 export interface TerminalCommand {
   id: string
   deviceId: string

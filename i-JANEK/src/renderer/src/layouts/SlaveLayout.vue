@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ClipboardList, CloudUpload, Cpu, HardDrive, MemoryStick, MessageSquareText, Plus, ShieldCheck, Workflow } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import { buildConversationTimeline } from '@/services/chat'
 import { useAppStore } from '@/stores/app'
 import type { AlertEvent, CompanyChatMessage, MetricThreshold, ServiceRequestPriority, ServiceRequestStatus } from '@shared/contracts'
 
-const SLAVE_CHAT_READS_KEY = 'i-janek-slave-chat-reads'
-
 const store = useAppStore()
-const chatReadAt = ref(0)
 const alertsModalOpen = ref(false)
 const serviceRequestModalOpen = ref(false)
 const requestTitle = ref('')
@@ -19,6 +16,8 @@ const serviceRequestBusy = ref(false)
 const serviceRequestMessage = ref('')
 const chatViewport = ref<HTMLElement | null>(null)
 let markReadTimer: number | null = null
+let typingTimer: number | null = null
+let typingActive = false
 
 const device = computed(() => store.selectedDevice)
 const deviceAlerts = computed(() =>
@@ -59,36 +58,34 @@ const unreadMessageIds = computed(
   () =>
     new Set(
       store.selectedConversationMessages
-        .filter((message) => message.senderRole === 'master' && message.createdAt > chatReadAt.value)
+        .filter((message) => message.senderRole === 'master' && message.createdAt > (store.companyChatStates[message.ownerUid]?.slave?.lastReadAt ?? 0))
         .map((message) => message.id)
     )
 )
 const unreadMessagesCount = computed(() => unreadMessageIds.value.size)
+const masterIsTyping = computed(() => {
+  const ownerUid = store.selectedConversationOwnerUid
+  const state = ownerUid ? store.companyChatStates[ownerUid]?.master : undefined
+  return Boolean(state?.typing && Date.now() - state.updatedAt < 8_000)
+})
 
 watch(
   () => store.selectedConversationOwnerUid,
   (ownerUid) => {
-    if (!ownerUid) {
-      chatReadAt.value = 0
-      return
-    }
-
-    try {
-      const stored = localStorage.getItem(`${SLAVE_CHAT_READS_KEY}:${ownerUid}`)
-      chatReadAt.value = stored ? Number(stored) || 0 : 0
-    } catch {
-      chatReadAt.value = 0
-    }
-
+    if (!ownerUid) return
     queueMarkMessagesRead(250)
+    void nextTick(scrollToLatest)
   },
   { immediate: true }
 )
 
 watch(
   () => store.selectedConversationMessages.length,
-  () => {
+  async () => {
+    const shouldScroll = isNearBottom() || store.selectedConversationMessages.at(-1)?.senderRole === 'slave'
     queueMarkMessagesRead()
+    await nextTick()
+    if (shouldScroll) scrollToLatest()
   }
 )
 
@@ -236,21 +233,9 @@ async function removeAlert(alertId: string) {
   }
 }
 
-function persistReadAt(timestamp: number) {
-  const ownerUid = store.selectedConversationOwnerUid
-  if (!ownerUid) return
-
-  chatReadAt.value = timestamp
-  try {
-    localStorage.setItem(`${SLAVE_CHAT_READS_KEY}:${ownerUid}`, String(timestamp))
-  } catch {
-    // Ignore storage issues in renderer.
-  }
-}
-
 function markMessagesRead() {
   if (!unreadMessagesCount.value) return
-  persistReadAt(Date.now())
+  void store.markChatRead()
 }
 
 function queueMarkMessagesRead(delay = 850) {
@@ -263,6 +248,7 @@ function queueMarkMessagesRead(delay = 850) {
     if (!chatViewport.value) return
     const rect = chatViewport.value.getBoundingClientRect()
     if (rect.height <= 0 || rect.bottom <= 0 || rect.top >= window.innerHeight) return
+    if (!isNearBottom()) return
     markMessagesRead()
   }, delay)
 }
@@ -276,8 +262,58 @@ function handleOpenSlaveAlertModal() {
 }
 
 async function sendChatMessage() {
+  stopTyping()
   await store.sendChatMessage(device.value?.ownerUid)
+  await nextTick()
+  scrollToLatest()
   queueMarkMessagesRead(120)
+}
+
+function isNearBottom() {
+  const viewport = chatViewport.value
+  if (!viewport) return true
+  return viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100
+}
+
+function scrollToLatest() {
+  const viewport = chatViewport.value
+  if (!viewport) return
+  viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+}
+
+function stopTyping() {
+  if (typingTimer) window.clearTimeout(typingTimer)
+  typingTimer = null
+  if (typingActive && store.selectedConversationOwnerUid) void store.setChatTyping(store.selectedConversationOwnerUid, false)
+  typingActive = false
+}
+
+function handleTyping() {
+  const ownerUid = store.selectedConversationOwnerUid
+  if (!ownerUid) return
+  if (!store.pendingChatMessage.trim()) {
+    stopTyping()
+    return
+  }
+  if (!typingActive) {
+    typingActive = true
+    void store.setChatTyping(ownerUid, true)
+  }
+  if (typingTimer) window.clearTimeout(typingTimer)
+  typingTimer = window.setTimeout(stopTyping, 1_600)
+}
+
+function formatMessageTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+}
+
+function messageStatusLabel(message: CompanyChatMessage) {
+  const status = store.getChatMessageStatus(message)
+  if (status === 'read') return 'Odczytano'
+  if (status === 'delivered') return 'Dostarczono'
+  if (status === 'sending') return 'Wysyłanie…'
+  if (status === 'failed') return 'Nie wysłano'
+  return 'Wysłano'
 }
 
 onMounted(() => {
@@ -288,6 +324,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (markReadTimer) window.clearTimeout(markReadTimer)
+  stopTyping()
   window.removeEventListener('focus', handleWindowFocus)
   document.removeEventListener('visibilitychange', handleWindowFocus)
   window.removeEventListener('i-janek:open-slave-alert-modal', handleOpenSlaveAlertModal)
@@ -422,8 +459,14 @@ onBeforeUnmount(() => {
               </span>
             </div>
             {{ entry.message.body }}
+            <div class="mt-1.5 flex justify-end gap-2 text-[10px] text-[var(--text-dim)]">
+              <span>{{ formatMessageTime(entry.message.createdAt) }}</span>
+              <span v-if="entry.message.senderRole === 'slave'" :class="store.getChatMessageStatus(entry.message) === 'read' ? 'text-fuchsia-200' : ''">{{ messageStatusLabel(entry.message) }}</span>
+            </div>
           </div>
         </template>
+
+        <div v-if="masterIsTyping" class="inline-flex items-center gap-1 rounded-[18px] border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--text-dim)]"><span class="animate-pulse">●</span> Administrator pisze…</div>
 
         <div v-if="!conversationTimeline.length" class="rounded-[18px] border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
           Brak wiadomości w tej rozmowie.
@@ -434,11 +477,15 @@ onBeforeUnmount(() => {
         <input
           v-model="store.pendingChatMessage"
           class="soft-input !py-2.5"
+          maxlength="4000"
           placeholder="Napisz wiadomość"
           @focus="queueMarkMessagesRead(120)"
+          @input="handleTyping"
+          @keydown.enter.exact.prevent="sendChatMessage"
         />
-        <button class="glass-button !rounded-xl !px-4 !py-2.5 !text-sm" type="button" @click="sendChatMessage">Wyślij</button>
+        <button class="glass-button !rounded-xl !px-4 !py-2.5 !text-sm" type="button" :disabled="!store.pendingChatMessage.trim()" @click="sendChatMessage">Wyślij</button>
       </div>
+      <p v-if="store.chatSendError" class="mt-2 text-xs text-rose-200">{{ store.chatSendError }}</p>
     </section>
 
     <AppFooterLink class="shrink-0 pb-0 pt-0.5" />

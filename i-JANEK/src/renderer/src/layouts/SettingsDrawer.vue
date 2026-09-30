@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronDown, Download, LogOut, RefreshCw, Trash2, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, ShieldCheck, Stethoscope, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -15,7 +15,6 @@ const remoteAccessPassphraseConfirmation = ref('')
 const remoteSecurityBusy = ref(false)
 const remoteSecurityMessage = ref('')
 const replacingRemoteAccessKey = ref(false)
-const companyDraft = ref('')
 const checkingUpdates = ref(false)
 const pickingFolder = ref(false)
 const refreshingRustDesk = ref(false)
@@ -26,6 +25,7 @@ const removingBackupFolderBusy = ref(false)
 const approvalDrafts = ref<Record<string, DeviceDetailsDraft>>({})
 const approvalBusy = ref<Record<string, boolean>>({})
 const approvalMessages = ref<Record<string, string>>({})
+const activeSettingsPanel = ref<'thresholds' | 'security' | 'support' | null>(null)
 
 interface DeviceDetailsDraft {
   deviceAlias: string
@@ -73,7 +73,10 @@ const slaveDevice = computed(() => {
 watch(
   () => props.open,
   (open) => {
-    if (!open) return
+    if (!open) {
+      activeSettingsPanel.value = null
+      return
+    }
     remoteAccessPassphrase.value = ''
     remoteAccessPassphraseConfirmation.value = ''
     remoteSecurityMessage.value = ''
@@ -93,6 +96,10 @@ watch(
   },
   { immediate: true }
 )
+
+function closeSettingsPanel() {
+  activeSettingsPanel.value = null
+}
 
 function toggleFolder(name: 'Desktop' | 'Documents') {
   const selected = new Set(store.slaveSettings.backupFolders)
@@ -193,16 +200,6 @@ async function unlockRemoteAccessSecurity() {
     remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się odblokować klucza.'
   } finally {
     remoteSecurityBusy.value = false
-  }
-}
-
-async function addCompanyOption() {
-  const next = companyDraft.value.trim()
-  if (!next) return
-  const added = await store.addCompanyOption(next)
-  if (added) {
-    store.selectedConversationOwnerUid = `virtual:${next}`
-    companyDraft.value = ''
   }
 }
 
@@ -337,148 +334,39 @@ function formatRotationDate(timestamp?: number) {
             </div>
           </section>
 
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Progi dashboardu</div>
-            <p class="mt-2 text-sm leading-7 text-[var(--text-dim)]">
-              Wartości od tych progów zmieniają kafelki na pomarańczowe i czerwone.
-            </p>
-            <div class="mt-3 grid grid-cols-[1.1fr_110px_110px] items-center gap-3 px-3 text-[11px] uppercase tracking-[0.15em]">
-              <span class="text-[var(--text-dim)]">Metryka</span>
-              <span class="text-amber-300">Warning</span>
-              <span class="text-rose-300">Critical</span>
-            </div>
-            <div class="mt-4 space-y-3">
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>CPU użycie (%)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.warning" @input="store.updateMetricThreshold('cpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.critical" @input="store.updateMetricThreshold('cpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>GPU użycie (%)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.warning" @input="store.updateMetricThreshold('gpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.critical" @input="store.updateMetricThreshold('gpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>RAM (%)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.ramUsage.warning" @input="store.updateMetricThreshold('ramUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.ramUsage.critical" @input="store.updateMetricThreshold('ramUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>Dysk (%)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.diskUsage.warning" @input="store.updateMetricThreshold('diskUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.diskUsage.critical" @input="store.updateMetricThreshold('diskUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>CPU temperatura (°C)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.warning" @input="store.updateMetricThreshold('cpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.critical" @input="store.updateMetricThreshold('cpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>GPU temperatura (°C)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.warning" @input="store.updateMetricThreshold('gpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.critical" @input="store.updateMetricThreshold('gpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-              <div class="grid grid-cols-[1.1fr_110px_110px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                <span>Backup wiek (h)</span>
-                <input class="soft-input !py-2 !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.warning" @input="store.updateMetricThreshold('backupAgeHours', 'warning', Number(($event.target as HTMLInputElement).value))" />
-                <input class="soft-input !py-2 !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.critical" @input="store.updateMetricThreshold('backupAgeHours', 'critical', Number(($event.target as HTMLInputElement).value))" />
-              </div>
-
-              <label class="block text-sm text-[var(--text-dim)]">
-                <span class="mb-2 block">Czestotliwosc telemetrii</span>
-                <div class="relative">
-                  <select
-                    class="soft-input !py-2 !pr-10 appearance-none"
-                    :value="store.masterSettings.telemetryMode"
-                    @change="store.updateMasterSettings({ telemetryMode: ($event.target as HTMLSelectElement).value as 'standard' | 'aggressive' })"
-                  >
-                    <option value="standard">Standard (1h)</option>
-                    <option value="aggressive">Agresywny (10 min)</option>
-                  </select>
-                  <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dim)]" />
-                </div>
-              </label>
-            </div>
+          <section class="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.07]"
+              type="button"
+              @click="activeSettingsPanel = 'thresholds'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
+                <Gauge class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-white">Progi dashboardu</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Alerty i telemetria</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+            </button>
+            <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07]"
+              type="button"
+              @click="activeSettingsPanel = 'security'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+                <ShieldCheck class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-white">Bezpieczeństwo</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Klucz zdalnego dostępu</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+            </button>
           </section>
 
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Bezpieczeństwo zdalnego dostępu</div>
-            <div class="mt-4 space-y-4">
-              <label class="block text-sm text-[var(--text-dim)]">
-                <span class="mb-2 block">Hasło klucza Mastera</span>
-                <input v-model="remoteAccessPassphrase" class="soft-input" type="password" autocomplete="current-password" placeholder="Minimum 12 znaków" />
-                <input
-                  v-if="!store.masterSecurity || replacingRemoteAccessKey"
-                  v-model="remoteAccessPassphraseConfirmation"
-                  class="soft-input mt-2"
-                  type="password"
-                  autocomplete="new-password"
-                  placeholder="Powtórz hasło"
-                />
-                <button
-                  class="glass-button mt-3 w-full !px-4"
-                  type="button"
-                  :disabled="remoteSecurityBusy"
-                  @click="store.masterSecurity && !replacingRemoteAccessKey ? unlockRemoteAccessSecurity() : configureRemoteAccessSecurity()"
-                >
-                  {{ remoteSecurityBusy ? 'Proszę czekać...' : store.masterSecurity && !replacingRemoteAccessKey ? 'Odblokuj dane RustDesk' : replacingRemoteAccessKey ? 'Zapisz nowy klucz' : 'Utwórz klucz zdalnego dostępu' }}
-                </button>
-                <button
-                  v-if="store.masterSecurity && !replacingRemoteAccessKey"
-                  class="ghost-button mt-2 w-full !rounded-xl"
-                  type="button"
-                  :disabled="remoteSecurityBusy"
-                  @click="startReplacingRemoteAccessKey()"
-                >
-                  Wygeneruj nowy klucz
-                </button>
-                <button
-                  v-if="replacingRemoteAccessKey"
-                  class="ghost-button mt-2 w-full !rounded-xl"
-                  type="button"
-                  :disabled="remoteSecurityBusy"
-                  @click="cancelReplacingRemoteAccessKey()"
-                >
-                  Anuluj zmianę klucza
-                </button>
-                <p v-if="remoteSecurityMessage" class="mt-2 text-xs text-cyan-100">{{ remoteSecurityMessage }}</p>
-                <p class="mt-2 text-xs text-amber-200/90">
-                  Hasło nie jest wysyłane do Firebase. Prywatny klucz jest szyfrowany lokalnie hasłem, a urządzenia zapisują wyłącznie zaszyfrowane ID i hasło RustDesk.
-                </p>
-              </label>
-            </div>
-          </section>
-
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Firmy dla slave</div>
-            <p class="mt-2 text-sm text-[var(--text-dim)]">
-              Lista jest synchronizowana live. Slave wybiera firmę przy pierwszej akceptacji regulaminu.
-            </p>
-            <div class="mt-3 flex gap-2">
-              <input
-                v-model="companyDraft"
-                class="soft-input !py-2"
-                placeholder="Dodaj nową firmę"
-                @keyup.enter="addCompanyOption()"
-              />
-              <button class="glass-button !px-4 !py-2" type="button" @click="addCompanyOption()">Dodaj</button>
-            </div>
-            <div class="mt-3 space-y-2">
-              <div
-                v-for="company in store.masterSettings.companyOptions"
-                :key="company"
-                class="flex items-center justify-between rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]"
-              >
-                <span class="truncate text-white">{{ company }}</span>
-                <button class="ghost-button !rounded-lg !px-2 !py-1 !text-xs" type="button" @click="store.removeCompanyOption(company)">
-                  Usuń
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Zarzadzanie klientami</div>
+          <section v-if="pendingDevices.length" class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div class="text-sm font-semibold text-white">Urządzenia oczekujące</div>
             <div class="mt-3 space-y-2">
               <div
                 v-for="device in pendingDevices"
@@ -515,13 +403,7 @@ function formatRotationDate(timestamp?: number) {
                   </button>
                 </div>
               </div>
-              <div v-if="!pendingDevices.length" class="rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-                Brak urzadzen oczekujacych.
-              </div>
             </div>
-            <button class="glass-button mt-4 w-full justify-center" type="button" @click="store.forceUpdateAllClients()">
-              Wymus aktualizacje u wszystkich
-            </button>
           </section>
 
         </template>
@@ -730,56 +612,250 @@ function formatRotationDate(timestamp?: number) {
           </div>
         </template>
 
-        <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="text-sm font-semibold text-white">Aktualizacje aplikacji</div>
-              <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">
-                Wersja {{ store.systemContext?.appVersion ?? '—' }}
-              </p>
+        <div class="mt-4 grid gap-2" :class="store.isMaster ? 'grid-cols-2' : 'grid-cols-1'">
+          <section v-if="store.isMaster" class="flex min-w-0 items-center gap-2 rounded-[20px] border border-white/10 bg-white/5 p-3">
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-semibold text-white">Aktualizacja klientów</div>
+              <div class="mt-0.5 text-xs text-[var(--text-dim)]">Wszystkie urządzenia</div>
             </div>
-            <label v-if="store.isDesktopAgent" class="flex items-center gap-2 text-xs text-[var(--text-dim)]">
-              <span>Ciche aktualizacje</span>
+            <button class="ghost-button shrink-0 !rounded-xl !px-2.5 !py-2 text-xs" type="button" title="Wymuś aktualizację u wszystkich" @click="store.forceUpdateAllClients()">
+              <RefreshCw class="h-3.5 w-3.5" />
+              <span class="sr-only">Aktualizuj wszystkie urządzenia</span>
+            </button>
+          </section>
+
+          <section class="flex min-w-0 items-center gap-2 rounded-[20px] border border-white/10 bg-white/5 p-3">
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-semibold text-white">Aktualizacja aplikacji</div>
+              <div class="mt-0.5 text-xs text-[var(--text-dim)]">Wersja {{ store.systemContext?.appVersion ?? '—' }}</div>
+            </div>
+            <label v-if="store.isDesktopAgent" class="flex shrink-0 items-center gap-1.5 text-[10px] text-[var(--text-dim)]" title="Pobieraj aktualizacje w tle">
+              <span>Ciche</span>
               <input
                 :checked="store.slaveSettings.silentUpdates"
                 type="checkbox"
                 @change="store.updateSlaveSettings({ silentUpdates: ($event.target as HTMLInputElement).checked })"
               />
             </label>
-          </div>
-          <p class="mt-2 text-xs leading-5 text-[var(--text-dim)]">
-            Jeśli nowa wersja jest dostępna, aplikacja pobierze ją i poprosi o ponowne uruchomienie.
-          </p>
-          <button
-            class="glass-button mt-3 w-full justify-center"
-            type="button"
-            :disabled="checkingUpdates"
-            @click="checkForUpdatesNow()"
-          >
-            <RefreshCw class="mr-2 h-4 w-4" :class="checkingUpdates ? 'animate-spin' : ''" />
-            {{ checkingUpdates ? 'Sprawdzanie...' : 'Sprawdź aktualizacje' }}
-          </button>
-        </section>
+            <button
+              class="ghost-button shrink-0 !rounded-xl !px-2.5 !py-2 text-xs"
+              type="button"
+              title="Sprawdź aktualizacje aplikacji"
+              :disabled="checkingUpdates"
+              @click="checkForUpdatesNow()"
+            >
+              <RefreshCw class="h-3.5 w-3.5" :class="checkingUpdates ? 'animate-spin' : ''" />
+              <span class="sr-only">{{ checkingUpdates ? 'Sprawdzanie aktualizacji' : 'Sprawdź aktualizacje' }}</span>
+            </button>
+          </section>
+        </div>
 
-        <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="text-sm font-semibold text-white">Gotowość i diagnostyka</div>
-              <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">
-                Test jest bezpieczny: nie uruchamia poleceń zdalnych i nie wysyła zawartości plików.
-              </p>
+        <button
+          class="group mt-3 flex w-full items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-left transition hover:border-fuchsia-300/25 hover:bg-white/[0.07]"
+          type="button"
+          @click="activeSettingsPanel = 'support'"
+        >
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100">
+            <Stethoscope class="h-4 w-4" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-white">Pomoc techniczna</span>
+            <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Sprawdzenie aplikacji i raport diagnostyczny</span>
+          </span>
+          <span v-if="store.offlineQueueCount" class="mono shrink-0 rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[10px] text-amber-200">
+            {{ store.offlineQueueCount }}
+          </span>
+          <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+        </button>
+
+        <AppFooterLink class="mt-4 pb-2 pt-1" />
+      </div>
+    </aside>
+
+    <div
+      v-if="activeSettingsPanel === 'thresholds'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="thresholds-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-amber-300/20">
+        <header class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 id="thresholds-title" class="text-base font-semibold text-white">Progi dashboardu</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Określ, kiedy kafelki zmieniają kolor na ostrzegawczy lub krytyczny.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto p-5">
+          <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 px-3 text-[10px] uppercase tracking-[0.14em]">
+            <span class="text-[var(--text-dim)]">Metryka</span>
+            <span class="text-center text-amber-300">Ostrzeżenie</span>
+            <span class="text-center text-rose-300">Krytyczny</span>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>CPU użycie (%)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.warning" aria-label="Ostrzeżenie użycia CPU" @input="store.updateMetricThreshold('cpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.critical" aria-label="Krytyczne użycie CPU" @input="store.updateMetricThreshold('cpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
             </div>
-            <span class="mono rounded-full border border-white/10 px-2 py-1 text-[10px] text-[var(--text-dim)]">
-              kolejka: {{ store.offlineQueueCount }}
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>GPU użycie (%)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.warning" aria-label="Ostrzeżenie użycia GPU" @input="store.updateMetricThreshold('gpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.critical" aria-label="Krytyczne użycie GPU" @input="store.updateMetricThreshold('gpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>RAM (%)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.ramUsage.warning" aria-label="Ostrzeżenie użycia RAM" @input="store.updateMetricThreshold('ramUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.ramUsage.critical" aria-label="Krytyczne użycie RAM" @input="store.updateMetricThreshold('ramUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>Dysk (%)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.diskUsage.warning" aria-label="Ostrzeżenie użycia dysku" @input="store.updateMetricThreshold('diskUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.diskUsage.critical" aria-label="Krytyczne użycie dysku" @input="store.updateMetricThreshold('diskUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>CPU temperatura (°C)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.warning" aria-label="Ostrzeżenie temperatury CPU" @input="store.updateMetricThreshold('cpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.critical" aria-label="Krytyczna temperatura CPU" @input="store.updateMetricThreshold('cpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>GPU temperatura (°C)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.warning" aria-label="Ostrzeżenie temperatury GPU" @input="store.updateMetricThreshold('gpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.critical" aria-label="Krytyczna temperatura GPU" @input="store.updateMetricThreshold('gpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
+              <span>Wiek backupu (h)</span>
+              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.warning" aria-label="Ostrzeżenie wieku backupu" @input="store.updateMetricThreshold('backupAgeHours', 'warning', Number(($event.target as HTMLInputElement).value))" />
+              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.critical" aria-label="Krytyczny wiek backupu" @input="store.updateMetricThreshold('backupAgeHours', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            </div>
+          </div>
+
+          <label class="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
+            <span>
+              <span class="block text-white">Częstotliwość telemetrii</span>
+              <span class="mt-0.5 block text-xs">Jak często urządzenia przesyłają pomiary.</span>
             </span>
+            <span class="relative w-44 shrink-0">
+              <select
+                class="soft-input !py-2 !pr-9 appearance-none"
+                :value="store.masterSettings.telemetryMode"
+                @change="store.updateMasterSettings({ telemetryMode: ($event.target as HTMLSelectElement).value as 'standard' | 'aggressive' })"
+              >
+                <option value="standard">Standardowa (1 h)</option>
+                <option value="aggressive">Częsta (10 min)</option>
+              </select>
+              <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dim)]" />
+            </span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="activeSettingsPanel === 'security'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="security-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel w-full max-w-lg rounded-[28px] border border-cyan-300/20 p-5">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h3 id="security-title" class="text-base font-semibold text-white">Bezpieczeństwo zdalnego dostępu</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Zarządzaj lokalnym kluczem używanym do odszyfrowywania danych RustDesk.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <label class="mt-5 block text-sm text-[var(--text-dim)]">
+          <span class="mb-2 block">Hasło klucza Mastera</span>
+          <input v-model="remoteAccessPassphrase" class="soft-input" type="password" autocomplete="current-password" placeholder="Minimum 12 znaków" />
+          <input
+            v-if="!store.masterSecurity || replacingRemoteAccessKey"
+            v-model="remoteAccessPassphraseConfirmation"
+            class="soft-input mt-2"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Powtórz hasło"
+          />
+        </label>
+        <button
+          class="glass-button mt-3 w-full justify-center !px-4"
+          type="button"
+          :disabled="remoteSecurityBusy"
+          @click="store.masterSecurity && !replacingRemoteAccessKey ? unlockRemoteAccessSecurity() : configureRemoteAccessSecurity()"
+        >
+          {{ remoteSecurityBusy ? 'Proszę czekać...' : store.masterSecurity && !replacingRemoteAccessKey ? 'Odblokuj dane RustDesk' : replacingRemoteAccessKey ? 'Zapisz nowy klucz' : 'Utwórz klucz zdalnego dostępu' }}
+        </button>
+        <button
+          v-if="store.masterSecurity && !replacingRemoteAccessKey"
+          class="ghost-button mt-2 w-full !rounded-xl"
+          type="button"
+          :disabled="remoteSecurityBusy"
+          @click="startReplacingRemoteAccessKey()"
+        >
+          Wygeneruj nowy klucz
+        </button>
+        <button
+          v-if="replacingRemoteAccessKey"
+          class="ghost-button mt-2 w-full !rounded-xl"
+          type="button"
+          :disabled="remoteSecurityBusy"
+          @click="cancelReplacingRemoteAccessKey()"
+        >
+          Anuluj zmianę klucza
+        </button>
+        <p v-if="remoteSecurityMessage" class="mt-3 text-xs text-cyan-100">{{ remoteSecurityMessage }}</p>
+        <p class="mt-3 rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-3 py-2.5 text-xs leading-5 text-amber-100/90">
+          Hasło pozostaje na tym komputerze. Prywatny klucz jest nim szyfrowany lokalnie, a urządzenia zapisują wyłącznie zaszyfrowane dane RustDesk.
+        </p>
+      </section>
+    </div>
+
+    <div
+      v-if="activeSettingsPanel === 'support'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="support-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-[28px] border border-fuchsia-300/20">
+        <header class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 id="support-title" class="text-base font-semibold text-white">Pomoc techniczna</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Użyj tych narzędzi tylko wtedy, gdy aplikacja nie działa prawidłowo.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto p-5">
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div class="text-sm font-semibold text-white">Sprawdź działanie aplikacji</div>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Test sprawdza połączenie, konfigurację i wymagane usługi. Niczego nie zmienia i nie wysyła zawartości plików.</p>
+            <button
+              class="ghost-button mt-3 w-full justify-center !rounded-xl !px-4 !py-2.5 text-sm"
+              type="button"
+              :disabled="store.readinessRunning"
+              @click="store.runReadinessChecks()"
+            >
+              <RefreshCw class="mr-2 h-4 w-4" :class="store.readinessRunning ? 'animate-spin' : ''" />
+              {{ store.readinessRunning ? 'Sprawdzanie...' : 'Sprawdź działanie' }}
+            </button>
           </div>
 
           <div v-if="store.readinessChecks.length" class="mt-3 space-y-2">
-            <div
-              v-for="check in store.readinessChecks"
-              :key="check.id"
-              class="rounded-2xl border border-white/10 bg-black/10 px-3 py-2"
-            >
+            <div v-for="check in store.readinessChecks" :key="check.id" class="rounded-2xl border border-white/10 bg-black/10 px-3 py-2">
               <div class="flex items-center gap-2 text-xs font-medium text-white">
                 <span class="h-2 w-2 rounded-full" :class="readinessDot(check.status)" />
                 {{ check.label }}
@@ -788,40 +864,39 @@ function formatRotationDate(timestamp?: number) {
             </div>
           </div>
 
-          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          <div class="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div class="text-sm font-semibold text-white">Zapisz raport dla pomocy technicznej</div>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Raport zawiera stan usług i logi techniczne. Zapisz go, gdy pomoc techniczna poprosi o plik diagnostyczny.</p>
             <button
-              class="ghost-button w-full justify-center !rounded-2xl !px-4 !py-3 text-sm"
-              type="button"
-              :disabled="store.readinessRunning"
-              @click="store.runReadinessChecks()"
-            >
-              <RefreshCw class="mr-2 h-4 w-4" :class="store.readinessRunning ? 'animate-spin' : ''" />
-              {{ store.readinessRunning ? 'Sprawdzanie...' : 'Test gotowości' }}
-            </button>
-            <button
-              class="glass-button w-full justify-center !rounded-2xl !px-4 !py-3 text-sm"
+              class="glass-button mt-3 w-full justify-center !rounded-xl !px-4 !py-2.5 text-sm"
               type="button"
               :disabled="savingDiagnostics"
               @click="saveDiagnostics()"
             >
               <Download class="mr-2 h-4 w-4" />
-              {{ savingDiagnostics ? 'Zapisywanie...' : 'Zapisz diagnostykę' }}
+              {{ savingDiagnostics ? 'Zapisywanie...' : 'Zapisz raport' }}
             </button>
           </div>
-          <button
-            v-if="store.offlineQueueCount"
-            class="ghost-button mt-2 w-full justify-center !rounded-2xl !px-4 !py-2 text-xs"
-            type="button"
-            :disabled="store.flushingOfflineQueue || store.offline"
-            @click="store.flushOfflineQueue(true)"
-          >
-            {{ store.flushingOfflineQueue ? 'Synchronizowanie...' : store.offline ? 'Synchronizacja po powrocie sieci' : 'Ponów synchronizację teraz' }}
-          </button>
-        </section>
 
-        <AppFooterLink class="mt-4 pb-2 pt-1" />
-      </div>
-    </aside>
+          <div v-if="store.offlineQueueCount" class="mt-3 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-semibold text-amber-100">Oczekujące dane: {{ store.offlineQueueCount }}</div>
+                <p class="mt-1 text-xs leading-5 text-amber-100/70">Dane nie zostały jeszcze zsynchronizowane z powodu braku połączenia.</p>
+              </div>
+              <button
+                class="ghost-button shrink-0 !rounded-xl !px-3 !py-2 text-xs"
+                type="button"
+                :disabled="store.flushingOfflineQueue || store.offline"
+                @click="store.flushOfflineQueue(true)"
+              >
+                {{ store.flushingOfflineQueue ? 'Synchronizuję...' : store.offline ? 'Brak sieci' : 'Ponów' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <div
       v-if="removingBackupFolderPath"

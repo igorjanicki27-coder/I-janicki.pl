@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronDown, MessageSquare, Monitor, Search, Send, UserRound } from 'lucide-vue-next'
 import { buildConversationTimeline } from '@/services/chat'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 import type { CompanyChatMessage, DeviceRecord } from '@shared/contracts'
 
-const CHAT_READS_KEY = 'i-janek-master-chat-reads'
 const store = useAppStore()
 const searchQuery = ref('')
-const chatReads = ref<Record<string, number>>({})
 const expandedCompanies = ref<Record<string, boolean>>({})
+const chatViewport = ref<HTMLElement | null>(null)
+const showJumpToLatest = ref(false)
+let typingTimer: number | null = null
+let typingOwnerUid = ''
 
 interface ContactEntry {
   key: string
@@ -89,13 +91,11 @@ const activeContact = computed(() => contacts.value.find((contact) => contact.ow
 const timeline = computed(() => buildConversationTimeline(activeContact.value ? store.selectedConversationMessages : []))
 const canSend = computed(() => Boolean(activeContact.value))
 const activeCompanyName = computed(() => activeContact.value?.companyName ?? '')
-
-try {
-  const stored = localStorage.getItem(CHAT_READS_KEY)
-  if (stored) chatReads.value = JSON.parse(stored) as Record<string, number>
-} catch {
-  chatReads.value = {}
-}
+const contactIsTyping = computed(() => {
+  if (!activeContact.value) return false
+  const state = store.companyChatStates[activeContact.value.ownerUid]?.slave
+  return Boolean(state?.typing && Date.now() - state.updatedAt < 8_000)
+})
 
 watch(companyGroups, (groups) => {
   const nextExpanded = { ...expandedCompanies.value }
@@ -110,18 +110,23 @@ watch(companyGroups, (groups) => {
   else store.selectedConversationOwnerUid = ''
 }, { immediate: true })
 
-watch([() => store.selectedConversationOwnerUid, () => store.selectedConversationMessages.length], ([ownerUid]) => {
+watch([() => store.selectedConversationOwnerUid, () => store.selectedConversationMessages.length], async ([ownerUid], [previousOwnerUid]) => {
   if (!ownerUid) return
-  chatReads.value = { ...chatReads.value, [ownerUid]: Date.now() }
-  localStorage.setItem(CHAT_READS_KEY, JSON.stringify(chatReads.value))
-})
+  if (previousOwnerUid && previousOwnerUid !== ownerUid) stopTyping(previousOwnerUid)
+  const shouldScroll = ownerUid !== previousOwnerUid || isNearBottom() || store.selectedConversationMessages.at(-1)?.senderRole === 'master'
+  await nextTick()
+  if (shouldScroll) {
+    scrollToLatest()
+    void store.markChatRead(ownerUid)
+  } else showJumpToLatest.value = true
+}, { immediate: true })
 
 function normalize(value: string) {
   return value.trim().toLocaleLowerCase('pl')
 }
 
 function unreadCount(contact: ContactEntry) {
-  const lastRead = chatReads.value[contact.ownerUid] ?? 0
+  const lastRead = store.companyChatStates[contact.ownerUid]?.master?.lastReadAt ?? 0
   return (store.companyChats[contact.ownerUid] ?? []).filter((message) => message.senderRole === 'slave' && message.createdAt > lastRead).length
 }
 
@@ -165,10 +170,74 @@ function messageDeviceLabel(message: CompanyChatMessage) {
   if (!message.deviceId) return 'firma'
   return formatDeviceLabelForMaster(store.devices.find((device) => device.deviceId === message.deviceId)) || message.deviceId
 }
+
+function formatMessageTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+}
+
+function messageStatusLabel(message: CompanyChatMessage) {
+  const status = store.getChatMessageStatus(message)
+  if (status === 'read') return 'Odczytano'
+  if (status === 'delivered') return 'Dostarczono'
+  if (status === 'sending') return 'Wysyłanie…'
+  if (status === 'failed') return 'Nie wysłano'
+  return 'Wysłano'
+}
+
+function isNearBottom() {
+  const viewport = chatViewport.value
+  if (!viewport) return true
+  return viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100
+}
+
+function scrollToLatest() {
+  const viewport = chatViewport.value
+  if (!viewport) return
+  viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+  showJumpToLatest.value = false
+}
+
+function handleChatScroll() {
+  if (isNearBottom()) {
+    showJumpToLatest.value = false
+    void store.markChatRead()
+  }
+}
+
+function stopTyping(ownerUid = typingOwnerUid) {
+  if (typingTimer) window.clearTimeout(typingTimer)
+  typingTimer = null
+  if (ownerUid) void store.setChatTyping(ownerUid, false)
+  typingOwnerUid = ''
+}
+
+function handleTyping() {
+  const ownerUid = store.selectedConversationOwnerUid
+  if (!ownerUid) return
+  if (typingOwnerUid && typingOwnerUid !== ownerUid) stopTyping(typingOwnerUid)
+  if (!store.pendingChatMessage.trim()) {
+    stopTyping(ownerUid)
+    return
+  }
+  if (typingOwnerUid !== ownerUid) {
+    typingOwnerUid = ownerUid
+    void store.setChatTyping(ownerUid, true)
+  }
+  if (typingTimer) window.clearTimeout(typingTimer)
+  typingTimer = window.setTimeout(() => stopTyping(ownerUid), 1_600)
+}
+
+async function sendMessage() {
+  const ownerUid = store.selectedConversationOwnerUid
+  stopTyping(ownerUid)
+  if (await store.sendChatMessage(ownerUid)) await nextTick(scrollToLatest)
+}
+
+onBeforeUnmount(() => stopTyping())
 </script>
 
 <template>
-  <div class="grid min-h-[620px] lg:grid-cols-[340px_minmax(0,1fr)]">
+  <div class="grid h-full min-h-[620px] lg:grid-cols-[340px_minmax(0,1fr)]">
     <aside class="border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
       <label class="relative block">
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
@@ -234,23 +303,30 @@ function messageDeviceLabel(message: CompanyChatMessage) {
           </div>
         </header>
 
-        <div class="mt-4 min-h-72 flex-1 space-y-3 pr-2">
+        <div ref="chatViewport" class="relative mt-4 min-h-72 flex-1 space-y-3 overflow-y-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" @scroll="handleChatScroll">
           <template v-for="entry in timeline" :key="entry.id">
             <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[var(--text-dim)]"><span class="h-px flex-1 bg-white/10" /><span>{{ entry.label }}</span><span class="h-px flex-1 bg-white/10" /></div>
             <div v-else class="max-w-[82%] rounded-2xl border px-4 py-3 text-sm leading-6" :class="entry.message.senderRole === 'master' ? 'ml-auto border-cyan-400/25 bg-cyan-500/10 text-white' : 'border-white/10 bg-white/[0.04] text-white'">
               <div class="mb-1 flex justify-between gap-4 text-[10px] uppercase tracking-[0.12em] text-[var(--text-dim)]"><span>{{ entry.message.senderEmail }}</span><span>{{ messageDeviceLabel(entry.message) }}</span></div>
               {{ entry.message.body }}
+              <div class="mt-1.5 flex justify-end gap-2 text-[10px] text-[var(--text-dim)]">
+                <span>{{ formatMessageTime(entry.message.createdAt) }}</span>
+                <span v-if="entry.message.senderRole === 'master'" :class="store.getChatMessageStatus(entry.message) === 'read' ? 'text-cyan-200' : ''">{{ messageStatusLabel(entry.message) }}</span>
+              </div>
             </div>
           </template>
+          <div v-if="contactIsTyping" class="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-[var(--text-dim)]"><span class="animate-pulse">●</span> {{ contactLabel(activeContact) }} pisze…</div>
           <div v-if="!timeline.length" class="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-sm text-[var(--text-dim)]">Brak wiadomości z tym kontaktem.</div>
+          <button v-if="showJumpToLatest" class="sticky bottom-2 mx-auto block rounded-full border border-cyan-300/25 bg-[#101426]/95 px-3 py-1.5 text-xs text-cyan-100 shadow-lg" type="button" @click="scrollToLatest">Najnowsze wiadomości</button>
         </div>
 
         <div class="mt-4">
           <p v-if="activeContact.devices.length" class="mb-2 text-xs text-[var(--text-dim)]">Wiadomość do: <strong class="text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</strong></p>
           <div class="flex gap-2">
-            <input v-model="store.pendingChatMessage" class="soft-input !rounded-xl" :disabled="!canSend" placeholder="Napisz wiadomość..." @keyup.enter="canSend && store.sendChatMessage()" />
-            <button class="glass-button !rounded-xl !px-5" type="button" :disabled="!canSend" @click="store.sendChatMessage()"><Send class="h-4 w-4" /><span class="sr-only">Wyślij</span></button>
+            <input v-model="store.pendingChatMessage" class="soft-input !rounded-xl" maxlength="4000" :disabled="!canSend" placeholder="Napisz wiadomość..." @input="handleTyping" @keydown.enter.exact.prevent="canSend && sendMessage()" />
+            <button class="glass-button !rounded-xl !px-5" type="button" :disabled="!canSend || !store.pendingChatMessage.trim()" @click="sendMessage"><Send class="h-4 w-4" /><span class="sr-only">Wyślij</span></button>
           </div>
+          <p v-if="store.chatSendError" class="mt-2 text-xs text-rose-200">{{ store.chatSendError }}</p>
         </div>
       </template>
       <div v-else class="flex min-h-96 flex-1 items-center justify-center text-center"><div><MessageSquare class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Wybierz kontakt</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Rozwiń firmę i wybierz osobę lub komputer.</p></div></div>
