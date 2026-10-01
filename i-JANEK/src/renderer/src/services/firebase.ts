@@ -6,7 +6,7 @@ import {
   indexedDBLocalPersistence,
   initializeAuth
 } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore } from 'firebase/firestore'
 import { getDatabase } from 'firebase/database'
 
 const firebaseConfig = {
@@ -28,8 +28,14 @@ export const hasFirebaseCoreConfig = [
 export const hasRealtimeDatabaseConfig = Boolean(firebaseConfig.databaseURL)
 
 const app = hasFirebaseCoreConfig ? (getApps()[0] ?? initializeApp(firebaseConfig)) : null
+const isElectronRenderer = typeof navigator !== 'undefined' && /\bElectron\//i.test(navigator.userAgent)
 
 const database = app && firebaseConfig.databaseURL ? getDatabase(app, firebaseConfig.databaseURL) : null
+const firestore = app
+  ? isElectronRenderer
+    ? initializeFirestore(app, { experimentalForceLongPolling: true })
+    : getFirestore(app)
+  : null
 let auth = app ? null : null
 
 if (app) {
@@ -47,7 +53,7 @@ export const firebaseServices = app
   ? {
       app,
       auth,
-      firestore: getFirestore(app),
+      firestore: firestore!,
       database
     }
   : null

@@ -76,7 +76,6 @@ export interface BackendClient {
   signOut: () => Promise<void>
   healthCheck: () => Promise<void>
   ensureUserProfile: (user: AppUser) => Promise<ClientProfile>
-  isDeviceIdAvailable: (deviceId: string) => Promise<boolean>
   ensureDeviceRecord: (user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) => Promise<DeviceRecord>
   migrateDeviceRecord: (
     user: AppUser,
@@ -168,6 +167,12 @@ function toAppUser(user: User, accessToken?: string): AppUser {
     role: toRole(user.email ?? ''),
     accessToken
   }
+}
+
+function isFirestorePermissionDenied(error: unknown) {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false
+  const code = String((error as { code?: unknown }).code)
+  return code === 'permission-denied' || code === 'firestore/permission-denied'
 }
 
 function defaultBackupPolicy(_hostname: string): BackupPolicy {
@@ -443,16 +448,19 @@ class FirebaseBackend implements BackendClient {
     return profile
   }
 
-  async isDeviceIdAvailable(deviceId: string) {
-    const snapshot = await getDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
-    return !snapshot.exists()
-  }
-
   async ensureDeviceRecord(user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) {
     const firestore = getFirestore(firebaseServices!.app)
     const deviceRef = doc(firestore, 'devices', context.deviceId)
-    const snapshot = await getDoc(deviceRef)
-    const existing = snapshot.exists() ? (snapshot.data() as DeviceRecord) : undefined
+    let existing: DeviceRecord | undefined
+    try {
+      const snapshot = await getDoc(deviceRef)
+      existing = snapshot.exists() ? (snapshot.data() as DeviceRecord) : undefined
+    } catch (error) {
+      // Reguły celowo nie pozwalają klientom sprawdzać dowolnych ID urządzeń.
+      // Dla nowego dokumentu próbujemy bezpośrednio wykonać bezpieczne create;
+      // Firestore nadal odrzuci kolizję z urządzeniem innego właściciela.
+      if (!isFirestorePermissionDenied(error)) throw error
+    }
 
     const consentAcceptedAt = consent?.acceptedAt ?? existing?.consentAcceptedAt
     const nextRecord: DeviceRecord = {
@@ -498,9 +506,13 @@ class FirebaseBackend implements BackendClient {
     }
 
     const targetRef = doc(firebaseServices!.firestore, 'devices', nextIdentity.deviceId)
-    const targetSnapshot = await getDoc(targetRef)
-    if (targetSnapshot.exists()) {
-      throw new Error('Urządzenie o takim ID już istnieje. Zmień nazwę urządzenia.')
+    try {
+      const targetSnapshot = await getDoc(targetRef)
+      if (targetSnapshot.exists()) {
+        throw new Error('Urządzenie o takim ID już istnieje. Zmień nazwę urządzenia.')
+      }
+    } catch (error) {
+      if (!isFirestorePermissionDenied(error)) throw error
     }
 
     const sourceRef = doc(firebaseServices!.firestore, 'devices', sourceDevice.deviceId)
@@ -516,7 +528,14 @@ class FirebaseBackend implements BackendClient {
       updatedAt: Date.now(),
       lastSeenAt: Date.now()
     }
-    await setDoc(targetRef, payload, { merge: false })
+    try {
+      await setDoc(targetRef, payload, { merge: false })
+    } catch (error) {
+      if (isFirestorePermissionDenied(error)) {
+        throw new Error('Nie można użyć tego ID urządzenia. Zmień nazwę komputera i spróbuj ponownie.')
+      }
+      throw error
+    }
     await deleteDoc(sourceRef)
     return payload
   }
@@ -1466,10 +1485,6 @@ class MockBackend implements BackendClient {
 
     this.clientProfiles.set(user.uid, nextProfile)
     return nextProfile
-  }
-
-  async isDeviceIdAvailable(deviceId: string) {
-    return !this.devices.some((device) => device.deviceId === deviceId)
   }
 
   async ensureDeviceRecord(user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) {

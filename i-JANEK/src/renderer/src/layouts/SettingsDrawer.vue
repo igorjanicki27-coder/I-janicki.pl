@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, ShieldCheck, Stethoscope, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
-import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 
 const props = defineProps<{ open: boolean }>()
@@ -22,17 +21,7 @@ const rotatingRustDeskPassword = ref(false)
 const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
-const approvalDrafts = ref<Record<string, DeviceDetailsDraft>>({})
-const approvalBusy = ref<Record<string, boolean>>({})
-const approvalMessages = ref<Record<string, string>>({})
 const activeSettingsPanel = ref<'thresholds' | 'security' | 'support' | null>(null)
-
-interface DeviceDetailsDraft {
-  deviceAlias: string
-  contactName: string
-  companyName: string
-  installationLocation: string
-}
 
 const backupFolderPathMap: Record<'Desktop' | 'Documents', string> = {
   Desktop: '%USERPROFILE%\\Desktop',
@@ -42,25 +31,6 @@ const backupFolderPathMap: Record<'Desktop' | 'Documents', string> = {
 const syncStateLabel = computed(() => {
   return store.syncState === 'offline' ? 'offline' : 'connected'
 })
-
-const pendingDevices = computed(() => store.devices.filter((entry) => entry.approvalStatus === 'pending'))
-
-watch(
-  pendingDevices,
-  (devices) => {
-    const nextDrafts: Record<string, DeviceDetailsDraft> = {}
-    for (const device of devices) {
-      nextDrafts[device.deviceId] = approvalDrafts.value[device.deviceId] ?? {
-        deviceAlias: device.deviceAlias?.trim() || device.hostname,
-        contactName: device.contactName?.trim() || '',
-        companyName: device.companyName?.trim() || '',
-        installationLocation: device.installationLocation?.trim() || ''
-      }
-    }
-    approvalDrafts.value = nextDrafts
-  },
-  { immediate: true }
-)
 
 const slaveDevice = computed(() => {
   if (!store.user) return null
@@ -200,23 +170,6 @@ async function unlockRemoteAccessSecurity() {
     remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się odblokować klucza.'
   } finally {
     remoteSecurityBusy.value = false
-  }
-}
-
-async function decideAboutDevice(deviceId: string, approvalStatus: 'approved' | 'rejected') {
-  if (approvalBusy.value[deviceId]) return
-  approvalBusy.value = { ...approvalBusy.value, [deviceId]: true }
-  approvalMessages.value = { ...approvalMessages.value, [deviceId]: '' }
-  try {
-    const details = approvalStatus === 'approved' ? approvalDrafts.value[deviceId] : undefined
-    await store.approveDevice(deviceId, approvalStatus, details)
-  } catch (error) {
-    approvalMessages.value = {
-      ...approvalMessages.value,
-      [deviceId]: error instanceof Error ? error.message : 'Nie udało się zapisać danych komputera.'
-    }
-  } finally {
-    approvalBusy.value = { ...approvalBusy.value, [deviceId]: false }
   }
 }
 
@@ -363,47 +316,6 @@ function formatRotationDate(timestamp?: number) {
               </span>
               <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
             </button>
-          </section>
-
-          <section v-if="pendingDevices.length" class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Urządzenia oczekujące</div>
-            <div class="mt-3 space-y-2">
-              <div
-                v-for="device in pendingDevices"
-                :key="device.deviceId"
-                class="rounded-2xl border border-white/10 px-3 py-3 text-sm"
-              >
-                <div class="font-medium text-white">{{ formatDeviceLabelForMaster(device) }}</div>
-                <div class="mono mt-1 text-[11px] text-[var(--text-dim)]">System: {{ device.hostname }} · {{ device.ownerEmail }}</div>
-                <div v-if="approvalDrafts[device.deviceId]" class="mt-3 grid gap-2 sm:grid-cols-2">
-                  <label class="text-xs text-[var(--text-dim)]">
-                    Nazwa komputera
-                    <input v-model="approvalDrafts[device.deviceId].deviceAlias" class="soft-input mt-1 !py-2" maxlength="48" placeholder="np. Laptop biuro" />
-                  </label>
-                  <label class="text-xs text-[var(--text-dim)]">
-                    Firma
-                    <input v-model="approvalDrafts[device.deviceId].companyName" class="soft-input mt-1 !py-2" maxlength="80" placeholder="Nazwa firmy" />
-                  </label>
-                  <label class="text-xs text-[var(--text-dim)]">
-                    Osoba
-                    <input v-model="approvalDrafts[device.deviceId].contactName" class="soft-input mt-1 !py-2" maxlength="100" placeholder="Imię i nazwisko" />
-                  </label>
-                  <label class="text-xs text-[var(--text-dim)]">
-                    Lokalizacja
-                    <input v-model="approvalDrafts[device.deviceId].installationLocation" class="soft-input mt-1 !py-2" maxlength="120" placeholder="np. Biuro, recepcja" />
-                  </label>
-                </div>
-                <p v-if="approvalMessages[device.deviceId]" class="mt-2 text-xs text-amber-200">{{ approvalMessages[device.deviceId] }}</p>
-                <div class="mt-3 flex gap-2">
-                  <button class="glass-button !px-3 !py-2 !text-xs" type="button" :disabled="approvalBusy[device.deviceId]" @click="decideAboutDevice(device.deviceId, 'approved')">
-                    {{ approvalBusy[device.deviceId] ? 'Zapisywanie…' : 'Zapisz i zatwierdź' }}
-                  </button>
-                  <button class="ghost-button !rounded-xl !px-3 !py-2 !text-xs" type="button" :disabled="approvalBusy[device.deviceId]" @click="decideAboutDevice(device.deviceId, 'rejected')">
-                    Odrzuć
-                  </button>
-                </div>
-              </div>
-            </div>
           </section>
 
         </template>

@@ -26,6 +26,8 @@ const authValidationMessage = ref('')
 const updateStatus = ref<UpdateStatusPayload | null>(null)
 const approvalDecisionBusy = ref(false)
 const approvalDecisionError = ref('')
+const registrationRetryBusy = ref(false)
+const registrationRetryError = ref('')
 let updateStatusCleanup: (() => void) | null = null
 let updateStatusDismissTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -63,6 +65,12 @@ const needsConsent = computed(
 )
 const isApprovalBlocked = computed(() => store.isApprovalBlocked)
 const isBrowserClient = computed(() => Boolean(store.user && !store.isMaster && !store.isDesktopAgent))
+const isDeviceRegistrationMissing = computed(() => Boolean(
+  store.user?.role === 'slave'
+  && store.isDesktopAgent
+  && store.consent
+  && !store.selfDevice
+))
 const aliasTooShort = computed(() => {
   const currentLength = store.pendingDeviceAlias.trim().length
   return currentLength > 0 && currentLength < MIN_DEVICE_ALIAS_LENGTH
@@ -174,6 +182,21 @@ async function handleAcceptConsent() {
 
 async function acknowledgeApprovalWait() {
   await window.janek.system.hideMainWindow()
+}
+
+async function retryDeviceRegistration() {
+  if (registrationRetryBusy.value) return
+  registrationRetryBusy.value = true
+  registrationRetryError.value = ''
+  try {
+    await store.acceptConsent(store.consent?.unattendedAccessConsent ?? false)
+  } catch (error) {
+    registrationRetryError.value = error instanceof Error
+      ? error.message
+      : 'Nie udało się wysłać prośby. Sprawdź połączenie i spróbuj ponownie.'
+  } finally {
+    registrationRetryBusy.value = false
+  }
 }
 
 async function decideApproval(status: 'approved' | 'rejected') {
@@ -295,7 +318,7 @@ watch(
         </div>
       </aside>
     </Transition>
-    <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient" class="px-5 pt-5">
+    <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
         class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
@@ -594,6 +617,25 @@ watch(
         </div>
       </section>
 
+      <section v-else-if="isDeviceRegistrationMissing" class="mx-auto flex h-full max-w-4xl items-center justify-center">
+        <div class="glass-panel w-full rounded-[36px] border border-rose-300/25 bg-black/35 p-7 text-center lg:p-10">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-rose-300/30 bg-rose-400/10 text-rose-100">
+            <AlertCircle class="h-8 w-8" />
+          </div>
+          <div class="mono mt-5 text-xs uppercase tracking-[0.3em] text-rose-200">Rejestracja urządzenia</div>
+          <h2 class="mt-3 text-3xl font-semibold text-white">Prośba nie została potwierdzona</h2>
+          <p class="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[var(--text-dim)]">
+            Serwer nie potwierdził utworzenia prośby. Spróbuj wysłać ją ponownie — aplikacja nie pokaże już statusu oczekiwania, dopóki zapis nie będzie widoczny w chmurze.
+          </p>
+          <p v-if="registrationRetryError || store.lastError" class="mx-auto mt-4 max-w-2xl text-sm text-rose-200">
+            {{ registrationRetryError || store.lastError }}
+          </p>
+          <button class="glass-button mt-7 min-w-64 justify-center" type="button" :disabled="registrationRetryBusy" @click="retryDeviceRegistration()">
+            {{ registrationRetryBusy ? 'Wysyłanie…' : 'Wyślij prośbę ponownie' }}
+          </button>
+        </div>
+      </section>
+
       <section v-else-if="isApprovalBlocked" class="mx-auto flex h-full max-w-4xl items-center justify-center">
         <div class="glass-panel relative w-full overflow-hidden rounded-[36px] border border-amber-300/25 bg-black/35 p-7 lg:p-10">
           <div class="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
@@ -642,6 +684,6 @@ watch(
       <MasterDashboard v-else-if="store.isMaster" @open-settings="settingsOpen = true" />
       <SlaveLayout v-else />
     </main>
-    <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked && !isBrowserClient" :open="settingsOpen" @close="settingsOpen = false" />
+    <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" :open="settingsOpen" @close="settingsOpen = false" />
   </div>
 </template>

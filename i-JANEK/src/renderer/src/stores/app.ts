@@ -336,7 +336,7 @@ export const useAppStore = defineStore('app', () => {
   const isDesktopAgent = computed(() => systemContext.value?.platform !== 'web')
   const approvalGateStatus = computed<'approved' | 'pending' | 'rejected' | null>(() => {
     if (user.value?.role !== 'slave' || !isDesktopAgent.value) return null
-    return selfDevice.value?.approvalStatus ?? 'pending'
+    return selfDevice.value?.approvalStatus ?? null
   })
   const isApprovalBlocked = computed(() => approvalGateStatus.value === 'pending' || approvalGateStatus.value === 'rejected')
   const sessionStatus = computed(() => {
@@ -884,20 +884,21 @@ export const useAppStore = defineStore('app', () => {
         if (!selfDevice && isAuthoritative && !deviceRegistrationInFlight) {
           deviceRegistrationInFlight = true
           const context = systemContext.value
+          const existingConsent = consent.value
           const provisionalDeviceId =
             buildDeviceId(
               nextUser.companyName || 'KLIENT',
               `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
             ) || `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
-          consent.value = null
           void (async () => {
             try {
-              await window.janek.system.setConsent(null)
+              if (!existingConsent) await window.janek.system.setConsent(null)
               await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
               systemContext.value = { ...context, deviceId: provisionalDeviceId }
               const ensured = await backend.value!.ensureDeviceRecord(
                 nextUser,
-                toDeviceIdentity(context, provisionalDeviceId)
+                toDeviceIdentity(context, provisionalDeviceId),
+                existingConsent ?? undefined
               )
               selectedDeviceId.value = ensured.deviceId
               selectedConversationOwnerUid.value = ensured.ownerUid
@@ -1174,28 +1175,21 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    consent.value = {
+    const nextConsent: ConsentRecord = {
       acceptedAt: Date.now(),
       diagnosticsConsent: true,
       remoteCommandConsent: true,
       unattendedAccessConsent,
       policyVersion: CURRENT_CONSENT_POLICY_VERSION
     }
-    await window.janek.system.setConsent(cloneForIpc(consent.value))
 
     if (user.value?.role === 'slave' && systemContext.value) {
       const requestedIdentity = toDeviceIdentity(systemContext.value, requestedDeviceId)
       const currentDevice = selfDevice.value
 
       if (currentDevice && currentDevice.deviceId !== requestedDeviceId) {
-        const isAvailable = await backend.value!.isDeviceIdAvailable(requestedDeviceId)
-        if (!isAvailable) {
-          await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
-          return
-        }
-
         const migrated = await backend.value!.migrateDeviceRecord(user.value, currentDevice, requestedIdentity, aliasName, companyName)
-        await backend.value?.updateConsent(migrated.deviceId, consent.value)
+        await backend.value?.updateConsent(migrated.deviceId, nextConsent)
         await backend.value?.updateDeviceRegistrationDetails(migrated.deviceId, {
           contactName: user.value.displayName,
           companyName,
@@ -1211,18 +1205,12 @@ export const useAppStore = defineStore('app', () => {
           .filter((device) => device.deviceId !== currentDevice.deviceId && device.deviceId !== migrated.deviceId)
           .concat({ ...migrated, approvalStatus: 'pending', approvedBy: null, updatedAt: Date.now() })
           .sort((a, b) => b.updatedAt - a.updatedAt)
+        consent.value = nextConsent
+        await window.janek.system.setConsent(cloneForIpc(nextConsent))
         return
       }
 
-      if (!currentDevice) {
-        const isAvailable = await backend.value!.isDeviceIdAvailable(requestedDeviceId)
-        if (!isAvailable) {
-          await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
-          return
-        }
-      }
-
-      const ensured = await backend.value!.ensureDeviceRecord(user.value, requestedIdentity, consent.value)
+      const ensured = await backend.value!.ensureDeviceRecord(user.value, requestedIdentity, nextConsent)
       await backend.value?.updateDeviceAlias(requestedDeviceId, aliasName)
       await backend.value?.updateDeviceRegistrationDetails(requestedDeviceId, {
         contactName: user.value.displayName,
@@ -1235,6 +1223,8 @@ export const useAppStore = defineStore('app', () => {
       pendingCompanyName.value = companyName
       selectedDeviceId.value = ensured.deviceId
       selectedConversationOwnerUid.value = ensured.ownerUid
+      consent.value = nextConsent
+      await window.janek.system.setConsent(cloneForIpc(nextConsent))
     }
   }
 
@@ -1718,14 +1708,6 @@ export const useAppStore = defineStore('app', () => {
       await window.janek.system.notify('i-JANEK', 'Nie udało się utworzyć nowego ID urządzenia.')
       return
     }
-    if (nextDeviceId !== selfDevice.value.deviceId) {
-      const available = await backend.value!.isDeviceIdAvailable(nextDeviceId)
-      if (!available) {
-        await window.janek.system.notify('i-JANEK', 'Takie ID urządzenia już istnieje. Zmień nazwę komputera.')
-        return
-      }
-    }
-
     const previousDeviceId = selfDevice.value.deviceId
     const nextIdentity = toDeviceIdentity(systemContext.value, nextDeviceId)
     const migrated = await backend.value!.migrateDeviceRecord(user.value, selfDevice.value, nextIdentity, alias, companyName)

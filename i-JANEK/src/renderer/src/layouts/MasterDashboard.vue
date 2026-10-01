@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Activity, AlertTriangle, ArrowLeft, Building2, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Monitor, Plus, Search, Settings, Trash2 } from 'lucide-vue-next'
+import { Activity, AlertTriangle, ArrowLeft, Building2, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Monitor, Plus, Search, Settings, Trash2, UserPlus } from 'lucide-vue-next'
 import ComputerTile from '@/components/master/ComputerTile.vue'
 import DeviceWorkspace from '@/components/master/DeviceWorkspace.vue'
 import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
+import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
 import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
@@ -11,7 +12,7 @@ import type { DeviceRecord } from '@shared/contracts'
 
 const emit = defineEmits<{ openSettings: [] }>()
 const store = useAppStore()
-type Section = 'overview' | 'organizations' | 'devices' | 'tasks' | 'messages'
+type Section = 'overview' | 'registrations' | 'organizations' | 'devices' | 'tasks' | 'messages'
 
 const activeSection = ref<Section>('overview')
 const deviceDetailOpen = ref(false)
@@ -79,6 +80,7 @@ const pageDevices = computed(() => {
 const pageMeta = computed(() => {
   if (deviceDetailOpen.value && store.selectedDevice) return { title: 'Szczegóły komputera', description: `${companyNameFor(store.selectedDevice)} · ${formatDeviceLabelForMaster(store.selectedDevice)}` }
   if (activeSection.value === 'organizations') return { title: 'Firmy', description: 'Dodawanie, usuwanie i przegląd organizacji' }
+  if (activeSection.value === 'registrations') return { title: 'Rejestracje urządzeń', description: `Oczekujące: ${pendingDevices.value.length}` }
   if (activeSection.value === 'devices' && selectedOrganization.value) return { title: selectedOrganization.value.name, description: `${pageDevices.value.length} komputerów w firmie` }
   if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${store.devices.length} urządzeń` }
   if (activeSection.value === 'tasks') return { title: 'Zadania', description: `${store.openServiceRequests.length} wymaga obsługi` }
@@ -87,11 +89,12 @@ const pageMeta = computed(() => {
 })
 
 const navItems = computed(() => [
-  { key: 'overview' as const, label: 'Przegląd', icon: LayoutDashboard, badge: 0 },
-  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length },
-  { key: 'organizations' as const, label: 'Firmy', icon: Building2, badge: organizations.value.filter((item) => item.name !== 'Bez firmy').length },
-  { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length },
-  { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount }
+  { key: 'overview' as const, label: 'Przegląd', icon: LayoutDashboard, badge: 0, showZero: false },
+  { key: 'registrations' as const, label: 'Rejestracje', icon: UserPlus, badge: pendingDevices.value.length, showZero: true },
+  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length, showZero: false },
+  { key: 'organizations' as const, label: 'Firmy', icon: Building2, badge: organizations.value.filter((item) => item.name !== 'Bez firmy').length, showZero: false },
+  { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
+  { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount, showZero: false }
 ])
 
 function normalizeCompanyKey(value: string) {
@@ -211,7 +214,7 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
       <nav class="mt-5 space-y-1" aria-label="Główna nawigacja">
         <button v-for="item in navItems" :key="item.key" type="button" class="sidebar-link" :class="activeSection === item.key && !deviceDetailOpen ? 'sidebar-link-active' : ''" @click="navigate(item.key)">
           <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" /><span class="flex-1">{{ item.label }}</span>
-          <span v-if="item.badge" class="mono min-w-6 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-center text-[10px]" :class="item.key === 'tasks' && item.badge ? 'text-amber-200' : 'text-[var(--text-dim)]'">{{ item.badge }}</span>
+          <span v-if="item.badge || item.showZero" class="mono min-w-6 rounded-md px-1.5 py-0.5 text-center text-[10px]" :class="item.key === 'registrations' && item.badge ? 'bg-amber-300 text-slate-950' : 'bg-white/[0.06] text-[var(--text-dim)]'">{{ item.badge }}</span>
         </button>
       </nav>
       <div class="mt-auto space-y-3 pt-4">
@@ -228,7 +231,7 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
         </div>
         <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
       </header>
-      <nav v-if="!deviceDetailOpen" class="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><button v-for="item in navItems" :key="item.key" class="whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}</button></nav>
+      <nav v-if="!deviceDetailOpen" class="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><button v-for="item in navItems" :key="item.key" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<span v-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></nav>
 
       <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto">
         <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" />
@@ -240,12 +243,25 @@ onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests'
             <button class="summary-card text-left" type="button" @click="navigate('tasks')"><span class="summary-icon bg-fuchsia-400/10 text-fuchsia-200"><ClipboardList class="h-5 w-5" /></span><span><span class="summary-label">Otwarte zadania</span><strong class="summary-value">{{ store.openServiceRequests.length }}</strong><small>zgłoszenia klientów</small></span></button>
             <button class="summary-card text-left" type="button" @click="navigate('organizations')"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Building2 class="h-5 w-5" /></span><span><span class="summary-label">Firmy</span><strong class="summary-value">{{ organizations.length }}</strong><small>{{ offlineDevices.length }} komputerów offline</small></span></button>
           </section>
+          <button
+            class="content-card flex w-full items-center gap-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.055]"
+            :class="pendingDevices.length ? '!border-amber-300/25 bg-amber-400/[0.055]' : ''"
+            type="button"
+            @click="navigate('registrations')"
+          >
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" :class="pendingDevices.length ? 'bg-amber-400/15 text-amber-200' : 'bg-cyan-400/10 text-cyan-100'"><UserPlus class="h-6 w-6" /></span>
+            <span class="min-w-0 flex-1"><strong class="block text-base text-white">Rejestracja urządzeń</strong><small class="mt-1 block text-[var(--text-dim)]">{{ pendingDevices.length ? `${pendingDevices.length} wymaga decyzji administratora` : 'Brak nowych próśb — kliknij, aby otworzyć miejsce rejestracji' }}</small></span>
+            <span class="mono rounded-full px-2.5 py-1 text-xs" :class="pendingDevices.length ? 'bg-amber-300 text-slate-950' : 'bg-white/[0.07] text-white/55'">{{ pendingDevices.length }}</span>
+            <ChevronRight class="h-5 w-5 shrink-0 text-white/35" />
+          </button>
           <section>
             <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
             <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'overview')" @connect="connectToDevice(device)" /></div>
             <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
         </div>
+
+        <RegistrationWorkspace v-else-if="activeSection === 'registrations'" />
 
         <div v-else-if="activeSection === 'organizations'" class="p-5 lg:p-6">
           <section class="content-card"><h2 class="text-base font-semibold text-white">Dodaj firmę</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Po utworzeniu firma pojawi się w menu po lewej stronie.</p><form class="mt-4 flex max-w-xl gap-2" @submit.prevent="addCompany()"><input v-model="companyDraft" class="soft-input !rounded-xl" maxlength="80" placeholder="np. EL-TECH" /><button class="glass-button !rounded-xl !px-5" type="submit" :disabled="companyBusy || !companyDraft.trim()"><Plus class="mr-2 h-4 w-4" /> Dodaj</button></form><p v-if="companyMessage" class="mt-3 text-sm text-cyan-100">{{ companyMessage }}</p></section>
