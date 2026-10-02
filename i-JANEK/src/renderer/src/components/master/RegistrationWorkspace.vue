@@ -7,12 +7,18 @@ import { useAppStore } from '@/stores/app'
 interface DeviceDetailsDraft {
   deviceAlias: string
   contactName: string
-  companyName: string
   installationLocation: string
+}
+
+interface CompanyAssignmentDraft {
+  mode: 'existing' | 'new'
+  existingCompany: string
+  newCompany: string
 }
 
 const store = useAppStore()
 const approvalDrafts = ref<Record<string, DeviceDetailsDraft>>({})
+const companyAssignmentDrafts = ref<Record<string, CompanyAssignmentDraft>>({})
 const approvalBusy = ref<Record<string, boolean>>({})
 const approvalMessages = ref<Record<string, string>>({})
 const pendingDevices = computed(() => store.approvalQueue)
@@ -21,15 +27,21 @@ watch(
   pendingDevices,
   (devices) => {
     const nextDrafts: Record<string, DeviceDetailsDraft> = {}
+    const nextCompanyAssignments: Record<string, CompanyAssignmentDraft> = {}
     for (const device of devices) {
       nextDrafts[device.deviceId] = approvalDrafts.value[device.deviceId] ?? {
         deviceAlias: device.deviceAlias?.trim() || device.hostname,
         contactName: device.contactName?.trim() || '',
-        companyName: device.companyName?.trim() || '',
         installationLocation: device.installationLocation?.trim() || ''
+      }
+      nextCompanyAssignments[device.deviceId] = companyAssignmentDrafts.value[device.deviceId] ?? {
+        mode: store.masterSettings.companyOptions.length ? 'existing' : 'new',
+        existingCompany: '',
+        newCompany: ''
       }
     }
     approvalDrafts.value = nextDrafts
+    companyAssignmentDrafts.value = nextCompanyAssignments
   },
   { immediate: true }
 )
@@ -39,7 +51,34 @@ async function decideAboutDevice(deviceId: string, approvalStatus: 'approved' | 
   approvalBusy.value = { ...approvalBusy.value, [deviceId]: true }
   approvalMessages.value = { ...approvalMessages.value, [deviceId]: '' }
   try {
-    const details = approvalStatus === 'approved' ? approvalDrafts.value[deviceId] : undefined
+    let details: (DeviceDetailsDraft & { companyName: string }) | undefined
+    if (approvalStatus === 'approved') {
+      const draft = approvalDrafts.value[deviceId]
+      const assignment = companyAssignmentDrafts.value[deviceId]
+      if (!draft || !assignment) throw new Error('Uzupełnij dane urządzenia i wybierz firmę.')
+
+      let companyName = ''
+      if (assignment.mode === 'existing') {
+        companyName = store.masterSettings.companyOptions.find(
+          (option) => option.toLocaleLowerCase('pl') === assignment.existingCompany.trim().toLocaleLowerCase('pl')
+        ) ?? ''
+        if (!companyName) throw new Error('Wybierz firmę z listy.')
+      } else {
+        const requestedName = assignment.newCompany.trim()
+        if (!requestedName) throw new Error('Wpisz nazwę nowej firmy.')
+        const existingCompany = store.masterSettings.companyOptions.find(
+          (option) => option.toLocaleLowerCase('pl') === requestedName.toLocaleLowerCase('pl')
+        )
+        if (existingCompany) companyName = existingCompany
+        else {
+          await store.addCompanyOption(requestedName)
+          companyName = store.masterSettings.companyOptions.find(
+            (option) => option.toLocaleLowerCase('pl') === requestedName.toLocaleLowerCase('pl')
+          ) ?? requestedName
+        }
+      }
+      details = { ...draft, companyName }
+    }
     await store.approveDevice(deviceId, approvalStatus, details)
   } catch (error) {
     approvalMessages.value = {
@@ -119,15 +158,34 @@ function registrationDate(timestamp: number) {
 
         <div class="mt-4 grid gap-2 text-xs text-[var(--text-dim)] sm:grid-cols-3">
           <div class="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.035] px-3 py-2.5"><Mail class="h-4 w-4 shrink-0 text-cyan-200" /><span class="truncate">{{ device.ownerEmail }}</span></div>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.035] px-3 py-2.5"><Building2 class="h-4 w-4 shrink-0 text-cyan-200" /><span class="truncate">{{ device.companyName || 'Nie podano firmy' }}</span></div>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.035] px-3 py-2.5"><Building2 class="h-4 w-4 shrink-0 text-cyan-200" /><span class="truncate">Sugestia klienta: {{ device.companyName || 'brak' }}</span></div>
           <div class="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.035] px-3 py-2.5"><MapPin class="h-4 w-4 shrink-0 text-cyan-200" /><span class="truncate">{{ device.installationLocation || 'Nie podano lokalizacji' }}</span></div>
         </div>
 
-        <div v-if="approvalDrafts[device.deviceId]" class="mt-5 grid gap-3 sm:grid-cols-2">
-          <label class="text-xs text-[var(--text-dim)]">Nazwa komputera<input v-model="approvalDrafts[device.deviceId].deviceAlias" class="soft-input mt-1 !py-2.5" maxlength="48" placeholder="np. Laptop biuro" /></label>
-          <label class="text-xs text-[var(--text-dim)]">Firma<input v-model="approvalDrafts[device.deviceId].companyName" class="soft-input mt-1 !py-2.5" maxlength="80" placeholder="Nazwa firmy" /></label>
-          <label class="text-xs text-[var(--text-dim)]">Osoba<input v-model="approvalDrafts[device.deviceId].contactName" class="soft-input mt-1 !py-2.5" maxlength="100" placeholder="Imię i nazwisko" /></label>
-          <label class="text-xs text-[var(--text-dim)]">Lokalizacja<input v-model="approvalDrafts[device.deviceId].installationLocation" class="soft-input mt-1 !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" /></label>
+        <div v-if="approvalDrafts[device.deviceId] && companyAssignmentDrafts[device.deviceId]" class="mt-5 space-y-4">
+          <div class="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.04] p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div><div class="text-sm font-semibold text-white">Przypisz komputer do firmy</div><p class="mt-1 text-xs text-[var(--text-dim)]">Wartość podana przez użytkownika jest tylko informacyjna. Wybierz właściwą firmę albo utwórz nową.</p></div>
+              <div class="flex rounded-xl border border-white/10 bg-black/15 p-1 text-xs">
+                <button class="rounded-lg px-3 py-2 transition" :class="companyAssignmentDrafts[device.deviceId].mode === 'existing' ? 'bg-cyan-400/15 text-white' : 'text-[var(--text-dim)]'" type="button" :disabled="!store.masterSettings.companyOptions.length" @click="companyAssignmentDrafts[device.deviceId].mode = 'existing'">Istniejąca</button>
+                <button class="rounded-lg px-3 py-2 transition" :class="companyAssignmentDrafts[device.deviceId].mode === 'new' ? 'bg-cyan-400/15 text-white' : 'text-[var(--text-dim)]'" type="button" @click="companyAssignmentDrafts[device.deviceId].mode = 'new'">Nowa firma</button>
+              </div>
+            </div>
+            <label v-if="companyAssignmentDrafts[device.deviceId].mode === 'existing'" class="mt-4 block text-xs text-[var(--text-dim)]">Firma z listy
+              <select v-model="companyAssignmentDrafts[device.deviceId].existingCompany" class="soft-input mt-1 !rounded-xl !py-2.5">
+                <option value="" disabled>Wybierz firmę…</option>
+                <option v-for="company in store.masterSettings.companyOptions" :key="company" :value="company">{{ company }}</option>
+              </select>
+            </label>
+            <label v-else class="mt-4 block text-xs text-[var(--text-dim)]">Nazwa nowej firmy
+              <input v-model="companyAssignmentDrafts[device.deviceId].newCompany" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="80" placeholder="Wpisz poprawną nazwę firmy" />
+            </label>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="text-xs text-[var(--text-dim)]">Nazwa komputera<input v-model="approvalDrafts[device.deviceId].deviceAlias" class="soft-input mt-1 !py-2.5" maxlength="48" placeholder="np. Laptop biuro" /></label>
+            <label class="text-xs text-[var(--text-dim)]">Osoba<input v-model="approvalDrafts[device.deviceId].contactName" class="soft-input mt-1 !py-2.5" maxlength="100" placeholder="Imię i nazwisko" /></label>
+            <label class="text-xs text-[var(--text-dim)]">Lokalizacja<input v-model="approvalDrafts[device.deviceId].installationLocation" class="soft-input mt-1 !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" /></label>
+          </div>
         </div>
 
         <p v-if="approvalMessages[device.deviceId]" class="mt-3 text-xs text-rose-300">{{ approvalMessages[device.deviceId] }}</p>

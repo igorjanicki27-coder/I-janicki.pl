@@ -1258,6 +1258,14 @@ export const useAppStore = defineStore('app', () => {
     approvalStatus: 'approved' | 'rejected',
     details?: { deviceAlias: string; contactName: string; companyName: string; installationLocation: string }
   ) {
+    if (approvalStatus === 'approved') {
+      if (!details) throw new Error('Przed zatwierdzeniem wybierz firmę dla urządzenia.')
+      const selectedCompany = masterSettings.value.companyOptions.find(
+        (company) => company.toLocaleLowerCase('pl') === details.companyName.trim().toLocaleLowerCase('pl')
+      )
+      if (!selectedCompany) throw new Error('Wybierz firmę z listy albo najpierw utwórz nową firmę.')
+      details = { ...details, companyName: selectedCompany }
+    }
     if (details) await saveDeviceDetails(deviceId, details)
     await backend.value?.updateApprovalStatus(deviceId, approvalStatus, user.value?.email ?? DEFAULT_MASTER_EMAIL)
     devices.value = devices.value.map((device) =>
@@ -1538,7 +1546,17 @@ export const useAppStore = defineStore('app', () => {
       next.length === masterSettings.value.companyOptions.length &&
       next.every((entry, index) => entry === masterSettings.value.companyOptions[index])
     if (unchanged) return false
-    await updateMasterSettings({ companyOptions: next })
+    const nextSettings = { ...masterSettings.value, companyOptions: next }
+    if (user.value?.role === 'master') {
+      try {
+        await backend.value?.saveRemoteMasterSettings(toRemoteMasterSettings(nextSettings))
+      } catch (error) {
+        lastError.value = error instanceof Error ? error.message : 'Nie udało się utworzyć firmy.'
+        throw error
+      }
+    }
+    masterSettings.value = nextSettings
+    persistMasterSettings()
     return true
   }
 

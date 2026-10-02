@@ -174,6 +174,8 @@ async function addCompany() {
     const added = await store.addCompanyOption(name)
     companyMessage.value = added ? `Dodano firmę „${name}”.` : 'Taka firma już istnieje.'
     if (added) companyDraft.value = ''
+  } catch (error) {
+    companyMessage.value = error instanceof Error ? error.message : 'Nie udało się dodać firmy.'
   } finally {
     companyBusy.value = false
   }
@@ -200,8 +202,17 @@ async function removeCompany(organization: Organization) {
 function openTasks() {
   navigate('tasks')
 }
-onMounted(() => window.addEventListener('i-janek:open-service-requests', openTasks))
-onBeforeUnmount(() => window.removeEventListener('i-janek:open-service-requests', openTasks))
+function openRegistrations() {
+  navigate('registrations')
+}
+onMounted(() => {
+  window.addEventListener('i-janek:open-service-requests', openTasks)
+  window.addEventListener('i-janek:open-device-registrations', openRegistrations)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('i-janek:open-service-requests', openTasks)
+  window.removeEventListener('i-janek:open-device-registrations', openRegistrations)
+})
 </script>
 
 <template>

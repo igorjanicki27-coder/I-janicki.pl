@@ -26,6 +26,7 @@ const authValidationMessage = ref('')
 const updateStatus = ref<UpdateStatusPayload | null>(null)
 const approvalDecisionBusy = ref(false)
 const approvalDecisionError = ref('')
+const dismissedApprovalPromptIds = ref<string[]>([])
 const registrationRetryBusy = ref(false)
 const registrationRetryError = ref('')
 let updateStatusCleanup: (() => void) | null = null
@@ -78,7 +79,9 @@ const aliasTooShort = computed(() => {
 const headerOnlineCount = computed(() => store.devices.filter((device) => Date.now() - device.lastSeenAt < 5 * 60 * 1000).length)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
 const hasOpenServiceRequests = computed(() => store.openServiceRequests.length > 0)
-const pendingApprovalRequest = computed(() => store.approvalQueue[0] ?? null)
+const pendingApprovalRequest = computed(
+  () => store.approvalQueue.find((device) => !dismissedApprovalPromptIds.value.includes(device.deviceId)) ?? null
+)
 const slaveHeaderDeviceName = computed(
   () => store.selectedDevice?.deviceAlias || store.selectedDevice?.hostname || store.selfDevice?.deviceAlias || store.selfDevice?.hostname || 'Urządzenie'
 )
@@ -199,12 +202,17 @@ async function retryDeviceRegistration() {
   }
 }
 
-async function decideApproval(status: 'approved' | 'rejected') {
+function openDeviceRegistrations() {
+  dismissedApprovalPromptIds.value = store.approvalQueue.map((device) => device.deviceId)
+  window.dispatchEvent(new CustomEvent('i-janek:open-device-registrations'))
+}
+
+async function rejectPendingApproval() {
   if (!pendingApprovalRequest.value || approvalDecisionBusy.value) return
   approvalDecisionBusy.value = true
   approvalDecisionError.value = ''
   try {
-    await store.approveDevice(pendingApprovalRequest.value.deviceId, status)
+    await store.approveDevice(pendingApprovalRequest.value.deviceId, 'rejected')
   } catch (error) {
     approvalDecisionError.value = error instanceof Error
       ? error.message
@@ -306,14 +314,14 @@ watch(
         </div>
         <dl class="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs">
           <dt class="text-[var(--text-dim)]">E-mail</dt><dd class="truncate text-white">{{ pendingApprovalRequest.ownerEmail }}</dd>
-          <dt class="text-[var(--text-dim)]">Firma</dt><dd class="truncate text-white">{{ pendingApprovalRequest.companyName || 'Nie podano' }}</dd>
+          <dt class="text-[var(--text-dim)]">Sugestia firmy</dt><dd class="truncate text-white">{{ pendingApprovalRequest.companyName || 'Nie podano' }}</dd>
           <dt class="text-[var(--text-dim)]">Miejsce</dt><dd class="truncate text-white">{{ pendingApprovalRequest.installationLocation || 'Nie podano' }}</dd>
         </dl>
         <p v-if="approvalDecisionError" class="mt-3 text-xs text-rose-300">{{ approvalDecisionError }}</p>
         <div class="mt-4 grid grid-cols-2 gap-2">
-          <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="decideApproval('rejected')">Odrzuć</button>
-          <button class="glass-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="decideApproval('approved')">
-            {{ approvalDecisionBusy ? 'Zapisywanie…' : 'Zatwierdź' }}
+          <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="rejectPendingApproval()">Odrzuć</button>
+          <button class="glass-button !rounded-xl !px-3 !py-2.5 text-xs" type="button" :disabled="approvalDecisionBusy" @click="openDeviceRegistrations()">
+            Wybierz firmę i zatwierdź
           </button>
         </div>
       </aside>
