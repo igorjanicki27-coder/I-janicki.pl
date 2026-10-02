@@ -181,7 +181,9 @@ const artifacts = [
   resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.zip`),
   resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.zip.blockmap`),
   resolve(appRoot, 'dist', `${channelFile}.yml`),
-  resolve(appRoot, 'dist', `${channelFile}-mac.yml`)
+  resolve(appRoot, 'dist', `${channelFile}-mac.yml`),
+  resolve(appRoot, 'dist', 'update-windows.json'),
+  resolve(appRoot, 'dist', 'update-windows.sig')
 ]
 
 const missing = artifacts.filter((filePath) => !existsSync(filePath))

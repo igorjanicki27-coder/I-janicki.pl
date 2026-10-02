@@ -20,6 +20,14 @@ function readJson<T>(key: string): T | null {
 
 function createBrowserApi(): JanekApi {
   return {
+    dwServicePoc: {
+      open: async () => desktopOnly('Test DWService'),
+      close: async () => undefined,
+      setBounds: async () => undefined,
+      closePopup: async () => undefined,
+      goBack: async () => undefined,
+      onStatus: () => () => undefined
+    },
     system: {
       getContext: async () => ({
         deviceId: localStorage.getItem(DEVICE_ID_KEY) || `WEB-${crypto.randomUUID()}`,

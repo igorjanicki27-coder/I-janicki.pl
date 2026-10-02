@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
+import { closeDwServicePoc, closeDwServicePocPopup, goBackDwServicePoc, openDwServicePoc, setDwServicePocBounds } from './dwservice-poc'
 import electronUpdater from 'electron-updater'
 import type { BackupPolicy, CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
 import type { UpdateStatusPayload } from '@shared/ipc'
@@ -24,8 +25,12 @@ const restartReminderHandles = new Set<NodeJS.Timeout>()
 let rustDeskPolicyInterval: NodeJS.Timeout | null = null
 let automaticUpdateInterval: NodeJS.Timeout | null = null
 let updateInstallReminder: NodeJS.Timeout | null = null
+let windowsAgentStatusInterval: NodeJS.Timeout | null = null
 let updateCheckInFlight: Promise<{ status: string; message: string }> | null = null
 let updateInstallPromptOpen = false
+let windowsRestartSpawned = false
+let pendingWindowsUpdateVersion: string | null = null
+let pendingWindowsUpdateRequestId: string | null = null
 let downloadedUpdateVersion: string | null = null
 let latestUpdateStatus: UpdateStatusPayload = {
   status: 'idle',
@@ -36,7 +41,90 @@ const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
 const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
-const startInTray = process.argv.includes('--tray')
+const startHidden = process.argv.includes('--tray') || process.argv.includes('--updated')
+
+function getWindowsAgentRoot() {
+  return path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK')
+}
+
+function hasWindowsUpdateAgent() {
+  return process.platform === 'win32' && fs.existsSync(path.join(getWindowsAgentRoot(), 'agent-config.json'))
+}
+
+function restartAfterWindowsUpdate(version: string) {
+  if (windowsRestartSpawned) return
+  windowsRestartSpawned = true
+  const scriptPath = path.join(process.resourcesPath, 'resources', 'scripts', 'restart-after-update.ps1')
+  const powershellPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  const watcher = spawn(powershellPath, [
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
+    '-Version', version, '-AppExe', process.execPath
+  ], { detached: true, windowsHide: true, stdio: 'ignore' })
+  watcher.once('error', (error) => {
+    windowsRestartSpawned = false
+    publishUpdateStatus({ status: 'error', message: `Nie udało się przygotować ponownego uruchomienia: ${error.message}` })
+  })
+  if (!watcher.pid) {
+    windowsRestartSpawned = false
+    return
+  }
+  watcher.unref()
+  forceQuit = true
+  app.quit()
+}
+
+function pollWindowsAgentStatus() {
+  if (!pendingWindowsUpdateVersion) return
+  try {
+    const raw = fs.readFileSync(path.join(getWindowsAgentRoot(), 'update-status.json'), 'utf8').replace(/^\uFEFF/u, '')
+    const status = JSON.parse(raw) as { state?: string; version?: string; requestId?: string; message?: string }
+    if (status.requestId !== pendingWindowsUpdateRequestId) return
+    if (status.state === 'error') {
+      publishUpdateStatus({ status: 'error', message: status.message || 'Agent aktualizacji zgłosił błąd.' })
+      pendingWindowsUpdateVersion = null
+      pendingWindowsUpdateRequestId = null
+      return
+    }
+    if (status.state === 'ready') {
+      publishUpdateStatus({ status: 'downloaded', version: status.version, message: status.message || 'Aktualizacja jest gotowa.' })
+      restartAfterWindowsUpdate(pendingWindowsUpdateVersion)
+    } else if (status.state === 'installed') {
+      publishUpdateStatus({ status: 'up_to_date', version: status.version, message: status.message || 'Aktualizacja została zainstalowana.' })
+      pendingWindowsUpdateVersion = null
+      pendingWindowsUpdateRequestId = null
+    } else if (status.state === 'verifying' || status.state === 'installing') {
+      publishUpdateStatus({ status: 'available', version: status.version, message: status.message || 'Przygotowuję aktualizację.' })
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+      console.warn('[i-JANEK] Nie udało się odczytać statusu agenta aktualizacji:', error)
+    }
+  }
+}
+
+function handOffWindowsUpdate(version: string, installerPath: string) {
+  if (pendingWindowsUpdateVersion === version) return
+  const channel = localStore.get('updateChannel') ?? 'stable'
+  if (!/^\d+\.\d+\.\d+(?:-(?:alpha|beta)\.\d+)?$/u.test(version) || !['stable', 'beta', 'test'].includes(channel)) {
+    throw new Error('Nieprawidłowe metadane aktualizacji Windows.')
+  }
+  const requestDir = path.join(getWindowsAgentRoot(), 'requests')
+  const requestId = `${process.pid}-${Date.now()}`
+  const requestName = `request-${requestId}.json`
+  const requestPath = path.join(requestDir, requestName)
+  fs.writeFileSync(requestPath, JSON.stringify({
+    version,
+    requestId,
+    channel: channel === 'stable' ? 'latest' : channel,
+    installerPath
+  }), { encoding: 'utf8', flag: 'wx' })
+  pendingWindowsUpdateVersion = version
+  pendingWindowsUpdateRequestId = requestId
+  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja pobrana. Agent systemowy sprawdzi podpis i zainstaluje ją automatycznie.' })
+  if (!windowsAgentStatusInterval) {
+    windowsAgentStatusInterval = setInterval(pollWindowsAgentStatus, 2_000)
+  }
+}
 
 function getPostInstallUpdateMarkerPath() {
   return path.join(app.getPath('userData'), 'post-install-update.pending')
@@ -98,7 +186,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      nativeWindowOpen: true
+      nativeWindowOpen: true,
+      webviewTag: true
     }
   })
 
@@ -114,6 +203,8 @@ function createWindow() {
     }
   })
 
+  mainWindow.on('closed', () => { void closeDwServicePoc() })
+
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('[i-JANEK] Renderer load failed:', { errorCode, errorDescription, validatedURL })
     void writeDiagnosticLog('error', 'renderer_load_failed', { errorCode, errorDescription, validatedURL })
@@ -126,6 +217,37 @@ function createWindow() {
 
   mainWindow.webContents.once('did-finish-load', () => {
     startAutomaticUpdateChecks()
+  })
+
+  const isAllowedRemoteDesktopUrl = (value: string) => {
+    try {
+      const url = new URL(value)
+      return url.protocol === 'https:' && url.hostname === 'rustdesk.com' && url.pathname === '/web/'
+    } catch {
+      return false
+    }
+  }
+
+  mainWindow.webContents.on('will-attach-webview', (event, preferences, params) => {
+    if (!isAllowedRemoteDesktopUrl(params.src)) {
+      event.preventDefault()
+      return
+    }
+    delete preferences.preload
+    preferences.nodeIntegration = false
+    preferences.contextIsolation = true
+    preferences.sandbox = true
+  })
+
+  mainWindow.webContents.on('did-attach-webview', (_event, guest) => {
+    guest.setWindowOpenHandler(() => ({ action: 'deny' }))
+    guest.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
+    guest.on('will-navigate', (event, url) => {
+      if (!isAllowedRemoteDesktopUrl(url)) event.preventDefault()
+    })
+    guest.on('will-redirect', (event, url) => {
+      if (!isAllowedRemoteDesktopUrl(url)) event.preventDefault()
+    })
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -151,7 +273,7 @@ function createWindow() {
   }
 
   mainWindow.once('ready-to-show', () => {
-    if (!startInTray) {
+    if (!startHidden) {
       focusMainWindow()
     }
   })
@@ -207,6 +329,7 @@ function createTray() {
 
 function bindUpdaterEvents() {
   autoUpdater.autoDownload = true
+  if (process.platform === 'win32') autoUpdater.autoInstallOnAppQuit = false
   configureUpdaterChannel()
   if (updaterEventsBound) return
   updaterEventsBound = true
@@ -263,7 +386,19 @@ function bindUpdaterEvents() {
       message: `Aktualizacja ${updateInfo.version} jest gotowa do instalacji.`
     })
     void writeDiagnosticLog('info', 'auto_update_downloaded', { version: updateInfo.version })
-    void promptInstallDownloadedUpdate(updateInfo.version)
+    if (process.platform === 'win32') {
+      if (!hasWindowsUpdateAgent()) {
+        publishUpdateStatus({
+          status: 'downloaded',
+          version: updateInfo.version,
+          message: 'Jednorazowa migracja instalacji systemowej. Windows poprosi teraz o zgodę administratora.'
+        })
+        forceQuit = true
+        autoUpdater.quitAndInstall(true, true)
+      }
+    } else {
+      void promptInstallDownloadedUpdate(updateInfo.version)
+    }
   })
   autoUpdater.on('error', (error) => {
     console.error('[i-JANEK] Auto update error:', error)
@@ -328,6 +463,9 @@ async function promptInstallDownloadedUpdate(version: string) {
 }
 
 async function runUpdateCheck(silent: boolean) {
+  if (process.platform === 'win32' && pendingWindowsUpdateVersion) {
+    return { status: 'downloading', message: `Aktualizacja ${pendingWindowsUpdateVersion} jest obsługiwana przez agenta systemowego.` }
+  }
   if (!app.isPackaged) {
     return { status: 'skipped', message: 'Tryb developerski: aktualizacje są wyłączone.' }
   }
@@ -337,6 +475,16 @@ async function runUpdateCheck(silent: boolean) {
     const result = await autoUpdater.checkForUpdates()
     const nextVersion = result?.updateInfo?.version
     if (nextVersion && nextVersion !== app.getVersion()) {
+      if (process.platform === 'win32' && hasWindowsUpdateAgent() && result?.downloadPromise) {
+        void result.downloadPromise.then((files) => {
+          const installerPath = files.find((filePath) => filePath.toLowerCase().endsWith('.exe'))
+          if (!installerPath) throw new Error('Nie znaleziono pobranego instalatora Windows.')
+          handOffWindowsUpdate(nextVersion, installerPath)
+        }).catch((error) => {
+          publishUpdateStatus({ status: 'error', message: friendlyUpdateError(error) })
+          void writeDiagnosticLog('error', 'windows_agent_handoff_failed', { error })
+        })
+      }
       return { status: 'downloading', message: `Pobieranie aktualizacji ${nextVersion}.` }
     }
     return { status: 'up_to_date', message: 'Aplikacja jest aktualna.' }
@@ -435,6 +583,15 @@ async function promptRemoteConnection(title: string, message: string) {
 }
 
 function registerIpc() {
+  const requireMainRenderer = (event: Electron.IpcMainInvokeEvent) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Nieautoryzowane żądanie widoku DWService.')
+    return mainWindow
+  }
+  ipcMain.handle('dwservice:poc-open', async (event) => openDwServicePoc(requireMainRenderer(event)))
+  ipcMain.handle('dwservice:poc-close', async (event) => { requireMainRenderer(event); await closeDwServicePoc() })
+  ipcMain.handle('dwservice:poc-set-bounds', async (event, rect) => { requireMainRenderer(event); setDwServicePocBounds(rect) })
+  ipcMain.handle('dwservice:poc-close-popup', async (event) => { requireMainRenderer(event); closeDwServicePocPopup() })
+  ipcMain.handle('dwservice:poc-go-back', async (event) => { requireMainRenderer(event); goBackDwServicePoc() })
   ipcMain.handle('system:get-context', async () => getSystemContext())
   ipcMain.handle('system:set-auto-launch', async (_event, enabled: boolean) => {
     localStore.set('autoLaunch', enabled)
@@ -584,6 +741,10 @@ app.on('before-quit', () => {
   if (automaticUpdateInterval) {
     clearInterval(automaticUpdateInterval)
     automaticUpdateInterval = null
+  }
+  if (windowsAgentStatusInterval) {
+    clearInterval(windowsAgentStatusInterval)
+    windowsAgentStatusInterval = null
   }
   clearUpdateInstallReminder()
 })

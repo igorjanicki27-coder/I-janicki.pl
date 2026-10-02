@@ -26,6 +26,7 @@ echo "[3/6] Ikony"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
 echo "[4/6] Build aplikacji"
+node scripts/write-app-version.mjs
 npx electron-vite build
 
 echo "[5/6] Podpisany macOS DMG + ZIP aktualizacyjny"
@@ -51,5 +52,7 @@ CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder \
   --publish never \
   "-c.publish.channel=$CHANNEL" \
   "${WINDOWS_EXTRA_ARGS[@]}"
+
+node scripts/sign-windows-update.mjs "$CHANNEL" "$(node -p "require('./package.json').version")" "$ROOT_DIR/dist/i-JANEK-Setup-$(node -p "require('./package.json').version").exe"
 
 echo "[OK] Publiczne paczki aktualizacji są gotowe w $ROOT_DIR/dist."

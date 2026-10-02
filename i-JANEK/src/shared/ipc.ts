@@ -31,7 +31,22 @@ export interface UpdateStatusPayload {
   percent?: number
 }
 
+export interface DwServicePocStatus {
+  state: 'loading' | 'ready' | 'popup' | 'error' | 'closed'
+  url?: string
+  error?: string
+  popupCount: number
+}
+
 export interface JanekApi {
+  dwServicePoc: {
+    open: () => Promise<void>
+    close: () => Promise<void>
+    setBounds: (rect: { x: number; y: number; width: number; height: number }) => Promise<void>
+    closePopup: () => Promise<void>
+    goBack: () => Promise<void>
+    onStatus: (callback: (status: DwServicePocStatus) => void) => () => void
+  }
   system: {
     getContext: () => Promise<SystemContext>
     setAutoLaunch: (enabled: boolean) => Promise<void>

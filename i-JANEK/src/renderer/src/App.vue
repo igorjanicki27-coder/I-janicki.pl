@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Clock3, Download, KeyRound, L
 import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
+import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 import { CURRENT_CONSENT_POLICY_VERSION } from '@shared/constants'
 import type { UpdateStatusPayload } from '@shared/ipc'

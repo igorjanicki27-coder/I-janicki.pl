@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -24,6 +24,7 @@ const releasePathspec = [
   'firestore.indexes.json',
   'database.rules.json',
   '.github/workflows/i-janek-firebase-rules-tests.yml',
+  '.github/workflows/i-janek-release.yml',
   '.github/workflows/deploy-firestore-rules.yml',
   'scripts/prepare-firebase-credentials.mjs',
   ':(exclude)i-JANEK/.DS_Store',
@@ -116,6 +117,9 @@ for (const script of ['scripts/release-channel.mjs', 'scripts/publish-release-as
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
 const version = nextVersion(packageJson.version)
 const tag = `i-janek-v${version}`
+if (!dryRun && !process.env.WINDOWS_UPDATE_SIGNING_KEY_PEM && !existsSync(resolve(appRoot, 'resources/update-signing-private.pem'))) {
+  fail('Brakuje prywatnego klucza podpisu aktualizacji Windows. Wydanie wymaga tego klucza przed zmianą wersji i utworzeniem tagu.')
+}
 
 console.log(`[release] Kanał: ${channel}`)
 console.log(`[release] Wersja: ${packageJson.version} -> ${version}`)
@@ -126,6 +130,8 @@ if (dryRun) {
   console.log('[release] Podgląd zakończony. Nie zmieniono plików i niczego nie wysłano.')
   process.exit(0)
 }
+
+run(process.execPath, ['scripts/check-update-signing.mjs'], { cwd: appRoot })
 
 const branch = run('git', ['branch', '--show-current'], { capture: true })
 if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)

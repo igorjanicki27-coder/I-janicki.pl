@@ -9,3 +9,5 @@ INSTALATORY/
 build/iJanekPriv.key
 resources/google-oauth-desktop.local.json
 resources/rustdesk-config.local.txt
+resources/update-signing-private.pem
+resources/scripts/app-version.txt

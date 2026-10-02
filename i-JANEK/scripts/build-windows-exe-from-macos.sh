@@ -43,6 +43,7 @@ echo "[3/5] Prepare icons"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
 echo "[4/5] Build renderer/main"
+node scripts/write-app-version.mjs
 npx electron-vite build
 
 echo "[5/5] Build Windows installer (.exe, NSIS)"

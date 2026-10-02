@@ -22,7 +22,9 @@ const GOOGLE_DESKTOP_CREDENTIALS_FILENAME = 'google-oauth-desktop.local.json'
 function provisionPackagedGoogleCredentials() {
   if (!app.isPackaged) return
 
-  const source = path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE)
+  const packagedSource = path.join(process.resourcesPath, GOOGLE_DESKTOP_CREDENTIALS_LOCAL_FILE)
+  const machineSource = path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK', GOOGLE_DESKTOP_CREDENTIALS_FILENAME)
+  const source = fs.existsSync(packagedSource) ? packagedSource : machineSource
   const destination = path.join(app.getPath('userData'), GOOGLE_DESKTOP_CREDENTIALS_FILENAME)
   if (!fs.existsSync(source)) return
 

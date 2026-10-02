@@ -12,6 +12,12 @@ const PASSWORD_LENGTH = 20
 const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
 const RUSTDESK_CONFIG_FILENAME = 'rustdesk-config.local.txt'
 
+function hasAgentManagedConfig() {
+  return process.platform === 'win32' && fs.existsSync(
+    path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK', 'rustdesk-policy-applied.txt')
+  )
+}
+
 function resolveBinaryPath() {
   const configured = process.env.RUSTDESK_BINARY_PATH || localStore.get('rustdeskBinaryPath')
   if (configured && fs.existsSync(configured)) return configured
@@ -120,12 +126,17 @@ function resolveManagedPassword(forceRotate = false) {
 function resolveConfigFiles() {
   const roamingBase = process.env.APPDATA || app.getPath('appData')
   const windir = process.env.WINDIR || 'C:\\Windows'
+  const hasPrivilegedAgent = process.platform === 'win32' && fs.existsSync(
+    path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK', 'agent-config.json')
+  )
 
   const configDirs = [
     path.join(roamingBase, 'RustDesk', 'config'),
     path.join(roamingBase, 'RustDesk'),
-    path.join(windir, 'ServiceProfiles', 'LocalService', 'AppData', 'Roaming', 'RustDesk', 'config'),
-    path.join(windir, 'ServiceProfiles', 'LocalService', 'AppData', 'Roaming', 'RustDesk')
+    ...(!hasPrivilegedAgent ? [
+      path.join(windir, 'ServiceProfiles', 'LocalService', 'AppData', 'Roaming', 'RustDesk', 'config'),
+      path.join(windir, 'ServiceProfiles', 'LocalService', 'AppData', 'Roaming', 'RustDesk')
+    ] : [])
   ]
 
   const files = configDirs.flatMap((dirPath) => [path.join(dirPath, 'RustDesk.toml'), path.join(dirPath, 'RustDesk2.toml')])
@@ -285,11 +296,11 @@ foreach ($target in $targets) {
 
 async function applyManagedConfig(binaryPath: string, password: string) {
   const configString = getConfigString()
-  let configApplied = false
+  let configApplied = hasAgentManagedConfig()
   let passwordApplied = false
 
   if (configString) {
-    configApplied = await runRustDeskCommand(binaryPath, ['--config', configString])
+    configApplied = (await runRustDeskCommand(binaryPath, ['--config', configString])) || configApplied
   }
 
   if (password) {
@@ -301,7 +312,7 @@ async function applyManagedConfig(binaryPath: string, password: string) {
     configApplied,
     passwordApplied,
     lockApplied,
-    hasConfigString: Boolean(configString)
+    hasConfigString: Boolean(configString) || hasAgentManagedConfig()
   }
 }
 
@@ -314,7 +325,7 @@ export async function getRustDeskState(_deviceId?: string): Promise<RustDeskStat
   const binaryPath = resolveBinaryPath()
   const rustdeskIdentity = await resolveRustDeskIdentity(binaryPath)
   const managedPassword = resolveManagedPassword(false)
-  const hasConfigString = Boolean(getConfigString())
+  const hasConfigString = Boolean(getConfigString()) || hasAgentManagedConfig()
   const policyReady = Boolean(localStore.get('rustdeskPolicyReady'))
   const requiresPermissions = process.platform === 'darwin'
   return {
@@ -329,7 +340,7 @@ export async function getRustDeskState(_deviceId?: string): Promise<RustDeskStat
     unattendedReady: Boolean(binaryPath && rustdeskIdentity && managedPassword.password && hasConfigString && policyReady),
     requiresPermissions,
     permissionHint: requiresPermissions
-      ? 'Na macOS użytkownik musi jednorazowo nadać RustDesk uprawnienia Dostępność i Nagrywanie ekranu.'
+      ? 'Na macOS użytkownik musi jednorazowo nadać modułowi zdalnego dostępu uprawnienia Dostępność i Nagrywanie ekranu.'
       : undefined
   }
 }
@@ -400,15 +411,21 @@ export async function launchRustDesk(_deviceId?: string): Promise<RustDeskState>
   })
   if (!state.binaryPath) return state
 
-  spawn(state.binaryPath, [], {
+  // The host must run in the background; starting without arguments opens the
+  // RustDesk desktop window on the customer's computer.
+  const host = spawn(state.binaryPath, ['--server'], {
     detached: true,
-    windowsHide: false,
+    windowsHide: true,
     stdio: 'ignore'
-  }).unref()
+  })
+  host.on('error', (error) => {
+    console.error('[i-JANEK] Nie udało się uruchomić hosta zdalnego pulpitu:', error)
+  })
+  host.unref()
 
   return {
     ...state,
     lastLaunchAt: Date.now(),
-    sessionHint: `RustDesk uruchomiony. ${state.sessionHint ?? ''}`.trim()
+    sessionHint: `Host zdalnego pulpitu uruchomiony w tle. ${state.sessionHint ?? ''}`.trim()
   }
 }

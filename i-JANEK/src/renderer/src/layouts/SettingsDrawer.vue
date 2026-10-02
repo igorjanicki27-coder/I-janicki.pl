@@ -354,7 +354,7 @@ function formatRotationDate(timestamp?: number) {
 
           <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div class="flex items-center justify-between">
-              <div class="text-sm font-semibold text-white">RustDesk</div>
+              <div class="text-sm font-semibold text-white">Zdalny dostęp</div>
               <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" :disabled="refreshingRustDesk" @click="refreshRustDeskState()">
                 {{ refreshingRustDesk ? 'Odświeżanie...' : 'Odśwież' }}
               </button>

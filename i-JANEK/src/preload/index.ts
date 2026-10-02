@@ -1,8 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { BackupPolicy, CommandShell } from '@shared/contracts'
-import type { JanekApi, UpdateStatusPayload } from '@shared/ipc'
+import type { DwServicePocStatus, JanekApi, UpdateStatusPayload } from '@shared/ipc'
 
 const api: JanekApi = {
+  dwServicePoc: {
+    open: () => ipcRenderer.invoke('dwservice:poc-open'),
+    close: () => ipcRenderer.invoke('dwservice:poc-close'),
+    setBounds: (rect) => ipcRenderer.invoke('dwservice:poc-set-bounds', rect),
+    closePopup: () => ipcRenderer.invoke('dwservice:poc-close-popup'),
+    goBack: () => ipcRenderer.invoke('dwservice:poc-go-back'),
+    onStatus: (callback) => {
+      const listener = (_event: unknown, status: DwServicePocStatus) => callback(status)
+      ipcRenderer.on('dwservice:poc-status', listener)
+      return () => ipcRenderer.removeListener('dwservice:poc-status', listener)
+    }
+  },
   system: {
     getContext: () => ipcRenderer.invoke('system:get-context'),
     setAutoLaunch: (enabled) => ipcRenderer.invoke('system:set-auto-launch', enabled),

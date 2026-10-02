@@ -2,6 +2,9 @@ extends: ./electron-builder.yml
 extraResources:
   - from: resources/
     to: resources
+    filter:
+      - '**/*'
+      - '!update-signing-private.pem'
   - from: build/icon.png
     to: resources/icon.png
   - from: build/icon.ico

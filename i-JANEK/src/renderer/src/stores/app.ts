@@ -1497,7 +1497,7 @@ export const useAppStore = defineStore('app', () => {
     const state = await window.janek.rustdesk.rotatePassword('manual')
     localRustDeskState.value = state
     await prepareAndPublishRustDeskState(selfDevice.value.deviceId, state)
-    await window.janek.system.notify('i-JANEK', 'Hasło RustDesk zostało obrócone.')
+    await window.janek.system.notify('i-JANEK', 'Hasło zdalnego dostępu zostało zmienione.')
   }
 
   async function updateMasterSettings(next: Partial<MasterSettings>) {
@@ -1931,9 +1931,9 @@ export const useAppStore = defineStore('app', () => {
             status: state.installed && state.unattendedReady !== false ? 'ok' : 'warning',
             message: state.installed
               ? state.unattendedReady === false
-                ? state.permissionHint || 'RustDesk wymaga dokończenia konfiguracji.'
-                : 'RustDesk jest dostępny.'
-              : 'RustDesk nie został znaleziony.'
+                ? state.permissionHint || 'Zdalny dostęp wymaga dokończenia konfiguracji.'
+                : 'Zdalny dostęp jest dostępny.'
+              : 'Moduł zdalnego dostępu nie został znaleziony.'
           })
         } catch (error) {
           checks.push({ id: 'rustdesk', label: 'Zdalny dostęp', status: 'error', message: String(error) })
@@ -2029,11 +2029,11 @@ export const useAppStore = defineStore('app', () => {
       requestedAt: Date.now(),
       requestedBy: user.value.email,
       title: 'i-JANEK • zdalny pulpit',
-      message: 'Administrator wysłał sygnał uruchomienia RustDesk na tym urządzeniu.'
+      message: 'Administrator chce rozpocząć połączenie zdalne z tym urządzeniem.'
     }
 
     await backend.value?.requestRemoteAction(device.deviceId, request)
-    await window.janek.system.notify('i-JANEK', `Wysłano sygnał uruchomienia RustDesk do ${device.deviceAlias ?? device.hostname}.`)
+    await window.janek.system.notify('i-JANEK', `Wysłano prośbę o połączenie do ${device.deviceAlias ?? device.hostname}.`)
   }
 
   async function requestSelectedDeviceUpdate() {
@@ -2324,32 +2324,25 @@ export const useAppStore = defineStore('app', () => {
     if (request.type === 'launch_rustdesk') {
       const unattendedAllowed = Boolean(device.consent?.unattendedAccessConsent)
       const decision = unattendedAllowed
-        ? { accepted: true }
-        : await window.janek.system.promptRemoteConnection(
+          ? { accepted: true }
+          : await window.janek.system.promptRemoteConnection(
             'i-JANEK • Prośba o połączenie',
-            `Master (${request.requestedBy}) chce rozpocząć połączenie RustDesk z tym urządzeniem.`
+            `Master (${request.requestedBy}) chce rozpocząć połączenie zdalne z tym urządzeniem.`
           )
 
       if (!decision.accepted) {
-        resultMessage = 'Użytkownik odrzucił prośbę o połączenie RustDesk.'
+        resultMessage = 'Użytkownik odrzucił prośbę o połączenie zdalne.'
         severity = 'warning'
       } else {
         const state = await window.janek.rustdesk.launch(device.deviceId)
         localRustDeskState.value = state
         await prepareAndPublishRustDeskState(device.deviceId, state)
-        if (state.installed) {
-          window.setTimeout(() => {
-            void window.janek.rustdesk
-              .rotatePassword('post_connection')
-              .then(async (rotatedState) => {
-                localRustDeskState.value = rotatedState
-                await prepareAndPublishRustDeskState(device.deviceId, rotatedState)
-              })
-              .catch(() => undefined)
-          }, 90_000)
-          resultMessage = `${state.sessionHint ?? 'RustDesk został uruchomiony automatycznie po sygnale od Mastera.'} Dostęp wykorzystuje zgodę udzieloną podczas rejestracji urządzenia.`
+        if (state.installed && state.policyReady) {
+          resultMessage = 'Host zdalnego pulpitu przygotowany w tle. Dostęp wykorzystuje zgodę udzieloną podczas rejestracji urządzenia.'
         } else {
-          resultMessage = 'Nie udało się uruchomić RustDesk, ponieważ komponent nie jest zainstalowany.'
+          resultMessage = state.installed
+            ? 'Moduł zdalnego dostępu jest obecny, ale jego konfiguracja lub hasło nie zostały poprawnie zastosowane.'
+            : 'Nie udało się przygotować zdalnego pulpitu, ponieważ komponent nie jest zainstalowany.'
           severity = 'warning'
         }
       }

@@ -5,6 +5,8 @@ import ComputerTile from '@/components/master/ComputerTile.vue'
 import DeviceWorkspace from '@/components/master/DeviceWorkspace.vue'
 import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
 import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
+import RemoteDesktopPanel from '@/components/master/RemoteDesktopPanel.vue'
+import DwServicePocPanel from '@/components/master/DwServicePocPanel.vue'
 import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
@@ -16,6 +18,9 @@ type Section = 'overview' | 'registrations' | 'organizations' | 'devices' | 'tas
 
 const activeSection = ref<Section>('overview')
 const deviceDetailOpen = ref(false)
+const remoteDesktopDeviceId = ref('')
+const dwServicePocOpen = ref(false)
+const remoteDesktopDevice = computed(() => store.devices.find((device) => device.deviceId === remoteDesktopDeviceId.value) ?? null)
 const detailReturnSection = ref<Section>('devices')
 const searchQuery = ref('')
 const selectedCompanyKey = ref('all')
@@ -157,8 +162,13 @@ function openDeviceById(deviceId: string, ownerUid: string) {
 async function connectToDevice(device: DeviceRecord) {
   store.selectedDeviceId = device.deviceId
   store.selectedConversationOwnerUid = device.ownerUid
+  remoteDesktopDeviceId.value = device.deviceId
   await nextTick()
-  await store.requestRustDeskLaunch()
+  try {
+    await store.requestRustDeskLaunch()
+  } catch (error) {
+    console.error('[i-JANEK] Nie udało się wysłać prośby o połączenie:', error)
+  }
 }
 function closeDeviceDetails() {
   deviceDetailOpen.value = false
@@ -240,12 +250,12 @@ onBeforeUnmount(() => {
           <button v-if="deviceDetailOpen" class="ghost-button !h-10 !w-10 !shrink-0 !rounded-xl !px-0" type="button" title="Wróć do komputerów" @click="closeDeviceDetails()"><ArrowLeft class="h-4 w-4" /></button>
           <div class="min-w-0"><h1 class="truncate text-xl font-semibold text-white">{{ pageMeta.title }}</h1><p class="mt-1 truncate text-sm text-[var(--text-dim)]">{{ pageMeta.description }}</p></div>
         </div>
-        <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
+        <div class="flex items-center gap-2"><button v-if="store.systemContext?.platform !== 'web'" class="ghost-button !h-10" type="button" @click="dwServicePocOpen = true">Test DWService</button><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
       </header>
       <nav v-if="!deviceDetailOpen" class="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><button v-for="item in navItems" :key="item.key" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<span v-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></nav>
 
       <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto">
-        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" />
+        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" @connect="connectToDevice(store.selectedDevice!)" />
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
           <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -295,5 +305,7 @@ onBeforeUnmount(() => {
         <MessagesWorkspace v-else />
       </div>
     </main>
+    <RemoteDesktopPanel v-if="remoteDesktopDevice" :key="remoteDesktopDevice.deviceId" :device="remoteDesktopDevice" @close="remoteDesktopDeviceId = ''" />
+    <DwServicePocPanel v-if="dwServicePocOpen" @close="dwServicePocOpen = false" />
   </div>
 </template>

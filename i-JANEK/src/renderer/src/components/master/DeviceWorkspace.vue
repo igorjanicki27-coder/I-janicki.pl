@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
+  Activity,
+  AlertTriangle,
   BarChart3,
-  ChevronRight,
+  Bell,
+  CheckCircle2,
   CloudCog,
   Cpu,
   HardDrive,
@@ -24,7 +27,8 @@ import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 import type { UpdateChannel } from '@shared/contracts'
 
-const tabs = ['overview', 'terminal', 'backup', 'inventory'] as const
+const tabs = ['overview', 'diagnostics', 'tools', 'backup', 'inventory'] as const
+const emit = defineEmits<{ connect: [] }>()
 const store = useAppStore()
 const activeTab = ref<(typeof tabs)[number]>('overview')
 const usageRangeDays = ref<7 | 30 | 90>(30)
@@ -42,7 +46,28 @@ const detailsDraft = ref({
 
 const selectedAlerts = computed(() => {
   if (!store.selectedDevice) return []
-  return store.alerts.filter((alert) => alert.deviceId === store.selectedDevice?.deviceId).slice(0, 4)
+  return store.alerts
+    .filter((alert) => alert.deviceId === store.selectedDevice?.deviceId && alert.severity !== 'info')
+    .sort((left, right) => (left.severity === 'critical' ? 0 : 1) - (right.severity === 'critical' ? 0 : 1))
+    .slice(0, 4)
+})
+const deviceOnline = computed(() => Boolean(
+  store.selectedDevice
+  && !store.selectedDevice.offline
+  && Date.now() - store.selectedDevice.lastSeenAt < 5 * 60 * 1000
+))
+const deviceHealth = computed(() => {
+  if (!deviceOnline.value) return { label: 'Komputer offline', detail: 'Nie można teraz wykonać zdalnych akcji.', tone: 'offline' as const }
+  if (selectedAlerts.value.some((alert) => alert.severity === 'critical')) return { label: 'Wymaga pilnej uwagi', detail: 'Wykryto krytyczny alert.', tone: 'critical' as const }
+  if (selectedAlerts.value.length) return { label: 'Wymaga uwagi', detail: `${selectedAlerts.value.length} aktywne alerty`, tone: 'warning' as const }
+  return { label: 'Wszystko w porządku', detail: 'Brak aktywnych alertów.', tone: 'healthy' as const }
+})
+const backupStatusLabel = computed(() => {
+  const age = backupAgeHours()
+  if (age === null) return 'Brak backupu'
+  if (age >= store.masterSettings.thresholds.backupAgeHours.critical) return 'Nieaktualny'
+  if (age >= store.masterSettings.thresholds.backupAgeHours.warning) return 'Sprawdź backup'
+  return 'Aktualny'
 })
 const selectedBackupProgress = computed(() => {
   if (!store.selectedDevice) return null
@@ -161,6 +186,13 @@ function metricClasses(value: number | null | undefined, warning: number, critic
   return 'border-emerald-400/25 bg-emerald-500/[0.07] text-emerald-100'
 }
 
+function metricTextClasses(value: number | null | undefined, warning: number, critical: number) {
+  if (value === null || value === undefined || Number.isNaN(value)) return 'text-[var(--text-dim)]'
+  if (value >= critical) return 'text-rose-200'
+  if (value >= warning) return 'text-amber-200'
+  return 'text-white'
+}
+
 function formatDateTime(timestamp?: number | null) {
   if (!timestamp) return 'brak danych'
   return new Date(timestamp).toLocaleString('pl-PL', {
@@ -221,84 +253,113 @@ async function copyRemoteAccessValue(value: string, label: string) {
 
 <template>
   <div v-if="store.selectedDevice" class="min-h-0">
-    <header class="border-b border-white/10 px-6 py-5">
-      <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+    <header class="border-b border-white/10 px-5 py-4 lg:px-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
           <div class="flex items-center gap-3">
-            <span class="h-2.5 w-2.5 rounded-full" :class="!store.selectedDevice.offline && Date.now() - store.selectedDevice.lastSeenAt < 300000 ? 'bg-emerald-400 shadow-[0_0_12px_rgba(74,222,128,.55)]' : 'bg-slate-500'" />
-            <h2 class="truncate text-xl font-semibold text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</h2>
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="deviceOnline ? 'bg-emerald-400 shadow-[0_0_12px_rgba(74,222,128,.55)]' : 'bg-slate-500'" />
+            <h2 class="truncate text-lg font-semibold text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</h2>
+            <span class="hidden rounded-md bg-white/[0.055] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dim)] md:inline">{{ deviceOnline ? 'online' : 'offline' }}</span>
           </div>
-          <p class="mt-1.5 text-sm text-[var(--text-dim)]">
-            {{ store.selectedDevice.companyName || store.selectedDevice.ownerEmail }} · {{ store.selectedDevice.hostname }} · ostatnio {{ formatDateTime(store.selectedDevice.lastSeenAt) }}
+          <p class="mt-1 truncate pl-5.5 text-xs text-[var(--text-dim)]">
+            {{ store.selectedDevice.companyName || store.selectedDevice.ownerEmail }}<span v-if="store.selectedDevice.installationLocation"> · {{ store.selectedDevice.installationLocation }}</span> · {{ store.selectedDevice.hostname }}
           </p>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <StatusPill :label="store.selectedDevice.approvalStatus" />
-            <StatusPill v-if="store.selectedDevice.installationLocation" :label="store.selectedDevice.installationLocation" />
-            <StatusPill :label="store.selectedDevice.rustdesk?.installed ? 'RustDesk gotowy' : 'Brak RustDesk'" :tone="store.selectedDevice.rustdesk?.installed ? 'success' : 'warning'" />
-          </div>
         </div>
-
-        <div class="flex flex-wrap gap-2">
-          <button class="glass-button !rounded-xl" type="button" @click="store.requestRustDeskLaunch()">
-            <LaptopMinimalCheck class="mr-2 h-4 w-4" /> Zdalny pulpit
-          </button>
-          <button class="ghost-button !rounded-xl !px-4 !py-2.5 text-sm" type="button" @click="store.requestRestartPrompt()">
-            <RefreshCcw class="mr-2 h-4 w-4" /> Restart
-          </button>
-          <button class="ghost-button !rounded-xl !px-4 !py-2.5 text-sm" type="button" @click="store.sendDiagnosticsLogs()">
-            Raport <ChevronRight class="ml-2 h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div class="mt-5 flex flex-col gap-3 lg:flex-row">
-        <div class="flex flex-1 gap-2">
-          <input v-model="store.pendingRemoteNotification" class="soft-input !rounded-xl" placeholder="Wyślij powiadomienie na ten komputer..." />
-          <button class="glass-button !rounded-xl !px-5" type="button" @click="store.requestRemoteNotification()">
-            <Send class="h-4 w-4" /><span class="sr-only">Wyślij</span>
-          </button>
-        </div>
-        <label class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-[var(--text-dim)]">
-          Kanał
-          <select class="bg-transparent text-sm text-white outline-none" :value="store.selectedDevice.updateChannel ?? 'stable'" @change="changeUpdateChannel">
-            <option value="test">Test</option>
-            <option value="beta">Beta</option>
-            <option value="stable">Stable</option>
-          </select>
-        </label>
-        <button class="ghost-button !rounded-xl !px-4 !py-2.5 text-sm" type="button" @click="store.requestSelectedDeviceUpdate()">Aktualizuj klienta</button>
+        <button class="glass-button !shrink-0 !rounded-xl !px-4 !py-2.5 text-sm" type="button" @click="emit('connect')">
+          <LaptopMinimalCheck class="mr-2 h-4 w-4" /> Zdalny pulpit
+        </button>
       </div>
     </header>
 
-    <nav class="flex flex-wrap gap-1 border-b border-white/10 px-6 pt-2" aria-label="Szczegóły komputera">
+    <nav class="scrollbar-glass flex gap-1 overflow-x-auto border-b border-white/10 px-4 pt-1 lg:px-6" aria-label="Szczegóły komputera">
       <button
         v-for="tab in tabs"
         :key="tab"
-        class="relative whitespace-nowrap px-4 py-3 text-sm transition"
+        class="relative whitespace-nowrap px-3 py-3 text-sm transition lg:px-4"
         :class="activeTab === tab ? 'text-white' : 'text-[var(--text-dim)] hover:text-white'"
         type="button"
         @click="activeTab = tab"
       >
-        {{ tab === 'overview' ? 'Stan komputera' : tab === 'terminal' ? 'Terminal' : tab === 'backup' ? 'Backup' : 'Inwentaryzacja' }}
+        {{ tab === 'overview' ? 'Pulpit' : tab === 'diagnostics' ? 'Diagnostyka' : tab === 'tools' ? 'Narzędzia' : tab === 'backup' ? 'Backup' : 'Sprzęt' }}
         <span v-if="activeTab === tab" class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-cyan-300 to-fuchsia-400" />
       </button>
     </nav>
 
-    <div class="p-6">
-      <div v-if="activeTab === 'overview'" class="space-y-5">
-        <section class="content-card">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-semibold text-white">Dane komputera</h3>
-              <p class="mt-1 text-xs text-[var(--text-dim)]">Czytelne dane widoczne w panelu. Techniczny identyfikator urządzenia pozostaje bez zmian.</p>
+    <div class="p-4 lg:p-6">
+      <div v-if="activeTab === 'overview'" class="space-y-4">
+        <section
+          class="rounded-2xl border p-4 lg:p-5"
+          :class="deviceHealth.tone === 'critical' ? 'border-rose-400/30 bg-rose-500/[0.07]' : deviceHealth.tone === 'warning' ? 'border-amber-400/25 bg-amber-500/[0.055]' : deviceHealth.tone === 'offline' ? 'border-white/10 bg-white/[0.025]' : 'border-emerald-400/20 bg-emerald-500/[0.045]'"
+        >
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex min-w-0 items-center gap-3">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" :class="deviceHealth.tone === 'critical' ? 'bg-rose-400/10 text-rose-200' : deviceHealth.tone === 'warning' ? 'bg-amber-400/10 text-amber-200' : deviceHealth.tone === 'offline' ? 'bg-white/[0.055] text-[var(--text-dim)]' : 'bg-emerald-400/10 text-emerald-200'">
+                <AlertTriangle v-if="deviceHealth.tone === 'critical' || deviceHealth.tone === 'warning'" class="h-5 w-5" />
+                <Activity v-else-if="deviceHealth.tone === 'offline'" class="h-5 w-5" />
+                <CheckCircle2 v-else class="h-5 w-5" />
+              </span>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-white">{{ deviceHealth.label }}</h3>
+                <p class="mt-0.5 text-xs text-[var(--text-dim)]">{{ deviceHealth.detail }} Ostatni kontakt: {{ formatDateTime(store.selectedDevice.lastSeenAt) }}</p>
+              </div>
             </div>
-            <button v-if="!editingDetails" class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" @click="startEditingDetails()">
-              <Pencil class="mr-2 h-3.5 w-3.5" /> Edytuj dane
+            <button v-if="selectedAlerts.length" class="ghost-button !shrink-0 !rounded-xl !px-3 !py-2 text-xs" type="button" @click="activeTab = 'diagnostics'">
+              Zobacz diagnostykę
             </button>
           </div>
+        </section>
 
-          <form v-if="editingDetails" class="mt-4" @submit.prevent="saveDetails()">
-            <div class="grid gap-3 md:grid-cols-2">
+        <section class="content-card !p-0">
+          <div class="grid grid-cols-2 divide-x divide-y divide-white/10 md:grid-cols-4 md:divide-y-0">
+            <div class="p-4">
+              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><Cpu class="h-3.5 w-3.5" /> CPU</div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">{{ store.selectedDevice.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuUsagePercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+            </div>
+            <div class="p-4">
+              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><MemoryStick class="h-3.5 w-3.5" /> RAM</div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(store.selectedDevice.telemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">{{ store.selectedDevice.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.memoryUsedPercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+            </div>
+            <div class="p-4">
+              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><HardDrive class="h-3.5 w-3.5" /> Dysk</div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">{{ maxDiskUsage() }}<small class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+            </div>
+            <div class="p-4">
+              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><CloudCog class="h-3.5 w-3.5" /> Backup</div>
+              <div class="mt-2 truncate text-sm font-semibold" :class="metricTextClasses(backupAgeHours(), store.masterSettings.thresholds.backupAgeHours.warning, store.masterSettings.thresholds.backupAgeHours.critical)">{{ backupStatusLabel }}</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.8fr)]">
+          <section class="content-card">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-white">Wymaga uwagi</h3>
+                <p class="mt-1 text-xs text-[var(--text-dim)]">Tylko aktualne problemy tego komputera.</p>
+              </div>
+              <span v-if="selectedAlerts.length" class="mono rounded-lg bg-amber-400/10 px-2 py-1 text-xs text-amber-200">{{ selectedAlerts.length }}</span>
+            </div>
+            <div v-if="selectedAlerts.length" class="mt-4 divide-y divide-white/10">
+              <div v-for="alert in selectedAlerts" :key="alert.id" class="py-3 first:pt-0 last:pb-0">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0"><strong class="block truncate text-sm text-white">{{ alert.title }}</strong><p class="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-dim)]">{{ alert.message }}</p></div>
+                  <StatusPill :label="alert.severity" :tone="alert.severity === 'critical' ? 'critical' : 'warning'" />
+                </div>
+              </div>
+            </div>
+            <div v-else class="mt-4 flex items-center gap-3 rounded-xl bg-emerald-400/[0.055] px-3 py-3 text-sm text-emerald-100">
+              <CheckCircle2 class="h-4 w-4 shrink-0" /> Brak aktywnych alertów.
+            </div>
+          </section>
+
+          <section class="content-card">
+            <div class="flex items-start justify-between gap-3">
+              <div><h3 class="text-sm font-semibold text-white">Dane komputera</h3><p class="mt-1 text-xs text-[var(--text-dim)]">Informacje widoczne w panelu.</p></div>
+              <button v-if="!editingDetails" class="ghost-button !rounded-lg !px-2.5 !py-2 text-xs" type="button" @click="startEditingDetails()"><Pencil class="mr-1.5 h-3.5 w-3.5" /> Edytuj</button>
+            </div>
+
+            <form v-if="editingDetails" class="mt-4" @submit.prevent="saveDetails()">
+            <div class="grid gap-3">
               <label class="text-xs text-[var(--text-dim)]">
                 Nazwa komputera
                 <input v-model="detailsDraft.deviceAlias" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="48" placeholder="np. Laptop biuro" />
@@ -317,25 +378,25 @@ async function copyRemoteAccessValue(value: string, label: string) {
                 <input v-model="detailsDraft.installationLocation" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" />
               </label>
             </div>
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
               <p v-if="detailsMessage" class="text-xs text-amber-200">{{ detailsMessage }}</p>
-              <span v-else />
-              <div class="flex gap-2">
-                <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" :disabled="detailsBusy" @click="cancelEditingDetails()"><X class="mr-1.5 h-3.5 w-3.5" /> Anuluj</button>
-                <button class="glass-button !rounded-xl !px-3 !py-2 !text-xs" type="submit" :disabled="detailsBusy"><Save class="mr-1.5 h-3.5 w-3.5" /> {{ detailsBusy ? 'Zapisywanie…' : 'Zapisz' }}</button>
-              </div>
+              <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" :disabled="detailsBusy" @click="cancelEditingDetails()"><X class="mr-1.5 h-3.5 w-3.5" /> Anuluj</button>
+              <button class="glass-button !rounded-xl !px-3 !py-2 !text-xs" type="submit" :disabled="detailsBusy"><Save class="mr-1.5 h-3.5 w-3.5" /> {{ detailsBusy ? 'Zapisywanie…' : 'Zapisz' }}</button>
             </div>
           </form>
 
-          <dl v-else class="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Nazwa</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.deviceAlias || store.selectedDevice.hostname }}</dd></div>
-            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Firma</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.companyName || '—' }}</dd></div>
-            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Osoba</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.contactName || '—' }}</dd></div>
-            <div class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3"><dt class="text-xs text-[var(--text-dim)]">Lokalizacja</dt><dd class="mt-1 truncate font-medium text-white">{{ store.selectedDevice.installationLocation || '—' }}</dd></div>
-          </dl>
-          <p v-if="!editingDetails && detailsMessage" class="mt-3 text-xs text-emerald-200">{{ detailsMessage }}</p>
-        </section>
+            <dl v-else class="mt-4 divide-y divide-white/10 text-sm">
+              <div class="flex justify-between gap-4 py-2.5 first:pt-0"><dt class="text-[var(--text-dim)]">Nazwa</dt><dd class="truncate text-right font-medium text-white">{{ store.selectedDevice.deviceAlias || store.selectedDevice.hostname }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Firma</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.companyName || '—' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Osoba</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.contactName || '—' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Lokalizacja</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.installationLocation || '—' }}</dd></div>
+            </dl>
+            <p v-if="!editingDetails && detailsMessage" class="mt-3 text-xs text-emerald-200">{{ detailsMessage }}</p>
+          </section>
+        </div>
+      </div>
 
+      <div v-else-if="activeTab === 'diagnostics'" class="space-y-5">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">
             <div class="metric-label"><Cpu class="h-4 w-4" /> CPU</div><div class="metric-value">{{ store.selectedDevice.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuUsagePercent != null">%</small></div>
@@ -392,21 +453,47 @@ async function copyRemoteAccessValue(value: string, label: string) {
             </div>
           </section>
           <section class="content-card">
-            <h3 class="text-sm font-semibold text-white">Alerty urządzenia</h3>
-            <div class="mt-3 space-y-2">
-              <div v-for="alert in selectedAlerts" :key="alert.id" class="rounded-xl border border-white/10 px-3 py-3">
-                <div class="flex items-center justify-between gap-3"><strong class="text-sm text-white">{{ alert.title }}</strong><StatusPill :label="alert.severity" :tone="alert.severity === 'critical' ? 'critical' : 'warning'" /></div>
-                <p class="mt-2 text-sm text-[var(--text-dim)]">{{ alert.message }}</p>
-              </div>
-              <p v-if="!selectedAlerts.length" class="text-sm text-[var(--text-dim)]">Brak aktywnych alertów.</p>
-            </div>
+            <h3 class="text-sm font-semibold text-white">Informacje techniczne</h3>
+            <dl class="mt-4 divide-y divide-white/10 text-sm">
+              <div class="flex justify-between gap-4 py-2.5 first:pt-0"><dt class="text-[var(--text-dim)]">Uptime</dt><dd class="mono text-white">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Ostatni restart</dt><dd class="mono text-right text-white">{{ formatDateTime(store.selectedDevice.telemetry?.lastRestartAt) }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">GPU</dt><dd class="mono max-w-[240px] truncate text-right text-white">{{ store.selectedDevice.telemetry?.gpu?.model ?? 'brak' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Ostatnia akcja</dt><dd class="mono max-w-[240px] truncate text-right text-white">{{ store.selectedDevice.lastRemoteActionResult ?? 'brak' }}</dd></div>
+            </dl>
           </section>
         </div>
       </div>
 
-      <div v-else-if="activeTab === 'terminal'" class="space-y-4">
+      <div v-else-if="activeTab === 'tools'" class="space-y-4">
+        <div class="grid gap-4 xl:grid-cols-2">
+          <section class="content-card">
+            <div class="flex items-center gap-2 text-sm font-semibold text-white"><Bell class="h-4 w-4 text-cyan-200" /> Powiadomienie</div>
+            <p class="mt-1 text-xs text-[var(--text-dim)]">Wyświetl krótką wiadomość użytkownikowi tego komputera.</p>
+            <div class="mt-4 flex gap-2">
+              <input v-model="store.pendingRemoteNotification" class="soft-input !rounded-xl" placeholder="Treść powiadomienia..." />
+              <button class="glass-button !rounded-xl !px-4" type="button" @click="store.requestRemoteNotification()"><Send class="h-4 w-4" /><span class="sr-only">Wyślij</span></button>
+            </div>
+          </section>
+
+          <section class="content-card">
+            <h3 class="text-sm font-semibold text-white">Zarządzanie</h3>
+            <p class="mt-1 text-xs text-[var(--text-dim)]">Rzadziej używane akcje administracyjne.</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.requestRestartPrompt()"><RefreshCcw class="mr-2 h-4 w-4" /> Restart</button>
+              <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.sendDiagnosticsLogs()">Wyślij raport</button>
+            </div>
+            <div class="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row">
+              <label class="flex flex-1 items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-[var(--text-dim)]">Kanał aktualizacji
+                <select class="bg-transparent text-sm text-white outline-none" :value="store.selectedDevice.updateChannel ?? 'stable'" @change="changeUpdateChannel"><option value="test">Test</option><option value="beta">Beta</option><option value="stable">Stable</option></select>
+              </label>
+              <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.requestSelectedDeviceUpdate()">Aktualizuj klienta</button>
+            </div>
+          </section>
+        </div>
+
         <section class="content-card">
           <div class="flex items-center gap-2 text-sm font-semibold text-white"><TerminalSquare class="h-4 w-4 text-cyan-200" /> Terminal serwisowy</div>
+          <p class="mt-1 text-xs text-[var(--text-dim)]">Zaawansowane polecenia diagnostyczne.</p>
           <textarea v-model="store.pendingTerminalCommand" class="soft-input mt-4 min-h-28 resize-none rounded-xl font-mono" placeholder="Wpisz polecenie diagnostyczne..." />
           <div class="mt-3 flex justify-end"><button class="glass-button !rounded-xl" type="button" @click="store.queueTerminalCommand()">Wyślij komendę</button></div>
         </section>
