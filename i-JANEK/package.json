@@ -1,6 +1,6 @@
 {
   "name": "i-janek",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "private": true,
   "description": "i-JANEK desktop supervision platform for Master/Slave IT support workflows.",
   "author": "i-JANICKI",
@@ -13,6 +13,8 @@
     "build:web": "vue-tsc --noEmit && vite build --config vite.web.config.ts",
     "preview:web": "vite preview --config vite.web.config.ts",
     "typecheck": "vue-tsc --noEmit",
+    "signing:macos:setup": "node scripts/setup-macos-signing.mjs",
+    "signing:macos:check": "node scripts/check-macos-signing.mjs",
     "test:rules": "npx --yes firebase-tools@15.11.0 emulators:exec --config ../firebase.json --only firestore,database --project demo-i-janicki \"node --test tests/firebase-rules.test.mjs\"",
     "build:prepare-icons": "./scripts/prepare-icons.sh",
     "build:macos:app": "./scripts/build-macos-app.sh",

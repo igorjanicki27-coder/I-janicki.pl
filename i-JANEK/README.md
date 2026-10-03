@@ -92,7 +92,7 @@ npm run release:beta
 npm run release:stable
 ```
 
-Skrypt wymaga gałęzi `main`, zalogowanego Git w systemowym magazynie poświadczeń oraz lokalnego certyfikatu Apple. Przy publikowaniu sam dodaje do commita wszystkie zmiany z katalogu `i-JANEK`, aktualizuje numer wersji, tworzy tag i wysyła wydanie. Nie dołącza zmian z pozostałych katalogów repozytorium, plików `.DS_Store`, plików ignorowanych ani lokalnych konfiguracji prywatnych. Kanał test używa wersji `x.y.z-alpha.N`, beta `x.y.z-beta.N`, a stable `x.y.z`. W razie potrzeby można podać wersję ręcznie, np. `npm run release:test -- --version=0.2.0-alpha.1`.
+Skrypt wymaga gałęzi `main`, zalogowanego Git w systemowym magazynie poświadczeń oraz lokalnej tożsamości `i-JANEK Local Code Signing`. Przy publikowaniu sam dodaje do commita wszystkie zmiany z katalogu `i-JANEK`, aktualizuje numer wersji, tworzy tag i wysyła wydanie. Nie dołącza zmian z pozostałych katalogów repozytorium, plików `.DS_Store`, plików ignorowanych ani lokalnych konfiguracji prywatnych. Kanał test używa wersji `x.y.z-alpha.N`, beta `x.y.z-beta.N`, a stable `x.y.z`. W razie potrzeby można podać wersję ręcznie, np. `npm run release:test -- --version=0.2.0-alpha.1`.
 
 Master przypisuje każdemu komputerowi jeden kanał w panelu urządzenia. Nowe urządzenie zawsze zaczyna na `stable`; urządzenia bez zapisanego kanału również są traktowane jako `stable`. Zalecana promocja wydania to kolejno test na jednym komputerze, beta na małej grupie i dopiero potem stable dla wszystkich klientów.
 
@@ -102,7 +102,7 @@ Lokalny automat buduje i publikuje:
 - Windows: instalator NSIS `.exe`, plik `.blockmap` i metadane auto-update,
 - po udanym buildzie tworzy GitHub Release; wersje test i beta są oznaczane jako prerelease.
 
-Lokalny build jest celowy: aktualizacja macOS musi być podpisana tym samym certyfikatem co zainstalowana aplikacja. GitHub Actions pozostaje awaryjnym wariantem CI po skonfigurowaniu certyfikatów w sekretach repozytorium.
+Lokalny build jest celowy: aktualizacja macOS musi być podpisana tym samym certyfikatem co zainstalowana aplikacja. Certyfikat jest samopodpisany i bezpłatny, dlatego pierwsze uruchomienie może wymagać ręcznej zgody w ustawieniach bezpieczeństwa macOS. Szczegóły i kopia zapasowa są opisane w `docs/macos-updates.md`. GitHub Actions pozostaje awaryjnym wariantem CI dopiero po skonfigurowaniu tej samej tożsamości w sekretach repozytorium.
 
 Jednorazowo w `Settings -> Secrets and variables -> Actions -> Variables` trzeba dodać publiczną konfigurację aplikacji:
 
@@ -114,7 +114,7 @@ Jednorazowo w `Settings -> Secrets and variables -> Actions -> Variables` trzeba
 - `I_JANEK_FIREBASE_DATABASE_URL`
 - `I_JANEK_MASTER_EMAIL`
 
-Opcjonalne sekrety do podpisywania instalatorów: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `WINDOWS_CSC_LINK`, `WINDOWS_CSC_KEY_PASSWORD`. Brak tych sekretów nie blokuje przygotowania wersji testowej, ale system operacyjny będzie ostrzegał o nieznanym wydawcy, a automatyczne aktualizacje macOS wymagają docelowo podpisanej aplikacji.
+Opcjonalne sekrety do podpisywania instalatorów w awaryjnym workflow: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `WINDOWS_CSC_LINK`, `WINDOWS_CSC_KEY_PASSWORD`. macOS musi używać dokładnie kopii `i-JANEK-podpis-macOS.p12`; automat odrzuci inny odcisk. Płatny certyfikat Apple `Developer ID Application` nie jest wymagany w kontrolowanym wdrożeniu, ale bez niego system będzie pokazywał niezaufanego dewelopera i nie będzie możliwa notaryzacja.
 
 Plik Google OAuth nie jest wstrzykiwany do publicznego GitHub Release. Publiczny instalator można rozpakować, więc umieszczenie w nim prywatnych danych udostępniłoby je każdemu. Lokalne skrypty używają osobnej konfiguracji `electron-builder.private.yml` i tworzą prywatny instalator wdrożeniowy, który należy przekazać klientowi bezpośrednio. Przy pierwszym uruchomieniu ustawienia są utrwalane w profilu użytkownika, dzięki czemu późniejsze publiczne aktualizacje ich nie usuwają.
 

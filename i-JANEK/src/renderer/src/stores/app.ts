@@ -523,9 +523,8 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function shouldShowAlertNotification(alert: AlertEvent, role: AppUser['role']) {
+  function shouldShowAlertNotification(alert: AlertEvent) {
     if (slaveSettings.value.muteAllNotifications) return false
-    if (role !== 'slave') return true
     if (slaveSettings.value.hideAlertNotifications) return false
     if (alert.type === 'temperature' && slaveSettings.value.muteTempNotifications) return false
     if ((alert.type === 'usage' || alert.type === 'disk') && slaveSettings.value.muteUsageNotifications) return false
@@ -682,7 +681,7 @@ export const useAppStore = defineStore('app', () => {
           return
         }
 
-        if (user.value?.role === 'slave' && slaveSettings.value.muteChatSounds) return
+        if (slaveSettings.value.muteChatSounds) return
 
         const incomingMessages = messages.filter((message) => !previousIds.has(message.id) && message.senderRole !== user.value?.role)
         for (const message of incomingMessages) {
@@ -939,7 +938,7 @@ export const useAppStore = defineStore('app', () => {
       if (!newCriticalAlerts.length) return
 
       for (const alert of newCriticalAlerts) {
-        if (!shouldShowAlertNotification(alert, nextUser.role)) continue
+        if (!shouldShowAlertNotification(alert)) continue
         void notifyUser(alert.title, alert.message)
       }
     })

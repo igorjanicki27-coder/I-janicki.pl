@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, X } from 'lucide-vue-next'
+import { BellRing, ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useAppStore } from '@/stores/app'
@@ -14,7 +14,16 @@ const pickingFolder = ref(false)
 const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
-const activeSettingsPanel = ref<'thresholds' | 'support' | null>(null)
+const activeSettingsPanel = ref<'thresholds' | 'notifications' | 'support' | null>(null)
+
+const enabledNotificationCategories = computed(() => {
+  if (store.slaveSettings.muteAllNotifications) return 0
+  let enabled = 0
+  if (!store.slaveSettings.muteChatSounds) enabled += 1
+  if (!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteUsageNotifications) enabled += 1
+  if (!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteTempNotifications) enabled += 1
+  return enabled
+})
 
 const backupFolderPathMap: Record<'Desktop' | 'Documents', string> = {
   Desktop: '%USERPROFILE%\\Desktop',
@@ -55,6 +64,24 @@ watch(
 
 function closeSettingsPanel() {
   activeSettingsPanel.value = null
+}
+
+function updateUsageNotifications(enabled: boolean) {
+  const alertsWereHidden = store.slaveSettings.hideAlertNotifications
+  store.updateSlaveSettings({
+    hideAlertNotifications: enabled ? false : alertsWereHidden,
+    muteUsageNotifications: !enabled,
+    ...(enabled && alertsWereHidden ? { muteTempNotifications: true } : {})
+  })
+}
+
+function updateTemperatureNotifications(enabled: boolean) {
+  const alertsWereHidden = store.slaveSettings.hideAlertNotifications
+  store.updateSlaveSettings({
+    hideAlertNotifications: enabled ? false : alertsWereHidden,
+    muteTempNotifications: !enabled,
+    ...(enabled && alertsWereHidden ? { muteUsageNotifications: true } : {})
+  })
 }
 
 function toggleFolder(name: 'Desktop' | 'Documents') {
@@ -194,17 +221,6 @@ async function addCustomFolderFromPicker() {
             </div>
           </section>
 
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <label class="flex items-center justify-between gap-4 text-sm text-[var(--text-dim)]">
-              <span><span class="block font-semibold text-white">Powiadomienia systemowe</span><span class="mt-1 block text-xs">Dotyczy wszystkich powiadomień i-JANEK na tym komputerze.</span></span>
-              <input
-                :checked="!store.slaveSettings.muteAllNotifications"
-                type="checkbox"
-                @change="store.updateSlaveSettings({ muteAllNotifications: !($event.target as HTMLInputElement).checked })"
-              />
-            </label>
-          </section>
-
           <section class="mt-4 grid gap-2 sm:grid-cols-2">
             <button
               class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.07]"
@@ -217,6 +233,20 @@ async function addCustomFolderFromPicker() {
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-semibold text-white">Progi dashboardu</span>
                 <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Alerty i telemetria</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+            </button>
+            <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07]"
+              type="button"
+              @click="activeSettingsPanel = 'notifications'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+                <BellRing class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-white">Powiadomienia</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 3 typów aktywne</span>
               </span>
               <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
             </button>
@@ -335,51 +365,20 @@ async function addCustomFolderFromPicker() {
           </section>
 
           <div class="mt-4 grid gap-4 md:grid-cols-2">
-            <section class="rounded-[24px] border border-white/10 bg-white/5 p-4">
-              <div class="text-sm font-semibold text-white">Powiadomienia</div>
-              <div class="mt-3 space-y-3 text-sm text-[var(--text-dim)]">
-                <label class="flex items-center justify-between">
-                  <span>Wyłącz wszystkie powiadomienia</span>
-                  <input
-                    :checked="store.slaveSettings.muteAllNotifications"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ muteAllNotifications: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
-                <label class="flex items-center justify-between">
-                  <span>Nie pokazuj alertów</span>
-                  <input
-                    :checked="store.slaveSettings.hideAlertNotifications"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ hideAlertNotifications: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
-                <label class="flex items-center justify-between">
-                  <span>Wyciszenie wiadomości</span>
-                  <input
-                    :checked="store.slaveSettings.muteChatSounds"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ muteChatSounds: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
-                <label class="flex items-center justify-between">
-                  <span>Wyciszenie alertów zużycia</span>
-                  <input
-                    :checked="store.slaveSettings.muteUsageNotifications"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ muteUsageNotifications: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
-                <label class="flex items-center justify-between">
-                  <span>Wyciszenie alertów temperatury</span>
-                  <input
-                    :checked="store.slaveSettings.muteTempNotifications"
-                    type="checkbox"
-                    @change="store.updateSlaveSettings({ muteTempNotifications: ($event.target as HTMLInputElement).checked })"
-                  />
-                </label>
-              </div>
-            </section>
+            <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07]"
+              type="button"
+              @click="activeSettingsPanel = 'notifications'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+                <BellRing class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-white">Powiadomienia</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 3 typów aktywne</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+            </button>
 
             <section class="rounded-[24px] border border-white/10 bg-white/5 p-4">
               <div class="text-sm font-semibold text-white">Systemowe</div>
@@ -452,6 +451,95 @@ async function addCustomFolderFromPicker() {
         <AppFooterLink class="mt-4 pb-2 pt-1" />
       </div>
     </aside>
+
+    <div
+      v-if="activeSettingsPanel === 'notifications'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="notifications-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel w-full max-w-lg rounded-[28px] border border-cyan-300/20 p-5">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h3 id="notifications-title" class="text-base font-semibold text-white">Powiadomienia</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Wybierz, które powiadomienia i-JANEK mają pojawiać się na tym komputerze.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <label class="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.07] p-4">
+          <span>
+            <span class="block text-sm font-semibold text-white">Powiadomienia na tym komputerze</span>
+            <span class="mt-1 block text-xs leading-5 text-[var(--text-dim)]">Główny przełącznik wszystkich komunikatów systemowych.</span>
+          </span>
+          <input
+            class="shrink-0"
+            :checked="!store.slaveSettings.muteAllNotifications"
+            type="checkbox"
+            @change="store.updateSlaveSettings({ muteAllNotifications: !($event.target as HTMLInputElement).checked })"
+          />
+        </label>
+
+        <div class="mt-3 space-y-2">
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 px-4 py-3 transition"
+            :class="store.slaveSettings.muteAllNotifications ? 'opacity-40' : 'hover:border-white/20 hover:bg-white/[0.03]'"
+          >
+            <span>
+              <span class="block text-sm font-medium text-white">Wiadomości i komunikaty</span>
+              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Nowe wiadomości oraz komunikaty wysłane przez obsługę.</span>
+            </span>
+            <input
+              class="shrink-0"
+              :checked="!store.slaveSettings.muteChatSounds"
+              :disabled="store.slaveSettings.muteAllNotifications"
+              type="checkbox"
+              @change="store.updateSlaveSettings({ muteChatSounds: !($event.target as HTMLInputElement).checked })"
+            />
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 px-4 py-3 transition"
+            :class="store.slaveSettings.muteAllNotifications ? 'opacity-40' : 'hover:border-white/20 hover:bg-white/[0.03]'"
+          >
+            <span>
+              <span class="block text-sm font-medium text-white">Użycie zasobów i dysku</span>
+              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Alerty wysokiego użycia CPU, GPU, RAM i przestrzeni dyskowej.</span>
+            </span>
+            <input
+              class="shrink-0"
+              :checked="!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteUsageNotifications"
+              :disabled="store.slaveSettings.muteAllNotifications"
+              type="checkbox"
+              @change="updateUsageNotifications(($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 px-4 py-3 transition"
+            :class="store.slaveSettings.muteAllNotifications ? 'opacity-40' : 'hover:border-white/20 hover:bg-white/[0.03]'"
+          >
+            <span>
+              <span class="block text-sm font-medium text-white">Temperatura CPU i GPU</span>
+              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Alerty o przekroczeniu ustawionych progów temperatury.</span>
+            </span>
+            <input
+              class="shrink-0"
+              :checked="!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteTempNotifications"
+              :disabled="store.slaveSettings.muteAllNotifications"
+              type="checkbox"
+              @change="updateTemperatureNotifications(($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+        </div>
+
+        <p class="mt-3 text-xs leading-5 text-[var(--text-dim)]">Pozostałe komunikaty dotyczące działania aplikacji są kontrolowane przez główny przełącznik.</p>
+      </section>
+    </div>
 
     <div
       v-if="activeSettingsPanel === 'thresholds'"

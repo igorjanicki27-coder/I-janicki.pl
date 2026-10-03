@@ -9,7 +9,12 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-echo "[1/3] Typecheck"
+SIGNING_IDENTITY="i-JANEK Local Code Signing"
+
+echo "[1/5] Certyfikat podpisu macOS"
+node scripts/check-macos-signing.mjs
+
+echo "[2/5] Typecheck"
 npm run typecheck
 
 if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
@@ -18,14 +23,15 @@ if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
   exit 1
 fi
 
-echo "[2/4] Prepare icons"
+echo "[3/5] Prepare icons"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
-echo "[3/4] Build renderer/main"
+echo "[4/5] Build renderer/main"
 npx electron-vite build
 
-echo "[4/4] Build macOS .app (mac target: dir)"
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dir --publish never
+echo "[5/5] Build podpisanej aplikacji macOS (.app)"
+CSC_NAME="$SIGNING_IDENTITY" npx electron-builder --config electron-builder.private.yml --mac dir --publish never
+node scripts/check-macos-signing.mjs --app="$ROOT_DIR/dist/mac-arm64/i-JANEK.app"
 
 echo "\n[OK] Gotowe. Szukaj .app w katalogu:"
 echo "  $ROOT_DIR/dist/mac*/i-JANEK.app"

@@ -4,6 +4,7 @@ extraResources:
     to: resources
     filter:
       - '**/*'
+      - '!macos-signing-public.json'
       - '!update-signing-private.pem'
   - from: build/icon.png
     to: resources/icon.png

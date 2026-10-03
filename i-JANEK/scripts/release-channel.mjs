@@ -110,7 +110,12 @@ for (const script of [
 ]) {
   run('bash', ['-n', script], { cwd: appRoot })
 }
-for (const script of ['scripts/release-channel.mjs', 'scripts/publish-release-assets.mjs']) {
+for (const script of [
+  'scripts/release-channel.mjs',
+  'scripts/publish-release-assets.mjs',
+  'scripts/check-macos-signing.mjs',
+  'scripts/setup-macos-signing.mjs'
+]) {
   run(process.execPath, ['--check', script], { cwd: appRoot })
 }
 
@@ -132,6 +137,7 @@ if (dryRun) {
 }
 
 run(process.execPath, ['scripts/check-update-signing.mjs'], { cwd: appRoot })
+run(process.execPath, ['scripts/check-macos-signing.mjs'], { cwd: appRoot })
 
 const branch = run('git', ['branch', '--show-current'], { capture: true })
 if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)

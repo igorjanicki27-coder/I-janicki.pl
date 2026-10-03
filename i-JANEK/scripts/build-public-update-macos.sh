@@ -16,30 +16,35 @@ fi
 
 cd "$ROOT_DIR"
 
-echo "[1/6] Konfiguracja wydania"
+SIGNING_IDENTITY="i-JANEK Local Code Signing"
+
+echo "[1/7] Certyfikat podpisu macOS"
+node scripts/check-macos-signing.mjs
+
+echo "[2/7] Konfiguracja wydania"
 node scripts/validate-release-environment.mjs
 
-echo "[2/6] Typecheck"
+echo "[3/7] Typecheck"
 npm run typecheck
 
-echo "[3/6] Ikony"
+echo "[4/7] Ikony"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 
-echo "[4/6] Build aplikacji"
+echo "[5/7] Build aplikacji"
 node scripts/write-app-version.mjs
 npx electron-vite build
 
-echo "[5/6] Podpisany macOS DMG + ZIP aktualizacyjny"
-npx electron-builder \
+echo "[6/7] Podpisany macOS DMG + ZIP aktualizacyjny"
+CSC_NAME="$SIGNING_IDENTITY" npx electron-builder \
   --config electron-builder.yml \
   --mac dmg zip \
   --arm64 \
   --publish never \
   "-c.publish.channel=$CHANNEL"
 
-codesign --verify --deep --strict "$ROOT_DIR/dist/mac-arm64/i-JANEK.app"
+node scripts/check-macos-signing.mjs --app="$ROOT_DIR/dist/mac-arm64/i-JANEK.app"
 
-echo "[6/6] Windows NSIS + metadane aktualizacji"
+echo "[7/7] Windows NSIS + metadane aktualizacji"
 WINDOWS_EXTRA_ARGS=()
 if ! command -v wine >/dev/null 2>&1 && ! command -v wine64 >/dev/null 2>&1; then
   WINDOWS_EXTRA_ARGS+=("-c.win.signExecutable=false")

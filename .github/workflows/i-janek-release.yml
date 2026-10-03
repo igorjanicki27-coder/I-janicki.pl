@@ -69,6 +69,7 @@ jobs:
       VITE_MASTER_EMAIL: ${{ vars.I_JANEK_MASTER_EMAIL }}
       CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
       CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+      CSC_NAME: i-JANEK Local Code Signing
     defaults:
       run:
         working-directory: i-JANEK
@@ -94,6 +95,16 @@ jobs:
 
       - name: Build DMG and updater payload
         run: npx electron-builder --mac dmg zip --universal --publish never "-c.publish.channel=${RELEASE_CHANNEL}"
+
+      - name: Verify macOS release signing identity
+        shell: bash
+        run: |
+          EXPECTED="$(node -p "require('./resources/macos-signing-public.json').fingerprintSha1")"
+          REQUIREMENT="$(codesign -d -r- dist/mac-universal/i-JANEK.app 2>&1)"
+          if [[ "${REQUIREMENT,,}" != *"${EXPECTED,,}"* ]]; then
+            echo "macOS application was signed with a different identity." >&2
+            exit 1
+          fi
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4

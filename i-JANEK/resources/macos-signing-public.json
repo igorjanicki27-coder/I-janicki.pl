@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "identityName": "i-JANEK Local Code Signing",
+  "keychainService": "i-JANEK macOS signing backup",
+  "fingerprintSha1": "622230fd70098f658c8a7e8760718323c353cdaa",
+  "fingerprintSha256": "84b26509d806682b8cdd56ae8c7a39f1444ca24898397f960e39199007c479a9",
+  "validFrom": "Oct  3 16:26:34 2026 GMT",
+  "validTo": "Sep 30 16:26:34 2036 GMT"
+}
