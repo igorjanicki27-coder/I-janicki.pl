@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted, remoteCommandsAccepted, unattendedAccessAccepted],
+  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted, remoteCommandsAccepted],
   () => {
     if (!consentValidationMessage.value) return
     consentValidationMessage.value = ''
