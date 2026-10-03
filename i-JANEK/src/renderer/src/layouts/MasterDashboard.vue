@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Activity, AlertTriangle, ArrowLeft, Building2, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Monitor, Plus, Search, Settings, Trash2, UserPlus } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Activity, AlertTriangle, ArrowLeft, Building2, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Monitor, MonitorUp, Plus, Search, Settings, Trash2, UserPlus } from 'lucide-vue-next'
 import ComputerTile from '@/components/master/ComputerTile.vue'
 import DeviceWorkspace from '@/components/master/DeviceWorkspace.vue'
 import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
 import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
-import RemoteDesktopPanel from '@/components/master/RemoteDesktopPanel.vue'
 import DwServicePocPanel from '@/components/master/DwServicePocPanel.vue'
 import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -14,13 +13,11 @@ import type { DeviceRecord } from '@shared/contracts'
 
 const emit = defineEmits<{ openSettings: [] }>()
 const store = useAppStore()
-type Section = 'overview' | 'registrations' | 'organizations' | 'devices' | 'tasks' | 'messages'
+type Section = 'overview' | 'registrations' | 'organizations' | 'devices' | 'tasks' | 'messages' | 'agents'
 
 const activeSection = ref<Section>('overview')
 const deviceDetailOpen = ref(false)
-const remoteDesktopDeviceId = ref('')
 const dwServicePocOpen = ref(false)
-const remoteDesktopDevice = computed(() => store.devices.find((device) => device.deviceId === remoteDesktopDeviceId.value) ?? null)
 const detailReturnSection = ref<Section>('devices')
 const searchQuery = ref('')
 const selectedCompanyKey = ref('all')
@@ -90,6 +87,7 @@ const pageMeta = computed(() => {
   if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${store.devices.length} urządzeń` }
   if (activeSection.value === 'tasks') return { title: 'Zadania', description: `${store.openServiceRequests.length} wymaga obsługi` }
   if (activeSection.value === 'messages') return { title: 'Wiadomości', description: 'Rozmowy z klientami' }
+  if (activeSection.value === 'agents') return { title: 'Agenci', description: 'Panel zdalnego dostępu DWService' }
   return { title: 'Przegląd', description: 'Stan całej infrastruktury' }
 })
 
@@ -99,6 +97,9 @@ const navItems = computed(() => [
   { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length, showZero: false },
   { key: 'organizations' as const, label: 'Firmy', icon: Building2, badge: organizations.value.filter((item) => item.name !== 'Bez firmy').length, showZero: false },
   { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
+  ...(store.systemContext?.platform !== 'web'
+    ? [{ key: 'agents' as const, label: 'Agenci', icon: MonitorUp, badge: 0, showZero: false }]
+    : []),
   { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount, showZero: false }
 ])
 
@@ -134,6 +135,7 @@ function navigate(section: Section) {
   activeSection.value = section
   deviceDetailOpen.value = false
   if (section === 'devices') selectedCompanyKey.value = 'all'
+  if (section === 'agents') dwServicePocOpen.value = true
 }
 function openOrganization(organization: Organization) {
   selectedCompanyKey.value = organization.key
@@ -158,17 +160,6 @@ function openDeviceById(deviceId: string, ownerUid: string) {
   if (!device) return
   store.selectedConversationOwnerUid = ownerUid
   openDevice(device, 'tasks')
-}
-async function connectToDevice(device: DeviceRecord) {
-  store.selectedDeviceId = device.deviceId
-  store.selectedConversationOwnerUid = device.ownerUid
-  remoteDesktopDeviceId.value = device.deviceId
-  await nextTick()
-  try {
-    await store.requestRustDeskLaunch()
-  } catch (error) {
-    console.error('[i-JANEK] Nie udało się wysłać prośby o połączenie:', error)
-  }
 }
 function closeDeviceDetails() {
   deviceDetailOpen.value = false
@@ -250,12 +241,12 @@ onBeforeUnmount(() => {
           <button v-if="deviceDetailOpen" class="ghost-button !h-10 !w-10 !shrink-0 !rounded-xl !px-0" type="button" title="Wróć do komputerów" @click="closeDeviceDetails()"><ArrowLeft class="h-4 w-4" /></button>
           <div class="min-w-0"><h1 class="truncate text-xl font-semibold text-white">{{ pageMeta.title }}</h1><p class="mt-1 truncate text-sm text-[var(--text-dim)]">{{ pageMeta.description }}</p></div>
         </div>
-        <div class="flex items-center gap-2"><button v-if="store.systemContext?.platform !== 'web'" class="ghost-button !h-10" type="button" @click="dwServicePocOpen = true">Test DWService</button><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
+        <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
       </header>
       <nav v-if="!deviceDetailOpen" class="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><button v-for="item in navItems" :key="item.key" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<span v-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></nav>
 
       <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto">
-        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" @connect="connectToDevice(store.selectedDevice!)" />
+        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" />
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
           <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -277,7 +268,7 @@ onBeforeUnmount(() => {
           </button>
           <section>
             <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
-            <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'overview')" @connect="connectToDevice(device)" /></div>
+            <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'overview')" /></div>
             <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
         </div>
@@ -297,15 +288,15 @@ onBeforeUnmount(() => {
 
         <div v-else-if="activeSection === 'devices'" class="p-5 lg:p-6">
           <div class="mb-5 flex justify-end"><label class="relative block w-full xl:max-w-sm"><Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" /><input v-model="searchQuery" class="soft-input !rounded-xl !py-2.5 !pl-9" placeholder="Szukaj komputera..." /></label></div>
-          <div v-if="pageDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in pageDevices" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'devices')" @connect="connectToDevice(device)" /></div>
+          <div v-if="pageDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in pageDevices" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'devices')" /></div>
           <div v-else class="rounded-2xl border border-dashed border-white/10 p-12 text-center"><Monitor class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Brak komputerów</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Ta firma nie ma jeszcze urządzeń albo żaden komputer nie pasuje do filtra.</p></div>
         </div>
 
         <TasksWorkspace v-else-if="activeSection === 'tasks'" @open-device="openDeviceById" />
+        <div v-else-if="activeSection === 'agents'" class="p-5 lg:p-6"><section class="content-card"><h2 class="text-base font-semibold text-white">DWService</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Panel działa wewnątrz i-JANEK i zachowuje sesję logowania.</p><button class="glass-button mt-4 !rounded-xl" type="button" @click="dwServicePocOpen = true">Otwórz panel agentów</button></section></div>
         <MessagesWorkspace v-else />
       </div>
     </main>
-    <RemoteDesktopPanel v-if="remoteDesktopDevice" :key="remoteDesktopDevice.deviceId" :device="remoteDesktopDevice" @close="remoteDesktopDeviceId = ''" />
     <DwServicePocPanel v-if="dwServicePocOpen" @close="dwServicePocOpen = false" />
   </div>
 </template>

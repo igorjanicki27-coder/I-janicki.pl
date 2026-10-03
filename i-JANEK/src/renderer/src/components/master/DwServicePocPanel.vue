@@ -55,13 +55,13 @@ onBeforeUnmount(() => {
   <div class="fixed inset-0 z-[100] flex flex-col bg-[#070b14] text-white">
     <div class="flex min-h-[92px] flex-wrap items-center gap-3 border-b border-white/15 px-5 py-3">
       <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold">Test DWService — oryginalna aplikacja WWW</h2>
+        <h2 class="text-base font-semibold">Agenci — DWService</h2>
         <p class="mt-1 truncate text-xs text-white/60">{{ status.url || 'https://www.dwservice.net/' }} · {{ status.state === 'error' ? 'Błąd' : status.state === 'loading' ? 'Ładowanie' : status.popupCount ? 'Nowa karta wewnątrz i-JANEK' : 'Widok w i-JANEK' }}</p>
         <p v-if="status.error" class="mt-1 text-xs text-rose-200">{{ status.error }}</p>
       </div>
       <button class="ghost-button !h-9" type="button" @click="goBack">Wstecz</button>
       <button v-if="status.popupCount" class="ghost-button !h-9" type="button" @click="closePopup">Zamknij kartę</button>
-      <button class="glass-button !h-9" type="button" @click="close">Zamknij test</button>
+      <button class="glass-button !h-9" type="button" @click="close">Zamknij</button>
     </div>
     <div ref="viewport" class="min-h-0 flex-1 bg-white" aria-label="Widok strony DWService"></div>
   </div>

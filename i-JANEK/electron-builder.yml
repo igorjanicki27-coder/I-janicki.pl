@@ -12,7 +12,6 @@ extraResources:
     filter:
       - '**/*'
       - '!google-oauth-desktop.local.json'
-      - '!rustdesk-config.local.txt'
       - '!update-signing-private.pem'
   - from: build/icon.png
     to: resources/icon.png

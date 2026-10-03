@@ -6,6 +6,7 @@ $root = Join-Path $env:ProgramData 'i-JANEK'
 $requestDir = Join-Path $root 'requests'
 $cacheDir = Join-Path $root 'cache'
 $statusPath = Join-Path $root 'update-status.json'
+$dwServiceStatusPath = Join-Path $root 'dwservice-status.json'
 $versionPath = Join-Path $root 'installed-version.txt'
 $configPath = Join-Path $root 'agent-config.json'
 $publicKeyPath = Join-Path $PSScriptRoot 'update-signing-public.json'
@@ -17,6 +18,106 @@ function Set-UpdateStatus([string]$state, [string]$version, [string]$message) {
   $temporary = Join-Path $root 'update-status.tmp'
   [IO.File]::WriteAllText($temporary, $json, (New-Object Text.UTF8Encoding $false))
   Move-Item -LiteralPath $temporary -Destination $statusPath -Force
+}
+
+function Set-DwServiceStatus([string]$state, [string]$configurationId, [string]$appliedCodeHash, [string]$message) {
+  $record = @{
+    status = $state
+    configurationId = $configurationId
+    appliedCodeHash = $appliedCodeHash
+    error = $message
+    updatedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  }
+  $temporary = Join-Path $root 'dwservice-status.tmp'
+  [IO.File]::WriteAllText($temporary, (ConvertTo-Json $record -Compress), (New-Object Text.UTF8Encoding $false))
+  Move-Item -LiteralPath $temporary -Destination $dwServiceStatusPath -Force
+}
+
+function Get-Sha256Text([string]$value) {
+  $sha256 = [Security.Cryptography.SHA256]::Create()
+  try {
+    $bytes = (New-Object Text.UTF8Encoding $false).GetBytes($value)
+    return ([BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+  } finally {
+    $sha256.Dispose()
+  }
+}
+
+function Assert-DwServiceAssignment($request, [string]$code, [string]$configurationId) {
+  $deviceId = [string]$request.deviceId
+  $projectId = [string]$request.firebaseProjectId
+  $idToken = [string]$request.firebaseIdToken
+  if ($deviceId -notmatch '^[A-Z0-9_]{3,160}$') { throw 'Nieprawidłowy identyfikator urządzenia.' }
+  if ($projectId -notmatch '^[a-z0-9][a-z0-9-]{4,61}[a-z0-9]$') { throw 'Nieprawidłowy identyfikator projektu Firebase.' }
+  if ([string]::IsNullOrWhiteSpace($idToken) -or $idToken.Length -gt 8192 -or @($idToken.Split('.')).Count -ne 3) {
+    throw 'Brakuje prawidłowego potwierdzenia sesji Firebase.'
+  }
+
+  $escapedDeviceId = [Uri]::EscapeDataString($deviceId)
+  $uri = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/devices/$escapedDeviceId"
+  $document = Invoke-RestMethod -Method Get -Uri $uri -Headers @{ Authorization = "Bearer $idToken" } -UseBasicParsing
+  $fields = $document.fields
+  if ([string]$fields.approvalStatus.stringValue -ne 'approved') { throw 'Urządzenie nie jest zatwierdzone.' }
+  if ([string]$fields.dwservice.mapValue.fields.configurationId.stringValue -ne $configurationId) {
+    throw 'Konfiguracja DWService została zmieniona. Pobierz aktualne dane.'
+  }
+  if ([string]$fields.dwservice.mapValue.fields.installationCode.stringValue -ne $code) {
+    throw 'Kod DWService nie zgadza się z przypisaniem administratora.'
+  }
+}
+
+function Invoke-DwServiceConfiguration($request) {
+  $code = [string]$request.installationCode
+  $configurationId = [string]$request.configurationId
+  if ($code -notmatch '^\d{3}-\d{3}-\d{3}$') { throw 'Kod DWService ma nieprawidłowy format.' }
+  if ($configurationId -notmatch '^[A-Za-z0-9-]{8,80}$') { throw 'Nieprawidłowy identyfikator konfiguracji DWService.' }
+  Assert-DwServiceAssignment $request $code $configurationId
+
+  Set-DwServiceStatus 'installing' $configurationId '' ''
+  $installerPath = Join-Path $cacheDir 'dwagent.exe'
+  $logPath = Join-Path $root 'dwservice-install.log'
+  Invoke-WebRequest -Uri 'https://www.dwservice.net/download/dwagent.exe' -OutFile $installerPath -UseBasicParsing
+  $installer = Get-Item -LiteralPath $installerPath
+  if ($installer.Length -le 0 -or $installer.Length -gt 250MB) { throw 'Pobrany instalator DWService ma nieprawidłowy rozmiar.' }
+  if (($installer.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Instalator DWService nie może być dowiązaniem.' }
+  $signature = Get-AuthenticodeSignature -FilePath $installerPath
+  if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+    throw "Instalator DWService nie ma prawidłowego podpisu cyfrowego: $($signature.Status)."
+  }
+
+  $process = Start-Process -FilePath $installerPath -ArgumentList @(
+    '-silent',
+    "key=$code",
+    "logpath=$logPath"
+  ) -PassThru -Wait -WindowStyle Hidden
+  if ($process.ExitCode -ne 0) { throw "Instalator DWService zakończył się błędem $($process.ExitCode)." }
+  $service = Get-Service -Name 'DWAgent' -ErrorAction SilentlyContinue
+  if (-not $service) { throw 'Usługa DWAgent nie została zainstalowana.' }
+  if ($service.Status -ne 'Running') {
+    Start-Service -Name 'DWAgent'
+    $service.WaitForStatus('Running', (New-TimeSpan -Seconds 30))
+  }
+  Set-DwServiceStatus 'ready' $configurationId (Get-Sha256Text $code) ''
+  Remove-Item -LiteralPath $installerPath -Force -ErrorAction SilentlyContinue
+}
+
+function Process-DwServiceRequests() {
+  $requests = @(Get-ChildItem -LiteralPath $requestDir -Filter 'dwservice-*.json' -File | Sort-Object LastWriteTimeUtc -Descending)
+  if ($requests.Count -eq 0) { return }
+  $requestFile = $requests[0]
+  $configurationId = ''
+  try {
+    if (($requestFile.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Żądanie DWService nie może być dowiązaniem.' }
+    $request = Get-Content -LiteralPath $requestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+    $configurationId = [string]$request.configurationId
+    Invoke-DwServiceConfiguration $request
+  } catch {
+    Set-DwServiceStatus 'error' $configurationId '' $_.Exception.Message
+  } finally {
+    foreach ($entry in $requests) {
+      Remove-Item -LiteralPath $entry.FullName -Force -ErrorAction SilentlyContinue
+    }
+  }
 }
 
 function Convert-Base64Url([string]$value) {
@@ -180,16 +281,12 @@ function Invoke-Update($request, [string]$appExe) {
 
 try {
   New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
-  try {
-    & (Join-Path $PSScriptRoot 'rustdesk-agent.ps1')
-  } catch {
-    Write-Warning "Nie udało się zastosować zasad RustDesk: $($_.Exception.Message)"
-  }
+  Process-DwServiceRequests
   $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
   $appExe = Join-Path ([string]$config.installDir) 'i-JANEK.exe'
   if (-not (Test-Path -LiteralPath $appExe -PathType Leaf)) { throw 'Brakuje aplikacji w katalogu instalacji.' }
   Assert-ProtectedInstallDir ([string]$config.installDir)
-  $requests = @(Get-ChildItem -LiteralPath $requestDir -Filter '*.json' -File | Sort-Object LastWriteTimeUtc -Descending)
+  $requests = @(Get-ChildItem -LiteralPath $requestDir -Filter 'request-*.json' -File | Sort-Object LastWriteTimeUtc -Descending)
   if ($requests.Count -eq 0) { exit 0 }
   $requestFile = $requests[0]
   try {

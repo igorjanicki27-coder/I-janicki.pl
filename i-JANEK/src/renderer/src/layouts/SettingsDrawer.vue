@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, ShieldCheck, Stethoscope, Trash2, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useAppStore } from '@/stores/app'
@@ -9,19 +9,12 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
-const remoteAccessPassphrase = ref('')
-const remoteAccessPassphraseConfirmation = ref('')
-const remoteSecurityBusy = ref(false)
-const remoteSecurityMessage = ref('')
-const replacingRemoteAccessKey = ref(false)
 const checkingUpdates = ref(false)
 const pickingFolder = ref(false)
-const refreshingRustDesk = ref(false)
-const rotatingRustDeskPassword = ref(false)
 const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
-const activeSettingsPanel = ref<'thresholds' | 'security' | 'support' | null>(null)
+const activeSettingsPanel = ref<'thresholds' | 'support' | null>(null)
 
 const backupFolderPathMap: Record<'Desktop' | 'Documents', string> = {
   Desktop: '%USERPROFILE%\\Desktop',
@@ -47,10 +40,6 @@ watch(
       activeSettingsPanel.value = null
       return
     }
-    remoteAccessPassphrase.value = ''
-    remoteAccessPassphraseConfirmation.value = ''
-    remoteSecurityMessage.value = ''
-    replacingRemoteAccessKey.value = false
     if (!store.pendingDeviceAlias) {
       store.pendingDeviceAlias = slaveDevice.value?.deviceAlias ?? slaveDevice.value?.hostname ?? ''
     }
@@ -59,9 +48,6 @@ watch(
     }
     if (!store.pendingInstallationLocation) {
       store.pendingInstallationLocation = slaveDevice.value?.installationLocation?.trim() || ''
-    }
-    if (store.user?.role === 'slave') {
-      void refreshRustDeskState()
     }
   },
   { immediate: true }
@@ -117,61 +103,6 @@ async function confirmRemoveBackupFolder() {
   }
 }
 
-async function configureRemoteAccessSecurity() {
-  const passphrase = remoteAccessPassphrase.value
-  if (passphrase.length < 12) {
-    remoteSecurityMessage.value = 'Hasło musi mieć co najmniej 12 znaków.'
-    return
-  }
-  if (passphrase !== remoteAccessPassphraseConfirmation.value) {
-    remoteSecurityMessage.value = 'Hasła nie są identyczne.'
-    return
-  }
-  if (store.masterSecurity && !window.confirm('Utworzenie nowego klucza unieważni zaszyfrowane dane dostępu przesłane wcześniej przez urządzenia. Kontynuować?')) return
-
-  remoteSecurityBusy.value = true
-  remoteSecurityMessage.value = ''
-  try {
-    await store.setupRemoteAccessSecurity(passphrase)
-    remoteSecurityMessage.value = 'Klucz utworzony i odblokowany. Urządzenia zaszyfrują dane przy następnym odświeżeniu RustDesk.'
-    remoteAccessPassphrase.value = ''
-    remoteAccessPassphraseConfirmation.value = ''
-    replacingRemoteAccessKey.value = false
-  } catch (error) {
-    remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się skonfigurować klucza.'
-  } finally {
-    remoteSecurityBusy.value = false
-  }
-}
-
-function startReplacingRemoteAccessKey() {
-  replacingRemoteAccessKey.value = true
-  remoteAccessPassphrase.value = ''
-  remoteAccessPassphraseConfirmation.value = ''
-  remoteSecurityMessage.value = 'Wpisz i potwierdź nowe hasło klucza.'
-}
-
-function cancelReplacingRemoteAccessKey() {
-  replacingRemoteAccessKey.value = false
-  remoteAccessPassphrase.value = ''
-  remoteAccessPassphraseConfirmation.value = ''
-  remoteSecurityMessage.value = ''
-}
-
-async function unlockRemoteAccessSecurity() {
-  if (!remoteAccessPassphrase.value) return
-  remoteSecurityBusy.value = true
-  remoteSecurityMessage.value = ''
-  try {
-    await store.unlockRemoteAccessSecurity(remoteAccessPassphrase.value)
-    remoteSecurityMessage.value = 'Klucz odblokowany na czas tej sesji.'
-    remoteAccessPassphrase.value = ''
-  } catch (error) {
-    remoteSecurityMessage.value = error instanceof Error ? error.message : 'Nie udało się odblokować klucza.'
-  } finally {
-    remoteSecurityBusy.value = false
-  }
-}
 
 async function checkForUpdatesNow() {
   if (checkingUpdates.value) return
@@ -221,30 +152,6 @@ async function addCustomFolderFromPicker() {
   }
 }
 
-async function refreshRustDeskState() {
-  if (refreshingRustDesk.value) return
-  refreshingRustDesk.value = true
-  try {
-    await store.refreshRustDeskState()
-  } finally {
-    refreshingRustDesk.value = false
-  }
-}
-
-async function rotateRustDeskPassword() {
-  if (rotatingRustDeskPassword.value) return
-  rotatingRustDeskPassword.value = true
-  try {
-    await store.rotateRustDeskPasswordManually()
-  } finally {
-    rotatingRustDeskPassword.value = false
-  }
-}
-
-function formatRotationDate(timestamp?: number) {
-  if (!timestamp) return '—'
-  return new Date(timestamp).toLocaleString('pl-PL')
-}
 </script>
 
 <template>
@@ -287,6 +194,17 @@ function formatRotationDate(timestamp?: number) {
             </div>
           </section>
 
+          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <label class="flex items-center justify-between gap-4 text-sm text-[var(--text-dim)]">
+              <span><span class="block font-semibold text-white">Powiadomienia systemowe</span><span class="mt-1 block text-xs">Dotyczy wszystkich powiadomień i-JANEK na tym komputerze.</span></span>
+              <input
+                :checked="!store.slaveSettings.muteAllNotifications"
+                type="checkbox"
+                @change="store.updateSlaveSettings({ muteAllNotifications: !($event.target as HTMLInputElement).checked })"
+              />
+            </label>
+          </section>
+
           <section class="mt-4 grid gap-2 sm:grid-cols-2">
             <button
               class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.07]"
@@ -299,20 +217,6 @@ function formatRotationDate(timestamp?: number) {
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-semibold text-white">Progi dashboardu</span>
                 <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Alerty i telemetria</span>
-              </span>
-              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
-            </button>
-            <button
-              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07]"
-              type="button"
-              @click="activeSettingsPanel = 'security'"
-            >
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
-                <ShieldCheck class="h-5 w-5" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold text-white">Bezpieczeństwo</span>
-                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Klucz zdalnego dostępu</span>
               </span>
               <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
             </button>
@@ -350,37 +254,6 @@ function formatRotationDate(timestamp?: number) {
                 </div>
               </div>
             </div>
-          </section>
-
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-semibold text-white">Zdalny dostęp</div>
-              <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs" type="button" :disabled="refreshingRustDesk" @click="refreshRustDeskState()">
-                {{ refreshingRustDesk ? 'Odświeżanie...' : 'Odśwież' }}
-              </button>
-            </div>
-            <div class="mt-3 space-y-2 text-sm text-[var(--text-dim)]">
-              <div class="flex items-center justify-between">
-                <span>Status</span>
-                <span class="mono text-white">{{ store.currentRustDeskState?.installed ? 'gotowy' : 'brak' }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span>Aktualne hasło</span>
-                <span class="mono text-white">{{ store.currentRustDeskState?.accessCode ?? '—' }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span>Ostatnia rotacja</span>
-                <span class="mono text-white">{{ formatRotationDate(store.currentRustDeskState?.passwordLastRotatedAt) }}</span>
-              </div>
-            </div>
-            <button
-              class="glass-button mt-3 w-full justify-center"
-              type="button"
-              :disabled="rotatingRustDeskPassword"
-              @click="rotateRustDeskPassword()"
-            >
-              {{ rotatingRustDeskPassword ? 'Obracanie hasła...' : 'Obróć hasło teraz' }}
-            </button>
           </section>
 
           <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
@@ -466,6 +339,14 @@ function formatRotationDate(timestamp?: number) {
               <div class="text-sm font-semibold text-white">Powiadomienia</div>
               <div class="mt-3 space-y-3 text-sm text-[var(--text-dim)]">
                 <label class="flex items-center justify-between">
+                  <span>Wyłącz wszystkie powiadomienia</span>
+                  <input
+                    :checked="store.slaveSettings.muteAllNotifications"
+                    type="checkbox"
+                    @change="store.updateSlaveSettings({ muteAllNotifications: ($event.target as HTMLInputElement).checked })"
+                  />
+                </label>
+                <label class="flex items-center justify-between">
                   <span>Nie pokazuj alertów</span>
                   <input
                     :checked="store.slaveSettings.hideAlertNotifications"
@@ -506,18 +387,6 @@ function formatRotationDate(timestamp?: number) {
                 <label class="flex items-center justify-between">
                   <span>Autostart</span>
                   <input :checked="store.slaveSettings.autostart" type="checkbox" @change="store.toggleAutostart(($event.target as HTMLInputElement).checked)" />
-                </label>
-                <label class="flex items-start justify-between gap-4">
-                  <span>
-                    <span class="block">Zdalny pulpit bez pytania</span>
-                    <span class="mt-1 block text-xs leading-5 text-white/40">Po wyłączeniu każde połączenie będzie wymagało Twojej zgody.</span>
-                  </span>
-                  <input
-                    class="mt-1 shrink-0"
-                    :checked="Boolean(store.consent?.unattendedAccessConsent)"
-                    type="checkbox"
-                    @change="store.updateUnattendedAccessConsent(($event.target as HTMLInputElement).checked)"
-                  />
                 </label>
               </div>
             </section>
@@ -665,70 +534,6 @@ function formatRotationDate(timestamp?: number) {
             </span>
           </label>
         </div>
-      </section>
-    </div>
-
-    <div
-      v-if="activeSettingsPanel === 'security'"
-      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="security-title"
-      @click.self="closeSettingsPanel()"
-    >
-      <section class="glass-panel w-full max-w-lg rounded-[28px] border border-cyan-300/20 p-5">
-        <header class="flex items-start justify-between gap-4">
-          <div>
-            <h3 id="security-title" class="text-base font-semibold text-white">Bezpieczeństwo zdalnego dostępu</h3>
-            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Zarządzaj lokalnym kluczem używanym do odszyfrowywania danych RustDesk.</p>
-          </div>
-          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
-            <X class="h-4 w-4" />
-          </button>
-        </header>
-
-        <label class="mt-5 block text-sm text-[var(--text-dim)]">
-          <span class="mb-2 block">Hasło klucza Mastera</span>
-          <input v-model="remoteAccessPassphrase" class="soft-input" type="password" autocomplete="current-password" placeholder="Minimum 12 znaków" />
-          <input
-            v-if="!store.masterSecurity || replacingRemoteAccessKey"
-            v-model="remoteAccessPassphraseConfirmation"
-            class="soft-input mt-2"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Powtórz hasło"
-          />
-        </label>
-        <button
-          class="glass-button mt-3 w-full justify-center !px-4"
-          type="button"
-          :disabled="remoteSecurityBusy"
-          @click="store.masterSecurity && !replacingRemoteAccessKey ? unlockRemoteAccessSecurity() : configureRemoteAccessSecurity()"
-        >
-          {{ remoteSecurityBusy ? 'Proszę czekać...' : store.masterSecurity && !replacingRemoteAccessKey ? 'Odblokuj dane RustDesk' : replacingRemoteAccessKey ? 'Zapisz nowy klucz' : 'Utwórz klucz zdalnego dostępu' }}
-        </button>
-        <button
-          v-if="store.masterSecurity && !replacingRemoteAccessKey"
-          class="ghost-button mt-2 w-full !rounded-xl"
-          type="button"
-          :disabled="remoteSecurityBusy"
-          @click="startReplacingRemoteAccessKey()"
-        >
-          Wygeneruj nowy klucz
-        </button>
-        <button
-          v-if="replacingRemoteAccessKey"
-          class="ghost-button mt-2 w-full !rounded-xl"
-          type="button"
-          :disabled="remoteSecurityBusy"
-          @click="cancelReplacingRemoteAccessKey()"
-        >
-          Anuluj zmianę klucza
-        </button>
-        <p v-if="remoteSecurityMessage" class="mt-3 text-xs text-cyan-100">{{ remoteSecurityMessage }}</p>
-        <p class="mt-3 rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-3 py-2.5 text-xs leading-5 text-amber-100/90">
-          Hasło pozostaje na tym komputerze. Prywatny klucz jest nim szyfrowany lokalnie, a urządzenia zapisują wyłącznie zaszyfrowane dane RustDesk.
-        </p>
       </section>
     </div>
 

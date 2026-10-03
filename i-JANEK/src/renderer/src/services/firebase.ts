@@ -6,7 +6,7 @@ import {
   indexedDBLocalPersistence,
   initializeAuth
 } from 'firebase/auth'
-import { getFirestore, initializeFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentSingleTabManager } from 'firebase/firestore'
 import { getDatabase } from 'firebase/database'
 
 const firebaseConfig = {
@@ -33,8 +33,13 @@ const isElectronRenderer = typeof navigator !== 'undefined' && /\bElectron\//i.t
 const database = app && firebaseConfig.databaseURL ? getDatabase(app, firebaseConfig.databaseURL) : null
 const firestore = app
   ? isElectronRenderer
-    ? initializeFirestore(app, { experimentalForceLongPolling: true })
-    : getFirestore(app)
+    ? initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) })
+      })
+    : initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) })
+      })
   : null
 let auth = app ? null : null
 

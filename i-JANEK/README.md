@@ -7,13 +7,13 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 - osobny projekt w `./i-JANEK`, bez zmian w plikach strony
 - UI Master/Slave w stylistyce glassmorphism opartej o tokeny z `i-janicki.pl`
 - integracje Firebase, Google OAuth i Google Drive przez warstwę adapterów
-- telemetry, inwentaryzacja, cichy terminal, RustDesk i backup jako usługi Electron
+- telemetria, inwentaryzacja, cichy terminal, DWService i backup jako usługi Electron
 - instalator NSIS z hookami PowerShell pod certyfikat, autostart i clean uninstall
 
 ## Szybki start
 
 1. Skopiuj `.env.example` do `.env`.
-2. Uzupełnij konfigurację Firebase, desktopowego Google OAuth oraz lokalny `I_JANEK_AES_VAULT_KEY`. Nie commituj tych sekretów do repo.
+2. Uzupełnij konfigurację Firebase oraz desktopowego Google OAuth. Nie commituj sekretów do repo.
    - Firebase Auth nadal wymaga włączenia providera Google.
    - Dla aplikacji Electron utwórz w Google Cloud OAuth Client typu `Desktop app`.
    - Masz dwie darmowe opcje konfiguracji:
@@ -21,10 +21,7 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
      - albo dostarczony przez instalator plik JSON, który trafia do `%APPDATA%\i-JANEK\google-oauth-desktop.local.json`
    - Instalator kopiuje JSON automatycznie do profilu użytkownika, więc nie trzeba go dogrywać ręcznie.
    - Przy ręcznym uruchomieniu aplikacja pokazuje główne okno od razu; tryb `--tray` jest zarezerwowany dla autostartu.
-3. (RustDesk) Ustaw globalnie na Windows:
-   - `RUSTDESK_CONFIG_STRING` (konfiguracja serwera eksportowana z RustDesk)
-   - `RUSTDESK_LOCK_CONFIG=1` (wymuszenie blokady ręcznej edycji konfiguracji)
-   - alternatywnie wpisz config string do `resources/rustdesk-config.local.txt` (plik lokalny, ignorowany przez git); wzór jest w `resources/rustdesk-config.example.txt`
+3. Włącz w koncie DWService możliwość cichej instalacji agenta. Kod instalacyjny przypisuje Master podczas akceptacji urządzenia.
 4. Dodaj ikony builda:
    - `build/icon.png`
    - `build/icon.ico`
@@ -119,12 +116,12 @@ Jednorazowo w `Settings -> Secrets and variables -> Actions -> Variables` trzeba
 
 Opcjonalne sekrety do podpisywania instalatorów: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `WINDOWS_CSC_LINK`, `WINDOWS_CSC_KEY_PASSWORD`. Brak tych sekretów nie blokuje przygotowania wersji testowej, ale system operacyjny będzie ostrzegał o nieznanym wydawcy, a automatyczne aktualizacje macOS wymagają docelowo podpisanej aplikacji.
 
-Konfiguracja RustDesk oraz plik Google OAuth nie są wstrzykiwane do publicznego GitHub Release. Publiczny instalator można rozpakować, więc umieszczenie w nim prywatnych danych udostępniłoby je każdemu. Lokalne skrypty używają osobnej konfiguracji `electron-builder.private.yml` i tworzą prywatny instalator wdrożeniowy, który należy przekazać klientowi bezpośrednio. Przy pierwszym uruchomieniu ustawienia są utrwalane w profilu użytkownika, dzięki czemu późniejsze publiczne aktualizacje ich nie usuwają.
+Plik Google OAuth nie jest wstrzykiwany do publicznego GitHub Release. Publiczny instalator można rozpakować, więc umieszczenie w nim prywatnych danych udostępniłoby je każdemu. Lokalne skrypty używają osobnej konfiguracji `electron-builder.private.yml` i tworzą prywatny instalator wdrożeniowy, który należy przekazać klientowi bezpośrednio. Przy pierwszym uruchomieniu ustawienia są utrwalane w profilu użytkownika, dzięki czemu późniejsze publiczne aktualizacje ich nie usuwają.
 
 ## Niezawodność i testy bezpieczeństwa
 
 - Telemetria, inwentaryzacja oraz zgłoszenia awarii są odkładane w trwałej kolejce lokalnej, gdy sieć jest niedostępna. Powrót połączenia uruchamia synchronizację automatycznie; można ją też wymusić w ustawieniach.
-- Ustawienia zawierają test gotowości sprawdzający środowisko aplikacji, sieć, sesję i odczyt Firestore, zatwierdzenie urządzenia, RustDesk, kanał aktualizacji oraz kolejkę offline.
+- Ustawienia zawierają test gotowości sprawdzający środowisko aplikacji, sieć, sesję i odczyt Firestore, zatwierdzenie urządzenia, DWService, kanał aktualizacji oraz kolejkę offline.
 - Przycisk `Zapisz diagnostykę` tworzy lokalny plik `.json.gz`. Logi są rotowane i automatycznie usuwają tokeny, hasła, klucze, dane uwierzytelniające oraz adresy e-mail.
 - Zgłoszenia serwisowe mają komentarze wewnętrzne dostępne wyłącznie dla Mastera; klient nie może ich odczytać ani utworzyć zgodnie z regułami Firestore.
 - Historia obciążenia zapisuje dzienne agregaty czasu pracy oraz czasu CPU, GPU, RAM i dysku ponad 80%. Agregaty są buforowane lokalnie i wysyłane najwyżej raz na godzinę, aby ograniczyć wykorzystanie darmowych limitów Firestore.
@@ -150,7 +147,7 @@ npm run test:rules
 - Po pobraniu aktualizacji aplikacja proponuje instalację od razu albo później; po odroczeniu przypomina ponownie po 4 godzinach.
 - Build beta pobiera aktualizacje beta i późniejsze stable, natomiast build stable pozostaje wyłącznie na kanale stable.
 - Dla użytkownika publikowane są instalatory `.dmg` (macOS) i `.exe` (Windows). Plik `.zip` dla macOS pozostaje wyłącznie technicznym zasobem wymaganym przez `electron-updater`.
-- RustDesk jest zarządzany polityką: przy starcie wymuszany jest `--config`, ustawiane jest silne hasło unattended i nakładana jest blokada ACL na pliki konfiguracyjne.
-- Aplikacja odczytuje prawdziwe ID przez `rustdesk --get-id`; nie generuje zastępczego identyfikatora urządzenia.
+- Po akceptacji urządzenia klient odbiera przypisany kod DWService i przekazuje go do systemowego instalatora agenta. Zmiana kodu w panelu powoduje ponowną konfigurację.
+- Panel DWService działa w `WebContentsView` wewnątrz i-JANEK i używa trwałej partycji sesji `persist:dwservice`.
 - Pełny agent działa na Windows i macOS, natomiast panel Mastera można również zbudować jako aplikację webową poleceniem `npm run build:web`.
-- Na macOS użytkownik musi jednorazowo nadać RustDesk uprawnienia Dostępność i Nagrywanie ekranu.
+- Na macOS instalacja agenta wymaga jednorazowej autoryzacji administratora, a system może poprosić o uprawnienia Dostępność i Nagrywanie ekranu.

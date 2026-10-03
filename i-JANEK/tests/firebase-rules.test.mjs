@@ -276,6 +276,36 @@ test('tylko Master może zmienić kanał aktualizacji urządzenia', async () => 
   }))
 })
 
+test('klient może raportować stan DWService, ale nie może zmienić przypisanego kodu', async () => {
+  const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
+  const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).firestore()
+  const configurationId = 'config-12345678'
+  await assertSucceeds(updateDoc(doc(masterDb, 'devices', deviceId), {
+    dwservice: {
+      installationCode: '123-456-789',
+      configurationId,
+      status: 'pending',
+      requestedAt: 1_700_000_000_000,
+      requestedBy: master.email,
+      updatedAt: 1_700_000_000_000,
+      error: null
+    },
+    updatedAt: 1_700_000_000_000
+  }))
+  await assertSucceeds(updateDoc(doc(ownerDb, 'devices', deviceId), {
+    'dwservice.status': 'ready',
+    'dwservice.configurationId': configurationId,
+    'dwservice.appliedCodeHash': 'hash',
+    'dwservice.error': null,
+    'dwservice.updatedAt': 1_700_000_000_500,
+    updatedAt: 1_700_000_000_500
+  }))
+  await assertFails(updateDoc(doc(ownerDb, 'devices', deviceId), {
+    'dwservice.installationCode': '999-999-999',
+    updatedAt: 1_700_000_000_600
+  }))
+})
+
 test('nowy klient może wybrać tylko domyślny kanał stable', async () => {
   const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
   await assertSucceeds(setDoc(doc(ownerDb, 'devices', 'CLIENT-PC-STABLE'), {
@@ -314,7 +344,6 @@ test('nowy klient może wysłać prośbę o akceptację przed zapisaniem zgód',
     companyName: 'Firma Testowa',
     contactName: 'Jan Kowalski',
     installationLocation: '',
-    rustdesk: { installed: false },
     updateRequest: null,
     lastHandledUpdateRequestId: null,
     lastUpdateResult: null

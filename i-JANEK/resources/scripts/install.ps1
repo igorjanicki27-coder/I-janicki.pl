@@ -16,6 +16,14 @@ if (-not (Test-Path -LiteralPath (Join-Path $sourceDir 'update-signing-public.js
 }
 
 New-Item -ItemType Directory -Path $agentDir, $requestsDir, $cacheDir -Force | Out-Null
+foreach ($legacyPath in @(
+  (Join-Path $root 'rustdesk-config.txt'),
+  (Join-Path $root 'rustdesk-policy-run.txt'),
+  (Join-Path $root 'rustdesk-policy-applied.txt'),
+  (Join-Path $agentDir 'rustdesk-agent.ps1')
+)) {
+  if (Test-Path -LiteralPath $legacyPath) { Remove-Item -LiteralPath $legacyPath -Force }
+}
 foreach ($protectedDir in @($root, $agentDir, $cacheDir, $requestsDir)) {
   & icacls.exe $protectedDir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Nie udało się zabezpieczyć katalogu $protectedDir." }
@@ -27,24 +35,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Nie udało się nadać uprawnień do zgłosze�
 
 Copy-Item -LiteralPath (Join-Path $sourceDir 'update-agent.ps1') -Destination (Join-Path $agentDir 'update-agent.ps1') -Force
 Copy-Item -LiteralPath (Join-Path $sourceDir 'update-signing-public.json') -Destination (Join-Path $agentDir 'update-signing-public.json') -Force
-Copy-Item -LiteralPath (Join-Path $sourceDir 'rustdesk-agent.ps1') -Destination (Join-Path $agentDir 'rustdesk-agent.ps1') -Force
 $config = @{ installDir = (Resolve-Path -LiteralPath $InstallDir).Path } | ConvertTo-Json -Compress
 [IO.File]::WriteAllText((Join-Path $root 'agent-config.json'), $config, (New-Object Text.UTF8Encoding $false))
 $googleOAuthSource = Join-Path $InstallDir 'resources\resources\google-oauth-desktop.local.json'
 if (Test-Path -LiteralPath $googleOAuthSource -PathType Leaf) {
   Copy-Item -LiteralPath $googleOAuthSource -Destination (Join-Path $root 'google-oauth-desktop.local.json') -Force
 }
-$rustDeskConfig = Join-Path $InstallDir 'resources\resources\rustdesk-config.local.txt'
-$protectedRustDeskConfig = Join-Path $root 'rustdesk-config.txt'
-if (Test-Path -LiteralPath $rustDeskConfig -PathType Leaf) {
-  Copy-Item -LiteralPath $rustDeskConfig -Destination $protectedRustDeskConfig -Force
-  Remove-Item -LiteralPath (Join-Path $root 'rustdesk-policy-run.txt') -Force -ErrorAction SilentlyContinue
-}
-if (Test-Path -LiteralPath $protectedRustDeskConfig -PathType Leaf) {
-  & icacls.exe $protectedRustDeskConfig /inheritance:r /remove:g '*S-1-5-32-545' /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'Nie udało się zabezpieczyć konfiguracji RustDesk.' }
-}
-
 if (-not (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
   $powershell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
   $scriptPath = Join-Path $agentDir 'update-agent.ps1'

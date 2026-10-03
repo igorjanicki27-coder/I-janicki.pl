@@ -95,6 +95,27 @@ service cloud.firestore {
       return isAuthenticated() && resource.data.ownerUid == request.auth.uid;
     }
 
+    function ownerCanUpdateDwService() {
+      return !request.resource.data.diff(resource.data).changedKeys().hasAny(['dwservice'])
+        || (
+          resource.data.keys().hasAll(['dwservice'])
+          && resource.data.dwservice is map
+          && request.resource.data.dwservice is map
+          && request.resource.data.dwservice.installationCode == resource.data.dwservice.installationCode
+          && request.resource.data.dwservice.configurationId == resource.data.dwservice.configurationId
+          && request.resource.data.dwservice.requestedAt == resource.data.dwservice.requestedAt
+          && request.resource.data.dwservice.requestedBy == resource.data.dwservice.requestedBy
+          && request.resource.data.dwservice.status in ['pending', 'installing', 'ready', 'error']
+          && request.resource.data.dwservice.diff(resource.data.dwservice).changedKeys().hasOnly([
+            'configurationId',
+            'status',
+            'updatedAt',
+            'appliedCodeHash',
+            'error'
+          ])
+        );
+    }
+
     function ownerCanUpdateDevice() {
       return isDeviceOwner()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
@@ -122,8 +143,9 @@ service cloud.firestore {
           'monitoringEnabled',
           'lastHandledUpdateRequestId',
           'lastUpdateResult',
-          'rustdesk'
-        ]);
+          'dwservice'
+        ])
+        && ownerCanUpdateDwService();
     }
 
     function isCreatingOwnEvent() {
@@ -665,10 +687,6 @@ service cloud.firestore {
     match /appConfig/masterSettings {
       allow read: if isAuthenticated();
       allow create, update, delete: if isMaster();
-    }
-
-    match /appConfig/masterSecurity {
-      allow read, create, update, delete: if isMaster();
     }
 
     match /auditLogs/{logId} {

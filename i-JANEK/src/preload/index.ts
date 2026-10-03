@@ -15,15 +15,19 @@ const api: JanekApi = {
       return () => ipcRenderer.removeListener('dwservice:poc-status', listener)
     }
   },
+  dwServiceAgent: {
+    getState: () => ipcRenderer.invoke('dwservice:agent-get-state'),
+    applyCode: (installationCode, configurationId, proof) =>
+      ipcRenderer.invoke('dwservice:agent-apply-code', installationCode, configurationId, proof)
+  },
   system: {
     getContext: () => ipcRenderer.invoke('system:get-context'),
     setAutoLaunch: (enabled) => ipcRenderer.invoke('system:set-auto-launch', enabled),
+    setNotificationsEnabled: (enabled) => ipcRenderer.invoke('system:set-notifications-enabled', enabled),
     notify: (title, body) => ipcRenderer.invoke('system:notify', title, body),
     hideMainWindow: () => ipcRenderer.invoke('system:hide-main-window'),
     getConsent: () => ipcRenderer.invoke('system:get-consent'),
     setConsent: (consent) => ipcRenderer.invoke('system:set-consent', consent),
-    getMasterAesKey: () => ipcRenderer.invoke('system:get-master-aes-key'),
-    setMasterAesKey: (key) => ipcRenderer.invoke('system:set-master-aes-key', key),
     checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
     getUpdateStatus: () => ipcRenderer.invoke('system:get-update-status'),
     onUpdateStatus: (callback) => {
@@ -37,8 +41,7 @@ const api: JanekApi = {
     signInWithGoogle: () => ipcRenderer.invoke('system:sign-in-with-google'),
     selectFolder: () => ipcRenderer.invoke('system:select-folder'),
     setRegisteredDeviceId: (deviceId) => ipcRenderer.invoke('system:set-registered-device-id', deviceId),
-    promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes),
-    promptRemoteConnection: (title, body) => ipcRenderer.invoke('system:prompt-remote-connection', title, body)
+    promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes)
   },
   telemetry: {
     collect: () => ipcRenderer.invoke('telemetry:collect'),
@@ -47,10 +50,6 @@ const api: JanekApi = {
   terminal: {
     execute: (shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
       ipcRenderer.invoke('terminal:execute', shell, command, deviceId, requestedBy)
-  },
-  vault: {
-    encrypt: (plainText: string) => ipcRenderer.invoke('vault:encrypt', plainText),
-    decrypt: (cipherText: string) => ipcRenderer.invoke('vault:decrypt', cipherText)
   },
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
@@ -67,11 +66,6 @@ const api: JanekApi = {
       ipcRenderer.on('backup:sync-progress', listener)
       return () => ipcRenderer.removeListener('backup:sync-progress', listener)
     }
-  },
-  rustdesk: {
-    getState: (deviceId?: string) => ipcRenderer.invoke('rustdesk:get-state', deviceId),
-    launch: (deviceId?: string) => ipcRenderer.invoke('rustdesk:launch', deviceId),
-    rotatePassword: (reason?: 'manual' | 'daily' | 'post_connection') => ipcRenderer.invoke('rustdesk:rotate-password', reason)
   }
 }
 

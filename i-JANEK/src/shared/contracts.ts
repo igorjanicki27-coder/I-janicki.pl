@@ -3,7 +3,8 @@ export type ThemeMode = 'dark' | 'light'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type DeviceHealthState = 'healthy' | 'warning' | 'alert' | 'offline'
 export type CommandShell = 'powershell' | 'cmd' | 'shell'
-export type RemoteActionType = 'notify' | 'restart_prompt' | 'launch_rustdesk'
+export type RemoteActionType = 'notify' | 'restart_prompt'
+export type DwServiceProvisioningStatus = 'unconfigured' | 'pending' | 'installing' | 'ready' | 'error'
 export type TelemetryMode = 'standard' | 'aggressive'
 export type UpdateChannel = 'test' | 'beta' | 'stable'
 export type ServiceRequestPriority = 'low' | 'normal' | 'high' | 'critical'
@@ -45,36 +46,6 @@ export interface RemoteMasterSettings {
   thresholds: MetricThresholds
   telemetryMode: TelemetryMode
   companyOptions: string[]
-  remoteAccessKey?: RemoteAccessPublicKey
-}
-
-export interface RemoteAccessPublicKey {
-  keyId: string
-  jwk: Record<string, unknown>
-  createdAt: number
-}
-
-export interface MasterSecurityConfig {
-  publicKey: RemoteAccessPublicKey
-  encryptedPrivateKey: string
-  salt: string
-  iv: string
-  iterations: number
-  createdAt: number
-}
-
-export interface EncryptedRemoteAccess {
-  keyId: string
-  algorithm: 'RSA-OAEP-256'
-  ciphertext: string
-  updatedAt: number
-}
-
-export interface RemoteAccessCredential {
-  deviceId: string
-  rustdeskId: string
-  password: string
-  issuedAt: number
 }
 
 export interface AppUser {
@@ -151,13 +122,32 @@ export interface DeviceRecord extends DeviceIdentity {
   inventoryCapturedAt?: number
   inventoryReportId?: string
   approvedBy?: string
-  rustdesk?: RustDeskState
+  dwservice?: DwServiceConfiguration
   updateRequest?: UpdateRequest | null
   lastHandledUpdateRequestId?: string | null
   lastUpdateResult?: string | null
   remoteActionRequest?: RemoteActionRequest | null
   lastHandledRemoteActionRequestId?: string | null
   lastRemoteActionResult?: string | null
+}
+
+export interface DwServiceConfiguration {
+  installationCode: string
+  configurationId: string
+  status: DwServiceProvisioningStatus
+  requestedAt: number
+  requestedBy: string
+  updatedAt: number
+  appliedCodeHash?: string
+  error?: string | null
+}
+
+export interface DwServiceAgentState {
+  status: DwServiceProvisioningStatus
+  appliedCodeHash?: string
+  configurationId?: string
+  updatedAt?: number
+  error?: string
 }
 
 export interface UpdateRequest {
@@ -361,26 +351,6 @@ export interface ConsentRecord {
   policyVersion: string
   diagnosticsConsent: boolean
   remoteCommandConsent: boolean
-  unattendedAccessConsent: boolean
-}
-
-export interface RustDeskState {
-  binaryPath?: string
-  installed: boolean
-  platform?: string
-  unattendedReady?: boolean
-  requiresPermissions?: boolean
-  permissionHint?: string
-  encryptedAccess?: EncryptedRemoteAccess
-  lastLaunchAt?: number
-  sessionHint?: string
-  accessCode?: string
-  accessIdentity?: string
-  passwordLastRotatedAt?: number
-  publicKeyConfigured?: boolean
-  policyReady?: boolean
-  configEnforced?: boolean
-  configLocked?: boolean
 }
 
 export interface SystemContext extends DeviceIdentity {

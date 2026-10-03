@@ -9,8 +9,6 @@ import {
   CloudCog,
   Cpu,
   HardDrive,
-  KeyRound,
-  LaptopMinimalCheck,
   MemoryStick,
   Pencil,
   RefreshCcw,
@@ -28,12 +26,9 @@ import { useAppStore } from '@/stores/app'
 import type { UpdateChannel } from '@shared/contracts'
 
 const tabs = ['overview', 'diagnostics', 'tools', 'backup', 'inventory'] as const
-const emit = defineEmits<{ connect: [] }>()
 const store = useAppStore()
 const activeTab = ref<(typeof tabs)[number]>('overview')
 const usageRangeDays = ref<7 | 30 | 90>(30)
-const remoteAccessMessage = ref('')
-const revealingRemoteAccess = ref(false)
 const editingDetails = ref(false)
 const detailsBusy = ref(false)
 const detailsMessage = ref('')
@@ -41,7 +36,8 @@ const detailsDraft = ref({
   deviceAlias: '',
   contactName: '',
   companyName: '',
-  installationLocation: ''
+  installationLocation: '',
+  dwServiceInstallationCode: ''
 })
 
 const selectedAlerts = computed(() => {
@@ -82,10 +78,6 @@ const selectedInventory = computed(() => {
   const deviceId = store.selectedDevice?.deviceId
   return deviceId ? store.inventory[deviceId] ?? null : null
 })
-const selectedRemoteAccess = computed(() => {
-  const deviceId = store.selectedDevice?.deviceId
-  return deviceId ? store.revealedRemoteAccess[deviceId] ?? null : null
-})
 const selectedUsageRows = computed(() => {
   const deviceId = store.selectedDevice?.deviceId
   return deviceId ? store.usageHistory[deviceId] ?? [] : []
@@ -120,7 +112,6 @@ watch(
 
 watch(() => store.selectedDeviceId, () => {
   activeTab.value = 'overview'
-  remoteAccessMessage.value = ''
   editingDetails.value = false
   detailsMessage.value = ''
   resetDetailsDraft()
@@ -132,7 +123,8 @@ function resetDetailsDraft() {
     deviceAlias: device?.deviceAlias?.trim() || device?.hostname || '',
     contactName: device?.contactName?.trim() || '',
     companyName: device?.companyName?.trim() || '',
-    installationLocation: device?.installationLocation?.trim() || ''
+    installationLocation: device?.installationLocation?.trim() || '',
+    dwServiceInstallationCode: device?.dwservice?.installationCode ?? ''
   }
 }
 
@@ -155,6 +147,9 @@ async function saveDetails() {
   detailsMessage.value = ''
   try {
     await store.saveDeviceDetails(deviceId, detailsDraft.value)
+    if (detailsDraft.value.dwServiceInstallationCode !== store.selectedDevice?.dwservice?.installationCode) {
+      await store.configureDwService(deviceId, detailsDraft.value.dwServiceInstallationCode)
+    }
     editingDetails.value = false
     detailsMessage.value = 'Dane komputera zostały zapisane.'
   } catch (error) {
@@ -226,29 +221,6 @@ function formatFileSize(sizeBytes: number) {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
 }
 
-async function revealRemoteAccess() {
-  const device = store.selectedDevice
-  if (!device || revealingRemoteAccess.value) return
-  revealingRemoteAccess.value = true
-  remoteAccessMessage.value = ''
-  try {
-    await store.revealRemoteAccessCredential(device)
-    remoteAccessMessage.value = 'Dane odszyfrowano tylko na czas tej sesji.'
-  } catch (error) {
-    remoteAccessMessage.value = error instanceof Error ? error.message : 'Nie udało się odszyfrować danych połączenia.'
-  } finally {
-    revealingRemoteAccess.value = false
-  }
-}
-
-async function copyRemoteAccessValue(value: string, label: string) {
-  try {
-    await navigator.clipboard.writeText(value)
-    remoteAccessMessage.value = `${label} skopiowano do schowka.`
-  } catch {
-    remoteAccessMessage.value = `Nie udało się skopiować pola: ${label}.`
-  }
-}
 </script>
 
 <template>
@@ -265,9 +237,6 @@ async function copyRemoteAccessValue(value: string, label: string) {
             {{ store.selectedDevice.companyName || store.selectedDevice.ownerEmail }}<span v-if="store.selectedDevice.installationLocation"> · {{ store.selectedDevice.installationLocation }}</span> · {{ store.selectedDevice.hostname }}
           </p>
         </div>
-        <button class="glass-button !shrink-0 !rounded-xl !px-4 !py-2.5 text-sm" type="button" @click="emit('connect')">
-          <LaptopMinimalCheck class="mr-2 h-4 w-4" /> Zdalny pulpit
-        </button>
       </div>
     </header>
 
@@ -377,6 +346,10 @@ async function copyRemoteAccessValue(value: string, label: string) {
                 Lokalizacja
                 <input v-model="detailsDraft.installationLocation" class="soft-input mt-1 !rounded-xl !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" />
               </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Kod instalacyjny DWService
+                <input v-model="detailsDraft.dwServiceInstallationCode" class="soft-input mt-1 !rounded-xl !py-2.5 font-mono" maxlength="11" inputmode="numeric" placeholder="123-456-789" />
+              </label>
             </div>
             <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
               <p v-if="detailsMessage" class="text-xs text-amber-200">{{ detailsMessage }}</p>
@@ -390,6 +363,7 @@ async function copyRemoteAccessValue(value: string, label: string) {
               <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Firma</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.companyName || '—' }}</dd></div>
               <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Osoba</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.contactName || '—' }}</dd></div>
               <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Lokalizacja</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.installationLocation || '—' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Agent DWService</dt><dd class="text-right text-white">{{ store.selectedDevice.dwservice?.status ?? 'nieprzypisany' }}</dd></div>
             </dl>
             <p v-if="!editingDetails && detailsMessage" class="mt-3 text-xs text-emerald-200">{{ detailsMessage }}</p>
           </section>
@@ -555,11 +529,9 @@ async function copyRemoteAccessValue(value: string, label: string) {
             <h3 class="text-sm font-semibold text-white">Dostęp zdalny</h3>
             <dl class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
               <div class="flex justify-between"><dt>Właściciel</dt><dd class="mono text-white">{{ store.selectedDevice.ownerEmail }}</dd></div>
-              <div class="flex justify-between gap-3"><dt>ID RustDesk</dt><button v-if="selectedRemoteAccess" class="mono text-cyan-100" type="button" @click="copyRemoteAccessValue(selectedRemoteAccess.rustdeskId, 'ID RustDesk')">{{ selectedRemoteAccess.rustdeskId }}</button><dd v-else class="mono text-white/60">zaszyfrowane</dd></div>
-              <div class="flex justify-between gap-3"><dt>Hasło</dt><button v-if="selectedRemoteAccess" class="mono text-cyan-100" type="button" @click="copyRemoteAccessValue(selectedRemoteAccess.password, 'Hasło')">{{ selectedRemoteAccess.password }}</button><dd v-else class="mono text-white/60">zaszyfrowane</dd></div>
+              <div class="flex justify-between gap-3"><dt>Agent DWService</dt><dd class="mono text-white">{{ store.selectedDevice.dwservice?.status ?? 'nieprzypisany' }}</dd></div>
+              <div class="flex justify-between gap-3"><dt>Ostatnia zmiana</dt><dd class="mono text-right text-white">{{ formatDateTime(store.selectedDevice.dwservice?.updatedAt) }}</dd></div>
             </dl>
-            <button class="ghost-button mt-4 w-full !rounded-xl" type="button" :disabled="revealingRemoteAccess || !store.selectedDevice.rustdesk?.encryptedAccess" @click="revealRemoteAccess()"><KeyRound class="mr-2 h-4 w-4" /> {{ revealingRemoteAccess ? 'Odszyfrowywanie…' : 'Pokaż dane połączenia' }}</button>
-            <p v-if="remoteAccessMessage" class="mt-3 text-xs text-cyan-100">{{ remoteAccessMessage }}</p>
           </section>
           <section class="content-card">
             <h3 class="text-sm font-semibold text-white">System</h3>

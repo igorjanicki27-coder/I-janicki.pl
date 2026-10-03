@@ -1,3 +1,0 @@
-# Wklej tutaj RustDesk config string (jedna linia, bez cudzyslowow).
-# Skopiuj ten plik do rustdesk-config.local.txt i uzupelnij.
-# Instalator odczytuje rustdesk-config.local.txt (ignorowany przez git).

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AlertTriangle, Cpu, HardDrive, MemoryStick, MonitorUp, Workflow } from 'lucide-vue-next'
+import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import type { DeviceRecord } from '@shared/contracts'
 
@@ -11,7 +11,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: []
-  connect: []
 }>()
 
 const online = computed(() => !props.device.offline && Date.now() - props.device.lastSeenAt < 5 * 60 * 1000)
@@ -65,13 +64,9 @@ function formatBackup(timestamp?: number) {
         <span class="block truncate">{{ online ? 'Online' : `Offline · ${formatLastSeen(device.lastSeenAt)}` }}</span>
         <span class="mt-0.5 block truncate text-white/45">Backup: {{ formatBackup(device.backupSnapshot?.scannedAt) }}</span>
       </div>
-      <button
-        class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/45 hover:bg-cyan-400/15"
-        type="button"
-        @click.stop="emit('connect')"
-      >
-        <MonitorUp class="h-4 w-4" /> Połącz
-      </button>
+      <span class="shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium" :class="device.dwservice?.status === 'ready' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-white/[0.055] text-white/50'">
+        Agent: {{ device.dwservice?.status === 'ready' ? 'gotowy' : 'oczekuje' }}
+      </span>
     </div>
   </article>
 </template>

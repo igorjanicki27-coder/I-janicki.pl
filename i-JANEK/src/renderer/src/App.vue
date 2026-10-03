@@ -13,7 +13,6 @@ const store = useAppStore()
 const settingsOpen = ref(false)
 const consentAccepted = ref(false)
 const remoteCommandsAccepted = ref(false)
-const unattendedAccessAccepted = ref(false)
 const MIN_DEVICE_ALIAS_LENGTH = 3
 const consentValidationMessage = ref('')
 const authMode = ref<'login' | 'register'>('login')
@@ -176,7 +175,7 @@ async function handleAcceptConsent() {
 
   consentValidationMessage.value = ''
   try {
-    await store.acceptConsent(unattendedAccessAccepted.value)
+    await store.acceptConsent()
   } catch (error) {
     consentValidationMessage.value = error instanceof Error
       ? error.message
@@ -193,7 +192,7 @@ async function retryDeviceRegistration() {
   registrationRetryBusy.value = true
   registrationRetryError.value = ''
   try {
-    await store.acceptConsent(store.consent?.unattendedAccessConsent ?? false)
+    await store.acceptConsent()
   } catch (error) {
     registrationRetryError.value = error instanceof Error
       ? error.message
@@ -562,12 +561,12 @@ watch(
           <div class="mono text-xs uppercase tracking-[0.3em] text-fuchsia-300">Zgody i bezpieczeństwo</div>
           <h2 class="mt-2 text-2xl font-semibold text-white">Zgoda na opiekę informatyczną i-JANEK</h2>
           <div class="mt-3 space-y-3 text-sm leading-6 text-[var(--text-dim)]">
-            <p>Dwie pierwsze zgody są wymagane do działania opieki informatycznej. Trzecia jest dobrowolna i decyduje, czy zdalny pulpit ma pytać Cię o zgodę przy każdym połączeniu.</p>
+            <p>Poniższe zgody są wymagane do działania opieki informatycznej.</p>
             <ul class="space-y-1.5">
               <li>Uruchamianie zdalnych skryptów naprawczych w celu optymalizacji systemu.</li>
               <li>Synchronizację wybranych folderów z Twoim kontem Google Drive w celach backupu.</li>
               <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
-              <li>Zdalny pulpit bez kolejnego pytania podczas każdej sesji — tylko po akceptacji urządzenia przez administratora.</li>
+              <li>Instalację i konfigurację agenta zdalnego dostępu dopiero po akceptacji urządzenia przez administratora.</li>
               <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-JANICKI.pl.</li>
               <li>Przetwarzanie danych, zgodnie z Polityką Prywatności i cookies, a także RODO, które znajdziesz na stronie i-JANICKI.pl.</li>
             </ul>
@@ -606,10 +605,6 @@ watch(
           <label class="mt-2 flex items-start gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
             <input v-model="remoteCommandsAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />
             <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Zezwalam zaakceptowanemu administratorowi na uruchamianie poleceń diagnostycznych i naprawczych. Każde polecenie i wynik są zapisywane w historii audytowej.</span>
-          </label>
-          <label class="mt-2 flex items-start gap-3 rounded-[20px] border border-cyan-300/20 bg-cyan-400/5 p-3 text-[var(--text-dim)]">
-            <input v-model="unattendedAccessAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-cyan-400" />
-            <span class="text-[13px] leading-5"><strong class="text-cyan-100">Opcjonalne.</strong> Zezwalam na zdalny pulpit bez pytania przy każdej sesji. Bez tej zgody aplikacja poprosi mnie o potwierdzenie każdego połączenia. Ustawienie można później zmienić.</span>
           </label>
           <p v-if="consentValidationMessage" class="mt-3 text-center text-sm text-amber-300">
             {{ consentValidationMessage }}

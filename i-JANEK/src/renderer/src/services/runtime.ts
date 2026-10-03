@@ -1,7 +1,6 @@
 import type { JanekApi } from '@shared/ipc'
 
 const CONSENT_KEY = 'i-janek-browser-consent'
-const AES_KEY = 'i-janek-browser-master-aes-key'
 const DEVICE_ID_KEY = 'i-janek-browser-device-id'
 
 function desktopOnly(feature: string): never {
@@ -21,12 +20,16 @@ function readJson<T>(key: string): T | null {
 function createBrowserApi(): JanekApi {
   return {
     dwServicePoc: {
-      open: async () => desktopOnly('Test DWService'),
+      open: async () => desktopOnly('Panel DWService'),
       close: async () => undefined,
       setBounds: async () => undefined,
       closePopup: async () => undefined,
       goBack: async () => undefined,
       onStatus: () => () => undefined
+    },
+    dwServiceAgent: {
+      getState: async () => desktopOnly('Agent DWService'),
+      applyCode: async () => desktopOnly('Agent DWService')
     },
     system: {
       getContext: async () => ({
@@ -39,6 +42,7 @@ function createBrowserApi(): JanekApi {
         isPackaged: false
       }),
       setAutoLaunch: async () => desktopOnly('Autostart'),
+      setNotificationsEnabled: async () => undefined,
       notify: async (title, body) => {
         if (!('Notification' in window)) return
         if (Notification.permission === 'default') await Notification.requestPermission()
@@ -49,8 +53,6 @@ function createBrowserApi(): JanekApi {
         if (consent) localStorage.setItem(CONSENT_KEY, JSON.stringify(consent))
         else localStorage.removeItem(CONSENT_KEY)
       },
-      getMasterAesKey: async () => localStorage.getItem(AES_KEY) || '',
-      setMasterAesKey: async (key) => localStorage.setItem(AES_KEY, key),
       checkForUpdates: async () => ({ status: 'web', message: 'Panel webowy aktualizuje się automatycznie.' }),
       setUpdateChannel: async () => undefined,
       createDiagnosticBundle: async (summary) => {
@@ -76,7 +78,6 @@ function createBrowserApi(): JanekApi {
         else localStorage.removeItem(DEVICE_ID_KEY)
       },
       promptRestart: async () => desktopOnly('Restart komputera'),
-      promptRemoteConnection: async () => desktopOnly('Zdalny pulpit')
     },
     telemetry: {
       collect: async () => desktopOnly('Telemetria systemowa'),
@@ -85,10 +86,6 @@ function createBrowserApi(): JanekApi {
     terminal: {
       execute: async () => desktopOnly('Terminal lokalny')
     },
-    vault: {
-      encrypt: async () => desktopOnly('Sejf systemowy'),
-      decrypt: async () => desktopOnly('Sejf systemowy')
-    },
     backup: {
       sync: async () => desktopOnly('Backup plików'),
       listFiles: async () => desktopOnly('Backup plików'),
@@ -96,11 +93,6 @@ function createBrowserApi(): JanekApi {
       restore: async () => desktopOnly('Przywracanie backupu'),
       onSyncProgress: () => () => undefined
     },
-    rustdesk: {
-      getState: async () => desktopOnly('RustDesk'),
-      launch: async () => desktopOnly('RustDesk'),
-      rotatePassword: async () => desktopOnly('RustDesk')
-    }
   }
 }
 

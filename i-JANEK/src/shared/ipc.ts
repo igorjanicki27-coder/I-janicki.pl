@@ -7,9 +7,9 @@ import type {
   DeviceTelemetry,
   DiagnosticBundleSummary,
   DiagnosticLogLevel,
+  DwServiceAgentState,
   GoogleOAuthTokens,
   InventoryReport,
-  RustDeskState,
   SystemContext,
   TerminalCommand,
   UpdateChannel
@@ -47,15 +47,22 @@ export interface JanekApi {
     goBack: () => Promise<void>
     onStatus: (callback: (status: DwServicePocStatus) => void) => () => void
   }
+  dwServiceAgent: {
+    getState: () => Promise<DwServiceAgentState>
+    applyCode: (
+      installationCode: string,
+      configurationId: string,
+      proof: { deviceId: string; firebaseIdToken: string; firebaseProjectId: string }
+    ) => Promise<DwServiceAgentState>
+  }
   system: {
     getContext: () => Promise<SystemContext>
     setAutoLaunch: (enabled: boolean) => Promise<void>
+    setNotificationsEnabled: (enabled: boolean) => Promise<void>
     notify: (title: string, body: string) => Promise<void>
     hideMainWindow: () => Promise<void>
     getConsent: () => Promise<ConsentRecord | null>
     setConsent: (consent: ConsentRecord | null) => Promise<void>
-    getMasterAesKey: () => Promise<string>
-    setMasterAesKey: (key: string) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
     getUpdateStatus: () => Promise<UpdateStatusPayload>
     onUpdateStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
@@ -70,7 +77,6 @@ export interface JanekApi {
       body: string,
       remindAfterMinutes?: number
     ) => Promise<{ status: 'restart_now' | 'remind_later' | 'dismissed'; message: string }>
-    promptRemoteConnection: (title: string, body: string) => Promise<{ accepted: boolean }>
   }
   telemetry: {
     collect: () => Promise<DeviceTelemetry>
@@ -78,10 +84,6 @@ export interface JanekApi {
   }
   terminal: {
     execute: (shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) => Promise<TerminalCommand>
-  }
-  vault: {
-    encrypt: (plainText: string) => Promise<string>
-    decrypt: (cipherText: string) => Promise<string>
   }
   backup: {
     sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) => Promise<BackupSnapshot>
@@ -106,10 +108,5 @@ export interface JanekApi {
         uploadedFiles: number
       }) => void
     ) => () => void
-  }
-  rustdesk: {
-    getState: (deviceId?: string) => Promise<RustDeskState>
-    launch: (deviceId?: string) => Promise<RustDeskState>
-    rotatePassword: (reason?: 'manual' | 'daily' | 'post_connection') => Promise<RustDeskState>
   }
 }

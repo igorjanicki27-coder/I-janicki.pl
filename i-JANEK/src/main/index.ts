@@ -10,8 +10,7 @@ import type { UpdateStatusPayload } from '@shared/ipc'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
-import { decryptVaultSecret, encryptVaultSecret } from './services/vault-service'
-import { enforceRustDeskPolicy, getRustDeskState, launchRustDesk, rotateRustDeskPassword } from './services/rustdesk-service'
+import { applyDwServiceInstallationCode, getDwServiceAgentState } from './services/dwservice-agent-service'
 import { listBackupFiles, removeBackupPathFromCloud, restoreBackup, syncBackup } from './services/backup-service'
 import { signInWithGoogleDesktop } from './services/google-auth-service'
 import { localStore } from './store'
@@ -22,7 +21,6 @@ let tray: Tray | null = null
 let forceQuit = false
 let updaterEventsBound = false
 const restartReminderHandles = new Set<NodeJS.Timeout>()
-let rustDeskPolicyInterval: NodeJS.Timeout | null = null
 let automaticUpdateInterval: NodeJS.Timeout | null = null
 let updateInstallReminder: NodeJS.Timeout | null = null
 let windowsAgentStatusInterval: NodeJS.Timeout | null = null
@@ -35,6 +33,22 @@ let downloadedUpdateVersion: string | null = null
 let latestUpdateStatus: UpdateStatusPayload = {
   status: 'idle',
   message: 'Sprawdzanie aktualizacji jeszcze się nie rozpoczęło.'
+}
+
+function cleanupLegacyRemoteIntegrationData() {
+  for (const key of ['rustdeskBinaryPath', 'rustdeskPassword', 'rustdeskPasswordRotatedAt']) {
+    localStore.delete(key as keyof import('./store').LocalSchema)
+  }
+  for (const target of [
+    path.join(app.getPath('userData'), 'rustdesk-config.local.txt'),
+    path.join(app.getPath('userData'), 'Partitions', 'action1')
+  ]) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true })
+    } catch (error) {
+      console.warn('[i-JANEK] Nie udało się usunąć danych starej integracji:', error)
+    }
+  }
 }
 let lastPublishedDownloadPercent = -1
 const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
@@ -187,7 +201,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       nativeWindowOpen: true,
-      webviewTag: true
+      webviewTag: false
     }
   })
 
@@ -217,37 +231,6 @@ function createWindow() {
 
   mainWindow.webContents.once('did-finish-load', () => {
     startAutomaticUpdateChecks()
-  })
-
-  const isAllowedRemoteDesktopUrl = (value: string) => {
-    try {
-      const url = new URL(value)
-      return url.protocol === 'https:' && url.hostname === 'rustdesk.com' && url.pathname === '/web/'
-    } catch {
-      return false
-    }
-  }
-
-  mainWindow.webContents.on('will-attach-webview', (event, preferences, params) => {
-    if (!isAllowedRemoteDesktopUrl(params.src)) {
-      event.preventDefault()
-      return
-    }
-    delete preferences.preload
-    preferences.nodeIntegration = false
-    preferences.contextIsolation = true
-    preferences.sandbox = true
-  })
-
-  mainWindow.webContents.on('did-attach-webview', (_event, guest) => {
-    guest.setWindowOpenHandler(() => ({ action: 'deny' }))
-    guest.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
-    guest.on('will-navigate', (event, url) => {
-      if (!isAllowedRemoteDesktopUrl(url)) event.preventDefault()
-    })
-    guest.on('will-redirect', (event, url) => {
-      if (!isAllowedRemoteDesktopUrl(url)) event.preventDefault()
-    })
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -490,7 +473,7 @@ async function runUpdateCheck(silent: boolean) {
     return { status: 'up_to_date', message: 'Aplikacja jest aktualna.' }
   } catch (error) {
     const message = friendlyUpdateError(error)
-    if (!silent && Notification.isSupported()) {
+    if (!silent && localStore.get('notificationsEnabled') && Notification.isSupported()) {
       new Notification({ title: 'i-JANEK', body: message }).show()
     }
     return { status: 'error', message }
@@ -551,7 +534,7 @@ async function promptRestart(title: string, body: string, remindAfterMinutes = 3
   if (response.response === 1) {
     const handle = setTimeout(() => {
       restartReminderHandles.delete(handle)
-      if (Notification.isSupported()) {
+      if (localStore.get('notificationsEnabled') && Notification.isSupported()) {
         new Notification({
           title,
           body: `Przypomnienie: ${body}`
@@ -565,23 +548,6 @@ async function promptRestart(title: string, body: string, remindAfterMinutes = 3
   return { status: 'dismissed' as const, message: 'Użytkownik zamknął komunikat bez wyboru restartu.' }
 }
 
-async function promptRemoteConnection(title: string, message: string) {
-  const response = await dialog.showMessageBox(mainWindow ?? undefined, {
-    type: 'question',
-    title,
-    message: title,
-    detail: message,
-    buttons: ['✅ Akceptuj', '❌ Odrzuć'],
-    defaultId: 0,
-    cancelId: 1,
-    noLink: true
-  })
-
-  return {
-    accepted: response.response === 0
-  }
-}
-
 function registerIpc() {
   const requireMainRenderer = (event: Electron.IpcMainInvokeEvent) => {
     if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Nieautoryzowane żądanie widoku DWService.')
@@ -592,6 +558,16 @@ function registerIpc() {
   ipcMain.handle('dwservice:poc-set-bounds', async (event, rect) => { requireMainRenderer(event); setDwServicePocBounds(rect) })
   ipcMain.handle('dwservice:poc-close-popup', async (event) => { requireMainRenderer(event); closeDwServicePocPopup() })
   ipcMain.handle('dwservice:poc-go-back', async (event) => { requireMainRenderer(event); goBackDwServicePoc() })
+  ipcMain.handle('dwservice:agent-get-state', async (event) => { requireMainRenderer(event); return getDwServiceAgentState() })
+  ipcMain.handle('dwservice:agent-apply-code', async (
+    event,
+    installationCode: string,
+    configurationId: string,
+    proof: { deviceId: string; firebaseIdToken: string; firebaseProjectId: string }
+  ) => {
+    requireMainRenderer(event)
+    return applyDwServiceInstallationCode(installationCode, configurationId, proof)
+  })
   ipcMain.handle('system:get-context', async () => getSystemContext())
   ipcMain.handle('system:set-auto-launch', async (_event, enabled: boolean) => {
     localStore.set('autoLaunch', enabled)
@@ -601,8 +577,11 @@ function registerIpc() {
       args: ['--tray']
     })
   })
+  ipcMain.handle('system:set-notifications-enabled', async (_event, enabled: boolean) => {
+    localStore.set('notificationsEnabled', enabled)
+  })
   ipcMain.handle('system:notify', async (_event, title: string, body: string) => {
-    if (Notification.isSupported()) {
+    if (localStore.get('notificationsEnabled') && Notification.isSupported()) {
       new Notification({ title, body }).show()
     }
   })
@@ -613,25 +592,10 @@ function registerIpc() {
   ipcMain.handle('system:set-consent', async (_event, consent) => {
     localStore.set('consent', consent)
   })
-  ipcMain.handle('system:get-master-aes-key', async () => localStore.get('masterAesKey'))
-  ipcMain.handle('system:set-master-aes-key', async (_event, key: string) => {
-    const nextKey = key.trim()
-    if (!nextKey) return
-
-    const currentKey = String(localStore.get('masterAesKey') ?? '').trim()
-    if (currentKey && currentKey !== nextKey) {
-      const history = Array.isArray(localStore.get('masterAesKeyHistory')) ? (localStore.get('masterAesKeyHistory') as string[]) : []
-      const nextHistory = [currentKey, ...history.map((entry) => entry.trim()).filter(Boolean).filter((entry) => entry !== nextKey)]
-      localStore.set('masterAesKeyHistory', nextHistory.slice(0, 10))
-    }
-
-    localStore.set('masterAesKey', nextKey)
-  })
   ipcMain.handle('system:sign-in-with-google', async () => signInWithGoogleDesktop())
   ipcMain.handle('system:set-registered-device-id', async (_event, deviceId: string | null) => {
     const normalized = deviceId?.trim() || null
     localStore.set('registeredDeviceId', normalized)
-    await enforceRustDeskPolicy()
   })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
   ipcMain.handle('system:get-update-status', async () => latestUpdateStatus)
@@ -665,24 +629,10 @@ function registerIpc() {
   ipcMain.handle('system:prompt-restart', async (_event, title: string, body: string, remindAfterMinutes?: number) =>
     promptRestart(title, body, remindAfterMinutes)
   )
-  ipcMain.handle('system:prompt-remote-connection', async (_event, title: string, body: string) =>
-    promptRemoteConnection(title, body)
-  )
   ipcMain.handle('telemetry:collect', async () => collectTelemetry())
   ipcMain.handle('telemetry:inventory', async () => collectInventory())
   ipcMain.handle('terminal:execute', async (_event, shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
     executeTerminalCommand(shell, command, deviceId, requestedBy)
-  )
-  ipcMain.handle('vault:encrypt', async (_event, plainText: string) => encryptVaultSecret(plainText, localStore.get('masterAesKey')))
-  ipcMain.handle('vault:decrypt', async (_event, cipherText: string) => {
-    const currentKey = String(localStore.get('masterAesKey') ?? '').trim()
-    const history = Array.isArray(localStore.get('masterAesKeyHistory')) ? (localStore.get('masterAesKeyHistory') as string[]) : []
-    return decryptVaultSecret(cipherText, [currentKey, ...history])
-  })
-  ipcMain.handle('rustdesk:get-state', async (_event, deviceId?: string) => getRustDeskState(deviceId))
-  ipcMain.handle('rustdesk:launch', async (_event, deviceId?: string) => launchRustDesk(deviceId))
-  ipcMain.handle('rustdesk:rotate-password', async (_event, reason?: 'manual' | 'daily' | 'post_connection') =>
-    rotateRustDeskPassword(reason ?? 'manual')
   )
   ipcMain.handle('backup:sync', async (event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
     syncBackup(policy, accessToken, deviceId, hostname, (progress) => {
@@ -707,6 +657,8 @@ app.whenReady().then(() => {
     return
   }
 
+  cleanupLegacyRemoteIntegrationData()
+
   app.setLoginItemSettings({
     openAtLogin: Boolean(localStore.get('autoLaunch')),
     path: process.execPath,
@@ -721,10 +673,6 @@ app.whenReady().then(() => {
   })
   createTray()
   createWindow()
-  void enforceRustDeskPolicy()
-  rustDeskPolicyInterval = setInterval(() => {
-    void enforceRustDeskPolicy(undefined, { forceRotate: false, rotationReason: 'daily' })
-  }, 60 * 60 * 1000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -734,10 +682,6 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   forceQuit = true
-  if (rustDeskPolicyInterval) {
-    clearInterval(rustDeskPolicyInterval)
-    rustDeskPolicyInterval = null
-  }
   if (automaticUpdateInterval) {
     clearInterval(automaticUpdateInterval)
     automaticUpdateInterval = null

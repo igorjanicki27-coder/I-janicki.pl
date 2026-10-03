@@ -8,6 +8,7 @@ interface DeviceDetailsDraft {
   deviceAlias: string
   contactName: string
   installationLocation: string
+  dwServiceInstallationCode: string
 }
 
 interface CompanyAssignmentDraft {
@@ -32,7 +33,8 @@ watch(
       nextDrafts[device.deviceId] = approvalDrafts.value[device.deviceId] ?? {
         deviceAlias: device.deviceAlias?.trim() || device.hostname,
         contactName: device.contactName?.trim() || '',
-        installationLocation: device.installationLocation?.trim() || ''
+        installationLocation: device.installationLocation?.trim() || '',
+        dwServiceInstallationCode: device.dwservice?.installationCode ?? ''
       }
       nextCompanyAssignments[device.deviceId] = companyAssignmentDrafts.value[device.deviceId] ?? {
         mode: store.masterSettings.companyOptions.length ? 'existing' : 'new',
@@ -79,7 +81,14 @@ async function decideAboutDevice(deviceId: string, approvalStatus: 'approved' | 
       }
       details = { ...draft, companyName }
     }
-    await store.approveDevice(deviceId, approvalStatus, details)
+    const installationCode = details?.dwServiceInstallationCode
+    const registrationDetails = details ? {
+      deviceAlias: details.deviceAlias,
+      contactName: details.contactName,
+      installationLocation: details.installationLocation,
+      companyName: details.companyName
+    } : undefined
+    await store.approveDevice(deviceId, approvalStatus, registrationDetails, installationCode)
   } catch (error) {
     approvalMessages.value = {
       ...approvalMessages.value,
@@ -185,6 +194,7 @@ function registrationDate(timestamp: number) {
             <label class="text-xs text-[var(--text-dim)]">Nazwa komputera<input v-model="approvalDrafts[device.deviceId].deviceAlias" class="soft-input mt-1 !py-2.5" maxlength="48" placeholder="np. Laptop biuro" /></label>
             <label class="text-xs text-[var(--text-dim)]">Osoba<input v-model="approvalDrafts[device.deviceId].contactName" class="soft-input mt-1 !py-2.5" maxlength="100" placeholder="Imię i nazwisko" /></label>
             <label class="text-xs text-[var(--text-dim)]">Lokalizacja<input v-model="approvalDrafts[device.deviceId].installationLocation" class="soft-input mt-1 !py-2.5" maxlength="120" placeholder="np. Biuro, recepcja" /></label>
+            <label class="text-xs text-[var(--text-dim)]">Kod instalacyjny DWService<input v-model="approvalDrafts[device.deviceId].dwServiceInstallationCode" class="soft-input mt-1 !py-2.5 font-mono" maxlength="11" inputmode="numeric" placeholder="123-456-789" /></label>
           </div>
         </div>
 

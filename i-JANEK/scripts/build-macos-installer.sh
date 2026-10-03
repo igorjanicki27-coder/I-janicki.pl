@@ -18,12 +18,6 @@ if [[ ! -f "$ROOT_DIR/resources/google-oauth-desktop.local.json" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$ROOT_DIR/resources/rustdesk-config.local.txt" ]]; then
-  echo "[ERROR] Brakuje resources/rustdesk-config.local.txt. Prywatny instalator wdrożeniowy nie skonfiguruje RustDesk."
-  echo "        Dodaj plik do resources/ przed buildem."
-  exit 1
-fi
-
 echo "[2/4] Prepare icons"
 "$ROOT_DIR/scripts/prepare-icons.sh"
 

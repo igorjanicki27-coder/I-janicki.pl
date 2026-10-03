@@ -19,6 +19,7 @@ import {
   doc,
   documentId,
   getDoc,
+  getDocFromServer,
   getDocs,
   getFirestore,
   increment,
@@ -47,8 +48,9 @@ import type {
   DeviceIdentity,
   DeviceRecord,
   DeviceTelemetry,
+  DwServiceConfiguration,
+  DwServiceProvisioningStatus,
   InventoryReport,
-  MasterSecurityConfig,
   RemoteMasterSettings,
   RemoteActionRequest,
   RegistrationDetails,
@@ -74,6 +76,7 @@ export interface BackendClient {
   registerWithEmail: (email: string, password: string, details: RegistrationDetails) => Promise<AppUser>
   sendPasswordReset: (email: string) => Promise<void>
   signOut: () => Promise<void>
+  getFirebaseIdToken: () => Promise<string>
   healthCheck: () => Promise<void>
   ensureUserProfile: (user: AppUser) => Promise<ClientProfile>
   ensureDeviceRecord: (user: AppUser, context: DeviceIdentity, consent?: ConsentRecord) => Promise<DeviceRecord>
@@ -99,8 +102,6 @@ export interface BackendClient {
     state: CompanyChatParticipantState
   ) => Promise<void>
   saveRemoteMasterSettings: (settings: RemoteMasterSettings) => Promise<void>
-  getMasterSecurity: () => Promise<MasterSecurityConfig | null>
-  saveMasterSecurity: (config: MasterSecurityConfig) => Promise<void>
   updateApprovalStatus: (deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) => Promise<void>
   updateDeviceAlias: (deviceId: string, deviceAlias: string) => Promise<void>
   updateDeviceCompanyName: (deviceId: string, companyName: string) => Promise<void>
@@ -109,6 +110,14 @@ export interface BackendClient {
     details: { deviceAlias?: string; contactName: string; companyName: string; installationLocation: string }
   ) => Promise<void>
   updateDeviceUpdateChannel: (deviceId: string, updateChannel: UpdateChannel) => Promise<void>
+  configureDwService: (deviceId: string, installationCode: string, requestedBy: string) => Promise<DwServiceConfiguration>
+  updateDwServiceProvisioningState: (
+    deviceId: string,
+    configurationId: string,
+    status: DwServiceProvisioningStatus,
+    appliedCodeHash?: string,
+    error?: string | null
+  ) => Promise<void>
   publishTelemetry: (device: DeviceRecord, telemetry: DeviceTelemetry) => Promise<void>
   publishInventory: (device: DeviceRecord, inventory: InventoryReport) => Promise<void>
   getInventory: (device: DeviceRecord) => Promise<InventoryReport | null>
@@ -119,7 +128,6 @@ export interface BackendClient {
   ) => Promise<void>
   upsertBackupPolicy: (deviceId: string, policy: BackupPolicy) => Promise<void>
   updateConsent: (deviceId: string, consent: ConsentRecord | null) => Promise<void>
-  updateRustDeskState: (deviceId: string, state: DeviceRecord['rustdesk']) => Promise<void>
   requestDeviceUpdate: (deviceId: string, requestedBy: string) => Promise<string>
   acknowledgeDeviceUpdate: (deviceId: string, requestId: string, result: string) => Promise<void>
   requestRemoteAction: (deviceId: string, request: RemoteActionRequest) => Promise<string>
@@ -419,10 +427,16 @@ class FirebaseBackend implements BackendClient {
     await firebaseSignOut(firebaseServices!.auth)
   }
 
+  async getFirebaseIdToken() {
+    const currentUser = firebaseServices!.auth.currentUser
+    if (!currentUser) throw new Error('Brak aktywnej sesji Firebase.')
+    return currentUser.getIdToken()
+  }
+
   async healthCheck() {
     const currentUser = firebaseServices!.auth.currentUser
     if (!currentUser) throw new Error('Brak aktywnej sesji Firebase.')
-    await getDoc(doc(firebaseServices!.firestore, 'clients', currentUser.uid))
+    await getDocFromServer(doc(firebaseServices!.firestore, 'clients', currentUser.uid))
   }
 
   async ensureUserProfile(user: AppUser) {
@@ -481,7 +495,7 @@ class FirebaseBackend implements BackendClient {
       companyName: existing?.companyName ?? user.companyName ?? '',
       contactName: existing?.contactName ?? user.displayName,
       installationLocation: existing?.installationLocation ?? user.installationLocation ?? '',
-      rustdesk: existing?.rustdesk ?? { installed: false },
+      dwservice: existing?.dwservice,
       updateRequest: existing?.updateRequest ?? null,
       lastHandledUpdateRequestId: existing?.lastHandledUpdateRequestId ?? null,
       lastUpdateResult: existing?.lastUpdateResult ?? null
@@ -660,16 +674,6 @@ class FirebaseBackend implements BackendClient {
     this.queueAuditLog('master_settings_updated')
   }
 
-  async getMasterSecurity() {
-    const snapshot = await getDoc(doc(firebaseServices!.firestore, 'appConfig', 'masterSecurity'))
-    return snapshot.exists() ? (snapshot.data() as MasterSecurityConfig) : null
-  }
-
-  async saveMasterSecurity(config: MasterSecurityConfig) {
-    await setDoc(doc(firebaseServices!.firestore, 'appConfig', 'masterSecurity'), config, { merge: false })
-    this.queueAuditLog('master_security_updated', { details: { keyId: config.publicKey.keyId } })
-  }
-
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus, actorEmail: string) {
     const payload: Record<string, unknown> = {
       approvalStatus,
@@ -726,6 +730,50 @@ class FirebaseBackend implements BackendClient {
       updatedAt: Date.now()
     })
     this.queueAuditLog('device_update_channel_changed', { deviceId, details: { updateChannel } })
+  }
+
+  async configureDwService(deviceId: string, installationCode: string, requestedBy: string) {
+    const normalizedCode = installationCode.trim()
+    if (!/^\d{3}-\d{3}-\d{3}$/u.test(normalizedCode)) {
+      throw new Error('Kod DWService musi mieć format 123-456-789.')
+    }
+    const now = Date.now()
+    const configuration: DwServiceConfiguration = {
+      installationCode: normalizedCode,
+      configurationId: crypto.randomUUID(),
+      status: 'pending',
+      requestedAt: now,
+      requestedBy,
+      updatedAt: now,
+      error: null
+    }
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      dwservice: configuration,
+      updatedAt: now
+    })
+    this.queueAuditLog('dwservice_configuration_requested', {
+      deviceId,
+      details: { configurationId: configuration.configurationId, requestedBy }
+    })
+    return configuration
+  }
+
+  async updateDwServiceProvisioningState(
+    deviceId: string,
+    configurationId: string,
+    status: DwServiceProvisioningStatus,
+    appliedCodeHash?: string,
+    error?: string | null
+  ) {
+    const payload: Record<string, unknown> = {
+      'dwservice.status': status,
+      'dwservice.configurationId': configurationId,
+      'dwservice.updatedAt': Date.now(),
+      'dwservice.error': error ?? null,
+      updatedAt: Date.now()
+    }
+    if (appliedCodeHash) payload['dwservice.appliedCodeHash'] = appliedCodeHash
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), payload)
   }
 
   async publishTelemetry(device: DeviceRecord, telemetry: DeviceTelemetry) {
@@ -905,16 +953,8 @@ class FirebaseBackend implements BackendClient {
       deviceId,
       details: {
         diagnosticsConsent: Boolean(consent?.diagnosticsConsent),
-        remoteCommandConsent: Boolean(consent?.remoteCommandConsent),
-        unattendedAccessConsent: Boolean(consent?.unattendedAccessConsent)
+        remoteCommandConsent: Boolean(consent?.remoteCommandConsent)
       }
-    })
-  }
-
-  async updateRustDeskState(deviceId: string, state: DeviceRecord['rustdesk']) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
-      rustdesk: state ?? { installed: false },
-      updatedAt: Date.now()
     })
   }
 
@@ -1199,7 +1239,7 @@ class MockBackend implements BackendClient {
         state: 'alert'
       },
       backupPolicy: defaultBackupPolicy('STUDIO-PC'),
-      rustdesk: { installed: true, sessionHint: 'Demo session #481516' },
+      dwservice: undefined,
       deviceAlias: 'STUDIO-PC',
       companyName: 'i-JANEK Demo',
       aliasCustomizedAt: Date.now() - 86_300_000,
@@ -1255,7 +1295,15 @@ class MockBackend implements BackendClient {
         skippedFiles: 17,
         skippedReasons: []
       },
-      rustdesk: { installed: true, sessionHint: 'Demo session #A02' },
+      dwservice: {
+        installationCode: '123-456-789',
+        configurationId: 'mock-ready-agent',
+        status: 'ready',
+        requestedAt: Date.now() - 42_000_000,
+        requestedBy: DEFAULT_MASTER_EMAIL,
+        updatedAt: Date.now() - 41_000_000,
+        appliedCodeHash: 'mock'
+      },
       deviceAlias: 'Laptop Serwis',
       companyName: 'i-JANEK Demo',
       aliasCustomizedAt: Date.now() - 40_000_000,
@@ -1311,7 +1359,7 @@ class MockBackend implements BackendClient {
         skippedFiles: 22,
         skippedReasons: []
       },
-      rustdesk: { installed: false },
+      dwservice: undefined,
       deviceAlias: 'Biuro-PC',
       companyName: 'Firma Klienta',
       aliasCustomizedAt: Date.now() - 118_000_000,
@@ -1399,7 +1447,6 @@ class MockBackend implements BackendClient {
       backupAgeHours: { warning: 24, critical: 72 }
     }
   }
-  private masterSecurity: MasterSecurityConfig | null = null
   private commandQueue = new Map<string, TerminalCommand[]>()
 
   subscribeAuth(callback: (user: AppUser | null) => void) {
@@ -1450,6 +1497,10 @@ class MockBackend implements BackendClient {
   async signOut() {
     this.currentUser = null
     this.authListeners.forEach((listener) => listener(null))
+  }
+
+  async getFirebaseIdToken() {
+    return 'mock-firebase-id-token'
   }
 
   async healthCheck() {
@@ -1510,7 +1561,7 @@ class MockBackend implements BackendClient {
       installationLocation: user.installationLocation ?? '',
       aliasCustomizedAt: null,
       backupPolicy: defaultBackupPolicy(context.hostname),
-      rustdesk: { installed: false },
+      dwservice: undefined,
       updateRequest: null,
       lastHandledUpdateRequestId: null,
       lastUpdateResult: null,
@@ -1639,14 +1690,6 @@ class MockBackend implements BackendClient {
     this.masterSettingsListeners.forEach((listener) => listener(this.remoteMasterSettings))
   }
 
-  async getMasterSecurity() {
-    return this.masterSecurity
-  }
-
-  async saveMasterSecurity(config: MasterSecurityConfig) {
-    this.masterSecurity = config
-  }
-
   async updateApprovalStatus(deviceId: string, approvalStatus: ApprovalStatus) {
     this.devices = this.devices.map((device) =>
       device.deviceId === deviceId
@@ -1677,6 +1720,41 @@ class MockBackend implements BackendClient {
         ? { ...device, companyName: companyName.trim(), updatedAt: Date.now() }
         : device
     )
+    this.emitDevices()
+  }
+
+  async configureDwService(deviceId: string, installationCode: string, requestedBy: string) {
+    const normalizedCode = installationCode.trim()
+    if (!/^\d{3}-\d{3}-\d{3}$/u.test(normalizedCode)) throw new Error('Kod DWService musi mieć format 123-456-789.')
+    const now = Date.now()
+    const configuration: DwServiceConfiguration = {
+      installationCode: normalizedCode,
+      configurationId: crypto.randomUUID(),
+      status: 'pending',
+      requestedAt: now,
+      requestedBy,
+      updatedAt: now,
+      error: null
+    }
+    this.devices = this.devices.map((device) => device.deviceId === deviceId ? { ...device, dwservice: configuration, updatedAt: now } : device)
+    this.emitDevices()
+    return configuration
+  }
+
+  async updateDwServiceProvisioningState(
+    deviceId: string,
+    configurationId: string,
+    status: DwServiceProvisioningStatus,
+    appliedCodeHash?: string,
+    error?: string | null
+  ) {
+    this.devices = this.devices.map((device) => device.deviceId === deviceId && device.dwservice?.configurationId === configurationId
+      ? {
+          ...device,
+          dwservice: { ...device.dwservice, status, appliedCodeHash, error: error ?? null, updatedAt: Date.now() },
+          updatedAt: Date.now()
+        }
+      : device)
     this.emitDevices()
   }
 
@@ -1761,11 +1839,6 @@ class MockBackend implements BackendClient {
         ? { ...device, consent, consentAcceptedAt: consent?.acceptedAt, updatedAt: Date.now() }
         : device
     )
-    this.emitDevices()
-  }
-
-  async updateRustDeskState(deviceId: string, state: DeviceRecord['rustdesk']) {
-    this.devices = this.devices.map((device) => (device.deviceId === deviceId ? { ...device, rustdesk: state } : device))
     this.emitDevices()
   }
 
