@@ -14,20 +14,23 @@ const showJumpToLatest = ref(false)
 let typingTimer: number | null = null
 let typingOwnerUid = ''
 
+// The Master should explicitly open a conversation before it is marked as read.
+store.selectedConversationOwnerUid = ''
+
 interface ContactEntry {
   key: string
   ownerUid: string
   ownerEmail: string
   companyName: string
   devices: DeviceRecord[]
-  latestMessageAt: number
+  latestUnreadMessageAt: number
 }
 
 interface CompanyGroup {
   key: string
   name: string
   contacts: ContactEntry[]
-  latestMessageAt: number
+  latestUnreadMessageAt: number
   unread: number
 }
 
@@ -35,11 +38,17 @@ const contacts = computed<ContactEntry[]>(() => {
   const grouped = new Map<string, ContactEntry>()
   for (const device of store.devices) {
     const companyName = device.companyName?.trim() || 'Bez firmy'
-    const latestMessageAt = (store.companyChats[device.ownerUid] ?? []).at(-1)?.createdAt ?? 0
+    const messages = store.companyChats[device.ownerUid] ?? []
+    const lastReadAt = store.companyChatStates[device.ownerUid]?.master?.lastReadAt ?? 0
+    const latestUnreadMessageAt = messages.reduce((latest, message) => (
+      message.senderRole === 'slave' && message.createdAt > lastReadAt
+        ? Math.max(latest, message.createdAt)
+        : latest
+    ), 0)
     const existing = grouped.get(device.ownerUid)
     if (existing) {
       existing.devices.push(device)
-      existing.latestMessageAt = Math.max(existing.latestMessageAt, latestMessageAt)
+      existing.latestUnreadMessageAt = Math.max(existing.latestUnreadMessageAt, latestUnreadMessageAt)
     } else {
       grouped.set(device.ownerUid, {
         key: device.ownerUid,
@@ -47,7 +56,7 @@ const contacts = computed<ContactEntry[]>(() => {
         ownerEmail: device.ownerEmail,
         companyName,
         devices: [device],
-        latestMessageAt
+        latestUnreadMessageAt
       })
     }
   }
@@ -56,23 +65,19 @@ const contacts = computed<ContactEntry[]>(() => {
 
 const companyGroups = computed<CompanyGroup[]>(() => {
   const groups = new Map<string, CompanyGroup>()
-  for (const companyName of store.masterSettings.companyOptions) {
-    const name = companyName.trim()
-    if (!name) continue
-    groups.set(normalize(name), { key: normalize(name), name, contacts: [], latestMessageAt: 0, unread: 0 })
-  }
   for (const contact of contacts.value) {
+    if (!contact.latestUnreadMessageAt) continue
     const key = normalize(contact.companyName)
-    const existing = groups.get(key) ?? { key, name: contact.companyName, contacts: [], latestMessageAt: 0, unread: 0 }
+    const existing = groups.get(key) ?? { key, name: contact.companyName, contacts: [], latestUnreadMessageAt: 0, unread: 0 }
     existing.contacts.push(contact)
-    existing.latestMessageAt = Math.max(existing.latestMessageAt, contact.latestMessageAt)
+    existing.latestUnreadMessageAt = Math.max(existing.latestUnreadMessageAt, contact.latestUnreadMessageAt)
     existing.unread += unreadCount(contact)
     groups.set(key, existing)
   }
   for (const group of groups.values()) {
-    group.contacts.sort((left, right) => unreadCount(right) - unreadCount(left) || right.latestMessageAt - left.latestMessageAt || contactLabel(left).localeCompare(contactLabel(right), 'pl'))
+    group.contacts.sort((left, right) => right.latestUnreadMessageAt - left.latestUnreadMessageAt || contactLabel(left).localeCompare(contactLabel(right), 'pl'))
   }
-  return [...groups.values()].sort((left, right) => Number(right.unread > 0) - Number(left.unread > 0) || right.unread - left.unread || right.latestMessageAt - left.latestMessageAt || left.name.localeCompare(right.name, 'pl'))
+  return [...groups.values()].sort((left, right) => right.latestUnreadMessageAt - left.latestUnreadMessageAt || left.name.localeCompare(right.name, 'pl'))
 })
 
 const filteredGroups = computed<CompanyGroup[]>(() => {
@@ -100,14 +105,12 @@ const contactIsTyping = computed(() => {
 watch(companyGroups, (groups) => {
   const nextExpanded = { ...expandedCompanies.value }
   for (const group of groups) {
-    if (!(group.key in nextExpanded)) nextExpanded[group.key] = group.unread > 0 || groups.length <= 4
+    if (!(group.key in nextExpanded)) nextExpanded[group.key] = false
   }
   expandedCompanies.value = nextExpanded
 
   if (store.selectedConversationOwnerUid && contacts.value.some((contact) => contact.ownerUid === store.selectedConversationOwnerUid)) return
-  const firstContact = groups.flatMap((group) => group.contacts)[0]
-  if (firstContact) selectContact(firstContact)
-  else store.selectedConversationOwnerUid = ''
+  store.selectedConversationOwnerUid = ''
 }, { immediate: true })
 
 watch([() => store.selectedConversationOwnerUid, () => store.selectedConversationMessages.length], async ([ownerUid], [previousOwnerUid]) => {
@@ -152,9 +155,26 @@ function isDeviceOnline(device: DeviceRecord) {
 
 function selectContact(contact: ContactEntry) {
   store.selectedConversationOwnerUid = contact.ownerUid
-  const preferredDevice = contact.devices.find(isDeviceOnline) ?? contact.devices[0]
+  const latestUnreadMessage = [...(store.companyChats[contact.ownerUid] ?? [])]
+    .reverse()
+    .find((message) => message.senderRole === 'slave' && message.createdAt > (store.companyChatStates[contact.ownerUid]?.master?.lastReadAt ?? 0))
+  const preferredDevice = contact.devices.find((device) => device.deviceId === latestUnreadMessage?.deviceId)
+    ?? contact.devices.find(isDeviceOnline)
+    ?? contact.devices[0]
   if (preferredDevice) store.selectedDeviceId = preferredDevice.deviceId
   expandedCompanies.value = { ...expandedCompanies.value, [normalize(contact.companyName)]: true }
+}
+
+function unreadDeviceLabels(contact: ContactEntry) {
+  const lastReadAt = store.companyChatStates[contact.ownerUid]?.master?.lastReadAt ?? 0
+  const unreadDeviceIds = new Set(
+    (store.companyChats[contact.ownerUid] ?? [])
+      .filter((message) => message.senderRole === 'slave' && message.createdAt > lastReadAt && message.deviceId)
+      .map((message) => message.deviceId)
+  )
+  const unreadDevices = contact.devices.filter((device) => unreadDeviceIds.has(device.deviceId))
+  const devices = unreadDevices.length ? unreadDevices : contact.devices
+  return devices.map((device) => formatDeviceLabelForMaster(device)).join(', ')
 }
 
 function toggleCompany(companyKey: string) {
@@ -267,14 +287,14 @@ onBeforeUnmount(() => stopTyping())
               </span>
               <span class="min-w-0 flex-1">
                 <strong class="block truncate text-sm text-white">{{ contactLabel(contact) }}</strong>
-                <small class="mt-0.5 block truncate text-[var(--text-dim)]">{{ contact.devices.map((device) => formatDeviceLabelForMaster(device)).join(', ') }}</small>
+                <small class="mt-0.5 block truncate text-[var(--text-dim)]">{{ unreadDeviceLabels(contact) }}</small>
               </span>
               <span v-if="unreadCount(contact)" class="rounded-full bg-cyan-300 px-2 py-0.5 text-xs font-semibold text-slate-950">{{ unreadCount(contact) }}</span>
             </button>
             <p v-if="!company.contacts.length" class="px-3 py-4 text-center text-xs text-[var(--text-dim)]">Brak użytkowników i komputerów.</p>
           </div>
         </section>
-        <p v-if="!filteredGroups.length" class="p-4 text-center text-sm text-[var(--text-dim)]">Nie znaleziono rozmów.</p>
+        <p v-if="!filteredGroups.length" class="p-4 text-center text-sm text-[var(--text-dim)]">{{ searchQuery.trim() ? 'Nie znaleziono nieodczytanych wiadomości.' : 'Brak nieodczytanych wiadomości.' }}</p>
       </div>
     </aside>
 

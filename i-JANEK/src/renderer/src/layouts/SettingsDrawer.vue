@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { BellRing, ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { BellRing, Building2, ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, UserPlus, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
+import CompanyManagementPanel from '@/components/master/CompanyManagementPanel.vue'
+import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useAppStore } from '@/stores/app'
 
@@ -14,12 +16,13 @@ const pickingFolder = ref(false)
 const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
-const activeSettingsPanel = ref<'thresholds' | 'notifications' | 'support' | null>(null)
+const activeSettingsPanel = ref<'registrations' | 'companies' | 'thresholds' | 'notifications' | 'support' | null>(null)
 
 const enabledNotificationCategories = computed(() => {
   if (store.slaveSettings.muteAllNotifications) return 0
   let enabled = 0
   if (!store.slaveSettings.muteChatSounds) enabled += 1
+  if (!store.slaveSettings.muteSystemNotifications) enabled += 1
   if (!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteUsageNotifications) enabled += 1
   if (!store.slaveSettings.hideAlertNotifications && !store.slaveSettings.muteTempNotifications) enabled += 1
   return enabled
@@ -65,6 +68,18 @@ watch(
 function closeSettingsPanel() {
   activeSettingsPanel.value = null
 }
+
+function openRegistrationsPanel() {
+  if (store.isMaster) activeSettingsPanel.value = 'registrations'
+}
+
+onMounted(() => {
+  window.addEventListener('i-janek:open-device-registrations', openRegistrationsPanel)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('i-janek:open-device-registrations', openRegistrationsPanel)
+})
 
 function updateUsageNotifications(enabled: boolean) {
   const alertsWereHidden = store.slaveSettings.hideAlertNotifications
@@ -223,6 +238,35 @@ async function addCustomFolderFromPicker() {
 
           <section class="mt-4 grid gap-2 sm:grid-cols-2">
             <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-rose-300/30 hover:bg-white/[0.07] sm:col-span-2"
+              type="button"
+              @click="activeSettingsPanel = 'registrations'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-300/20 bg-rose-400/10 text-rose-100">
+                <UserPlus class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center gap-2 text-sm font-semibold text-white">Rejestracje<span v-if="store.approvalQueue.length" class="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" /></span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ store.approvalQueue.length ? `${store.approvalQueue.length} oczekuje na zatwierdzenie` : 'Brak oczekujących urządzeń' }}</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+              <span v-if="store.approvalQueue.length" class="sr-only">Oczekujące rejestracje urządzeń</span>
+            </button>
+            <button
+              class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07] sm:col-span-2"
+              type="button"
+              @click="activeSettingsPanel = 'companies'"
+            >
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+                <Building2 class="h-5 w-5" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-white">Firmy</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Dodawanie, edycja i usuwanie firm</span>
+              </span>
+              <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
+            </button>
+            <button
               class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.07]"
               type="button"
               @click="activeSettingsPanel = 'thresholds'"
@@ -246,7 +290,7 @@ async function addCustomFolderFromPicker() {
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-semibold text-white">Powiadomienia</span>
-                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 3 typów aktywne</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 4 typów aktywne</span>
               </span>
               <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
             </button>
@@ -375,7 +419,7 @@ async function addCustomFolderFromPicker() {
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-semibold text-white">Powiadomienia</span>
-                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 3 typów aktywne</span>
+                <span class="mt-0.5 block text-xs text-[var(--text-dim)]">{{ enabledNotificationCategories }} z 4 typów aktywne</span>
               </span>
               <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
             </button>
@@ -490,8 +534,8 @@ async function addCustomFolderFromPicker() {
             :class="store.slaveSettings.muteAllNotifications ? 'opacity-40' : 'hover:border-white/20 hover:bg-white/[0.03]'"
           >
             <span>
-              <span class="block text-sm font-medium text-white">Wiadomości i komunikaty</span>
-              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Nowe wiadomości oraz komunikaty wysłane przez obsługę.</span>
+              <span class="block text-sm font-medium text-white">Nowe wiadomości</span>
+              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Powiadomienie po otrzymaniu nowej wiadomości na czacie.</span>
             </span>
             <input
               class="shrink-0"
@@ -499,6 +543,23 @@ async function addCustomFolderFromPicker() {
               :disabled="store.slaveSettings.muteAllNotifications"
               type="checkbox"
               @change="store.updateSlaveSettings({ muteChatSounds: !($event.target as HTMLInputElement).checked })"
+            />
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 px-4 py-3 transition"
+            :class="store.slaveSettings.muteAllNotifications ? 'opacity-40' : 'hover:border-white/20 hover:bg-white/[0.03]'"
+          >
+            <span>
+              <span class="block text-sm font-medium text-white">Aktualizacje i działanie aplikacji</span>
+              <span class="mt-0.5 block text-xs text-[var(--text-dim)]">Aktualizacje, stan połączenia oraz pozostałe komunikaty systemowe.</span>
+            </span>
+            <input
+              class="shrink-0"
+              :checked="!store.slaveSettings.muteSystemNotifications"
+              :disabled="store.slaveSettings.muteAllNotifications"
+              type="checkbox"
+              @change="store.updateSlaveSettings({ muteSystemNotifications: !($event.target as HTMLInputElement).checked })"
             />
           </label>
 
@@ -537,7 +598,55 @@ async function addCustomFolderFromPicker() {
           </label>
         </div>
 
-        <p class="mt-3 text-xs leading-5 text-[var(--text-dim)]">Pozostałe komunikaty dotyczące działania aplikacji są kontrolowane przez główny przełącznik.</p>
+        <p class="mt-3 text-xs leading-5 text-[var(--text-dim)]">Zmiany są zapisywane automatycznie na tym komputerze.</p>
+      </section>
+    </div>
+
+    <div
+      v-if="activeSettingsPanel === 'registrations'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="registrations-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-rose-300/20">
+        <header class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 id="registrations-title" class="flex items-center gap-2 text-base font-semibold text-white">Rejestracje urządzeń<span v-if="store.approvalQueue.length" class="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" /></h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Urządzenia oczekujące na zatwierdzenie administratora.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto">
+          <RegistrationWorkspace />
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="activeSettingsPanel === 'companies'"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="companies-title"
+      @click.self="closeSettingsPanel()"
+    >
+      <section class="glass-panel flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-[28px] border border-cyan-300/20">
+        <header class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 id="companies-title" class="text-base font-semibold text-white">Firmy</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--text-dim)]">Zarządzaj firmami i przypisaniem ich nazw do komputerów.</p>
+          </div>
+          <button class="ghost-button !h-9 !w-9 shrink-0 !rounded-xl !px-0 !py-0" type="button" title="Zamknij" @click="closeSettingsPanel()">
+            <X class="h-4 w-4" />
+          </button>
+        </header>
+
+        <CompanyManagementPanel />
       </section>
     </div>
 

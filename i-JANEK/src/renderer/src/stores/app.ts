@@ -65,6 +65,7 @@ interface SlaveSettings {
   muteChatSounds: boolean
   muteTempNotifications: boolean
   muteUsageNotifications: boolean
+  muteSystemNotifications: boolean
   hideAlertNotifications: boolean
   muteAllNotifications: boolean
   backupFolders: Array<'Desktop' | 'Documents'>
@@ -143,8 +144,9 @@ function normalizeSlaveSettings(settings: Partial<SlaveSettings>): SlaveSettings
     autostart: settings.autostart ?? true,
     silentUpdates: settings.silentUpdates ?? true,
     muteChatSounds: settings.muteChatSounds ?? false,
-    muteTempNotifications: settings.muteTempNotifications ?? false,
-    muteUsageNotifications: settings.muteUsageNotifications ?? false,
+    muteTempNotifications: settings.muteTempNotifications ?? true,
+    muteUsageNotifications: settings.muteUsageNotifications ?? true,
+    muteSystemNotifications: settings.muteSystemNotifications ?? true,
     hideAlertNotifications: settings.hideAlertNotifications ?? false,
     muteAllNotifications: settings.muteAllNotifications ?? false,
     backupFolders,
@@ -261,8 +263,9 @@ export const useAppStore = defineStore('app', () => {
     autostart: true,
     silentUpdates: true,
     muteChatSounds: false,
-    muteTempNotifications: false,
-    muteUsageNotifications: false,
+    muteTempNotifications: true,
+    muteUsageNotifications: true,
+    muteSystemNotifications: true,
     hideAlertNotifications: false,
     muteAllNotifications: false,
     backupFolders: ['Desktop', 'Documents'],
@@ -531,8 +534,10 @@ export const useAppStore = defineStore('app', () => {
     return true
   }
 
-  async function notifyUser(title: string, body: string) {
+  async function notifyUser(title: string, body: string, category: 'message' | 'alert' | 'system' = 'system') {
     if (slaveSettings.value.muteAllNotifications) return false
+    if (category === 'message' && slaveSettings.value.muteChatSounds) return false
+    if (category === 'system' && slaveSettings.value.muteSystemNotifications) return false
     await window.janek.system.notify(title, body)
     return true
   }
@@ -687,7 +692,8 @@ export const useAppStore = defineStore('app', () => {
         for (const message of incomingMessages) {
           void notifyUser(
             `Wiadomość od ${message.senderEmail}`,
-            message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body
+            message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body,
+            'message'
           )
         }
       })
@@ -939,7 +945,7 @@ export const useAppStore = defineStore('app', () => {
 
       for (const alert of newCriticalAlerts) {
         if (!shouldShowAlertNotification(alert)) continue
-        void notifyUser(alert.title, alert.message)
+        void notifyUser(alert.title, alert.message, 'alert')
       }
     })
     sessionCleanup.add(alertsCleanup)

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Activity, AlertTriangle, ArrowLeft, Building2, CheckCircle2, ChevronRight, ClipboardList, LayoutDashboard, MessageSquare, Monitor, MonitorUp, Plus, Search, Settings, Trash2, UserPlus } from 'lucide-vue-next'
+import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, LayoutDashboard, MessageSquare, Monitor, MonitorUp, Search, Settings } from 'lucide-vue-next'
 import ComputerTile from '@/components/master/ComputerTile.vue'
 import DeviceWorkspace from '@/components/master/DeviceWorkspace.vue'
 import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
-import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
 import DwServicePocPanel from '@/components/master/DwServicePocPanel.vue'
 import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
@@ -13,77 +12,30 @@ import type { DeviceRecord } from '@shared/contracts'
 
 const emit = defineEmits<{ openSettings: [] }>()
 const store = useAppStore()
-type Section = 'overview' | 'registrations' | 'organizations' | 'devices' | 'tasks' | 'messages' | 'agents'
+type Section = 'overview' | 'devices' | 'tasks' | 'messages' | 'agents'
 
 const activeSection = ref<Section>('overview')
 const deviceDetailOpen = ref(false)
-const dwServicePocOpen = ref(false)
 const detailReturnSection = ref<Section>('devices')
 const searchQuery = ref('')
-const selectedCompanyKey = ref('all')
-const companyDraft = ref('')
-const companyBusy = ref(false)
-const companyMessage = ref('')
-
-interface Organization {
-  key: string
-  name: string
-  devices: DeviceRecord[]
-  users: string[]
-  removable: boolean
-}
 
 const onlineDevices = computed(() => store.devices.filter(isOnline))
 const attentionDevices = computed(() => store.devices.filter(needsAttention))
 const offlineDevices = computed(() => store.devices.filter((device) => !isOnline(device)))
 const pendingDevices = computed(() => store.devices.filter((device) => device.approvalStatus === 'pending'))
 
-const organizations = computed<Organization[]>(() => {
-  const result = new Map<string, Organization>()
-  for (const device of store.devices) {
-    const name = companyNameFor(device)
-    const key = normalizeCompanyKey(name)
-    const existing = result.get(key)
-    if (existing) {
-      existing.devices.push(device)
-      if (!existing.users.includes(device.ownerEmail)) existing.users.push(device.ownerEmail)
-    } else {
-      result.set(key, { key, name, devices: [device], users: [device.ownerEmail], removable: name !== 'Bez firmy' })
-    }
-  }
-  for (const companyName of store.masterSettings.companyOptions) {
-    const name = companyName.trim()
-    if (!name) continue
-    const key = normalizeCompanyKey(name)
-    const existing = result.get(key)
-    if (existing) existing.removable = true
-    else result.set(key, { key, name, devices: [], users: [], removable: true })
-  }
-  return [...result.values()].sort((left, right) => {
-    if (left.name === 'Bez firmy') return 1
-    if (right.name === 'Bez firmy') return -1
-    return left.name.localeCompare(right.name, 'pl')
-  })
-})
-
-const selectedOrganization = computed(() => organizations.value.find((organization) => organization.key === selectedCompanyKey.value) ?? null)
 const pageDevices = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase('pl')
   return [...store.devices]
     .filter((device) => {
-      const matchesCompany = selectedCompanyKey.value === 'all' || normalizeCompanyKey(companyNameFor(device)) === selectedCompanyKey.value
-      const matchesQuery = !query || [formatDeviceLabelForMaster(device), device.hostname, device.ownerEmail, companyNameFor(device), device.installationLocation]
+      return !query || [formatDeviceLabelForMaster(device), device.hostname, device.ownerEmail, companyNameFor(device), device.installationLocation]
         .filter(Boolean).join(' ').toLocaleLowerCase('pl').includes(query)
-      return matchesCompany && matchesQuery
     })
     .sort((left, right) => deviceSortRank(left) - deviceSortRank(right) || formatDeviceLabelForMaster(left).localeCompare(formatDeviceLabelForMaster(right), 'pl'))
 })
 
 const pageMeta = computed(() => {
   if (deviceDetailOpen.value && store.selectedDevice) return { title: 'Szczegóły komputera', description: `${companyNameFor(store.selectedDevice)} · ${formatDeviceLabelForMaster(store.selectedDevice)}` }
-  if (activeSection.value === 'organizations') return { title: 'Firmy', description: 'Dodawanie, usuwanie i przegląd organizacji' }
-  if (activeSection.value === 'registrations') return { title: 'Rejestracje urządzeń', description: `Oczekujące: ${pendingDevices.value.length}` }
-  if (activeSection.value === 'devices' && selectedOrganization.value) return { title: selectedOrganization.value.name, description: `${pageDevices.value.length} komputerów w firmie` }
   if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${store.devices.length} urządzeń` }
   if (activeSection.value === 'tasks') return { title: 'Zadania', description: `${store.openServiceRequests.length} wymaga obsługi` }
   if (activeSection.value === 'messages') return { title: 'Wiadomości', description: 'Rozmowy z klientami' }
@@ -93,19 +45,14 @@ const pageMeta = computed(() => {
 
 const navItems = computed(() => [
   { key: 'overview' as const, label: 'Przegląd', icon: LayoutDashboard, badge: 0, showZero: false },
-  { key: 'registrations' as const, label: 'Rejestracje', icon: UserPlus, badge: pendingDevices.value.length, showZero: true },
-  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length, showZero: false },
-  { key: 'organizations' as const, label: 'Firmy', icon: Building2, badge: organizations.value.filter((item) => item.name !== 'Bez firmy').length, showZero: false },
-  { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
   ...(store.systemContext?.platform !== 'web'
     ? [{ key: 'agents' as const, label: 'Agenci', icon: MonitorUp, badge: 0, showZero: false }]
     : []),
+  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length, showZero: false },
+  { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
   { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount, showZero: false }
 ])
 
-function normalizeCompanyKey(value: string) {
-  return value.trim().toLocaleLowerCase('pl')
-}
 function companyNameFor(device: DeviceRecord) {
   return device.companyName?.trim() || 'Bez firmy'
 }
@@ -124,27 +71,11 @@ function deviceSortRank(device: DeviceRecord) {
   if (needsAttention(device)) return 2
   return 3
 }
-function organizationOnlineCount(organization: Organization) {
-  return organization.devices.filter(isOnline).length
-}
-function organizationAlertCount(organization: Organization) {
-  return organization.devices.reduce((total, device) => total + alertCount(device), 0)
-}
-
 function navigate(section: Section) {
   activeSection.value = section
   deviceDetailOpen.value = false
-  if (section === 'devices') selectedCompanyKey.value = 'all'
-  if (section === 'agents') dwServicePocOpen.value = true
-}
-function openOrganization(organization: Organization) {
-  selectedCompanyKey.value = organization.key
-  searchQuery.value = ''
-  activeSection.value = 'devices'
-  deviceDetailOpen.value = false
 }
 function openDevices() {
-  selectedCompanyKey.value = 'all'
   searchQuery.value = ''
   activeSection.value = 'devices'
   deviceDetailOpen.value = false
@@ -166,53 +97,14 @@ function closeDeviceDetails() {
   activeSection.value = detailReturnSection.value
 }
 
-async function addCompany() {
-  const name = companyDraft.value.trim()
-  if (!name || companyBusy.value) return
-  companyBusy.value = true
-  companyMessage.value = ''
-  try {
-    const added = await store.addCompanyOption(name)
-    companyMessage.value = added ? `Dodano firmę „${name}”.` : 'Taka firma już istnieje.'
-    if (added) companyDraft.value = ''
-  } catch (error) {
-    companyMessage.value = error instanceof Error ? error.message : 'Nie udało się dodać firmy.'
-  } finally {
-    companyBusy.value = false
-  }
-}
-
-async function removeCompany(organization: Organization) {
-  if (!organization.removable || companyBusy.value) return
-  const prompt = organization.devices.length
-    ? `Usunąć firmę „${organization.name}”? ${organization.devices.length} komputerów zostanie przeniesionych do grupy „Bez firmy”.`
-    : `Usunąć firmę „${organization.name}”?`
-  if (!window.confirm(prompt)) return
-  companyBusy.value = true
-  companyMessage.value = ''
-  try {
-    for (const device of organization.devices) await store.updateDeviceCompanyName(device.deviceId, '')
-    await store.removeCompanyOption(organization.name)
-    if (selectedCompanyKey.value === organization.key) selectedCompanyKey.value = 'all'
-    companyMessage.value = `Usunięto firmę „${organization.name}”.`
-  } finally {
-    companyBusy.value = false
-  }
-}
-
 function openTasks() {
   navigate('tasks')
 }
-function openRegistrations() {
-  navigate('registrations')
-}
 onMounted(() => {
   window.addEventListener('i-janek:open-service-requests', openTasks)
-  window.addEventListener('i-janek:open-device-registrations', openRegistrations)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('i-janek:open-service-requests', openTasks)
-  window.removeEventListener('i-janek:open-device-registrations', openRegistrations)
 })
 </script>
 
@@ -224,14 +116,20 @@ onBeforeUnmount(() => {
         <p class="mt-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">panel administratora</p>
       </div>
       <nav class="mt-5 space-y-1" aria-label="Główna nawigacja">
-        <button v-for="item in navItems" :key="item.key" type="button" class="sidebar-link" :class="activeSection === item.key && !deviceDetailOpen ? 'sidebar-link-active' : ''" @click="navigate(item.key)">
-          <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" /><span class="flex-1">{{ item.label }}</span>
-          <span v-if="item.badge || item.showZero" class="mono min-w-6 rounded-md px-1.5 py-0.5 text-center text-[10px]" :class="item.key === 'registrations' && item.badge ? 'bg-amber-300 text-slate-950' : 'bg-white/[0.06] text-[var(--text-dim)]'">{{ item.badge }}</span>
-        </button>
+        <template v-for="item in navItems" :key="item.key">
+          <div v-if="item.key === 'tasks'" class="my-3 border-t border-white/10" aria-hidden="true" />
+          <button type="button" class="sidebar-link" :class="activeSection === item.key && !deviceDetailOpen ? 'sidebar-link-active' : ''" @click="navigate(item.key)">
+            <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" /><span class="flex-1">{{ item.label }}</span>
+            <template v-if="item.key === 'messages' && item.badge">
+              <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" />
+              <span class="sr-only">{{ item.badge }} nieodczytanych wiadomości</span>
+            </template>
+            <span v-else-if="item.badge || item.showZero" class="mono min-w-6 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-center text-[10px] text-[var(--text-dim)]">{{ item.badge }}</span>
+          </button>
+        </template>
       </nav>
       <div class="mt-auto space-y-3 pt-4">
-        <div class="rounded-xl border border-white/10 bg-white/[0.025] p-3"><div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><span class="h-2 w-2 rounded-full" :class="store.offline ? 'bg-amber-400' : 'bg-emerald-400'" />{{ store.offline ? 'Tryb offline' : 'Synchronizacja aktywna' }}</div><div class="mt-2 truncate text-xs text-white/70">{{ store.user?.email }}</div></div>
-        <button class="sidebar-link" type="button" @click="emit('openSettings')"><Settings class="h-[18px] w-[18px]" /> Ustawienia</button>
+        <button class="sidebar-link relative" type="button" @click="emit('openSettings')"><Settings class="h-[18px] w-[18px]" /> Ustawienia<span v-if="pendingDevices.length" class="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" /><span v-if="pendingDevices.length" class="sr-only">Oczekujące rejestracje urządzeń</span></button>
       </div>
     </aside>
 
@@ -241,11 +139,11 @@ onBeforeUnmount(() => {
           <button v-if="deviceDetailOpen" class="ghost-button !h-10 !w-10 !shrink-0 !rounded-xl !px-0" type="button" title="Wróć do komputerów" @click="closeDeviceDetails()"><ArrowLeft class="h-4 w-4" /></button>
           <div class="min-w-0"><h1 class="truncate text-xl font-semibold text-white">{{ pageMeta.title }}</h1><p class="mt-1 truncate text-sm text-[var(--text-dim)]">{{ pageMeta.description }}</p></div>
         </div>
-        <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /></button></div>
+        <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button relative !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /><span v-if="pendingDevices.length" class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" /><span v-if="pendingDevices.length" class="sr-only">Oczekujące rejestracje urządzeń</span></button></div>
       </header>
-      <nav v-if="!deviceDetailOpen" class="flex flex-wrap gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><button v-for="item in navItems" :key="item.key" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<span v-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></nav>
+      <nav v-if="!deviceDetailOpen" class="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><template v-for="item in navItems" :key="item.key"><span v-if="item.key === 'tasks'" class="mx-1 h-5 border-l border-white/15" aria-hidden="true" /><button class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<template v-if="item.key === 'messages' && item.badge"><span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /><span class="sr-only">{{ item.badge }} nieodczytanych wiadomości</span></template><span v-else-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></template></nav>
 
-      <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto">
+      <div class="scrollbar-glass min-h-0 flex-1" :class="activeSection === 'agents' && !deviceDetailOpen ? 'overflow-hidden' : 'overflow-y-auto'">
         <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" />
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
@@ -253,37 +151,13 @@ onBeforeUnmount(() => {
             <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ store.devices.length }} komputerów</small></span></button>
             <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>{{ pendingDevices.length }} oczekuje na akceptację</small></span></button>
             <button class="summary-card text-left" type="button" @click="navigate('tasks')"><span class="summary-icon bg-fuchsia-400/10 text-fuchsia-200"><ClipboardList class="h-5 w-5" /></span><span><span class="summary-label">Otwarte zadania</span><strong class="summary-value">{{ store.openServiceRequests.length }}</strong><small>zgłoszenia klientów</small></span></button>
-            <button class="summary-card text-left" type="button" @click="navigate('organizations')"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Building2 class="h-5 w-5" /></span><span><span class="summary-label">Firmy</span><strong class="summary-value">{{ organizations.length }}</strong><small>{{ offlineDevices.length }} komputerów offline</small></span></button>
+            <article class="summary-card"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Monitor class="h-5 w-5" /></span><span><span class="summary-label">Offline</span><strong class="summary-value">{{ offlineDevices.length }}</strong><small>komputery bez połączenia</small></span></article>
           </section>
-          <button
-            class="content-card flex w-full items-center gap-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.055]"
-            :class="pendingDevices.length ? '!border-amber-300/25 bg-amber-400/[0.055]' : ''"
-            type="button"
-            @click="navigate('registrations')"
-          >
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" :class="pendingDevices.length ? 'bg-amber-400/15 text-amber-200' : 'bg-cyan-400/10 text-cyan-100'"><UserPlus class="h-6 w-6" /></span>
-            <span class="min-w-0 flex-1"><strong class="block text-base text-white">Rejestracja urządzeń</strong><small class="mt-1 block text-[var(--text-dim)]">{{ pendingDevices.length ? `${pendingDevices.length} wymaga decyzji administratora` : 'Brak nowych próśb — kliknij, aby otworzyć miejsce rejestracji' }}</small></span>
-            <span class="mono rounded-full px-2.5 py-1 text-xs" :class="pendingDevices.length ? 'bg-amber-300 text-slate-950' : 'bg-white/[0.07] text-white/55'">{{ pendingDevices.length }}</span>
-            <ChevronRight class="h-5 w-5 shrink-0 text-white/35" />
-          </button>
           <section>
             <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
             <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" @open="openDevice(device, 'overview')" /></div>
             <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
-        </div>
-
-        <RegistrationWorkspace v-else-if="activeSection === 'registrations'" />
-
-        <div v-else-if="activeSection === 'organizations'" class="p-5 lg:p-6">
-          <section class="content-card"><h2 class="text-base font-semibold text-white">Dodaj firmę</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Po utworzeniu firma pojawi się w menu po lewej stronie.</p><form class="mt-4 flex max-w-xl gap-2" @submit.prevent="addCompany()"><input v-model="companyDraft" class="soft-input !rounded-xl" maxlength="80" placeholder="np. EL-TECH" /><button class="glass-button !rounded-xl !px-5" type="submit" :disabled="companyBusy || !companyDraft.trim()"><Plus class="mr-2 h-4 w-4" /> Dodaj</button></form><p v-if="companyMessage" class="mt-3 text-sm text-cyan-100">{{ companyMessage }}</p></section>
-          <div class="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            <article v-for="organization in organizations" :key="organization.key" class="organization-card">
-              <div class="flex items-start justify-between gap-3"><button class="flex min-w-0 flex-1 items-center gap-3 text-left" type="button" @click="openOrganization(organization)"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/15 to-fuchsia-500/15 text-cyan-100"><Building2 class="h-5 w-5" /></span><span class="min-w-0"><strong class="block truncate text-base text-white">{{ organization.name }}</strong><small class="mt-1 block text-[var(--text-dim)]">{{ organization.users.length }} użytkowników</small></span></button><button v-if="organization.removable" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-200" type="button" title="Usuń firmę" :disabled="companyBusy" @click="removeCompany(organization)"><Trash2 class="h-4 w-4" /></button></div>
-              <button class="mt-5 grid w-full grid-cols-3 gap-2 text-left" type="button" @click="openOrganization(organization)"><span class="rounded-xl bg-white/[0.035] px-3 py-2"><strong class="block text-lg text-white">{{ organization.devices.length }}</strong><small class="text-[var(--text-dim)]">komputery</small></span><span class="rounded-xl bg-white/[0.035] px-3 py-2"><strong class="block text-lg text-emerald-200">{{ organizationOnlineCount(organization) }}</strong><small class="text-[var(--text-dim)]">online</small></span><span class="rounded-xl bg-white/[0.035] px-3 py-2"><strong class="block text-lg" :class="organizationAlertCount(organization) ? 'text-amber-200' : 'text-white'">{{ organizationAlertCount(organization) }}</strong><small class="text-[var(--text-dim)]">alerty</small></span></button>
-              <button class="mt-4 inline-flex items-center gap-1 text-xs text-cyan-200" type="button" @click="openOrganization(organization)">Otwórz firmę <ChevronRight class="h-3.5 w-3.5" /></button>
-            </article>
-          </div>
         </div>
 
         <div v-else-if="activeSection === 'devices'" class="p-5 lg:p-6">
@@ -293,10 +167,9 @@ onBeforeUnmount(() => {
         </div>
 
         <TasksWorkspace v-else-if="activeSection === 'tasks'" @open-device="openDeviceById" />
-        <div v-else-if="activeSection === 'agents'" class="p-5 lg:p-6"><section class="content-card"><h2 class="text-base font-semibold text-white">DWService</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Panel działa wewnątrz i-JANEK i zachowuje sesję logowania.</p><button class="glass-button mt-4 !rounded-xl" type="button" @click="dwServicePocOpen = true">Otwórz panel agentów</button></section></div>
+        <DwServicePocPanel v-else-if="activeSection === 'agents'" />
         <MessagesWorkspace v-else />
       </div>
     </main>
-    <DwServicePocPanel v-if="dwServicePocOpen" @close="dwServicePocOpen = false" />
   </div>
 </template>

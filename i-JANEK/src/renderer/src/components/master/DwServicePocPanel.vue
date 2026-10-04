@@ -2,7 +2,6 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { DwServicePocStatus } from '@shared/ipc'
 
-const emit = defineEmits<{ close: [] }>()
 const viewport = ref<HTMLElement | null>(null)
 const status = ref<DwServicePocStatus>({ state: 'loading', popupCount: 0 })
 let stopStatus: (() => void) | null = null
@@ -12,11 +11,6 @@ function syncBounds() {
   const rect = viewport.value?.getBoundingClientRect()
   if (!rect) return
   void window.janek.dwServicePoc.setBounds({ x: rect.x, y: rect.y, width: rect.width, height: rect.height })
-}
-
-async function close() {
-  await window.janek.dwServicePoc.close()
-  emit('close')
 }
 
 function goBack() {
@@ -47,22 +41,25 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   window.removeEventListener('resize', syncBounds)
   stopStatus?.()
+  void window.janek.dwServicePoc.setBounds({ x: 0, y: 0, width: 0, height: 0 })
   void window.janek.dwServicePoc.close()
 })
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[100] flex flex-col bg-[#070b14] text-white">
-    <div class="flex min-h-[92px] flex-wrap items-center gap-3 border-b border-white/15 px-5 py-3">
+  <section class="flex h-full min-h-0 flex-col overflow-hidden bg-[#070b14] text-white">
+    <div class="flex min-h-[58px] shrink-0 flex-wrap items-center gap-3 border-b border-white/10 px-4 py-2.5">
       <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold">Agenci — DWService</h2>
-        <p class="mt-1 truncate text-xs text-white/60">{{ status.url || 'https://www.dwservice.net/' }} · {{ status.state === 'error' ? 'Błąd' : status.state === 'loading' ? 'Ładowanie' : status.popupCount ? 'Nowa karta wewnątrz i-JANEK' : 'Widok w i-JANEK' }}</p>
+        <div class="flex items-center gap-2">
+          <span class="h-2 w-2 rounded-full" :class="status.state === 'error' ? 'bg-rose-400' : status.state === 'loading' ? 'animate-pulse bg-amber-300' : 'bg-emerald-400'" />
+          <h2 class="text-sm font-semibold">DWService</h2>
+        </div>
+        <p class="mt-0.5 truncate text-[11px] text-white/55">{{ status.url || 'https://www.dwservice.net/' }} · {{ status.state === 'error' ? 'Błąd' : status.state === 'loading' ? 'Ładowanie' : status.popupCount ? 'Dodatkowa karta' : 'Panel osadzony w i-JANEK' }}</p>
         <p v-if="status.error" class="mt-1 text-xs text-rose-200">{{ status.error }}</p>
       </div>
       <button class="ghost-button !h-9" type="button" @click="goBack">Wstecz</button>
       <button v-if="status.popupCount" class="ghost-button !h-9" type="button" @click="closePopup">Zamknij kartę</button>
-      <button class="glass-button !h-9" type="button" @click="close">Zamknij</button>
     </div>
     <div ref="viewport" class="min-h-0 flex-1 bg-white" aria-label="Widok strony DWService"></div>
-  </div>
+  </section>
 </template>

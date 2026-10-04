@@ -495,7 +495,7 @@ function checkForUpdates(silent: boolean) {
 function startAutomaticUpdateChecks() {
   if (automaticUpdateInterval) clearInterval(automaticUpdateInterval)
   const isPostInstallCheck = hasPendingPostInstallUpdateCheck()
-  void checkForUpdates(false).then((result) => {
+  void checkForUpdates(true).then((result) => {
     if (isPostInstallCheck && result.status !== 'error') {
       clearPostInstallUpdateMarker()
     }

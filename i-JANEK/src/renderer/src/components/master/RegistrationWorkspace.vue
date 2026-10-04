@@ -129,7 +129,7 @@ function registrationDate(timestamp: number) {
               </span>
             </div>
             <p class="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-dim)]">
-              Tutaj pojawiają się wszystkie nowe komputery wymagające decyzji administratora. Lista aktualizuje się automatycznie — nie trzeba otwierać ustawień.
+              Tutaj pojawiają się wszystkie nowe komputery wymagające decyzji administratora. Lista aktualizuje się automatycznie.
             </p>
           </div>
         </div>

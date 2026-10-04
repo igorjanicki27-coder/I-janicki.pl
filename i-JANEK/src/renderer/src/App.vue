@@ -204,6 +204,7 @@ async function retryDeviceRegistration() {
 
 function openDeviceRegistrations() {
   dismissedApprovalPromptIds.value = store.approvalQueue.map((device) => device.deviceId)
+  settingsOpen.value = true
   window.dispatchEvent(new CustomEvent('i-janek:open-device-registrations'))
 }
 

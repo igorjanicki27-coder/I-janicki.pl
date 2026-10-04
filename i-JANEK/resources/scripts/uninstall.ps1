@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $taskName = 'i-JANEK Update Agent'
 $root = Join-Path $env:ProgramData 'i-JANEK'
 
