@@ -9,9 +9,10 @@ function normalizeSegment(value: string) {
     .replace(/^_+|_+$/g, '')
 }
 
-export function buildDeviceId(companyName: string, deviceAlias: string) {
+export function buildDeviceId(companyName: string, deviceAlias: string, uniqueDeviceKey?: string) {
   const company = normalizeSegment(companyName)
   const alias = normalizeSegment(deviceAlias)
+  const uniqueKey = uniqueDeviceKey ? normalizeSegment(uniqueDeviceKey) : ''
   if (!company || !alias) return ''
-  return `${company}_${alias}`
+  return [company, alias, uniqueKey].filter(Boolean).join('_')
 }

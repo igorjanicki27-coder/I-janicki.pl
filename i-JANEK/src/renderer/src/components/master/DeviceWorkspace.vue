@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   TerminalSquare,
   Thermometer,
+  Trash2,
   Workflow,
   X
 } from 'lucide-vue-next'
@@ -25,6 +26,7 @@ import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 import type { UpdateChannel } from '@shared/contracts'
 
+const emit = defineEmits<{ archived: [] }>()
 const tabs = ['overview', 'diagnostics', 'tools', 'backup', 'inventory'] as const
 const store = useAppStore()
 const activeTab = ref<(typeof tabs)[number]>('overview')
@@ -32,6 +34,9 @@ const usageRangeDays = ref<7 | 30 | 90>(30)
 const editingDetails = ref(false)
 const detailsBusy = ref(false)
 const detailsMessage = ref('')
+const showArchiveConfirm = ref(false)
+const archiveBusy = ref(false)
+const archiveError = ref('')
 const detailsDraft = ref({
   deviceAlias: '',
   contactName: '',
@@ -159,6 +164,22 @@ async function saveDetails() {
   }
 }
 
+async function confirmArchiveDevice() {
+  const deviceId = store.selectedDevice?.deviceId
+  if (!deviceId || archiveBusy.value) return
+  archiveBusy.value = true
+  archiveError.value = ''
+  try {
+    await store.archiveDevice(deviceId)
+    showArchiveConfirm.value = false
+    emit('archived')
+  } catch (error) {
+    archiveError.value = error instanceof Error ? error.message : 'Nie udało się usunąć komputera.'
+  } finally {
+    archiveBusy.value = false
+  }
+}
+
 function changeUpdateChannel(event: Event) {
   const deviceId = store.selectedDevice?.deviceId
   if (!deviceId) return
@@ -237,6 +258,9 @@ function formatFileSize(sizeBytes: number) {
             {{ store.selectedDevice.companyName || store.selectedDevice.ownerEmail }}<span v-if="store.selectedDevice.installationLocation"> · {{ store.selectedDevice.installationLocation }}</span> · {{ store.selectedDevice.hostname }}
           </p>
         </div>
+        <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs text-rose-200 hover:!border-rose-300/30 hover:!bg-rose-500/10" type="button" @click="showArchiveConfirm = true; archiveError = ''">
+          <Trash2 class="mr-1.5 h-3.5 w-3.5" /> Usuń komputer
+        </button>
       </div>
     </header>
 
@@ -545,5 +569,29 @@ function formatFileSize(sizeBytes: number) {
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showArchiveConfirm" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" @click.self="showArchiveConfirm = false">
+        <section class="w-full max-w-md rounded-2xl border border-rose-300/20 bg-[#100d1c] p-5 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="archive-device-title">
+          <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-200"><Trash2 class="h-5 w-5" /></span>
+            <div>
+              <h2 id="archive-device-title" class="text-base font-semibold text-white">Usunąć komputer?</h2>
+              <p class="mt-2 text-sm leading-6 text-[var(--text-dim)]">
+                <strong class="text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</strong> zniknie z aktywnych komputerów. Wiadomości, zgłoszenia i historia zostaną zachowane w archiwum i nie będą wpływać na bieżące liczniki.
+              </p>
+              <p class="mt-2 text-xs leading-5 text-amber-100/80">Agent na tym komputerze zostanie wyrejestrowany przy najbliższej synchronizacji.</p>
+            </div>
+          </div>
+          <p v-if="archiveError" class="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{{ archiveError }}</p>
+          <div class="mt-5 flex justify-end gap-2">
+            <button class="ghost-button !rounded-xl !px-4 !py-2 text-sm" type="button" :disabled="archiveBusy" @click="showArchiveConfirm = false">Anuluj</button>
+            <button class="inline-flex items-center rounded-xl border border-rose-300/25 bg-rose-500/15 px-4 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/25 disabled:cursor-wait disabled:opacity-60" type="button" :disabled="archiveBusy" @click="confirmArchiveDevice">
+              <Trash2 class="mr-2 h-4 w-4" /> {{ archiveBusy ? 'Usuwanie…' : 'Usuń i archiwizuj' }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -97,6 +97,11 @@ function closeDeviceDetails() {
   activeSection.value = detailReturnSection.value
 }
 
+function handleDeviceArchived() {
+  deviceDetailOpen.value = false
+  activeSection.value = 'devices'
+}
+
 function openTasks() {
   navigate('tasks')
 }
@@ -144,7 +149,7 @@ onBeforeUnmount(() => {
       <nav v-if="!deviceDetailOpen" class="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><template v-for="item in navItems" :key="item.key"><span v-if="item.key === 'tasks'" class="mx-1 h-5 border-l border-white/15" aria-hidden="true" /><button class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<template v-if="item.key === 'messages' && item.badge"><span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /><span class="sr-only">{{ item.badge }} nieodczytanych wiadomości</span></template><span v-else-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></template></nav>
 
       <div class="scrollbar-glass min-h-0 flex-1" :class="activeSection === 'agents' && !deviceDetailOpen ? 'overflow-hidden' : 'overflow-y-auto'">
-        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" />
+        <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" @archived="handleDeviceArchived" />
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
           <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

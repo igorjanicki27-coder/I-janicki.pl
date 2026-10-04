@@ -6,6 +6,8 @@ import CompanyManagementPanel from '@/components/master/CompanyManagementPanel.v
 import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useAppStore } from '@/stores/app'
+import type { MetricThreshold, MetricThresholds } from '@shared/contracts'
+import { METRIC_THRESHOLD_LIMITS, type MetricThresholdKey } from '@shared/thresholds'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -17,6 +19,31 @@ const savingDiagnostics = ref(false)
 const removingBackupFolderPath = ref<string | null>(null)
 const removingBackupFolderBusy = ref(false)
 const activeSettingsPanel = ref<'registrations' | 'companies' | 'thresholds' | 'notifications' | 'support' | null>(null)
+
+type ThresholdKind = keyof MetricThreshold
+type ThresholdDrafts = Record<MetricThresholdKey, Record<ThresholdKind, string>>
+
+const thresholdRows: Array<{ metric: MetricThresholdKey; label: string }> = [
+  { metric: 'cpuUsage', label: 'CPU użycie (%)' },
+  { metric: 'gpuUsage', label: 'GPU użycie (%)' },
+  { metric: 'ramUsage', label: 'RAM (%)' },
+  { metric: 'diskUsage', label: 'Dysk (%)' },
+  { metric: 'cpuTemp', label: 'CPU temperatura (°C)' },
+  { metric: 'gpuTemp', label: 'GPU temperatura (°C)' },
+  { metric: 'backupAgeHours', label: 'Wiek backupu (h)' }
+]
+
+function createThresholdDrafts(thresholds: MetricThresholds): ThresholdDrafts {
+  return Object.fromEntries(thresholdRows.map(({ metric }) => [
+    metric,
+    {
+      warning: String(thresholds[metric].warning),
+      critical: String(thresholds[metric].critical)
+    }
+  ])) as ThresholdDrafts
+}
+
+const thresholdDrafts = ref(createThresholdDrafts(store.masterSettings.thresholds))
 
 const enabledNotificationCategories = computed(() => {
   if (store.slaveSettings.muteAllNotifications) return 0
@@ -67,6 +94,42 @@ watch(
 
 function closeSettingsPanel() {
   activeSettingsPanel.value = null
+}
+
+function openThresholdsPanel() {
+  thresholdDrafts.value = createThresholdDrafts(store.masterSettings.thresholds)
+  activeSettingsPanel.value = 'thresholds'
+}
+
+function thresholdFieldError(metric: MetricThresholdKey, kind: ThresholdKind) {
+  const rawValue = thresholdDrafts.value[metric][kind].trim()
+  if (!rawValue) return 'Wpisz liczbę.'
+
+  const value = Number(rawValue)
+  if (!Number.isFinite(value)) return 'Wpisz poprawną liczbę.'
+
+  const { min, max } = METRIC_THRESHOLD_LIMITS[metric]
+  if (value < min || (max !== undefined && value > max)) {
+    return max === undefined ? `Minimum: ${min}.` : `Zakres: ${min}–${max}.`
+  }
+
+  const otherKind: ThresholdKind = kind === 'warning' ? 'critical' : 'warning'
+  const otherValue = Number(thresholdDrafts.value[metric][otherKind])
+  if (!Number.isFinite(otherValue)) return null
+
+  if (kind === 'warning' && value >= otherValue) return 'Musi być niższy od krytycznego.'
+  if (kind === 'critical' && value <= otherValue) return 'Musi być wyższy od ostrzeżenia.'
+  return null
+}
+
+function updateThresholdDraft(metric: MetricThresholdKey, kind: ThresholdKind, event: Event) {
+  thresholdDrafts.value[metric][kind] = (event.target as HTMLInputElement).value
+  if (thresholdFieldError(metric, 'warning') || thresholdFieldError(metric, 'critical')) return
+
+  store.updateMetricThreshold(metric, {
+    warning: Number(thresholdDrafts.value[metric].warning),
+    critical: Number(thresholdDrafts.value[metric].critical)
+  })
 }
 
 function openRegistrationsPanel() {
@@ -269,7 +332,7 @@ async function addCustomFolderFromPicker() {
             <button
               class="group flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-amber-300/30 hover:bg-white/[0.07]"
               type="button"
-              @click="activeSettingsPanel = 'thresholds'"
+              @click="openThresholdsPanel()"
             >
               <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
                 <Gauge class="h-5 w-5" />
@@ -676,40 +739,46 @@ async function addCustomFolderFromPicker() {
             <span class="text-center text-rose-300">Krytyczny</span>
           </div>
           <div class="mt-3 space-y-2">
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>CPU użycie (%)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.warning" aria-label="Ostrzeżenie użycia CPU" @input="store.updateMetricThreshold('cpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuUsage.critical" aria-label="Krytyczne użycie CPU" @input="store.updateMetricThreshold('cpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>GPU użycie (%)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.warning" aria-label="Ostrzeżenie użycia GPU" @input="store.updateMetricThreshold('gpuUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuUsage.critical" aria-label="Krytyczne użycie GPU" @input="store.updateMetricThreshold('gpuUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>RAM (%)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.ramUsage.warning" aria-label="Ostrzeżenie użycia RAM" @input="store.updateMetricThreshold('ramUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.ramUsage.critical" aria-label="Krytyczne użycie RAM" @input="store.updateMetricThreshold('ramUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>Dysk (%)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.diskUsage.warning" aria-label="Ostrzeżenie użycia dysku" @input="store.updateMetricThreshold('diskUsage', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.diskUsage.critical" aria-label="Krytyczne użycie dysku" @input="store.updateMetricThreshold('diskUsage', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>CPU temperatura (°C)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.warning" aria-label="Ostrzeżenie temperatury CPU" @input="store.updateMetricThreshold('cpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.cpuTemp.critical" aria-label="Krytyczna temperatura CPU" @input="store.updateMetricThreshold('cpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>GPU temperatura (°C)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.warning" aria-label="Ostrzeżenie temperatury GPU" @input="store.updateMetricThreshold('gpuTemp', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.gpuTemp.critical" aria-label="Krytyczna temperatura GPU" @input="store.updateMetricThreshold('gpuTemp', 'critical', Number(($event.target as HTMLInputElement).value))" />
-            </div>
-            <div class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-center gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]">
-              <span>Wiek backupu (h)</span>
-              <input class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.warning" aria-label="Ostrzeżenie wieku backupu" @input="store.updateMetricThreshold('backupAgeHours', 'warning', Number(($event.target as HTMLInputElement).value))" />
-              <input class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200" type="number" :value="store.masterSettings.thresholds.backupAgeHours.critical" aria-label="Krytyczny wiek backupu" @input="store.updateMetricThreshold('backupAgeHours', 'critical', Number(($event.target as HTMLInputElement).value))" />
+            <div
+              v-for="row in thresholdRows"
+              :key="row.metric"
+              class="grid grid-cols-[minmax(0,1fr)_96px_96px] items-start gap-3 rounded-2xl border border-white/10 px-3 py-2.5 text-sm text-[var(--text-dim)]"
+            >
+              <span class="pt-2">{{ row.label }}</span>
+              <div>
+                <input
+                  class="soft-input !py-2 !text-center !border-amber-400/35 !text-amber-200"
+                  :class="thresholdFieldError(row.metric, 'warning') ? '!border-rose-400/70' : ''"
+                  type="number"
+                  step="1"
+                  :min="METRIC_THRESHOLD_LIMITS[row.metric].min"
+                  :max="METRIC_THRESHOLD_LIMITS[row.metric].max"
+                  :value="thresholdDrafts[row.metric].warning"
+                  :aria-label="`Ostrzeżenie: ${row.label}`"
+                  :aria-invalid="Boolean(thresholdFieldError(row.metric, 'warning'))"
+                  @input="updateThresholdDraft(row.metric, 'warning', $event)"
+                />
+                <p v-if="thresholdFieldError(row.metric, 'warning')" class="mt-1 text-[10px] leading-4 text-rose-300">
+                  {{ thresholdFieldError(row.metric, 'warning') }}
+                </p>
+              </div>
+              <div>
+                <input
+                  class="soft-input !py-2 !text-center !border-rose-400/40 !text-rose-200"
+                  :class="thresholdFieldError(row.metric, 'critical') ? '!border-rose-400/70' : ''"
+                  type="number"
+                  step="1"
+                  :min="METRIC_THRESHOLD_LIMITS[row.metric].min"
+                  :max="METRIC_THRESHOLD_LIMITS[row.metric].max"
+                  :value="thresholdDrafts[row.metric].critical"
+                  :aria-label="`Krytyczny: ${row.label}`"
+                  :aria-invalid="Boolean(thresholdFieldError(row.metric, 'critical'))"
+                  @input="updateThresholdDraft(row.metric, 'critical', $event)"
+                />
+                <p v-if="thresholdFieldError(row.metric, 'critical')" class="mt-1 text-[10px] leading-4 text-rose-300">
+                  {{ thresholdFieldError(row.metric, 'critical') }}
+                </p>
+              </div>
             </div>
           </div>
 

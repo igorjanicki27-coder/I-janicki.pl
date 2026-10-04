@@ -87,6 +87,7 @@ export interface BackendClient {
     nextDeviceAlias: string,
     nextCompanyName: string
   ) => Promise<DeviceRecord>
+  archiveDeviceRecord: (deviceId: string, actorEmail: string) => Promise<void>
   deleteDeviceRecord: (deviceId: string) => Promise<void>
   subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
@@ -556,6 +557,20 @@ class FirebaseBackend implements BackendClient {
 
   async deleteDeviceRecord(deviceId: string) {
     await deleteDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
+  }
+
+  async archiveDeviceRecord(deviceId: string, actorEmail: string) {
+    const archivedAt = Date.now()
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
+      archivedAt,
+      archivedBy: actorEmail,
+      offline: true,
+      updatedAt: archivedAt
+    })
+    this.queueAuditLog('device_archived', {
+      deviceId,
+      details: { archivedBy: actorEmail }
+    })
   }
 
   subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[]) => void) {
@@ -1609,6 +1624,16 @@ class MockBackend implements BackendClient {
 
   async deleteDeviceRecord(deviceId: string) {
     this.devices = this.devices.filter((device) => device.deviceId !== deviceId)
+    this.emitDevices()
+  }
+
+  async archiveDeviceRecord(deviceId: string, actorEmail: string) {
+    const archivedAt = Date.now()
+    this.devices = this.devices.map((device) =>
+      device.deviceId === deviceId
+        ? { ...device, archivedAt, archivedBy: actorEmail, offline: true, updatedAt: archivedAt }
+        : device
+    )
     this.emitDevices()
   }
 

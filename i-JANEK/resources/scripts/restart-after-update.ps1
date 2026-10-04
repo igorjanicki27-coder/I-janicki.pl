@@ -1,21 +1,48 @@
-param(
+﻿param(
   [Parameter(Mandatory=$true)][string]$Version,
-  [Parameter(Mandatory=$true)][string]$AppExe
+  [Parameter(Mandatory=$true)][string]$AppExe,
+  [Parameter(Mandatory=$true)][string]$LogPath,
+  [switch]$StartHidden
 )
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 $statusPath = Join-Path $env:ProgramData 'i-JANEK\update-status.json'
-$deadline = [DateTime]::UtcNow.AddMinutes(15)
-while ([DateTime]::UtcNow -lt $deadline) {
-  if (Test-Path -LiteralPath $statusPath) {
-    try {
-      $status = Get-Content -LiteralPath $statusPath -Raw -Encoding UTF8 | ConvertFrom-Json
-      if ($status.version -eq $Version -and $status.state -eq 'installed') { break }
-      if ($status.state -eq 'error') { break }
-    } catch {}
-  }
-  Start-Sleep -Seconds 2
+$logDir = Split-Path -Parent $LogPath
+
+function Write-RestartLog([string]$Message) {
+  New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+  Add-Content -LiteralPath $LogPath -Value "[$([DateTime]::UtcNow.ToString('o'))] $Message" -Encoding UTF8
 }
-if (Test-Path -LiteralPath $AppExe -PathType Leaf) {
-  Start-Process -FilePath $AppExe -ArgumentList @('--updated', '--tray')
+
+try {
+  Write-RestartLog "Uruchomiono obserwatora aktualizacji $Version. AppExe=$AppExe StartHidden=$StartHidden"
+  $deadline = [DateTime]::UtcNow.AddMinutes(15)
+  $finalState = 'timeout'
+  while ([DateTime]::UtcNow -lt $deadline) {
+    if (Test-Path -LiteralPath $statusPath) {
+      $status = Get-Content -LiteralPath $statusPath -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($status.version -eq $Version -and $status.state -eq 'installed') {
+        $finalState = 'installed'
+        break
+      }
+      if ($status.state -eq 'error') {
+        $finalState = 'error'
+        break
+      }
+    }
+    Start-Sleep -Seconds 2
+  }
+  Write-RestartLog "Zakończono oczekiwanie na agenta. Stan=$finalState"
+
+  if (-not (Test-Path -LiteralPath $AppExe -PathType Leaf)) {
+    throw "Nie znaleziono aplikacji po aktualizacji: $AppExe"
+  }
+
+  $arguments = @('--updated')
+  if ($StartHidden) { $arguments += '--tray' }
+  $process = Start-Process -FilePath $AppExe -ArgumentList $arguments -PassThru
+  Write-RestartLog "Uruchomiono i-JANEK. PID=$($process.Id) Argumenty=$($arguments -join ' ')"
+} catch {
+  Write-RestartLog "BŁĄD: $($_.Exception.Message)"
+  exit 1
 }

@@ -122,6 +122,8 @@ export interface DeviceRecord extends DeviceIdentity {
   inventoryCapturedAt?: number
   inventoryReportId?: string
   approvedBy?: string
+  archivedAt?: number | null
+  archivedBy?: string | null
   dwservice?: DwServiceConfiguration
   updateRequest?: UpdateRequest | null
   lastHandledUpdateRequestId?: string | null

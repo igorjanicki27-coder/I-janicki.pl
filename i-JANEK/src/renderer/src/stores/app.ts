@@ -41,6 +41,7 @@ import {
   DEFAULT_TELEMETRY_INTERVAL_MIN
 } from '@shared/constants'
 import { buildDeviceId } from '@shared/device-id'
+import { isMetricThresholdValid, type MetricThresholdKey } from '@shared/thresholds'
 import { createBackendClient, type BackendClient } from '@/services/backend'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import {
@@ -118,6 +119,28 @@ function createDefaultThresholds(): MetricThresholds {
     gpuTemp: { warning: 70, critical: 85 },
     backupAgeHours: { warning: 24, critical: 72 }
   }
+}
+
+type PartialMetricThresholds = Partial<Record<MetricThresholdKey, Partial<MetricThreshold>>>
+
+function normalizeThresholds(
+  thresholds: PartialMetricThresholds | null | undefined,
+  fallback: MetricThresholds = createDefaultThresholds()
+): MetricThresholds {
+  const defaults = createDefaultThresholds()
+  const metrics = Object.keys(defaults) as MetricThresholdKey[]
+
+  return Object.fromEntries(metrics.map((metric) => {
+    const fallbackThreshold = isMetricThresholdValid(metric, fallback[metric])
+      ? fallback[metric]
+      : defaults[metric]
+    const candidate = {
+      ...fallbackThreshold,
+      ...thresholds?.[metric]
+    }
+
+    return [metric, isMetricThresholdValid(metric, candidate) ? candidate : fallbackThreshold]
+  })) as unknown as MetricThresholds
 }
 
 function toRemoteMasterSettings(settings: MasterSettings): RemoteMasterSettings {
@@ -201,6 +224,10 @@ function suggestedDeviceAlias(displayName: string, email: string) {
   return `Komputer ${ownerName}`.slice(0, 48).trim()
 }
 
+function uniqueDeviceKey(machineId: string, ownerUid: string) {
+  return `${machineId.slice(0, 12)}-${ownerUid.slice(0, 12)}`
+}
+
 function cloneForIpc<T>(value: T): T {
   const rawValue = toRaw(value)
   if (rawValue === undefined || rawValue === null) return rawValue
@@ -218,12 +245,13 @@ export const useAppStore = defineStore('app', () => {
   const systemContext = ref<Awaited<ReturnType<typeof window.janek.system.getContext>> | null>(null)
   const user = ref<AppUser | null>(null)
   const devices = ref<DeviceRecord[]>([])
-  const alerts = ref<AlertEvent[]>([])
-  const serviceRequests = ref<ServiceRequest[]>([])
+  const archivedDevices = ref<DeviceRecord[]>([])
+  const allAlerts = ref<AlertEvent[]>([])
+  const allServiceRequests = ref<ServiceRequest[]>([])
   const serviceRequestComments = ref<ServiceRequestInternalComment[]>([])
   const usageHistory = ref<Record<string, UsageDailyRollup[]>>({})
   const inventory = ref<Record<string, InventoryReport>>({})
-  const companyChats = ref<Record<string, CompanyChatMessage[]>>({})
+  const allCompanyChats = ref<Record<string, CompanyChatMessage[]>>({})
   const companyChatStates = ref<Record<string, CompanyChatState>>({})
   const chatMessageSendStates = ref<Record<string, 'sending' | 'sent' | 'failed'>>({})
   const commandHistory = ref<Record<string, TerminalCommand[]>>({})
@@ -292,6 +320,7 @@ export const useAppStore = defineStore('app', () => {
   let lastSelfApprovalStatus: ApprovalStatus | null = null
   let pendingNewAccountEmail: string | null = null
   let deviceRegistrationInFlight = false
+  let archivedDeviceResetInFlight = false
   let connectivityCheckInFlight = false
   let connectivityIntervalHandle: number | null = null
   let lastConnectivityNotificationState: 'online' | 'offline' | null = null
@@ -299,6 +328,18 @@ export const useAppStore = defineStore('app', () => {
   const telemetryAlertSignatures = new Map<string, string>()
   const workerDeviceId = ref('')
 
+  const archivedDeviceIds = computed(() => new Set(archivedDevices.value.map((device) => device.deviceId)))
+  const activeOwnerUids = computed(() => new Set(devices.value.map((device) => device.ownerUid)))
+  const alerts = computed(() => allAlerts.value.filter((alert) => !archivedDeviceIds.value.has(alert.deviceId)))
+  const serviceRequests = computed(() => allServiceRequests.value.filter((request) => !archivedDeviceIds.value.has(request.deviceId)))
+  const companyChats = computed<Record<string, CompanyChatMessage[]>>(() => {
+    const visible: Record<string, CompanyChatMessage[]> = {}
+    for (const [ownerUid, messages] of Object.entries(allCompanyChats.value)) {
+      if (user.value?.role === 'master' && !activeOwnerUids.value.has(ownerUid)) continue
+      visible[ownerUid] = messages.filter((message) => !message.deviceId || !archivedDeviceIds.value.has(message.deviceId))
+    }
+    return visible
+  })
   const selectedDevice = computed(() => devices.value.find((device) => device.deviceId === selectedDeviceId.value) ?? null)
   const selectedConversationMessages = computed(() => companyChats.value[selectedConversationOwnerUid.value] ?? [])
   const unreadCompanyChatCount = computed(() => {
@@ -354,17 +395,7 @@ export const useAppStore = defineStore('app', () => {
           ...masterSettings.value,
           ...safeMaster,
           companyOptions: normalizeCompanyOptions(companyOptions),
-          thresholds: {
-            ...createDefaultThresholds(),
-            ...thresholds,
-            cpuUsage: { ...createDefaultThresholds().cpuUsage, ...thresholds?.cpuUsage },
-            gpuUsage: { ...createDefaultThresholds().gpuUsage, ...thresholds?.gpuUsage },
-            ramUsage: { ...createDefaultThresholds().ramUsage, ...thresholds?.ramUsage },
-            diskUsage: { ...createDefaultThresholds().diskUsage, ...thresholds?.diskUsage },
-            cpuTemp: { ...createDefaultThresholds().cpuTemp, ...thresholds?.cpuTemp },
-            gpuTemp: { ...createDefaultThresholds().gpuTemp, ...thresholds?.gpuTemp },
-            backupAgeHours: { ...createDefaultThresholds().backupAgeHours, ...thresholds?.backupAgeHours }
-          }
+          thresholds: normalizeThresholds(thresholds)
         }
       }
       const storedSlave = localStorage.getItem(SLAVE_SETTINGS_KEY)
@@ -398,46 +429,7 @@ export const useAppStore = defineStore('app', () => {
       ...masterSettings.value,
       ...remoteSettings,
       companyOptions: normalizeCompanyOptions(remoteSettings.companyOptions ?? masterSettings.value.companyOptions),
-      thresholds: {
-        ...createDefaultThresholds(),
-        ...masterSettings.value.thresholds,
-        ...remoteSettings.thresholds,
-        cpuUsage: {
-          ...createDefaultThresholds().cpuUsage,
-          ...masterSettings.value.thresholds.cpuUsage,
-          ...remoteSettings.thresholds?.cpuUsage
-        },
-        gpuUsage: {
-          ...createDefaultThresholds().gpuUsage,
-          ...masterSettings.value.thresholds.gpuUsage,
-          ...remoteSettings.thresholds?.gpuUsage
-        },
-        ramUsage: {
-          ...createDefaultThresholds().ramUsage,
-          ...masterSettings.value.thresholds.ramUsage,
-          ...remoteSettings.thresholds?.ramUsage
-        },
-        diskUsage: {
-          ...createDefaultThresholds().diskUsage,
-          ...masterSettings.value.thresholds.diskUsage,
-          ...remoteSettings.thresholds?.diskUsage
-        },
-        cpuTemp: {
-          ...createDefaultThresholds().cpuTemp,
-          ...masterSettings.value.thresholds.cpuTemp,
-          ...remoteSettings.thresholds?.cpuTemp
-        },
-        gpuTemp: {
-          ...createDefaultThresholds().gpuTemp,
-          ...masterSettings.value.thresholds.gpuTemp,
-          ...remoteSettings.thresholds?.gpuTemp
-        },
-        backupAgeHours: {
-          ...createDefaultThresholds().backupAgeHours,
-          ...masterSettings.value.thresholds.backupAgeHours,
-          ...remoteSettings.thresholds?.backupAgeHours
-        }
-      }
+      thresholds: normalizeThresholds(remoteSettings.thresholds, masterSettings.value.thresholds)
     }
     masterSettings.value.glassIntensity = FIXED_GLASS_INTENSITY
     persistMasterSettings()
@@ -584,10 +576,11 @@ export const useAppStore = defineStore('app', () => {
   function resetSessionState() {
     teardownSession()
     devices.value = []
-    alerts.value = []
-    serviceRequests.value = []
+    archivedDevices.value = []
+    allAlerts.value = []
+    allServiceRequests.value = []
     inventory.value = {}
-    companyChats.value = {}
+    allCompanyChats.value = {}
     companyChatStates.value = {}
     chatMessageSendStates.value = {}
     commandHistory.value = {}
@@ -613,6 +606,7 @@ export const useAppStore = defineStore('app', () => {
     serviceRequestsSnapshotReady = false
     lastSelfApprovalStatus = null
     deviceRegistrationInFlight = false
+    archivedDeviceResetInFlight = false
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
   }
@@ -626,11 +620,12 @@ export const useAppStore = defineStore('app', () => {
         if (!nextUser) {
           teardownSession()
           devices.value = []
-          alerts.value = []
-          serviceRequests.value = []
+          archivedDevices.value = []
+          allAlerts.value = []
+          allServiceRequests.value = []
           serviceRequestComments.value = []
           usageHistory.value = {}
-          companyChats.value = {}
+          allCompanyChats.value = {}
           companyChatStates.value = {}
           chatMessageSendStates.value = {}
           localDwServiceState.value = { status: 'unconfigured' }
@@ -656,7 +651,7 @@ export const useAppStore = defineStore('app', () => {
       if (uniqueOwnerUids.includes(ownerUid)) return
       dispose()
       companyChatCleanup.delete(ownerUid)
-      delete companyChats.value[ownerUid]
+      delete allCompanyChats.value[ownerUid]
       initializedCompanyChats.delete(ownerUid)
     })
 
@@ -673,22 +668,24 @@ export const useAppStore = defineStore('app', () => {
       const cleanup = backend.value!.subscribeCompanyChats(ownerUid, (messages) => {
         const previousMessages = companyChats.value[ownerUid] ?? []
         const previousIds = new Set(previousMessages.map((entry) => entry.id))
-        companyChats.value = {
-          ...companyChats.value,
+        allCompanyChats.value = {
+          ...allCompanyChats.value,
           [ownerUid]: messages
         }
+
+        const visibleMessages = companyChats.value[ownerUid] ?? []
 
         if (initializedCompanyChatStates.has(ownerUid)) markLatestIncomingDelivered(ownerUid)
 
         if (!initializedCompanyChats.has(ownerUid)) {
-          messages.forEach((message) => previousIds.add(message.id))
+          visibleMessages.forEach((message) => previousIds.add(message.id))
           initializedCompanyChats.add(ownerUid)
           return
         }
 
         if (slaveSettings.value.muteChatSounds) return
 
-        const incomingMessages = messages.filter((message) => !previousIds.has(message.id) && message.senderRole !== user.value?.role)
+        const incomingMessages = visibleMessages.filter((message) => !previousIds.has(message.id) && message.senderRole !== user.value?.role)
         for (const message of incomingMessages) {
           void notifyUser(
             `Wiadomość od ${message.senderEmail}`,
@@ -760,14 +757,41 @@ export const useAppStore = defineStore('app', () => {
     ready.value = true
   }
 
+  async function handleArchivedSelfDevice(device: DeviceRecord) {
+    if (archivedDeviceResetInFlight) return
+    archivedDeviceResetInFlight = true
+    const deviceLabel = device.deviceAlias?.trim() || device.hostname
+    try {
+      stopIntervals()
+      await window.janek.system.setRegisteredDeviceId(null)
+      await window.janek.system.setConsent(null)
+      consent.value = null
+      if (systemContext.value) {
+        systemContext.value = {
+          ...systemContext.value,
+          deviceId: `${systemContext.value.hostname}-${systemContext.value.machineId}`
+        }
+      }
+      await signOut()
+      lastError.value = `Komputer „${deviceLabel}” został usunięty przez administratora. Aby ponownie dodać sprzęt, zaloguj się na właściwe konto i przejdź nową rejestrację.`
+    } catch (error) {
+      lastError.value = error instanceof Error
+        ? error.message
+        : 'Nie udało się wyrejestrować zarchiwizowanego komputera.'
+    } finally {
+      archivedDeviceResetInFlight = false
+    }
+  }
+
   async function handleSignedIn(nextUser: AppUser) {
     teardownSession()
     devices.value = []
-    alerts.value = []
-    serviceRequests.value = []
+    archivedDevices.value = []
+    allAlerts.value = []
+    allServiceRequests.value = []
     serviceRequestComments.value = []
     usageHistory.value = {}
-    companyChats.value = {}
+    allCompanyChats.value = {}
     companyChatStates.value = {}
     chatMessageSendStates.value = {}
     commandHistory.value = {}
@@ -783,6 +807,7 @@ export const useAppStore = defineStore('app', () => {
     alertsSnapshotReady = false
     serviceRequestsSnapshotReady = false
     deviceRegistrationInFlight = false
+    archivedDeviceResetInFlight = false
     telemetryAlertSignatures.clear()
     lastBackupRestore.value = null
 
@@ -837,26 +862,37 @@ export const useAppStore = defineStore('app', () => {
     sessionCleanup.add(masterSettingsCleanup)
 
     const deviceCleanup = backend.value!.subscribeDevices(nextUser, (nextDevices, isAuthoritative) => {
-      devices.value = nextDevices
+      const nextArchivedDevices = nextDevices.filter((device) => Boolean(device.archivedAt))
+      const nextActiveDevices = nextDevices.filter((device) => !device.archivedAt)
+      archivedDevices.value = nextArchivedDevices
+      devices.value = nextActiveDevices
       lastSyncAt.value = Date.now()
       if (!offline.value) void flushOfflineQueue()
-      if (!selectedDeviceId.value && nextDevices.length) {
-        selectedDeviceId.value = nextDevices[0].deviceId
+      if (!nextActiveDevices.some((device) => device.deviceId === selectedDeviceId.value)) {
+        selectedDeviceId.value = nextActiveDevices[0]?.deviceId ?? ''
       }
-      if (!selectedConversationOwnerUid.value && nextDevices.length) {
-        selectedConversationOwnerUid.value = nextDevices[0].ownerUid
+      if (!selectedConversationOwnerUid.value && nextActiveDevices.length) {
+        selectedConversationOwnerUid.value = nextActiveDevices[0].ownerUid
       }
-      if (selectedConversationOwnerUid.value && !nextDevices.some((entry) => entry.ownerUid === selectedConversationOwnerUid.value)) {
-        selectedConversationOwnerUid.value = nextDevices[0]?.ownerUid ?? ''
+      if (selectedConversationOwnerUid.value && !nextActiveDevices.some((entry) => entry.ownerUid === selectedConversationOwnerUid.value)) {
+        selectedConversationOwnerUid.value = nextActiveDevices[0]?.ownerUid ?? ''
       }
-      syncCompanyChatSubscriptions(nextDevices.map((entry) => entry.ownerUid))
+      syncCompanyChatSubscriptions(nextActiveDevices.map((entry) => entry.ownerUid))
       if (nextUser.role === 'master') {
-        syncCommandHistorySubscriptions(nextDevices)
+        syncCommandHistorySubscriptions(nextActiveDevices)
       }
       if (nextUser.role === 'slave' && systemContext.value) {
-        let selfDevice = nextDevices.find((entry) => entry.deviceId === systemContext.value?.deviceId)
+        const archivedSelfDevice = nextArchivedDevices.find((entry) =>
+          entry.deviceId === systemContext.value?.deviceId || entry.machineId === systemContext.value?.machineId
+        )
+        if (archivedSelfDevice) {
+          void handleArchivedSelfDevice(archivedSelfDevice)
+          return
+        }
+
+        let selfDevice = nextActiveDevices.find((entry) => entry.deviceId === systemContext.value?.deviceId)
         if (!selfDevice) {
-          selfDevice = nextDevices.find((entry) => entry.machineId === systemContext.value?.machineId)
+          selfDevice = nextActiveDevices.find((entry) => entry.machineId === systemContext.value?.machineId)
           if (selfDevice) {
             systemContext.value = { ...systemContext.value, deviceId: selfDevice.deviceId }
             void window.janek.system.setRegisteredDeviceId(selfDevice.deviceId)
@@ -929,7 +965,7 @@ export const useAppStore = defineStore('app', () => {
 
     const alertsCleanup = backend.value!.subscribeAlerts(nextUser, (nextAlerts) => {
       const previousIds = new Set(seenAlertIds)
-      alerts.value = nextAlerts
+      allAlerts.value = nextAlerts
       lastSyncAt.value = Date.now()
 
       if (!alertsSnapshotReady) {
@@ -938,7 +974,7 @@ export const useAppStore = defineStore('app', () => {
         return
       }
 
-      const newCriticalAlerts = nextAlerts.filter((alert) => !previousIds.has(alert.id) && alert.severity === 'critical')
+      const newCriticalAlerts = alerts.value.filter((alert) => !previousIds.has(alert.id) && alert.severity === 'critical')
       nextAlerts.forEach((alert) => seenAlertIds.add(alert.id))
 
       if (!newCriticalAlerts.length) return
@@ -952,7 +988,7 @@ export const useAppStore = defineStore('app', () => {
 
     const serviceRequestsCleanup = backend.value!.subscribeServiceRequests(nextUser, (nextRequests) => {
       const previousIds = new Set(seenServiceRequestIds)
-      serviceRequests.value = nextRequests
+      allServiceRequests.value = nextRequests
       lastSyncAt.value = Date.now()
 
       if (!serviceRequestsSnapshotReady) {
@@ -961,7 +997,7 @@ export const useAppStore = defineStore('app', () => {
         return
       }
 
-      const newRequests = nextRequests.filter((request) => request.status === 'open' && !previousIds.has(request.id))
+      const newRequests = serviceRequests.value.filter((request) => request.status === 'open' && !previousIds.has(request.id))
       nextRequests.forEach((request) => seenServiceRequestIds.add(request.id))
       if (nextUser.role !== 'master' || !isDesktopAgent.value) return
       for (const request of newRequests) {
@@ -1175,7 +1211,12 @@ export const useAppStore = defineStore('app', () => {
       await notifyUser('i-JANEK', `Wybierz firmę i wpisz nazwę komputera (min. ${MIN_DEVICE_ALIAS_LENGTH} znaki).`)
       return
     }
-    const requestedDeviceId = buildDeviceId(companyName, aliasName)
+    if (!user.value || user.value.role !== 'slave' || !systemContext.value) return
+    const requestedDeviceId = buildDeviceId(
+      companyName,
+      aliasName,
+      uniqueDeviceKey(systemContext.value.machineId, user.value.uid)
+    )
     if (!requestedDeviceId) {
       await notifyUser('i-JANEK', 'Nie udało się utworzyć ID urządzenia. Użyj nazwy firmy i komputera.')
       return
@@ -1256,6 +1297,28 @@ export const useAppStore = defineStore('app', () => {
         ? { ...device, ...normalized, aliasCustomizedAt: Date.now(), updatedAt: Date.now() }
         : device
     )
+  }
+
+  async function archiveDevice(deviceId: string) {
+    if (user.value?.role !== 'master') throw new Error('Tylko administrator może usunąć komputer.')
+    const device = devices.value.find((entry) => entry.deviceId === deviceId)
+    if (!device) throw new Error('Nie znaleziono komputera do usunięcia.')
+
+    const archivedAt = Date.now()
+    const archivedBy = user.value.email || DEFAULT_MASTER_EMAIL
+    await backend.value?.archiveDeviceRecord(deviceId, archivedBy)
+
+    archivedDevices.value = [
+      { ...device, archivedAt, archivedBy, offline: true, updatedAt: archivedAt },
+      ...archivedDevices.value.filter((entry) => entry.deviceId !== deviceId)
+    ]
+    devices.value = devices.value.filter((entry) => entry.deviceId !== deviceId)
+    if (selectedDeviceId.value === deviceId) selectedDeviceId.value = devices.value[0]?.deviceId ?? ''
+    if (!devices.value.some((entry) => entry.ownerUid === selectedConversationOwnerUid.value)) {
+      selectedConversationOwnerUid.value = devices.value[0]?.ownerUid ?? ''
+    }
+    syncCompanyChatSubscriptions(devices.value.map((entry) => entry.ownerUid))
+    syncCommandHistorySubscriptions(devices.value)
   }
 
   async function approveDevice(
@@ -1508,10 +1571,7 @@ export const useAppStore = defineStore('app', () => {
       ...next,
       companyOptions: next.companyOptions ? normalizeCompanyOptions(next.companyOptions) : masterSettings.value.companyOptions,
       thresholds: next.thresholds
-        ? {
-            ...masterSettings.value.thresholds,
-            ...next.thresholds
-          }
+        ? normalizeThresholds(next.thresholds, masterSettings.value.thresholds)
         : masterSettings.value.thresholds,
       glassIntensity: FIXED_GLASS_INTENSITY
     }
@@ -1526,18 +1586,15 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function updateMetricThreshold(metric: keyof MetricThresholds, kind: keyof MetricThreshold, value: number) {
-    const current = masterSettings.value.thresholds[metric]
-    const sanitized = Number.isFinite(value) ? Math.max(0, value) : current[kind]
+  function updateMetricThreshold(metric: MetricThresholdKey, threshold: MetricThreshold) {
+    if (!isMetricThresholdValid(metric, threshold)) return false
     void updateMasterSettings({
       thresholds: {
         ...masterSettings.value.thresholds,
-        [metric]: {
-          ...current,
-          [kind]: sanitized
-        }
+        [metric]: threshold
       }
     })
+    return true
   }
 
   async function addCompanyOption(name: string) {
@@ -1736,7 +1793,11 @@ export const useAppStore = defineStore('app', () => {
     }
     if (!selfDevice.value || !user.value || !systemContext.value || user.value.role !== 'slave') return
 
-    const nextDeviceId = buildDeviceId(companyName, alias)
+    const nextDeviceId = buildDeviceId(
+      companyName,
+      alias,
+      uniqueDeviceKey(systemContext.value.machineId, user.value.uid)
+    )
     if (!nextDeviceId) {
       await notifyUser('i-JANEK', 'Nie udało się utworzyć nowego ID urządzenia.')
       return
@@ -2430,6 +2491,7 @@ export const useAppStore = defineStore('app', () => {
     applySlaveBackupSettings,
     removeBackupFolder,
     saveDeviceDetails,
+    archiveDevice,
     configureDwService,
     saveDeviceAlias,
     syncBackupNow,

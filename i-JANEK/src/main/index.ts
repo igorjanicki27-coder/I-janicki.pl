@@ -56,7 +56,7 @@ const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
 const APP_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
-const startHidden = process.argv.includes('--tray') || process.argv.includes('--updated')
+const startHidden = process.argv.includes('--tray')
 
 function isNewerAppVersion(candidate: string, current: string) {
   const candidateMatch = APP_VERSION_PATTERN.exec(candidate)
@@ -86,13 +86,27 @@ function hasWindowsUpdateAgent() {
 
 function restartAfterWindowsUpdate(version: string) {
   if (windowsRestartSpawned) return
+  const sourceScriptPath = path.join(process.resourcesPath, 'resources', 'scripts', 'restart-after-update.ps1')
+  const restartDir = path.join(app.getPath('userData'), 'update-restart')
+  const scriptPath = path.join(restartDir, 'restart-after-update.ps1')
+  const logPath = path.join(restartDir, 'restart-after-update.log')
+  const shouldRestartHidden = !mainWindow || !mainWindow.isVisible() || mainWindow.isMinimized()
+  try {
+    fs.mkdirSync(restartDir, { recursive: true })
+    fs.copyFileSync(sourceScriptPath, scriptPath)
+    fs.writeFileSync(logPath, `[${new Date().toISOString()}] Przygotowano restart po aktualizacji ${version}.\n`, 'utf8')
+  } catch (error) {
+    publishUpdateStatus({ status: 'error', message: `Nie udało się przygotować pliku ponownego uruchomienia: ${(error as Error).message}` })
+    return
+  }
   windowsRestartSpawned = true
-  const scriptPath = path.join(process.resourcesPath, 'resources', 'scripts', 'restart-after-update.ps1')
   const powershellPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-  const watcher = spawn(powershellPath, [
+  const watcherArgs = [
     '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
-    '-Version', version, '-AppExe', process.execPath
-  ], { detached: true, windowsHide: true, stdio: 'ignore' })
+    '-Version', version, '-AppExe', process.execPath, '-LogPath', logPath
+  ]
+  if (shouldRestartHidden) watcherArgs.push('-StartHidden')
+  const watcher = spawn(powershellPath, watcherArgs, { detached: true, windowsHide: true, stdio: 'ignore' })
   watcher.once('error', (error) => {
     windowsRestartSpawned = false
     publishUpdateStatus({ status: 'error', message: `Nie udało się przygotować ponownego uruchomienia: ${error.message}` })
