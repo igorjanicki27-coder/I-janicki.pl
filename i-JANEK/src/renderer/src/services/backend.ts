@@ -496,7 +496,7 @@ class FirebaseBackend implements BackendClient {
       companyName: existing?.companyName ?? user.companyName ?? '',
       contactName: existing?.contactName ?? user.displayName,
       installationLocation: existing?.installationLocation ?? user.installationLocation ?? '',
-      dwservice: existing?.dwservice,
+      ...(existing?.dwservice ? { dwservice: existing.dwservice } : {}),
       updateRequest: existing?.updateRequest ?? null,
       lastHandledUpdateRequestId: existing?.lastHandledUpdateRequestId ?? null,
       lastUpdateResult: existing?.lastUpdateResult ?? null

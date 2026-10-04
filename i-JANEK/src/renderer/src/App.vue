@@ -442,16 +442,29 @@ watch(
                 E-mail
                 <input v-model="authEmail" class="soft-input mt-2" type="email" autocomplete="email" placeholder="klient@firma.pl" />
               </label>
-              <label class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
-                Hasło
+              <div class="mt-3">
+                <div class="flex items-center justify-between gap-4">
+                  <label for="auth-password" class="text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
+                    Hasło
+                  </label>
+                  <button
+                    v-if="authMode === 'login'"
+                    class="text-xs text-cyan-200 transition hover:text-cyan-100"
+                    type="button"
+                    @click="resetPassword()"
+                  >
+                    Nie pamiętam hasła
+                  </button>
+                </div>
                 <input
+                  id="auth-password"
                   v-model="authPassword"
                   class="soft-input mt-2"
                   type="password"
                   :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'"
                   :placeholder="authMode === 'register' ? 'Minimum 6 znaków' : 'Twoje hasło'"
                 />
-              </label>
+              </div>
               <label v-if="authMode === 'register'" class="mt-3 block text-xs uppercase tracking-[0.16em] text-[var(--text-dim)]">
                 Powtórz hasło
                 <input v-model="authPasswordConfirmation" class="soft-input mt-2" type="password" autocomplete="new-password" />
@@ -461,9 +474,6 @@ watch(
                 <UserPlus v-if="authMode === 'register'" class="mr-2 h-4 w-4" />
                 <KeyRound v-else class="mr-2 h-4 w-4" />
                 {{ store.signingIn ? 'Proszę czekać...' : authMode === 'register' ? 'Utwórz konto' : 'Zaloguj się' }}
-              </button>
-              <button v-if="authMode === 'login'" class="mt-3 w-full text-center text-xs text-cyan-200/80 hover:text-cyan-100" type="button" @click="resetPassword()">
-                Nie pamiętam hasła
               </button>
             </form>
 
