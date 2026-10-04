@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
-import type { DeviceRecord } from '@shared/contracts'
+import type { DeviceRecord, MetricThreshold, MetricThresholds } from '@shared/contracts'
 
 const props = defineProps<{
   device: DeviceRecord
   alertCount: number
+  thresholds: MetricThresholds
 }>()
 
 const emit = defineEmits<{
@@ -15,6 +16,17 @@ const emit = defineEmits<{
 
 const online = computed(() => !props.device.offline && Date.now() - props.device.lastSeenAt < 5 * 60 * 1000)
 const diskUsage = computed(() => Math.max(...(props.device.telemetry?.disks?.map((disk) => disk.usedPercent) ?? [0])))
+
+function metricClasses(value: number | null | undefined, threshold: MetricThreshold) {
+  if (value === null || value === undefined || Number.isNaN(value)) return ''
+  if (value >= threshold.critical) {
+    return 'border border-rose-400/35 bg-rose-500/10 text-rose-200 [&_small]:!text-rose-200/70 [&_strong]:!text-rose-100'
+  }
+  if (value >= threshold.warning) {
+    return 'border border-amber-400/35 bg-amber-500/10 text-amber-200 [&_small]:!text-amber-200/70 [&_strong]:!text-amber-100'
+  }
+  return ''
+}
 
 function formatLastSeen(timestamp: number) {
   const minutes = Math.floor((Date.now() - timestamp) / 60000)
@@ -53,10 +65,10 @@ function formatBackup(timestamp?: number) {
     </div>
 
     <div class="mt-4 grid grid-cols-4 gap-2">
-      <div class="tile-metric"><Cpu class="h-3.5 w-3.5" /><span>CPU</span><strong>{{ device.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="device.telemetry?.cpuUsagePercent != null">%</small></strong></div>
-      <div class="tile-metric"><Workflow class="h-3.5 w-3.5" /><span>GPU</span><strong>{{ device.telemetry?.gpu?.usagePercent ?? '—' }}<small v-if="device.telemetry?.gpu?.usagePercent != null">%</small></strong></div>
-      <div class="tile-metric"><MemoryStick class="h-3.5 w-3.5" /><span>RAM</span><strong>{{ device.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="device.telemetry?.memoryUsedPercent != null">%</small></strong></div>
-      <div class="tile-metric"><HardDrive class="h-3.5 w-3.5" /><span>Dysk</span><strong>{{ diskUsage }}<small>%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(device.telemetry?.cpuUsagePercent, thresholds.cpuUsage)"><Cpu class="h-3.5 w-3.5" /><span>CPU</span><strong>{{ device.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="device.telemetry?.cpuUsagePercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(device.telemetry?.gpu?.usagePercent, thresholds.gpuUsage)"><Workflow class="h-3.5 w-3.5" /><span>GPU</span><strong>{{ device.telemetry?.gpu?.usagePercent ?? '—' }}<small v-if="device.telemetry?.gpu?.usagePercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(device.telemetry?.memoryUsedPercent, thresholds.ramUsage)"><MemoryStick class="h-3.5 w-3.5" /><span>RAM</span><strong>{{ device.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="device.telemetry?.memoryUsedPercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(diskUsage, thresholds.diskUsage)"><HardDrive class="h-3.5 w-3.5" /><span>Dysk</span><strong>{{ diskUsage }}<small>%</small></strong></div>
     </div>
 
     <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">

@@ -201,9 +201,17 @@ function Assert-ProtectedInstallDir([string]$installDir) {
     throw 'Katalog instalacji i-JANEK nie może być dowiązaniem.'
   }
   $acl = Get-Acl -LiteralPath $fullPath
-  $writeMask = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Modify -bor [Security.AccessControl.FileSystemRights]::FullControl
-  foreach ($rule in $acl.Access) {
-    $identity = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+  $writeMask = [Security.AccessControl.FileSystemRights]::WriteData `
+    -bor [Security.AccessControl.FileSystemRights]::AppendData `
+    -bor [Security.AccessControl.FileSystemRights]::WriteExtendedAttributes `
+    -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles `
+    -bor [Security.AccessControl.FileSystemRights]::WriteAttributes `
+    -bor [Security.AccessControl.FileSystemRights]::Delete `
+    -bor [Security.AccessControl.FileSystemRights]::ChangePermissions `
+    -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+  $accessRules = $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
+  foreach ($rule in $accessRules) {
+    $identity = $rule.IdentityReference.Value
     if ($identity -in @('S-1-1-0', 'S-1-5-11', 'S-1-5-32-545') -and
         $rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
         ($rule.FileSystemRights -band $writeMask) -ne 0) {
@@ -285,7 +293,6 @@ try {
   $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
   $appExe = Join-Path ([string]$config.installDir) 'i-JANEK.exe'
   if (-not (Test-Path -LiteralPath $appExe -PathType Leaf)) { throw 'Brakuje aplikacji w katalogu instalacji.' }
-  Assert-ProtectedInstallDir ([string]$config.installDir)
   $requests = @(Get-ChildItem -LiteralPath $requestDir -Filter 'request-*.json' -File | Sort-Object LastWriteTimeUtc -Descending)
   if ($requests.Count -eq 0) { exit 0 }
   $requestFile = $requests[0]
@@ -293,6 +300,7 @@ try {
     if (($requestFile.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Żądanie aktualizacji nie może być dowiązaniem.' }
     $request = Get-Content -LiteralPath $requestFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
     $script:requestId = [string]$request.requestId
+    Assert-ProtectedInstallDir ([string]$config.installDir)
     Invoke-Update $request $appExe
   } finally {
     Remove-Item -LiteralPath $requestFile.FullName -Force -ErrorAction SilentlyContinue

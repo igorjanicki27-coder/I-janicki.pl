@@ -53,9 +53,28 @@ function cleanupLegacyRemoteIntegrationData() {
 let lastPublishedDownloadPercent = -1
 const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
 const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
+const APP_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
 const startHidden = process.argv.includes('--tray') || process.argv.includes('--updated')
+
+function isNewerAppVersion(candidate: string, current: string) {
+  const candidateMatch = APP_VERSION_PATTERN.exec(candidate)
+  const currentMatch = APP_VERSION_PATTERN.exec(current)
+  if (!candidateMatch || !currentMatch) return false
+
+  for (let index = 1; index <= 3; index += 1) {
+    const difference = Number(candidateMatch[index]) - Number(currentMatch[index])
+    if (difference !== 0) return difference > 0
+  }
+
+  const stageRank = { alpha: 0, beta: 1, stable: 2 } as const
+  const candidateStage = (candidateMatch[4] as 'alpha' | 'beta' | undefined) ?? 'stable'
+  const currentStage = (currentMatch[4] as 'alpha' | 'beta' | undefined) ?? 'stable'
+  if (candidateStage !== currentStage) return stageRank[candidateStage] > stageRank[currentStage]
+  if (candidateStage === 'stable') return false
+  return Number(candidateMatch[5]) > Number(currentMatch[5])
+}
 
 function getWindowsAgentRoot() {
   return path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK')
@@ -92,13 +111,14 @@ function pollWindowsAgentStatus() {
   try {
     const raw = fs.readFileSync(path.join(getWindowsAgentRoot(), 'update-status.json'), 'utf8').replace(/^\uFEFF/u, '')
     const status = JSON.parse(raw) as { state?: string; version?: string; requestId?: string; message?: string }
-    if (status.requestId !== pendingWindowsUpdateRequestId) return
-    if (status.state === 'error') {
+    const matchesPendingRequest = status.requestId === pendingWindowsUpdateRequestId
+    if (status.state === 'error' && (matchesPendingRequest || !status.requestId)) {
       publishUpdateStatus({ status: 'error', message: status.message || 'Agent aktualizacji zgłosił błąd.' })
       pendingWindowsUpdateVersion = null
       pendingWindowsUpdateRequestId = null
       return
     }
+    if (!matchesPendingRequest) return
     if (status.state === 'ready') {
       publishUpdateStatus({ status: 'downloaded', version: status.version, message: status.message || 'Aktualizacja jest gotowa.' })
       restartAfterWindowsUpdate(pendingWindowsUpdateVersion)
@@ -134,7 +154,7 @@ function handOffWindowsUpdate(version: string, installerPath: string) {
   }), { encoding: 'utf8', flag: 'wx' })
   pendingWindowsUpdateVersion = version
   pendingWindowsUpdateRequestId = requestId
-  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja pobrana. Agent systemowy sprawdzi podpis i zainstaluje ją automatycznie.' })
+  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja jest gotowa. Zainstaluje się automatycznie w tle.' })
   if (!windowsAgentStatusInterval) {
     windowsAgentStatusInterval = setInterval(pollWindowsAgentStatus, 2_000)
   }
@@ -312,7 +332,10 @@ function createTray() {
 
 function bindUpdaterEvents() {
   autoUpdater.autoDownload = true
-  if (process.platform === 'win32') autoUpdater.autoInstallOnAppQuit = false
+  if (process.platform === 'win32') {
+    autoUpdater.autoInstallOnAppQuit = false
+    autoUpdater.allowDowngrade = false
+  }
   configureUpdaterChannel()
   if (updaterEventsBound) return
   updaterEventsBound = true
@@ -328,6 +351,7 @@ function bindUpdaterEvents() {
     })
   })
   autoUpdater.on('update-available', (updateInfo) => {
+    if (!isNewerAppVersion(updateInfo.version, app.getVersion())) return
     publishUpdateStatus({
       status: 'available',
       version: updateInfo.version,
@@ -361,6 +385,14 @@ function bindUpdaterEvents() {
     })
   })
   autoUpdater.on('update-downloaded', (updateInfo) => {
+    if (!isNewerAppVersion(updateInfo.version, app.getVersion())) {
+      publishUpdateStatus({
+        status: 'up_to_date',
+        version: app.getVersion(),
+        message: `Masz najnowszą wersję i-JANEK (${app.getVersion()}).`
+      })
+      return
+    }
     downloadedUpdateVersion = updateInfo.version
     publishUpdateStatus({
       status: 'downloaded',
@@ -457,7 +489,7 @@ async function runUpdateCheck(silent: boolean) {
     bindUpdaterEvents()
     const result = await autoUpdater.checkForUpdates()
     const nextVersion = result?.updateInfo?.version
-    if (nextVersion && nextVersion !== app.getVersion()) {
+    if (nextVersion && isNewerAppVersion(nextVersion, app.getVersion())) {
       if (process.platform === 'win32' && hasWindowsUpdateAgent() && result?.downloadPromise) {
         void result.downloadPromise.then((files) => {
           const installerPath = files.find((filePath) => filePath.toLowerCase().endsWith('.exe'))
