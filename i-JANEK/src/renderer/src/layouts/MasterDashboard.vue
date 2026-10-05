@@ -19,14 +19,15 @@ const deviceDetailOpen = ref(false)
 const detailReturnSection = ref<Section>('devices')
 const searchQuery = ref('')
 
-const onlineDevices = computed(() => store.devices.filter(isOnline))
-const attentionDevices = computed(() => store.devices.filter(needsAttention))
-const offlineDevices = computed(() => store.devices.filter((device) => !isOnline(device)))
-const pendingDevices = computed(() => store.devices.filter((device) => device.approvalStatus === 'pending'))
+const approvedDevices = computed(() => store.devices.filter((device) => device.approvalStatus === 'approved'))
+const onlineDevices = computed(() => approvedDevices.value.filter(isOnline))
+const attentionDevices = computed(() => approvedDevices.value.filter(needsAttention))
+const offlineDevices = computed(() => approvedDevices.value.filter((device) => !isOnline(device)))
+const pendingDevices = computed(() => store.approvalQueue)
 
 const pageDevices = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase('pl')
-  return [...store.devices]
+  return [...approvedDevices.value]
     .filter((device) => {
       return !query || [formatDeviceLabelForMaster(device), device.hostname, device.ownerEmail, companyNameFor(device), device.installationLocation]
         .filter(Boolean).join(' ').toLocaleLowerCase('pl').includes(query)
@@ -36,7 +37,7 @@ const pageDevices = computed(() => {
 
 const pageMeta = computed(() => {
   if (deviceDetailOpen.value && store.selectedDevice) return { title: 'Szczegóły komputera', description: `${companyNameFor(store.selectedDevice)} · ${formatDeviceLabelForMaster(store.selectedDevice)}` }
-  if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${store.devices.length} urządzeń` }
+  if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${approvedDevices.value.length} urządzeń` }
   if (activeSection.value === 'tasks') return { title: 'Zadania', description: `${store.openServiceRequests.length} wymaga obsługi` }
   if (activeSection.value === 'messages') return { title: 'Wiadomości', description: 'Rozmowy z klientami' }
   if (activeSection.value === 'agents') return { title: 'Agenci', description: 'Panel zdalnego dostępu DWService' }
@@ -48,7 +49,7 @@ const navItems = computed(() => [
   ...(store.systemContext?.platform !== 'web'
     ? [{ key: 'agents' as const, label: 'Agenci', icon: MonitorUp, badge: 0, showZero: false }]
     : []),
-  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: store.devices.length, showZero: false },
+  { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: approvedDevices.value.length, showZero: false },
   { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
   { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount, showZero: false }
 ])
@@ -63,7 +64,7 @@ function alertCount(device: DeviceRecord) {
   return store.alerts.filter((alert) => alert.deviceId === device.deviceId && alert.severity !== 'info').length
 }
 function needsAttention(device: DeviceRecord) {
-  return device.approvalStatus === 'pending' || device.telemetry?.state === 'alert' || device.telemetry?.state === 'warning' || alertCount(device) > 0
+  return device.approvalStatus === 'approved' && (device.telemetry?.state === 'alert' || device.telemetry?.state === 'warning' || alertCount(device) > 0)
 }
 function deviceSortRank(device: DeviceRecord) {
   if (isOnline(device) && needsAttention(device)) return 0
@@ -153,15 +154,15 @@ onBeforeUnmount(() => {
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
           <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ store.devices.length }} komputerów</small></span></button>
-            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>{{ pendingDevices.length }} oczekuje na akceptację</small></span></button>
+            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ approvedDevices.length }} komputerów</small></span></button>
+            <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>alerty zatwierdzonych komputerów</small></span></button>
             <button class="summary-card text-left" type="button" @click="navigate('tasks')"><span class="summary-icon bg-fuchsia-400/10 text-fuchsia-200"><ClipboardList class="h-5 w-5" /></span><span><span class="summary-label">Otwarte zadania</span><strong class="summary-value">{{ store.openServiceRequests.length }}</strong><small>zgłoszenia klientów</small></span></button>
             <article class="summary-card"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Monitor class="h-5 w-5" /></span><span><span class="summary-label">Offline</span><strong class="summary-value">{{ offlineDevices.length }}</strong><small>komputery bez połączenia</small></span></article>
           </section>
           <section>
             <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
             <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" :thresholds="store.masterSettings.thresholds" @open="openDevice(device, 'overview')" /></div>
-            <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden komputer nie wymaga teraz reakcji.</p></div></div>
+            <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden zatwierdzony komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
         </div>
 
