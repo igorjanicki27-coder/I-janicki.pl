@@ -44,11 +44,11 @@ function clearUpdateStatusTimer() {
 function handleUpdateStatus(status: UpdateStatusPayload) {
   clearUpdateStatusTimer()
   updateStatus.value = status.status === 'idle' ? null : status
-  if (['up_to_date', 'error'].includes(status.status)) {
+  if (status.status === 'up_to_date') {
     updateStatusDismissTimer = setTimeout(() => {
       updateStatus.value = null
       updateStatusDismissTimer = null
-    }, status.status === 'error' ? 10_000 : 5_000)
+    }, 5_000)
   }
 }
 
