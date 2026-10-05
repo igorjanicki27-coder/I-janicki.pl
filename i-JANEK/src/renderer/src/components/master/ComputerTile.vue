@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
-import { formatDeviceLabelForMaster } from '@/services/device-label'
 import type { DeviceRecord, MetricThreshold, MetricThresholds } from '@shared/contracts'
 
 const props = defineProps<{
@@ -55,9 +54,9 @@ function formatBackup(timestamp?: number) {
       <div class="min-w-0">
         <div class="flex items-center gap-2">
           <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="online ? 'bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,.5)]' : 'bg-slate-600'" />
-          <h3 class="truncate text-base font-semibold text-white">{{ formatDeviceLabelForMaster(device) }}</h3>
+          <h3 class="truncate text-base font-semibold text-white">{{ device.deviceAlias?.trim() || device.hostname }}</h3>
         </div>
-        <p class="mt-1 truncate text-xs text-[var(--text-dim)]">{{ device.installationLocation || device.hostname }}</p>
+        <p class="mt-1 truncate text-xs text-[var(--text-dim)]">Firma: {{ device.companyName?.trim() || 'Bez firmy' }}</p>
       </div>
       <span v-if="alertCount" class="inline-flex items-center gap-1 rounded-lg border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[10px] font-medium text-amber-100">
         <AlertTriangle class="h-3 w-3" /> {{ alertCount }}
