@@ -66,6 +66,16 @@ try {
   $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
   Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($startup, $repeat) -Principal $principal -Settings $settings -Force | Out-Null
 
+  # The desktop app runs without elevation. Grant authenticated users only read/run
+  # access so it can start this fixed SYSTEM task immediately after a download.
+  $scheduler = New-Object -ComObject 'Schedule.Service'
+  $scheduler.Connect()
+  $registeredTask = $scheduler.GetFolder('\').GetTask($taskName)
+  $securityDescriptor = $registeredTask.GetSecurityDescriptor(0x7)
+  if ($securityDescriptor -notmatch '\(A;;(?:GRGX|0x1200a9);;;AU\)') {
+    $registeredTask.SetSecurityDescriptor(($securityDescriptor + '(A;;GRGX;;;AU)'), 0)
+  }
+
   Write-InstallLog 'Instalacja agenta zakończona powodzeniem.'
 } catch {
   $details = ($_ | Out-String).Trim()

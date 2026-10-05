@@ -1,7 +1,7 @@
 import './env'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
 import { closeDwServicePoc, closeDwServicePocPopup, goBackDwServicePoc, openDwServicePoc, setDwServicePocBounds } from './dwservice-poc'
 import electronUpdater from 'electron-updater'
@@ -59,7 +59,7 @@ function cleanupLegacyRemoteIntegrationData() {
 let lastPublishedDownloadPercent = -1
 const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
 const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
-const WINDOWS_AGENT_RESPONSE_TIMEOUT_MS = 15 * 60 * 1000
+const WINDOWS_AGENT_RESPONSE_TIMEOUT_MS = 2 * 60 * 1000
 const WINDOWS_AGENT_PROGRESS_TIMEOUT_MS = 35 * 60 * 1000
 const WINDOWS_UPDATE_ON_OPEN_INTERVAL_MS = 5 * 60 * 1000
 const APP_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
@@ -210,10 +210,20 @@ function handOffWindowsUpdate(version: string, installerPath: string) {
   windowsAgentLastStatusTimestamp = null
   windowsAgentTimeoutReported = false
   windowsAgentLastPollAt = Date.now()
-  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja jest pobrana. Czekam na potwierdzenie agenta Windows.' })
+  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja jest pobrana. Uruchamiam instalację.' })
   if (!windowsAgentStatusInterval) {
     windowsAgentStatusInterval = setInterval(pollWindowsAgentStatus, 2_000)
   }
+  const schtasksPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'schtasks.exe')
+  execFile(schtasksPath, ['/Run', '/TN', 'i-JANEK Update Agent'], { windowsHide: true, timeout: 10_000 }, (error) => {
+    if (!error || pendingWindowsUpdateRequestId !== requestId) return
+    publishUpdateStatus({
+      status: 'error',
+      version,
+      message: 'Nie udało się uruchomić agenta aktualizacji Windows. Sprawdź zadanie „i-JANEK Update Agent”.'
+    })
+    void writeDiagnosticLog('error', 'windows_agent_start_failed', { version, requestId, error })
+  })
 }
 
 function getPostInstallUpdateMarkerPath() {
