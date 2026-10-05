@@ -29,6 +29,12 @@ let updateInstallPromptOpen = false
 let windowsRestartSpawned = false
 let pendingWindowsUpdateVersion: string | null = null
 let pendingWindowsUpdateRequestId: string | null = null
+let windowsAgentRequestStartedAt = 0
+let windowsAgentLastProgressAt = 0
+let windowsAgentLastStatusTimestamp: string | null = null
+let windowsAgentTimeoutReported = false
+let windowsAgentLastPollAt = 0
+let lastWindowsUpdateCheckAt = 0
 let downloadedUpdateVersion: string | null = null
 let latestUpdateStatus: UpdateStatusPayload = {
   status: 'idle',
@@ -53,6 +59,9 @@ function cleanupLegacyRemoteIntegrationData() {
 let lastPublishedDownloadPercent = -1
 const AUTOMATIC_UPDATE_INTERVAL_MS = 12 * 60 * 60 * 1000
 const UPDATE_INSTALL_REMINDER_MS = 4 * 60 * 60 * 1000
+const WINDOWS_AGENT_RESPONSE_TIMEOUT_MS = 15 * 60 * 1000
+const WINDOWS_AGENT_PROGRESS_TIMEOUT_MS = 35 * 60 * 1000
+const WINDOWS_UPDATE_ON_OPEN_INTERVAL_MS = 5 * 60 * 1000
 const APP_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
@@ -122,9 +131,16 @@ function restartAfterWindowsUpdate(version: string) {
 
 function pollWindowsAgentStatus() {
   if (!pendingWindowsUpdateVersion) return
+  const now = Date.now()
+  if (!windowsAgentTimeoutReported && windowsAgentLastPollAt && now - windowsAgentLastPollAt > 60_000) {
+    // After sleep, allow Task Scheduler time to resume before reporting a timeout.
+    windowsAgentRequestStartedAt = now
+    if (windowsAgentLastProgressAt) windowsAgentLastProgressAt = now
+  }
+  windowsAgentLastPollAt = now
   try {
     const raw = fs.readFileSync(path.join(getWindowsAgentRoot(), 'update-status.json'), 'utf8').replace(/^\uFEFF/u, '')
-    const status = JSON.parse(raw) as { state?: string; version?: string; requestId?: string; message?: string }
+    const status = JSON.parse(raw) as { state?: string; version?: string; requestId?: string; message?: string; updatedAt?: string }
     const matchesPendingRequest = status.requestId === pendingWindowsUpdateRequestId
     if (status.state === 'error' && (matchesPendingRequest || !status.requestId)) {
       publishUpdateStatus({ status: 'error', message: status.message || 'Agent aktualizacji zgłosił błąd.' })
@@ -133,6 +149,11 @@ function pollWindowsAgentStatus() {
       return
     }
     if (!matchesPendingRequest) return
+    if (status.updatedAt && status.updatedAt !== windowsAgentLastStatusTimestamp) {
+      windowsAgentLastStatusTimestamp = status.updatedAt
+      windowsAgentLastProgressAt = Date.now()
+      windowsAgentTimeoutReported = false
+    }
     if (status.state === 'ready') {
       publishUpdateStatus({ status: 'downloaded', version: status.version, message: status.message || 'Aktualizacja jest gotowa.' })
       restartAfterWindowsUpdate(pendingWindowsUpdateVersion)
@@ -147,6 +168,22 @@ function pollWindowsAgentStatus() {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) {
       console.warn('[i-JANEK] Nie udało się odczytać statusu agenta aktualizacji:', error)
     }
+  } finally {
+    if (!pendingWindowsUpdateVersion || windowsRestartSpawned) return
+    const lastProgressAt = windowsAgentLastProgressAt || windowsAgentRequestStartedAt
+    const timeout = windowsAgentLastProgressAt ? WINDOWS_AGENT_PROGRESS_TIMEOUT_MS : WINDOWS_AGENT_RESPONSE_TIMEOUT_MS
+    if (windowsAgentTimeoutReported || Date.now() - lastProgressAt < timeout) return
+    const version = pendingWindowsUpdateVersion
+    const requestId = pendingWindowsUpdateRequestId
+    const requestPresent = Boolean(requestId && fs.existsSync(path.join(getWindowsAgentRoot(), 'requests', `request-${requestId}.json`)))
+    const message = windowsAgentLastProgressAt
+      ? 'Agent aktualizacji Windows przestał odpowiadać. Sprawdź stan zadania „i-JANEK Update Agent” i plik C:\\ProgramData\\i-JANEK\\update-status.json.'
+      : requestPresent
+        ? 'Agent aktualizacji Windows nie odebrał zgłoszenia. Sprawdź, czy zadanie „i-JANEK Update Agent” jest włączone.'
+        : 'Zgłoszenie aktualizacji zniknęło bez potwierdzenia instalacji. Sprawdź stan zadania „i-JANEK Update Agent” i plik C:\\ProgramData\\i-JANEK\\update-status.json.'
+    publishUpdateStatus({ status: 'error', version, message })
+    void writeDiagnosticLog('error', 'windows_agent_response_timeout', { version, requestId, requestPresent, agentAcknowledged: Boolean(windowsAgentLastProgressAt) })
+    windowsAgentTimeoutReported = true
   }
 }
 
@@ -168,7 +205,12 @@ function handOffWindowsUpdate(version: string, installerPath: string) {
   }), { encoding: 'utf8', flag: 'wx' })
   pendingWindowsUpdateVersion = version
   pendingWindowsUpdateRequestId = requestId
-  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja jest gotowa. Zainstaluje się automatycznie w tle.' })
+  windowsAgentRequestStartedAt = Date.now()
+  windowsAgentLastProgressAt = 0
+  windowsAgentLastStatusTimestamp = null
+  windowsAgentTimeoutReported = false
+  windowsAgentLastPollAt = Date.now()
+  publishUpdateStatus({ status: 'downloaded', version, message: 'Aktualizacja jest pobrana. Czekam na potwierdzenie agenta Windows.' })
   if (!windowsAgentStatusInterval) {
     windowsAgentStatusInterval = setInterval(pollWindowsAgentStatus, 2_000)
   }
@@ -212,7 +254,18 @@ if (!singleInstanceLock) {
 
 app.on('second-instance', () => {
   focusMainWindow()
+  checkForUpdatesOnOpen()
 })
+
+function checkForUpdatesOnOpen() {
+  if (process.platform !== 'win32' || !app.isReady()) return
+  if (pendingWindowsUpdateVersion) {
+    pollWindowsAgentStatus()
+    return
+  }
+  if (Date.now() - lastWindowsUpdateCheckAt < WINDOWS_UPDATE_ON_OPEN_INTERVAL_MS) return
+  void checkForUpdates(true)
+}
 
 function getIconPath() {
   return app.isPackaged ? path.join(process.resourcesPath, 'resources', 'icon.png') : path.join(app.getAppPath(), 'build', 'icon.png')
@@ -252,6 +305,7 @@ function createWindow() {
   })
 
   mainWindow.on('closed', () => { void closeDwServicePoc() })
+  mainWindow.on('show', checkForUpdatesOnOpen)
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('[i-JANEK] Renderer load failed:', { errorCode, errorDescription, validatedURL })
@@ -263,9 +317,11 @@ function createWindow() {
     void writeDiagnosticLog('error', 'renderer_process_gone', details as unknown as Record<string, unknown>)
   })
 
-  mainWindow.webContents.once('did-finish-load', () => {
-    startAutomaticUpdateChecks()
-  })
+  if (process.platform !== 'win32') {
+    mainWindow.webContents.once('did-finish-load', () => {
+      startAutomaticUpdateChecks()
+    })
+  }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -493,6 +549,7 @@ async function promptInstallDownloadedUpdate(version: string) {
 
 async function runUpdateCheck(silent: boolean) {
   if (process.platform === 'win32' && pendingWindowsUpdateVersion) {
+    if (windowsAgentTimeoutReported) return { status: 'error', message: latestUpdateStatus.message }
     return { status: 'downloading', message: `Aktualizacja ${pendingWindowsUpdateVersion} jest obsługiwana przez agenta systemowego.` }
   }
   if (!app.isPackaged) {
@@ -501,6 +558,7 @@ async function runUpdateCheck(silent: boolean) {
 
   try {
     bindUpdaterEvents()
+    if (process.platform === 'win32') lastWindowsUpdateCheckAt = Date.now()
     const result = await autoUpdater.checkForUpdates()
     const nextVersion = result?.updateInfo?.version
     if (nextVersion && isNewerAppVersion(nextVersion, app.getVersion())) {
@@ -719,6 +777,7 @@ app.whenReady().then(() => {
   })
   createTray()
   createWindow()
+  if (process.platform === 'win32') startAutomaticUpdateChecks()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

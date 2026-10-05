@@ -1,5 +1,7 @@
 # Aktualizacje Windows
 
+Na Windows aplikacja sprawdza aktualizacje przy starcie procesu, przy ponownym otwarciu okna (najwyżej raz na pięć minut) oraz co 12 godzin podczas działania. Zadanie agenta działa również przy zasilaniu bateryjnym.
+
 Instalator NSIS instaluje i-JANEK dla całego komputera w chronionym katalogu Program Files. Pierwsza instalacja wymaga administratora. Tworzy też zadanie `i-JANEK Update Agent`, działające jako SYSTEM co minutę i przy starcie Windows. Zadanie wykonuje uprzywilejowane operacje aktualizacji oraz instaluje lub rekonfiguruje agenta DWService po przypisaniu kodu przez Mastera. Aplikacja okienkowa działa z uprawnieniami użytkownika.
 
 Po wykryciu nowej wersji `electron-updater` pobiera instalator do profilu użytkownika. Aplikacja zapisuje zgłoszenie w `ProgramData\i-JANEK\requests`. Agent pobiera z wydania GitHub manifest i podpis, weryfikuje podpis publicznym kluczem zapisanym przy pierwszej instalacji, kopiuje instalator do chronionego katalogu i porównuje SHA-512. Dopiero wtedy prosi aplikację o zamknięcie, uruchamia NSIS z `/S` jako SYSTEM, zapisuje wynik i pozwala uruchomić aplikację ponownie w sesji użytkownika. Nie pojawia się instalator ani UAC. Po aktualizacji wykonywanej w tle aplikacja wraca ukryta w zasobniku, bez otwierania głównego okna.
