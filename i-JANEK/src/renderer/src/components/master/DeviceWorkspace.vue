@@ -42,7 +42,8 @@ const detailsDraft = ref({
   contactName: '',
   companyName: '',
   installationLocation: '',
-  dwServiceInstallationCode: ''
+  dwServiceInstallationCode: '',
+  updateChannel: 'stable' as UpdateChannel
 })
 
 const selectedAlerts = computed(() => {
@@ -129,7 +130,8 @@ function resetDetailsDraft() {
     contactName: device?.contactName?.trim() || '',
     companyName: device?.companyName?.trim() || '',
     installationLocation: device?.installationLocation?.trim() || '',
-    dwServiceInstallationCode: device?.dwservice?.installationCode ?? ''
+    dwServiceInstallationCode: device?.dwservice?.installationCode ?? '',
+    updateChannel: device?.updateChannel ?? 'stable'
   }
 }
 
@@ -155,6 +157,9 @@ async function saveDetails() {
     if (detailsDraft.value.dwServiceInstallationCode !== store.selectedDevice?.dwservice?.installationCode) {
       await store.configureDwService(deviceId, detailsDraft.value.dwServiceInstallationCode)
     }
+    if (detailsDraft.value.updateChannel !== (store.selectedDevice?.updateChannel ?? 'stable')) {
+      await store.updateDeviceUpdateChannel(deviceId, detailsDraft.value.updateChannel)
+    }
     editingDetails.value = false
     detailsMessage.value = 'Dane komputera zostały zapisane.'
   } catch (error) {
@@ -178,12 +183,6 @@ async function confirmArchiveDevice() {
   } finally {
     archiveBusy.value = false
   }
-}
-
-function changeUpdateChannel(event: Event) {
-  const deviceId = store.selectedDevice?.deviceId
-  if (!deviceId) return
-  void store.updateDeviceUpdateChannel(deviceId, (event.target as HTMLSelectElement).value as UpdateChannel)
 }
 
 function maxDiskUsage() {
@@ -374,6 +373,19 @@ function formatFileSize(sizeBytes: number) {
                 Kod instalacyjny DWService
                 <input v-model="detailsDraft.dwServiceInstallationCode" class="soft-input mt-1 !rounded-xl !py-2.5 font-mono" maxlength="11" inputmode="numeric" placeholder="123-456-789" />
               </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Zainstalowana wersja
+                <input :value="store.selectedDevice.appVersion || 'brak danych'" class="soft-input mt-1 !rounded-xl !py-2.5 font-mono opacity-70" readonly />
+              </label>
+              <label class="text-xs text-[var(--text-dim)]">
+                Kanał aktualizacji
+                <select v-model="detailsDraft.updateChannel" class="soft-input mt-1 !rounded-xl !py-2.5">
+                  <option value="test">Test — wersje alpha</option>
+                  <option value="beta">Beta — wersje beta</option>
+                  <option value="stable">Stabilny</option>
+                </select>
+                <span class="mt-1.5 block text-[11px] leading-4 text-white/40">Komputer otrzyma najnowszą wersję z wybranego kanału.</span>
+              </label>
             </div>
             <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
               <p v-if="detailsMessage" class="text-xs text-amber-200">{{ detailsMessage }}</p>
@@ -388,6 +400,8 @@ function formatFileSize(sizeBytes: number) {
               <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Osoba</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.contactName || '—' }}</dd></div>
               <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Lokalizacja</dt><dd class="truncate text-right text-white">{{ store.selectedDevice.installationLocation || '—' }}</dd></div>
               <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Agent DWService</dt><dd class="text-right text-white">{{ store.selectedDevice.dwservice?.status ?? 'nieprzypisany' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Wersja</dt><dd class="mono text-right text-white">{{ store.selectedDevice.appVersion || 'brak danych' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Kanał aktualizacji</dt><dd class="text-right text-white">{{ store.selectedDevice.updateChannel === 'test' ? 'Test' : store.selectedDevice.updateChannel === 'beta' ? 'Beta' : 'Stabilny' }}</dd></div>
             </dl>
             <p v-if="!editingDetails && detailsMessage" class="mt-3 text-xs text-emerald-200">{{ detailsMessage }}</p>
           </section>
@@ -480,11 +494,8 @@ function formatFileSize(sizeBytes: number) {
               <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.requestRestartPrompt()"><RefreshCcw class="mr-2 h-4 w-4" /> Restart</button>
               <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.sendDiagnosticsLogs()">Wyślij raport</button>
             </div>
-            <div class="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row">
-              <label class="flex flex-1 items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-[var(--text-dim)]">Kanał aktualizacji
-                <select class="bg-transparent text-sm text-white outline-none" :value="store.selectedDevice.updateChannel ?? 'stable'" @change="changeUpdateChannel"><option value="test">Test</option><option value="beta">Beta</option><option value="stable">Stable</option></select>
-              </label>
-              <button class="ghost-button !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.requestSelectedDeviceUpdate()">Aktualizuj klienta</button>
+            <div class="mt-4 border-t border-white/10 pt-4">
+              <button class="ghost-button w-full !rounded-xl !px-3 !py-2.5 text-sm" type="button" @click="store.requestSelectedDeviceUpdate()">Aktualizuj klienta</button>
             </div>
           </section>
         </div>
