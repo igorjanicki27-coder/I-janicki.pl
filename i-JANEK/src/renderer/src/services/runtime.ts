@@ -71,8 +71,6 @@ function createBrowserApi(): JanekApi {
         return { saved: true, path: link.download }
       },
       logEvent: async () => undefined,
-      signInWithGoogle: async () => desktopOnly('Desktopowe logowanie Google'),
-      selectFolder: async () => desktopOnly('Wybór folderu'),
       setRegisteredDeviceId: async (deviceId) => {
         if (deviceId) localStorage.setItem(DEVICE_ID_KEY, deviceId)
         else localStorage.removeItem(DEVICE_ID_KEY)
@@ -85,14 +83,7 @@ function createBrowserApi(): JanekApi {
     },
     terminal: {
       execute: async () => desktopOnly('Terminal lokalny')
-    },
-    backup: {
-      sync: async () => desktopOnly('Backup plików'),
-      listFiles: async () => desktopOnly('Backup plików'),
-      removePathFromCloud: async () => desktopOnly('Backup plików'),
-      restore: async () => desktopOnly('Przywracanie backupu'),
-      onSyncProgress: () => () => undefined
-    },
+    }
   }
 }
 

@@ -5,9 +5,6 @@ import type {
   AlertEvent,
   AppUser,
   ApprovalStatus,
-  BackupPolicy,
-  BackupRemoteFile,
-  BackupSnapshot,
   CompanyChatMessage,
   CompanyChatParticipant,
   CompanyChatParticipantState,
@@ -69,16 +66,6 @@ interface SlaveSettings {
   muteSystemNotifications: boolean
   hideAlertNotifications: boolean
   muteAllNotifications: boolean
-  backupFolders: Array<'Desktop' | 'Documents'>
-  customBackupFolders: string[]
-  maxFileSizeMb: number
-  maxQuotaGb: number
-}
-
-interface BackupRestoreResult {
-  restoredFiles: number
-  restoredBytes: number
-  destinationPath: string
 }
 
 const MASTER_SETTINGS_KEY = 'i-janek-master-settings'
@@ -87,13 +74,8 @@ const TELEMETRY_SAMPLE_KEY = 'i-janek-last-telemetry-sample-v1'
 const USAGE_ROLLUP_FLUSH_INTERVAL_MS = 60 * 60 * 1000
 const DEFAULT_REMOTE_RESTART_REMINDER_MIN = 30
 const FIXED_GLASS_INTENSITY = 70
-const SUPPORTED_BACKUP_FOLDERS: Array<'Desktop' | 'Documents'> = ['Desktop', 'Documents']
 const DEFAULT_COMPANY_OPTIONS = ['i-JANEK Demo']
 const MIN_DEVICE_ALIAS_LENGTH = 3
-const BACKUP_FOLDER_PATH_MAP: Record<'Desktop' | 'Documents', string> = {
-  Desktop: '%USERPROFILE%\\Desktop',
-  Documents: '%USERPROFILE%\\Documents'
-}
 
 interface TelemetryAlertCause {
   key:
@@ -116,8 +98,7 @@ function createDefaultThresholds(): MetricThresholds {
     ramUsage: { warning: 70, critical: 90 },
     diskUsage: { warning: 75, critical: Number(import.meta.env.VITE_ALERT_DISK_USAGE || 90) },
     cpuTemp: { warning: Number(import.meta.env.VITE_ALERT_CPU_TEMP || DEFAULT_ALERT_CPU_TEMP) - 10, critical: Number(import.meta.env.VITE_ALERT_CPU_TEMP || DEFAULT_ALERT_CPU_TEMP) },
-    gpuTemp: { warning: 70, critical: 85 },
-    backupAgeHours: { warning: 24, critical: 72 }
+    gpuTemp: { warning: 70, critical: 85 }
   }
 }
 
@@ -159,10 +140,6 @@ function normalizeCompanyOptions(options: string[] | null | undefined) {
 }
 
 function normalizeSlaveSettings(settings: Partial<SlaveSettings>): SlaveSettings {
-  const backupFolders = (settings.backupFolders ?? ['Desktop', 'Documents']).filter((entry): entry is 'Desktop' | 'Documents' =>
-    SUPPORTED_BACKUP_FOLDERS.includes(entry as 'Desktop' | 'Documents')
-  )
-
   return {
     autostart: settings.autostart ?? true,
     silentUpdates: settings.silentUpdates ?? true,
@@ -171,11 +148,7 @@ function normalizeSlaveSettings(settings: Partial<SlaveSettings>): SlaveSettings
     muteUsageNotifications: settings.muteUsageNotifications ?? true,
     muteSystemNotifications: settings.muteSystemNotifications ?? true,
     hideAlertNotifications: settings.hideAlertNotifications ?? false,
-    muteAllNotifications: settings.muteAllNotifications ?? false,
-    backupFolders,
-    customBackupFolders: settings.customBackupFolders ?? [],
-    maxFileSizeMb: settings.maxFileSizeMb ?? 100,
-    maxQuotaGb: settings.maxQuotaGb ?? 10
+    muteAllNotifications: settings.muteAllNotifications ?? false
   }
 }
 
@@ -255,9 +228,6 @@ export const useAppStore = defineStore('app', () => {
   const companyChatStates = ref<Record<string, CompanyChatState>>({})
   const chatMessageSendStates = ref<Record<string, 'sending' | 'sent' | 'failed'>>({})
   const commandHistory = ref<Record<string, TerminalCommand[]>>({})
-  const backupSnapshots = ref<Record<string, BackupSnapshot>>({})
-  const backupSyncProgress = ref<Record<string, { totalFiles: number; processedFiles: number; uploadedFiles: number }>>({})
-  const backupFiles = ref<Record<string, BackupRemoteFile[]>>({})
   const localDwServiceState = ref<DwServiceAgentState>({ status: 'unconfigured' })
   const selectedDeviceId = ref<string>('')
   const selectedConversationOwnerUid = ref<string>('')
@@ -275,13 +245,10 @@ export const useAppStore = defineStore('app', () => {
   const signingIn = ref(false)
   const loadingInventory = ref(false)
   const loadingUsageHistory = ref(false)
-  const loadingBackupFiles = ref(false)
-  const restoringBackup = ref(false)
   const readinessChecks = ref<ReadinessCheckResult[]>([])
   const readinessRunning = ref(false)
   const offlineQueueCount = ref(countUserFacingOfflineOperations())
   const flushingOfflineQueue = ref(false)
-  const lastBackupRestore = ref<BackupRestoreResult | null>(null)
   const masterSettings = ref<MasterSettings>({
     thresholds: createDefaultThresholds(),
     telemetryMode: 'standard',
@@ -296,14 +263,11 @@ export const useAppStore = defineStore('app', () => {
     muteUsageNotifications: true,
     muteSystemNotifications: true,
     hideAlertNotifications: false,
-    muteAllNotifications: false,
-    backupFolders: ['Desktop', 'Documents'],
-    customBackupFolders: [],
-    maxFileSizeMb: 100,
-    maxQuotaGb: 10
+    muteAllNotifications: false
   })
   const syncState = ref<'connected' | 'offline'>('connected')
   const lastSyncAt = ref<number | null>(null)
+  const statusNow = ref(Date.now())
   const rootCleanup = new Set<() => void>()
   const sessionCleanup = new Set<() => void>()
   const intervalHandles = new Set<number>()
@@ -351,7 +315,6 @@ export const useAppStore = defineStore('app', () => {
       return total + messages.filter((message) => message.senderRole !== role && message.createdAt > lastReadAt).length
     }, 0)
   })
-  const selectedBackupFiles = computed(() => (selectedDevice.value ? backupFiles.value[selectedDevice.value.deviceId] ?? [] : []))
   const selfDevice = computed(() => {
     if (!user.value || user.value.role !== 'slave' || !systemContext.value) return null
     return devices.value.find((device) => device.deviceId === systemContext.value?.deviceId) ?? null
@@ -585,9 +548,6 @@ export const useAppStore = defineStore('app', () => {
     companyChatStates.value = {}
     chatMessageSendStates.value = {}
     commandHistory.value = {}
-    backupSnapshots.value = {}
-    backupSyncProgress.value = {}
-    backupFiles.value = {}
     localDwServiceState.value = { status: 'unconfigured' }
     selectedDeviceId.value = ''
     selectedConversationOwnerUid.value = ''
@@ -609,7 +569,6 @@ export const useAppStore = defineStore('app', () => {
     deviceRegistrationInFlight = false
     archivedDeviceResetInFlight = false
     telemetryAlertSignatures.clear()
-    lastBackupRestore.value = null
   }
 
   function bindAuthListener() {
@@ -723,28 +682,6 @@ export const useAppStore = defineStore('app', () => {
       syncState.value = offline.value ? 'offline' : 'connected'
       lastSyncAt.value = Date.now()
       bindAuthListener()
-      const disposeBackupProgress = window.janek.backup.onSyncProgress((payload) => {
-        backupSyncProgress.value = {
-          ...backupSyncProgress.value,
-          [payload.deviceId]: {
-            totalFiles: payload.totalFiles,
-            processedFiles: payload.processedFiles,
-            uploadedFiles: payload.uploadedFiles
-          }
-        }
-        if (user.value?.role === 'slave') {
-          const activeDevice = devices.value.find((device) => device.deviceId === payload.deviceId)
-          if (activeDevice) {
-            void backend.value?.publishBackupProgress(activeDevice, {
-              totalFiles: payload.totalFiles,
-              processedFiles: payload.processedFiles,
-              uploadedFiles: payload.uploadedFiles,
-              updatedAt: Date.now()
-            })
-          }
-        }
-      })
-      rootCleanup.add(disposeBackupProgress)
     } catch (error) {
       lastError.value =
         error instanceof Error
@@ -786,6 +723,9 @@ export const useAppStore = defineStore('app', () => {
 
   async function handleSignedIn(nextUser: AppUser) {
     teardownSession()
+    statusNow.value = Date.now()
+    const statusClock = window.setInterval(() => { statusNow.value = Date.now() }, 30_000)
+    sessionCleanup.add(() => window.clearInterval(statusClock))
     devices.value = []
     archivedDevices.value = []
     allAlerts.value = []
@@ -810,7 +750,6 @@ export const useAppStore = defineStore('app', () => {
     deviceRegistrationInFlight = false
     archivedDeviceResetInFlight = false
     telemetryAlertSignatures.clear()
-    lastBackupRestore.value = null
 
     const profile = await backend.value!.ensureUserProfile(nextUser)
     nextUser.displayName = profile.displayName
@@ -1045,6 +984,7 @@ export const useAppStore = defineStore('app', () => {
     if (isOnline) {
       lastSyncAt.value = Date.now()
       if (wasOffline) {
+        if (selfDevice.value?.approvalStatus === 'approved') void runHeartbeat(selfDevice.value)
         void flushOfflineQueue(true)
         if (selfDevice.value) void processDwServiceProvisioning(selfDevice.value)
         if (showNotification && lastConnectivityNotificationState !== 'online') {
@@ -1106,20 +1046,6 @@ export const useAppStore = defineStore('app', () => {
       if (offlineQueueCount.value === 0) lastSyncAt.value = Date.now()
     } finally {
       flushingOfflineQueue.value = false
-    }
-  }
-
-  async function signInWithGoogle() {
-    if (signingIn.value) return
-    try {
-      signingIn.value = true
-      lastError.value = ''
-      const signedIn = await backend.value!.signInWithGoogle()
-      user.value = signedIn
-    } catch (error) {
-      lastError.value = friendlyAuthError(error, 'Nie udało się zalogować przez Google. Spróbuj ponownie.')
-    } finally {
-      signingIn.value = false
     }
   }
 
@@ -1589,12 +1515,6 @@ export const useAppStore = defineStore('app', () => {
     pendingTerminalCommand.value = ''
   }
 
-  async function saveBackupPolicy(policy: BackupPolicy) {
-    const device = selectedDevice.value
-    if (!device) return
-    await backend.value?.upsertBackupPolicy(device.deviceId, policy)
-  }
-
   async function configureDwService(deviceId: string, installationCode: string) {
     if (!user.value || user.value.role !== 'master') throw new Error('Tylko administrator może przypisać kod DWService.')
     const configuration = await backend.value!.configureDwService(deviceId, installationCode, user.value.email)
@@ -1667,6 +1587,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function updateDeviceCompanyName(deviceId: string, companyName: string) {
+    if (user.value?.role !== 'master') throw new Error('Tylko administrator może zmieniać firmę komputera.')
     const normalizedCompanyName = companyName.trim()
     await backend.value?.updateDeviceCompanyName(deviceId, normalizedCompanyName)
     devices.value = devices.value.map((device) => (
@@ -1743,126 +1664,6 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function applySlaveBackupSettings() {
-    const device = selectedDevice.value
-    if (!device) return
-    const selectedSystemFolders = slaveSettings.value.backupFolders.map((entry) => BACKUP_FOLDER_PATH_MAP[entry])
-    const watchedPaths = [...selectedSystemFolders, ...slaveSettings.value.customBackupFolders].filter(Boolean)
-
-    const nextPolicy: BackupPolicy = {
-      ...(device.backupPolicy ?? {
-        enabled: true,
-        driveFolderName: 'i-JANEK_Backup',
-        sharedWith: import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL,
-        syncUnderMb: 100,
-        maxFileSizeMb: 100,
-        maxQuotaGb: 10,
-        watchedPaths: []
-      }),
-      maxFileSizeMb: slaveSettings.value.maxFileSizeMb,
-      maxQuotaGb: slaveSettings.value.maxQuotaGb,
-      watchedPaths
-    }
-
-    await backend.value?.upsertBackupPolicy(device.deviceId, nextPolicy)
-    persistSlaveSettings()
-  }
-
-  async function removeBackupFolder(pathToRemove: string) {
-    const targetPath = pathToRemove.trim()
-    const device = selectedDevice.value
-    if (!device || !targetPath) return
-
-    const nextSystemFolders = slaveSettings.value.backupFolders.filter((entry) => BACKUP_FOLDER_PATH_MAP[entry] !== targetPath)
-    const nextCustomFolders = slaveSettings.value.customBackupFolders.filter((entry) => entry !== targetPath)
-    updateSlaveSettings({
-      backupFolders: nextSystemFolders,
-      customBackupFolders: nextCustomFolders
-    })
-
-    const watchedPaths = [...nextSystemFolders.map((entry) => BACKUP_FOLDER_PATH_MAP[entry]), ...nextCustomFolders].filter(Boolean)
-    const nextPolicy: BackupPolicy = {
-      ...(device.backupPolicy ?? {
-        enabled: true,
-        driveFolderName: 'i-JANEK_Backup',
-        sharedWith: import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL,
-        syncUnderMb: 100,
-        maxFileSizeMb: 100,
-        maxQuotaGb: 10,
-        watchedPaths: []
-      }),
-      maxFileSizeMb: slaveSettings.value.maxFileSizeMb,
-      maxQuotaGb: slaveSettings.value.maxQuotaGb,
-      watchedPaths
-    }
-
-    await backend.value?.upsertBackupPolicy(device.deviceId, nextPolicy)
-    devices.value = devices.value.map((entry) =>
-      entry.deviceId === device.deviceId ? { ...entry, backupPolicy: nextPolicy, updatedAt: Date.now() } : entry
-    )
-
-    if (!user.value?.accessToken) return
-
-    await window.janek.backup.removePathFromCloud(
-      cloneForIpc(device.backupPolicy ?? nextPolicy),
-      user.value.accessToken,
-      device.deviceId,
-      device.hostname,
-      targetPath
-    )
-
-    const snapshot = await window.janek.backup.sync(
-      cloneForIpc(nextPolicy),
-      user.value.accessToken,
-      device.deviceId,
-      device.hostname
-    )
-    backupSnapshots.value[device.deviceId] = snapshot
-    const nextDevice = devices.value.find((entry) => entry.deviceId === device.deviceId)
-    if (nextDevice) {
-      await backend.value?.publishBackupSnapshot(nextDevice, snapshot)
-    }
-  }
-
-  async function saveDeviceAlias() {
-    const alias = pendingDeviceAlias.value.trim()
-    const companyName = pendingCompanyName.value.trim() || selfDevice.value?.companyName?.trim() || ''
-    if (!alias || !companyName || alias.length < MIN_DEVICE_ALIAS_LENGTH) {
-      await notifyUser('i-JANEK', `Wpisz nazwę komputera (min. ${MIN_DEVICE_ALIAS_LENGTH} znaki) i firmę.`)
-      return
-    }
-    if (!selfDevice.value || !user.value || !systemContext.value || user.value.role !== 'slave') return
-
-    const nextDeviceId = buildDeviceId(
-      companyName,
-      alias,
-      uniqueDeviceKey(systemContext.value.machineId, user.value.uid)
-    )
-    if (!nextDeviceId) {
-      await notifyUser('i-JANEK', 'Nie udało się utworzyć nowego ID urządzenia.')
-      return
-    }
-    const previousDeviceId = selfDevice.value.deviceId
-    const nextIdentity = toDeviceIdentity(systemContext.value, nextDeviceId)
-    const migrated = await backend.value!.migrateDeviceRecord(user.value, selfDevice.value, nextIdentity, alias, companyName)
-    await backend.value?.updateDeviceRegistrationDetails(migrated.deviceId, {
-      contactName: user.value.displayName,
-      companyName,
-      installationLocation: pendingInstallationLocation.value.trim()
-    })
-    await backend.value?.updateApprovalStatus(migrated.deviceId, 'pending', user.value.email)
-    await window.janek.system.setRegisteredDeviceId(migrated.deviceId)
-    systemContext.value = { ...systemContext.value, deviceId: migrated.deviceId }
-    pendingDeviceAlias.value = alias
-    pendingCompanyName.value = companyName
-    selectedDeviceId.value = migrated.deviceId
-    selectedConversationOwnerUid.value = migrated.ownerUid
-    devices.value = devices.value
-      .filter((device) => device.deviceId !== previousDeviceId && device.deviceId !== migrated.deviceId)
-      .concat({ ...migrated, approvalStatus: 'pending', approvedBy: null, updatedAt: Date.now() })
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-  }
-
   function updateSlaveSettings(next: Partial<SlaveSettings>) {
     slaveSettings.value = normalizeSlaveSettings({
       ...slaveSettings.value,
@@ -1878,12 +1679,6 @@ export const useAppStore = defineStore('app', () => {
     slaveSettings.value.autostart = enabled
     persistSlaveSettings()
     await window.janek.system.setAutoLaunch(enabled)
-  }
-
-  async function syncBackupNow() {
-    const device = selectedDevice.value
-    if (!device) return
-    await runBackupCycle(device)
   }
 
   async function loadInventory(deviceId = selectedDeviceId.value) {
@@ -1912,55 +1707,6 @@ export const useAppStore = defineStore('app', () => {
   async function removeAlertById(alertId: string) {
     if (!alertId) return
     await backend.value?.removeAlert(alertId)
-  }
-
-  async function previewBackupFiles() {
-    const device = selectedDevice.value
-    if (!device?.backupPolicy || !user.value?.accessToken) {
-      await notifyUser('i-JANEK', 'Brak aktywnego połączenia z backupem Google Drive.')
-      return
-    }
-
-    loadingBackupFiles.value = true
-    try {
-      const files = await window.janek.backup.listFiles(
-        cloneForIpc(device.backupPolicy),
-        user.value.accessToken,
-        device.hostname
-      )
-      backupFiles.value = {
-        ...backupFiles.value,
-        [device.deviceId]: files
-      }
-    } finally {
-      loadingBackupFiles.value = false
-    }
-  }
-
-  async function restoreBackupNow() {
-    const device = selectedDevice.value
-    if (!device?.backupPolicy || !user.value?.accessToken) {
-      await notifyUser('i-JANEK', 'Nie udało się rozpocząć przywracania backupu.')
-      return
-    }
-
-    restoringBackup.value = true
-    try {
-      const result = await window.janek.backup.restore(
-        cloneForIpc(device.backupPolicy),
-        user.value.accessToken,
-        device.hostname
-      )
-      lastBackupRestore.value = result
-      await notifyUser(
-        'i-JANEK',
-        result.restoredFiles
-          ? `Przywrócono ${result.restoredFiles} plików do folderu ${result.destinationPath}.`
-          : `Nie znaleziono plików backupu do przywrócenia w folderze ${result.destinationPath}.`
-      )
-    } finally {
-      restoringBackup.value = false
-    }
   }
 
   async function runReadinessChecks() {
@@ -2159,15 +1905,22 @@ export const useAppStore = defineStore('app', () => {
     stopIntervals()
     workerDeviceId.value = device.deviceId
 
-    await runTelemetryCycle(device)
     const telemetryMinutes = masterSettings.value.telemetryMode === 'aggressive' ? 10 : Number(import.meta.env.VITE_TELEMETRY_INTERVAL_MIN || DEFAULT_TELEMETRY_INTERVAL_MIN)
     const telemetryMs = telemetryMinutes * 60 * 1000
+    intervalHandles.add(window.setInterval(() => void runHeartbeat(device), 2 * 60 * 1000))
     intervalHandles.add(window.setInterval(() => void runTelemetryCycle(device), telemetryMs))
     intervalHandles.add(window.setInterval(() => void runInventoryCycle(device), 7 * 24 * 60 * 60 * 1000))
-    intervalHandles.add(window.setInterval(() => void runBackupCycle(device), 15 * 60 * 1000))
     intervalHandles.add(window.setInterval(() => {
       if (selfDevice.value) void processDwServiceProvisioning(selfDevice.value)
     }, 60 * 1000))
+
+    void runHeartbeat(device)
+    void runTelemetryCycle(device).catch((error) => {
+      void window.janek.system.logEvent('warning', 'telemetry_cycle_failed', {
+        deviceId: device.deviceId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
 
     const commandsCleanup = backend.value!.subscribePendingCommands(device, async (commands) => {
       for (const queued of commands) {
@@ -2188,6 +1941,18 @@ export const useAppStore = defineStore('app', () => {
       }
     })
     sessionCleanup.add(commandsCleanup)
+  }
+
+  async function runHeartbeat(device: DeviceRecord) {
+    if (offline.value || workerDeviceId.value !== device.deviceId) return
+    try {
+      await backend.value?.publishHeartbeat(device)
+    } catch (error) {
+      void window.janek.system.logEvent('warning', 'heartbeat_publish_failed', {
+        deviceId: device.deviceId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
   }
 
   async function runTelemetryCycle(device: DeviceRecord) {
@@ -2339,32 +2104,6 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function runBackupCycle(device: DeviceRecord) {
-    if (!device.backupPolicy?.enabled || !user.value?.accessToken) return
-    const snapshot = await window.janek.backup.sync(
-      cloneForIpc(device.backupPolicy),
-      user.value.accessToken,
-      device.deviceId,
-      device.hostname
-    )
-    backupSnapshots.value[device.deviceId] = snapshot
-    backupSyncProgress.value = {
-      ...backupSyncProgress.value,
-      [device.deviceId]: {
-        totalFiles: snapshot.totalFiles,
-        processedFiles: snapshot.totalFiles,
-        uploadedFiles: snapshot.uploadedFiles
-      }
-    }
-    await backend.value?.publishBackupProgress(device, {
-      totalFiles: snapshot.totalFiles,
-      processedFiles: snapshot.totalFiles,
-      uploadedFiles: snapshot.uploadedFiles,
-      updatedAt: Date.now()
-    })
-    await backend.value?.publishBackupSnapshot(device, snapshot)
-  }
-
   async function processUpdateRequest(device: DeviceRecord) {
     const request = device.updateRequest
     if (!request) return
@@ -2456,16 +2195,12 @@ export const useAppStore = defineStore('app', () => {
     chatMessageSendStates,
     inventory,
     commandHistory,
-    backupSnapshots,
-    backupSyncProgress,
-    backupFiles,
     localDwServiceState,
     selectedDeviceId,
     selectedConversationOwnerUid,
     selectedDevice,
     selectedConversationMessages,
     unreadCompanyChatCount,
-    selectedBackupFiles,
     selfDevice,
     needsDeviceAlias,
     approvalQueue,
@@ -2484,17 +2219,15 @@ export const useAppStore = defineStore('app', () => {
     signingIn,
     loadingInventory,
     loadingUsageHistory,
-    loadingBackupFiles,
-    restoringBackup,
     readinessChecks,
     readinessRunning,
     offlineQueueCount,
     flushingOfflineQueue,
-    lastBackupRestore,
     masterSettings,
     slaveSettings,
     syncState,
     lastSyncAt,
+    statusNow,
     sessionStatus,
     isMaster,
     isDesktopAgent,
@@ -2509,7 +2242,6 @@ export const useAppStore = defineStore('app', () => {
     updateSlaveSettings,
     toggleAutostart,
     bootstrap,
-    signInWithGoogle,
     signInWithEmail,
     registerWithEmail,
     getCurrentAccountDeviceCount,
@@ -2528,18 +2260,11 @@ export const useAppStore = defineStore('app', () => {
     addServiceRequestComment,
     loadUsageHistory,
     queueTerminalCommand,
-    saveBackupPolicy,
-    applySlaveBackupSettings,
-    removeBackupFolder,
     saveDeviceDetails,
     archiveDevice,
     configureDwService,
-    saveDeviceAlias,
-    syncBackupNow,
     loadInventory,
     removeAlertById,
-    previewBackupFiles,
-    restoreBackupNow,
     sendDiagnosticsLogs,
     runReadinessChecks,
     flushOfflineQueue,

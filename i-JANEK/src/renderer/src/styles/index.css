@@ -314,6 +314,13 @@ body {
   outline: none;
 }
 
+.computer-tile-offline,
+.computer-tile-offline:hover,
+.computer-tile-offline:focus-visible {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: linear-gradient(145deg, rgba(148, 163, 184, 0.035), rgba(255, 255, 255, 0.012));
+}
+
 .tile-metric {
   display: grid;
   min-width: 0;
@@ -358,6 +365,12 @@ html[data-theme='light'] .organization-card,
 html[data-theme='light'] .computer-tile {
   border-color: rgba(53, 82, 118, 0.14);
   background-color: rgba(255, 255, 255, 0.58);
+}
+
+html[data-theme='light'] .computer-tile-offline,
+html[data-theme='light'] .computer-tile-offline:hover,
+html[data-theme='light'] .computer-tile-offline:focus-visible {
+  border-color: rgba(71, 85, 105, 0.32);
 }
 
 .scrollbar-glass {

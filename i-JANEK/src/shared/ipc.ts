@@ -1,14 +1,10 @@
 import type {
-  BackupRemoteFile,
-  BackupPolicy,
-  BackupSnapshot,
   CommandShell,
   ConsentRecord,
   DeviceTelemetry,
   DiagnosticBundleSummary,
   DiagnosticLogLevel,
   DwServiceAgentState,
-  GoogleOAuthTokens,
   InventoryReport,
   SystemContext,
   TerminalCommand,
@@ -69,8 +65,6 @@ export interface JanekApi {
     setUpdateChannel: (channel: UpdateChannel) => Promise<void>
     createDiagnosticBundle: (summary: DiagnosticBundleSummary) => Promise<{ saved: boolean; path?: string }>
     logEvent: (level: DiagnosticLogLevel, event: string, details?: Record<string, unknown>) => Promise<void>
-    signInWithGoogle: () => Promise<GoogleOAuthTokens>
-    selectFolder: () => Promise<string | null>
     setRegisteredDeviceId: (deviceId: string | null) => Promise<void>
     promptRestart: (
       title: string,
@@ -84,29 +78,5 @@ export interface JanekApi {
   }
   terminal: {
     execute: (shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) => Promise<TerminalCommand>
-  }
-  backup: {
-    sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) => Promise<BackupSnapshot>
-    listFiles: (policy: BackupPolicy, accessToken: string, hostname: string) => Promise<BackupRemoteFile[]>
-    removePathFromCloud: (
-      policy: BackupPolicy,
-      accessToken: string,
-      deviceId: string,
-      hostname: string,
-      watchedPath: string
-    ) => Promise<{ deletedFiles: number }>
-    restore: (
-      policy: BackupPolicy,
-      accessToken: string,
-      hostname: string
-    ) => Promise<{ restoredFiles: number; restoredBytes: number; destinationPath: string }>
-    onSyncProgress: (
-      callback: (payload: {
-        deviceId: string
-        totalFiles: number
-        processedFiles: number
-        uploadedFiles: number
-      }) => void
-    ) => () => void
   }
 }

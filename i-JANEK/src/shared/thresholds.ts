@@ -13,8 +13,7 @@ export const METRIC_THRESHOLD_LIMITS: Record<MetricThresholdKey, MetricThreshold
   ramUsage: { min: 0, max: 100 },
   diskUsage: { min: 0, max: 100 },
   cpuTemp: { min: 0, max: 120 },
-  gpuTemp: { min: 0, max: 120 },
-  backupAgeHours: { min: 1 }
+  gpuTemp: { min: 0, max: 120 }
 }
 
 export function isMetricThresholdValid(metric: MetricThresholdKey, threshold: MetricThreshold) {

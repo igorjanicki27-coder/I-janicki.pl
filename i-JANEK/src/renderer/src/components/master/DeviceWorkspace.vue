@@ -23,6 +23,7 @@ import {
 } from 'lucide-vue-next'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
+import { isDeviceOnline } from '@/services/device-presence'
 import { useAppStore } from '@/stores/app'
 import type { UpdateChannel } from '@shared/contracts'
 
@@ -53,11 +54,8 @@ const selectedAlerts = computed(() => {
     .sort((left, right) => (left.severity === 'critical' ? 0 : 1) - (right.severity === 'critical' ? 0 : 1))
     .slice(0, 4)
 })
-const deviceOnline = computed(() => Boolean(
-  store.selectedDevice
-  && !store.selectedDevice.offline
-  && Date.now() - store.selectedDevice.lastSeenAt < 5 * 60 * 1000
-))
+const deviceOnline = computed(() => Boolean(store.selectedDevice && isDeviceOnline(store.selectedDevice, store.statusNow)))
+const currentTelemetry = computed(() => deviceOnline.value ? store.selectedDevice?.telemetry : undefined)
 const deviceHealth = computed(() => {
   if (!deviceOnline.value) return { label: 'Komputer offline', detail: 'Nie można teraz wykonać zdalnych akcji.', tone: 'offline' as const }
   if (selectedAlerts.value.some((alert) => alert.severity === 'critical')) return { label: 'Wymaga pilnej uwagi', detail: 'Wykryto krytyczny alert.', tone: 'critical' as const }
@@ -186,7 +184,8 @@ async function confirmArchiveDevice() {
 }
 
 function maxDiskUsage() {
-  return Math.max(...(store.selectedDevice?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? [0]))
+  const disks = currentTelemetry.value?.disks ?? []
+  return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
 }
 
 function backupAgeHours() {
@@ -305,15 +304,15 @@ function formatFileSize(sizeBytes: number) {
           <div class="grid grid-cols-2 divide-x divide-y divide-white/10 md:grid-cols-4 md:divide-y-0">
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><Cpu class="h-3.5 w-3.5" /> CPU</div>
-              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">{{ store.selectedDevice.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuUsagePercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(currentTelemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">{{ currentTelemetry?.cpuUsagePercent ?? '—' }}<small v-if="currentTelemetry?.cpuUsagePercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
             </div>
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><MemoryStick class="h-3.5 w-3.5" /> RAM</div>
-              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(store.selectedDevice.telemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">{{ store.selectedDevice.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.memoryUsedPercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(currentTelemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">{{ currentTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="currentTelemetry?.memoryUsedPercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
             </div>
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><HardDrive class="h-3.5 w-3.5" /> Dysk</div>
-              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">{{ maxDiskUsage() }}<small class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">{{ maxDiskUsage() ?? '—' }}<small v-if="maxDiskUsage() != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
             </div>
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><CloudCog class="h-3.5 w-3.5" /> Backup</div>
@@ -410,29 +409,29 @@ function formatFileSize(sizeBytes: number) {
 
       <div v-else-if="activeTab === 'diagnostics'" class="space-y-5">
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">
-            <div class="metric-label"><Cpu class="h-4 w-4" /> CPU</div><div class="metric-value">{{ store.selectedDevice.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuUsagePercent != null">%</small></div>
+          <div class="metric-card" :class="metricClasses(currentTelemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">
+            <div class="metric-label"><Cpu class="h-4 w-4" /> CPU</div><div class="metric-value">{{ currentTelemetry?.cpuUsagePercent ?? '—' }}<small v-if="currentTelemetry?.cpuUsagePercent != null">%</small></div>
           </div>
-          <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.gpu?.usagePercent, store.masterSettings.thresholds.gpuUsage.warning, store.masterSettings.thresholds.gpuUsage.critical)">
-            <div class="metric-label"><Workflow class="h-4 w-4" /> GPU</div><div class="metric-value">{{ store.selectedDevice.telemetry?.gpu?.usagePercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.gpu?.usagePercent != null">%</small></div>
+          <div class="metric-card" :class="metricClasses(currentTelemetry?.gpu?.usagePercent, store.masterSettings.thresholds.gpuUsage.warning, store.masterSettings.thresholds.gpuUsage.critical)">
+            <div class="metric-label"><Workflow class="h-4 w-4" /> GPU</div><div class="metric-value">{{ currentTelemetry?.gpu?.usagePercent ?? '—' }}<small v-if="currentTelemetry?.gpu?.usagePercent != null">%</small></div>
           </div>
-          <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">
-            <div class="metric-label"><MemoryStick class="h-4 w-4" /> RAM</div><div class="metric-value">{{ store.selectedDevice.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="store.selectedDevice.telemetry?.memoryUsedPercent != null">%</small></div>
+          <div class="metric-card" :class="metricClasses(currentTelemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">
+            <div class="metric-label"><MemoryStick class="h-4 w-4" /> RAM</div><div class="metric-value">{{ currentTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="currentTelemetry?.memoryUsedPercent != null">%</small></div>
           </div>
           <div class="metric-card" :class="metricClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">
-            <div class="metric-label"><HardDrive class="h-4 w-4" /> Dysk</div><div class="metric-value">{{ maxDiskUsage() }}<small>%</small></div>
+            <div class="metric-label"><HardDrive class="h-4 w-4" /> Dysk</div><div class="metric-value">{{ maxDiskUsage() ?? '—' }}<small v-if="maxDiskUsage() != null">%</small></div>
           </div>
-          <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.cpuTemperatureC, store.masterSettings.thresholds.cpuTemp.warning, store.masterSettings.thresholds.cpuTemp.critical)">
-            <div class="metric-label"><Thermometer class="h-4 w-4" /> CPU temp.</div><div class="metric-value">{{ store.selectedDevice.telemetry?.cpuTemperatureC ?? '—' }}<small v-if="store.selectedDevice.telemetry?.cpuTemperatureC != null">°C</small></div>
+          <div class="metric-card" :class="metricClasses(currentTelemetry?.cpuTemperatureC, store.masterSettings.thresholds.cpuTemp.warning, store.masterSettings.thresholds.cpuTemp.critical)">
+            <div class="metric-label"><Thermometer class="h-4 w-4" /> CPU temp.</div><div class="metric-value">{{ currentTelemetry?.cpuTemperatureC ?? '—' }}<small v-if="currentTelemetry?.cpuTemperatureC != null">°C</small></div>
           </div>
-          <div class="metric-card" :class="metricClasses(store.selectedDevice.telemetry?.gpu?.temperatureC, store.masterSettings.thresholds.gpuTemp.warning, store.masterSettings.thresholds.gpuTemp.critical)">
-            <div class="metric-label"><Thermometer class="h-4 w-4" /> GPU temp.</div><div class="metric-value">{{ store.selectedDevice.telemetry?.gpu?.temperatureC ?? '—' }}<small v-if="store.selectedDevice.telemetry?.gpu?.temperatureC != null">°C</small></div>
+          <div class="metric-card" :class="metricClasses(currentTelemetry?.gpu?.temperatureC, store.masterSettings.thresholds.gpuTemp.warning, store.masterSettings.thresholds.gpuTemp.critical)">
+            <div class="metric-label"><Thermometer class="h-4 w-4" /> GPU temp.</div><div class="metric-value">{{ currentTelemetry?.gpu?.temperatureC ?? '—' }}<small v-if="currentTelemetry?.gpu?.temperatureC != null">°C</small></div>
           </div>
           <div class="metric-card" :class="metricClasses(backupAgeHours(), store.masterSettings.thresholds.backupAgeHours.warning, store.masterSettings.thresholds.backupAgeHours.critical)">
             <div class="metric-label"><CloudCog class="h-4 w-4" /> Backup</div><div class="mt-2 text-sm font-semibold">{{ formatDateTime(store.selectedDevice.backupSnapshot?.scannedAt) }}</div>
           </div>
           <div class="metric-card border-white/10 bg-white/[0.035] text-white">
-            <div class="metric-label text-[var(--text-dim)]"><ShieldAlert class="h-4 w-4" /> Uptime</div><div class="metric-value">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</div>
+            <div class="metric-label text-[var(--text-dim)]"><ShieldAlert class="h-4 w-4" /> Uptime</div><div class="metric-value">{{ formatDuration(currentTelemetry?.uptimeSeconds) }}</div>
           </div>
         </div>
 
@@ -457,19 +456,19 @@ function formatFileSize(sizeBytes: number) {
           <section class="content-card">
             <h3 class="text-sm font-semibold text-white">Najbardziej obciążające procesy</h3>
             <div class="mt-3 space-y-2">
-              <div v-for="process in store.selectedDevice.telemetry?.topProcesses?.slice(0, 6) ?? []" :key="process.pid" class="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
+              <div v-for="process in currentTelemetry?.topProcesses?.slice(0, 6) ?? []" :key="process.pid" class="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
                 <div class="min-w-0"><div class="truncate text-white">{{ process.name }}</div><div class="mono mt-0.5 text-[11px] text-[var(--text-dim)]">PID {{ process.pid }}</div></div>
                 <div class="mono text-right text-xs text-[var(--text-dim)]"><strong class="block text-white">{{ process.cpuPercent }}% CPU</strong>{{ process.memoryPercent }}% RAM</div>
               </div>
-              <p v-if="!store.selectedDevice.telemetry?.topProcesses?.length" class="text-sm text-[var(--text-dim)]">Brak danych procesów.</p>
+              <p v-if="!currentTelemetry?.topProcesses?.length" class="text-sm text-[var(--text-dim)]">Brak aktualnych danych procesów.</p>
             </div>
           </section>
           <section class="content-card">
             <h3 class="text-sm font-semibold text-white">Informacje techniczne</h3>
             <dl class="mt-4 divide-y divide-white/10 text-sm">
-              <div class="flex justify-between gap-4 py-2.5 first:pt-0"><dt class="text-[var(--text-dim)]">Uptime</dt><dd class="mono text-white">{{ formatDuration(store.selectedDevice.telemetry?.uptimeSeconds) }}</dd></div>
-              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Ostatni restart</dt><dd class="mono text-right text-white">{{ formatDateTime(store.selectedDevice.telemetry?.lastRestartAt) }}</dd></div>
-              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">GPU</dt><dd class="mono max-w-[240px] truncate text-right text-white">{{ store.selectedDevice.telemetry?.gpu?.model ?? 'brak' }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5 first:pt-0"><dt class="text-[var(--text-dim)]">Uptime</dt><dd class="mono text-white">{{ formatDuration(currentTelemetry?.uptimeSeconds) }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">Ostatni restart</dt><dd class="mono text-right text-white">{{ formatDateTime(currentTelemetry?.lastRestartAt) }}</dd></div>
+              <div class="flex justify-between gap-4 py-2.5"><dt class="text-[var(--text-dim)]">GPU</dt><dd class="mono max-w-[240px] truncate text-right text-white">{{ currentTelemetry?.gpu?.model ?? 'brak aktualnych danych' }}</dd></div>
               <div class="flex justify-between gap-4 py-2.5 last:pb-0"><dt class="text-[var(--text-dim)]">Ostatnia akcja</dt><dd class="mono max-w-[240px] truncate text-right text-white">{{ store.selectedDevice.lastRemoteActionResult ?? 'brak' }}</dd></div>
             </dl>
           </section>

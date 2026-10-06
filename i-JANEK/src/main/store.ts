@@ -1,6 +1,6 @@
 import './env'
 import Store from 'electron-store'
-import type { BackupSnapshot, ConsentRecord, ThemeMode, UpdateChannel } from '@shared/contracts'
+import type { ConsentRecord, ThemeMode, UpdateChannel } from '@shared/contracts'
 
 export interface LocalSchema {
   theme: ThemeMode
@@ -9,7 +9,6 @@ export interface LocalSchema {
   notificationsEnabled: boolean
   updateChannel: UpdateChannel
   registeredDeviceId?: string | null
-  backupManifest: Record<string, BackupSnapshot & { fileStates: Record<string, number> }>
 }
 
 export const localStore = new Store<LocalSchema>({
@@ -18,7 +17,6 @@ export const localStore = new Store<LocalSchema>({
     autoLaunch: true,
     notificationsEnabled: true,
     updateChannel: 'stable',
-    registeredDeviceId: null,
-    backupManifest: {}
+    registeredDeviceId: null
   }
 })

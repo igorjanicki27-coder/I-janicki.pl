@@ -2,19 +2,25 @@
 import { computed } from 'vue'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import type { DeviceRecord, MetricThreshold, MetricThresholds } from '@shared/contracts'
+import { isDeviceOnline } from '@/services/device-presence'
 
 const props = defineProps<{
   device: DeviceRecord
   alertCount: number
   thresholds: MetricThresholds
+  now: number
 }>()
 
 const emit = defineEmits<{
   open: []
 }>()
 
-const online = computed(() => !props.device.offline && Date.now() - props.device.lastSeenAt < 5 * 60 * 1000)
-const diskUsage = computed(() => Math.max(...(props.device.telemetry?.disks?.map((disk) => disk.usedPercent) ?? [0])))
+const online = computed(() => isDeviceOnline(props.device, props.now))
+const liveTelemetry = computed(() => online.value ? props.device.telemetry : undefined)
+const diskUsage = computed(() => {
+  const disks = liveTelemetry.value?.disks ?? []
+  return disks.length ? Math.max(...disks.map((disk) => disk.usedPercent)) : null
+})
 
 function metricClasses(value: number | null | undefined, threshold: MetricThreshold) {
   if (value === null || value === undefined || Number.isNaN(value)) return ''
@@ -28,7 +34,7 @@ function metricClasses(value: number | null | undefined, threshold: MetricThresh
 }
 
 function formatLastSeen(timestamp: number) {
-  const minutes = Math.floor((Date.now() - timestamp) / 60000)
+  const minutes = Math.floor((props.now - timestamp) / 60000)
   if (minutes < 1) return 'przed chwilą'
   if (minutes < 60) return `${minutes} min temu`
   if (minutes < 1440) return `${Math.floor(minutes / 60)} godz. temu`
@@ -44,6 +50,7 @@ function formatBackup(timestamp?: number) {
 <template>
   <article
     class="computer-tile group cursor-pointer"
+    :class="{ 'computer-tile-offline': !online }"
     role="button"
     tabindex="0"
     @click="emit('open')"
@@ -64,10 +71,10 @@ function formatBackup(timestamp?: number) {
     </div>
 
     <div class="mt-4 grid grid-cols-4 gap-2">
-      <div class="tile-metric" :class="metricClasses(device.telemetry?.cpuUsagePercent, thresholds.cpuUsage)"><Cpu class="h-3.5 w-3.5" /><span>CPU</span><strong>{{ device.telemetry?.cpuUsagePercent ?? '—' }}<small v-if="device.telemetry?.cpuUsagePercent != null">%</small></strong></div>
-      <div class="tile-metric" :class="metricClasses(device.telemetry?.gpu?.usagePercent, thresholds.gpuUsage)"><Workflow class="h-3.5 w-3.5" /><span>GPU</span><strong>{{ device.telemetry?.gpu?.usagePercent ?? '—' }}<small v-if="device.telemetry?.gpu?.usagePercent != null">%</small></strong></div>
-      <div class="tile-metric" :class="metricClasses(device.telemetry?.memoryUsedPercent, thresholds.ramUsage)"><MemoryStick class="h-3.5 w-3.5" /><span>RAM</span><strong>{{ device.telemetry?.memoryUsedPercent ?? '—' }}<small v-if="device.telemetry?.memoryUsedPercent != null">%</small></strong></div>
-      <div class="tile-metric" :class="metricClasses(diskUsage, thresholds.diskUsage)"><HardDrive class="h-3.5 w-3.5" /><span>Dysk</span><strong>{{ diskUsage }}<small>%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(liveTelemetry?.cpuUsagePercent, thresholds.cpuUsage)"><Cpu class="h-3.5 w-3.5" /><span>CPU</span><strong>{{ liveTelemetry?.cpuUsagePercent ?? '—' }}<small v-if="liveTelemetry?.cpuUsagePercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(liveTelemetry?.gpu?.usagePercent, thresholds.gpuUsage)"><Workflow class="h-3.5 w-3.5" /><span>GPU</span><strong>{{ liveTelemetry?.gpu?.usagePercent ?? '—' }}<small v-if="liveTelemetry?.gpu?.usagePercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(liveTelemetry?.memoryUsedPercent, thresholds.ramUsage)"><MemoryStick class="h-3.5 w-3.5" /><span>RAM</span><strong>{{ liveTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="liveTelemetry?.memoryUsedPercent != null">%</small></strong></div>
+      <div class="tile-metric" :class="metricClasses(diskUsage, thresholds.diskUsage)"><HardDrive class="h-3.5 w-3.5" /><span>Dysk</span><strong>{{ diskUsage ?? '—' }}<small v-if="diskUsage != null">%</small></strong></div>
     </div>
 
     <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">

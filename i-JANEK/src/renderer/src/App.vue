@@ -5,6 +5,7 @@ import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
 import { useAppStore } from '@/stores/app'
+import { isDeviceOnline } from '@/services/device-presence'
 import { CURRENT_CONSENT_POLICY_VERSION } from '@shared/constants'
 import type { UpdateStatusPayload } from '@shared/ipc'
 
@@ -82,7 +83,7 @@ const aliasTooShort = computed(() => {
   const currentLength = store.pendingDeviceAlias.trim().length
   return currentLength > 0 && currentLength < MIN_DEVICE_ALIAS_LENGTH
 })
-const headerOnlineCount = computed(() => store.devices.filter((device) => Date.now() - device.lastSeenAt < 5 * 60 * 1000).length)
+const headerOnlineCount = computed(() => store.devices.filter((device) => isDeviceOnline(device, store.statusNow)).length)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
 const hasOpenServiceRequests = computed(() => store.openServiceRequests.length > 0)
 const slaveHeaderDeviceName = computed(

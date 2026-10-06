@@ -5,14 +5,12 @@ import { execFile, spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
 import { closeDwServicePoc, closeDwServicePocPopup, goBackDwServicePoc, openDwServicePoc, setDwServicePocBounds } from './dwservice-poc'
 import electronUpdater from 'electron-updater'
-import type { BackupPolicy, CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
+import type { CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
 import type { UpdateStatusPayload } from '@shared/ipc'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
 import { applyDwServiceInstallationCode, getDwServiceAgentState } from './services/dwservice-agent-service'
-import { listBackupFiles, removeBackupPathFromCloud, restoreBackup, syncBackup } from './services/backup-service'
-import { signInWithGoogleDesktop } from './services/google-auth-service'
 import { localStore } from './store'
 import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
 
@@ -764,7 +762,6 @@ function registerIpc() {
   ipcMain.handle('system:set-consent', async (_event, consent) => {
     localStore.set('consent', consent)
   })
-  ipcMain.handle('system:sign-in-with-google', async () => signInWithGoogleDesktop())
   ipcMain.handle('system:set-registered-device-id', async (_event, deviceId: string | null) => {
     const normalized = deviceId?.trim() || null
     localStore.set('registeredDeviceId', normalized)
@@ -791,13 +788,6 @@ function registerIpc() {
     async (_event, level: DiagnosticLogLevel, event: string, details?: Record<string, unknown>) =>
       writeDiagnosticLog(level, event, details)
   )
-  ipcMain.handle('system:select-folder', async () => {
-    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
-      properties: ['openDirectory', 'createDirectory', 'dontAddToRecent']
-    })
-    if (result.canceled || !result.filePaths.length) return null
-    return result.filePaths[0] ?? null
-  })
   ipcMain.handle('system:prompt-restart', async (_event, title: string, body: string, remindAfterMinutes?: number) =>
     promptRestart(title, body, remindAfterMinutes)
   )
@@ -805,22 +795,6 @@ function registerIpc() {
   ipcMain.handle('telemetry:inventory', async () => collectInventory())
   ipcMain.handle('terminal:execute', async (_event, shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
     executeTerminalCommand(shell, command, deviceId, requestedBy)
-  )
-  ipcMain.handle('backup:sync', async (event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
-    syncBackup(policy, accessToken, deviceId, hostname, (progress) => {
-      event.sender.send('backup:sync-progress', progress)
-    })
-  )
-  ipcMain.handle('backup:list-files', async (_event, policy: BackupPolicy, accessToken: string, hostname: string) =>
-    listBackupFiles(policy, accessToken, hostname)
-  )
-  ipcMain.handle(
-    'backup:remove-path-from-cloud',
-    async (_event, policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string, watchedPath: string) =>
-      removeBackupPathFromCloud(policy, accessToken, deviceId, hostname, watchedPath)
-  )
-  ipcMain.handle('backup:restore', async (_event, policy: BackupPolicy, accessToken: string, hostname: string) =>
-    restoreBackup(policy, accessToken, hostname)
   )
 }
 

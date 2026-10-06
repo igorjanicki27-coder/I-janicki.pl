@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronDown, MessageSquare, Monitor, Search, Send, UserRound } from 'lucide-vue-next'
 import { buildConversationTimeline } from '@/services/chat'
+import { isDeviceOnline as isOnlineAt } from '@/services/device-presence'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { useAppStore } from '@/stores/app'
 import type { CompanyChatMessage, DeviceRecord } from '@shared/contracts'
@@ -150,7 +151,7 @@ function isContactOnline(contact: ContactEntry) {
 }
 
 function isDeviceOnline(device: DeviceRecord) {
-  return !device.offline && Date.now() - device.lastSeenAt < 300000
+  return isOnlineAt(device, store.statusNow)
 }
 
 function selectContact(contact: ContactEntry) {

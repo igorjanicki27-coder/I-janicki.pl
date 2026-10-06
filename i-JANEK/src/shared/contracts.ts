@@ -39,7 +39,6 @@ export interface MetricThresholds {
   diskUsage: MetricThreshold
   cpuTemp: MetricThreshold
   gpuTemp: MetricThreshold
-  backupAgeHours: MetricThreshold
 }
 
 export interface RemoteMasterSettings {
@@ -56,7 +55,6 @@ export interface AppUser {
   role: UserRole
   companyName?: string
   installationLocation?: string
-  accessToken?: string
 }
 
 export interface RegistrationDetails {
@@ -76,13 +74,6 @@ export interface ClientProfile {
   createdAt: number
   updatedAt: number
   lastLoginAt: number
-}
-
-export interface GoogleOAuthTokens {
-  idToken: string
-  accessToken: string
-  refreshToken?: string | null
-  expiresAt?: number | null
 }
 
 export interface DeviceIdentity {
@@ -111,14 +102,6 @@ export interface DeviceRecord extends DeviceIdentity {
   consent?: ConsentRecord | null
   offline?: boolean
   telemetry?: DeviceTelemetry
-  backupPolicy?: BackupPolicy
-  backupSnapshot?: BackupSnapshot
-  backupSyncProgress?: {
-    totalFiles: number
-    processedFiles: number
-    uploadedFiles: number
-    updatedAt: number
-  }
   inventoryCapturedAt?: number
   inventoryReportId?: string
   approvedBy?: string
@@ -205,31 +188,6 @@ export interface InventoryReport {
   defender: Record<string, string | number | boolean | null>
 }
 
-export interface BackupPolicy {
-  enabled: boolean
-  maxFileSizeMb: number
-  maxQuotaGb: number
-  syncUnderMb: number
-  watchedPaths: string[]
-  driveFolderName: string
-  sharedWith: string
-}
-
-export interface BackupSnapshot {
-  scannedAt: number
-  totalFiles: number
-  totalBytes: number
-  uploadedFiles: number
-  skippedFiles: number
-  skippedReasons: Array<{ path: string; reason: string }>
-}
-
-export interface BackupRemoteFile {
-  path: string
-  sizeBytes: number
-  modifiedAt: number | null
-}
-
 export interface ChatMessage {
   id: string
   deviceId: string
@@ -283,7 +241,7 @@ export interface TerminalCommand {
 export interface AlertEvent {
   id: string
   deviceId: string
-  type: 'temperature' | 'usage' | 'disk' | 'approval' | 'backup' | 'system'
+  type: 'temperature' | 'usage' | 'disk' | 'approval' | 'system'
   title: string
   message: string
   severity: 'info' | 'warning' | 'critical'

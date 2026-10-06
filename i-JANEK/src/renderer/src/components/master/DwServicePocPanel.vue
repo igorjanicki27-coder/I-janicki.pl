@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DwServicePocStatus } from '@shared/ipc'
 
+const props = defineProps<{ suspended?: boolean }>()
 const viewport = ref<HTMLElement | null>(null)
 const status = ref<DwServicePocStatus>({ state: 'loading', popupCount: 0 })
 let stopStatus: (() => void) | null = null
 let observer: ResizeObserver | null = null
 
 function syncBounds() {
+  if (props.suspended) {
+    hideView()
+    return
+  }
   const rect = viewport.value?.getBoundingClientRect()
   if (!rect) return
   void window.janek.dwServicePoc.setBounds({ x: rect.x, y: rect.y, width: rect.width, height: rect.height })
+}
+
+function hideView() {
+  void window.janek.dwServicePoc.setBounds({ x: 0, y: 0, width: 0, height: 0 })
 }
 
 function goBack() {
@@ -31,17 +40,30 @@ onMounted(async () => {
   window.addEventListener('resize', syncBounds)
   try {
     await window.janek.dwServicePoc.open()
-    syncBounds()
+    if (props.suspended) hideView()
+    else syncBounds()
   } catch (error) {
     status.value = { state: 'error', popupCount: 0, error: error instanceof Error ? error.message : String(error) }
   }
 })
 
+watch(
+  () => props.suspended,
+  async (suspended) => {
+    if (suspended) {
+      hideView()
+      return
+    }
+    await nextTick()
+    syncBounds()
+  }
+)
+
 onBeforeUnmount(() => {
   observer?.disconnect()
   window.removeEventListener('resize', syncBounds)
   stopStatus?.()
-  void window.janek.dwServicePoc.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+  hideView()
   void window.janek.dwServicePoc.close()
 })
 </script>

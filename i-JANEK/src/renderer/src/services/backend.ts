@@ -2,15 +2,10 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   EmailAuthProvider,
-  GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
-  signInWithCredential,
   signInWithEmailAndPassword,
-  signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
   updateProfile,
   type User
@@ -41,8 +36,6 @@ import type {
   AlertEvent,
   AppUser,
   ApprovalStatus,
-  BackupPolicy,
-  BackupSnapshot,
   CompanyChatMessage,
   CompanyChatParticipant,
   CompanyChatParticipantState,
@@ -67,7 +60,7 @@ import type {
   UsageRollupDelta,
   UpdateChannel
 } from '@shared/contracts'
-import { DEFAULT_MASTER_EMAIL, DEFAULT_SYNC_FILE_MB } from '@shared/constants'
+import { DEFAULT_MASTER_EMAIL } from '@shared/constants'
 import { firebaseServices, hasFirebaseCoreConfig, hasRealtimeDatabaseConfig } from './firebase'
 
 type Unsubscribe = () => void
@@ -75,7 +68,6 @@ type Unsubscribe = () => void
 export interface BackendClient {
   isMock: boolean
   subscribeAuth: (callback: (user: AppUser | null) => void) => Unsubscribe
-  signInWithGoogle: () => Promise<AppUser>
   signInWithEmail: (email: string, password: string) => Promise<AppUser>
   registerWithEmail: (email: string, password: string, details: RegistrationDetails) => Promise<AppUser>
   sendPasswordReset: (email: string) => Promise<void>
@@ -127,14 +119,9 @@ export interface BackendClient {
     error?: string | null
   ) => Promise<void>
   publishTelemetry: (device: DeviceRecord, telemetry: DeviceTelemetry) => Promise<void>
+  publishHeartbeat: (device: DeviceRecord) => Promise<void>
   publishInventory: (device: DeviceRecord, inventory: InventoryReport) => Promise<void>
   getInventory: (device: DeviceRecord) => Promise<InventoryReport | null>
-  publishBackupSnapshot: (device: DeviceRecord, snapshot: BackupSnapshot) => Promise<void>
-  publishBackupProgress: (
-    device: DeviceRecord,
-    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
-  ) => Promise<void>
-  upsertBackupPolicy: (deviceId: string, policy: BackupPolicy) => Promise<void>
   updateConsent: (deviceId: string, consent: ConsentRecord | null) => Promise<void>
   requestDeviceUpdate: (deviceId: string, requestedBy: string) => Promise<string>
   acknowledgeDeviceUpdate: (deviceId: string, requestId: string, result: string) => Promise<void>
@@ -174,14 +161,13 @@ function visibleDevicesForUser(devices: DeviceRecord[], user: AppUser) {
   return devices.filter((device) => device.ownerUid === user.uid)
 }
 
-function toAppUser(user: User, accessToken?: string): AppUser {
+function toAppUser(user: User): AppUser {
   return {
     uid: user.uid,
     email: user.email ?? 'unknown@example.com',
     displayName: user.displayName ?? user.email ?? 'i-JANEK User',
     photoURL: user.photoURL,
-    role: toRole(user.email ?? ''),
-    accessToken
+    role: toRole(user.email ?? '')
   }
 }
 
@@ -189,18 +175,6 @@ function isFirestorePermissionDenied(error: unknown) {
   if (!error || typeof error !== 'object' || !('code' in error)) return false
   const code = String((error as { code?: unknown }).code)
   return code === 'permission-denied' || code === 'firestore/permission-denied'
-}
-
-function defaultBackupPolicy(_hostname: string): BackupPolicy {
-  return {
-    enabled: true,
-    maxFileSizeMb: 100,
-    maxQuotaGb: 10,
-    syncUnderMb: Number(import.meta.env.VITE_DEFAULT_SYNC_MB || DEFAULT_SYNC_FILE_MB),
-    watchedPaths: ['%USERPROFILE%\\Desktop', '%USERPROFILE%\\Documents'],
-    driveFolderName: 'i-JANEK_Backup',
-    sharedWith: import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL
-  }
 }
 
 const INVENTORY_CHUNK_MAX_BYTES = 700 * 1024
@@ -241,8 +215,6 @@ function inventoryChunkId(kind: 'installedApps' | 'windowsUpdates', index: numbe
 
 class FirebaseBackend implements BackendClient {
   isMock = false
-  private providerAccessToken?: string
-  private providerAccessTokenUid: string | null = null
   private pendingRegistrationDetails: RegistrationDetails | null = null
   private activeRegistrationDetails: { uid: string; details: RegistrationDetails } | null = null
 
@@ -280,128 +252,42 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
-  private clearProviderAccessToken() {
-    this.providerAccessToken = undefined
-    this.providerAccessTokenUid = null
-  }
-
-  private rememberProviderAccessToken(user: User, accessToken?: string | null) {
-    if (!accessToken) {
-      this.clearProviderAccessToken()
-      return
-    }
-
-    this.providerAccessToken = accessToken
-    this.providerAccessTokenUid = user.uid
-  }
-
-  private getProviderAccessToken(user: User) {
-    return this.providerAccessTokenUid === user.uid ? this.providerAccessToken : undefined
-  }
-
   subscribeAuth(callback: (user: AppUser | null) => void) {
     const auth = firebaseServices!.auth
-    let unsubscribe: Unsubscribe = () => {}
-    let disposed = false
-
-    void (async () => {
-      try {
-        await getRedirectResult(auth)
-      } catch (error) {
-        console.warn('[i-JANEK] Redirect Google sign-in failed:', error)
+    return onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        callback(null)
+        return
       }
-      if (disposed) return
-      unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          this.clearProviderAccessToken()
-          callback(null)
-          return
-        }
 
-        if (user.isAnonymous) {
-          this.clearProviderAccessToken()
-          callback(null)
-          void firebaseSignOut(auth)
-          return
-        }
+      if (user.isAnonymous) {
+        callback(null)
+        void firebaseSignOut(auth)
+        return
+      }
 
-        const registrationDetails = this.activeRegistrationDetails?.uid === user.uid
-          ? this.activeRegistrationDetails.details
-          : this.pendingRegistrationDetails
-        callback({
-          ...toAppUser(user, this.getProviderAccessToken(user)),
-          ...(registrationDetails
-            ? {
-                displayName: registrationDetails.fullName,
-                companyName: registrationDetails.companyName,
-                installationLocation: registrationDetails.installationLocation ?? ''
-              }
-            : {})
-        })
+      const registrationDetails = this.activeRegistrationDetails?.uid === user.uid
+        ? this.activeRegistrationDetails.details
+        : this.pendingRegistrationDetails
+      callback({
+        ...toAppUser(user),
+        ...(registrationDetails
+          ? {
+              displayName: registrationDetails.fullName,
+              companyName: registrationDetails.companyName,
+              installationLocation: registrationDetails.installationLocation ?? ''
+            }
+          : {})
       })
-    })()
-
-    return () => {
-      disposed = true
-      unsubscribe()
-    }
-  }
-
-  async signInWithGoogle() {
-    const provider = new GoogleAuthProvider()
-    provider.addScope('https://www.googleapis.com/auth/drive.file')
-    provider.addScope('profile')
-    provider.addScope('email')
-    provider.setCustomParameters({ prompt: 'select_account' })
-
-    const auth = firebaseServices!.auth
-    const isElectron = navigator.userAgent.toLowerCase().includes('electron')
-    const canUseDesktopOAuth = isElectron && typeof window.janek?.system.signInWithGoogle === 'function'
-
-    if (canUseDesktopOAuth) {
-      const desktopTokens = await window.janek.system.signInWithGoogle()
-      const credential = GoogleAuthProvider.credential(desktopTokens.idToken, desktopTokens.accessToken)
-      const result = await signInWithCredential(auth, credential)
-      this.rememberProviderAccessToken(result.user, desktopTokens.accessToken)
-      return toAppUser(result.user, desktopTokens.accessToken)
-    }
-
-    try {
-      const result = await signInWithPopup(auth, provider)
-      const credential = GoogleAuthProvider.credentialFromResult(result)
-      this.rememberProviderAccessToken(result.user, credential?.accessToken)
-      return toAppUser(result.user, credential?.accessToken)
-    } catch (error) {
-      const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : ''
-      const fallbackCodes = new Set([
-        'auth/popup-blocked',
-        'auth/cancelled-popup-request',
-        'auth/operation-not-supported-in-this-environment'
-      ])
-
-      if (!isElectron && fallbackCodes.has(code)) {
-        await signInWithRedirect(auth, provider)
-        return new Promise<AppUser>(() => {})
-      }
-
-      if (isElectron && (fallbackCodes.has(code) || code === 'auth/unauthorized-domain')) {
-        throw new Error(
-          'Desktopowe logowanie Google nie jest jeszcze skonfigurowane. Dodaj plik resources/google-oauth-desktop.local.json albo ustaw GOOGLE_DESKTOP_CLIENT_ID i GOOGLE_DESKTOP_CLIENT_SECRET w aplikacji i spróbuj ponownie.'
-        )
-      }
-
-      throw error
-    }
+    })
   }
 
   async signInWithEmail(email: string, password: string) {
-    this.clearProviderAccessToken()
     const result = await signInWithEmailAndPassword(firebaseServices!.auth, email.trim(), password)
     return toAppUser(result.user)
   }
 
   async registerWithEmail(email: string, password: string, details: RegistrationDetails) {
-    this.clearProviderAccessToken()
     const normalizedDetails: RegistrationDetails = {
       fullName: details.fullName.trim(),
       companyName: details.companyName.trim(),
@@ -430,7 +316,6 @@ class FirebaseBackend implements BackendClient {
   }
 
   async signOut() {
-    this.clearProviderAccessToken()
     this.activeRegistrationDetails = null
     await firebaseSignOut(firebaseServices!.auth)
   }
@@ -499,7 +384,6 @@ class FirebaseBackend implements BackendClient {
       consent: consent ?? existing?.consent ?? null,
       deviceAlias: existing?.deviceAlias ?? context.hostname,
       aliasCustomizedAt: existing?.aliasCustomizedAt ?? null,
-      backupPolicy: existing?.backupPolicy ?? defaultBackupPolicy(context.hostname),
       companyName: existing?.companyName ?? user.companyName ?? '',
       contactName: existing?.contactName ?? user.displayName,
       installationLocation: existing?.installationLocation ?? user.installationLocation ?? '',
@@ -598,7 +482,6 @@ class FirebaseBackend implements BackendClient {
       if (code === 'auth/requires-recent-login') throw new Error('Zaloguj się ponownie i ponów usunięcie konta.')
       throw error
     }
-    this.clearProviderAccessToken()
     this.activeRegistrationDetails = null
   }
 
@@ -846,6 +729,13 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
+  async publishHeartbeat(device: DeviceRecord) {
+    await updateDoc(doc(firebaseServices!.firestore, 'devices', device.deviceId), {
+      lastSeenAt: Date.now(),
+      offline: false
+    })
+  }
+
   async publishInventory(device: DeviceRecord, inventory: InventoryReport) {
     const firestore = firebaseServices!.firestore
     const reportId = device.deviceId
@@ -974,30 +864,6 @@ class FirebaseBackend implements BackendClient {
       windowsUpdates: windowsUpdatesChunks.flatMap((chunk) => chunk.data),
       defender
     }
-  }
-
-  async publishBackupSnapshot(device: DeviceRecord, snapshot: BackupSnapshot) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', device.deviceId), {
-      backupSnapshot: snapshot,
-      updatedAt: Date.now()
-    })
-  }
-
-  async publishBackupProgress(
-    device: DeviceRecord,
-    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
-  ) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', device.deviceId), {
-      backupSyncProgress: progress,
-      updatedAt: Date.now()
-    })
-  }
-
-  async upsertBackupPolicy(deviceId: string, policy: BackupPolicy) {
-    await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
-      backupPolicy: policy,
-      updatedAt: Date.now()
-    })
   }
 
   async updateConsent(deviceId: string, consent: ConsentRecord | null) {
@@ -1297,7 +1163,6 @@ class MockBackend implements BackendClient {
         topProcesses: [],
         state: 'alert'
       },
-      backupPolicy: defaultBackupPolicy('STUDIO-PC'),
       dwservice: undefined,
       deviceAlias: 'STUDIO-PC',
       companyName: 'i-JANEK Demo',
@@ -1344,15 +1209,6 @@ class MockBackend implements BackendClient {
         lastShutdownAt: Date.now() - 90_000_000,
         topProcesses: [],
         state: 'healthy'
-      },
-      backupPolicy: defaultBackupPolicy('LAPTOP-SERWIS'),
-      backupSnapshot: {
-        scannedAt: Date.now() - 3_600_000,
-        totalFiles: 1204,
-        totalBytes: 8_200_000_000,
-        uploadedFiles: 1187,
-        skippedFiles: 17,
-        skippedReasons: []
       },
       dwservice: {
         installationCode: '123-456-789',
@@ -1408,15 +1264,6 @@ class MockBackend implements BackendClient {
         lastShutdownAt: Date.now() - 360_000_000,
         topProcesses: [],
         state: 'alert'
-      },
-      backupPolicy: defaultBackupPolicy('BIURO-PC'),
-      backupSnapshot: {
-        scannedAt: Date.now() - 48 * 60 * 60 * 1000,
-        totalFiles: 543,
-        totalBytes: 2_300_000_000,
-        uploadedFiles: 521,
-        skippedFiles: 22,
-        skippedReasons: []
       },
       dwservice: undefined,
       deviceAlias: 'Biuro-PC',
@@ -1502,8 +1349,7 @@ class MockBackend implements BackendClient {
       ramUsage: { warning: 70, critical: 90 },
       diskUsage: { warning: 75, critical: 90 },
       cpuTemp: { warning: 80, critical: 90 },
-      gpuTemp: { warning: 70, critical: 85 },
-      backupAgeHours: { warning: 24, critical: 72 }
+      gpuTemp: { warning: 70, critical: 85 }
     }
   }
   private commandQueue = new Map<string, TerminalCommand[]>()
@@ -1512,10 +1358,6 @@ class MockBackend implements BackendClient {
     this.authListeners.add(callback)
     callback(this.currentUser)
     return () => this.authListeners.delete(callback)
-  }
-
-  async signInWithGoogle() {
-    return this.signInDemo('slave')
   }
 
   async signInWithEmail(email: string, _password: string) {
@@ -1546,8 +1388,7 @@ class MockBackend implements BackendClient {
       uid: role === 'master' ? 'mock-master' : 'mock-client',
       email: role === 'master' ? DEFAULT_MASTER_EMAIL : 'klient@example.com',
       displayName: role === 'master' ? 'Igor Janicki' : 'Klient Demo',
-      role,
-      accessToken: 'mock-drive-token'
+      role
     }
     this.authListeners.forEach((listener) => listener(this.currentUser))
     return this.currentUser
@@ -1619,7 +1460,6 @@ class MockBackend implements BackendClient {
       contactName: user.displayName,
       installationLocation: user.installationLocation ?? '',
       aliasCustomizedAt: null,
-      backupPolicy: defaultBackupPolicy(context.hostname),
       dwservice: undefined,
       updateRequest: null,
       lastHandledUpdateRequestId: null,
@@ -1875,6 +1715,13 @@ class MockBackend implements BackendClient {
     this.emitDevices()
   }
 
+  async publishHeartbeat(device: DeviceRecord) {
+    this.devices = this.devices.map((entry) =>
+      entry.deviceId === device.deviceId ? { ...entry, lastSeenAt: Date.now(), offline: false } : entry
+    )
+    this.emitDevices()
+  }
+
   async publishInventory(device: DeviceRecord, inventory: InventoryReport) {
     this.inventories.set(device.deviceId, inventory)
     this.devices = this.devices.map((entry) =>
@@ -1891,28 +1738,6 @@ class MockBackend implements BackendClient {
 
   async getInventory(device: DeviceRecord) {
     return this.inventories.get(device.deviceId) ?? null
-  }
-
-  async publishBackupSnapshot(device: DeviceRecord, snapshot: BackupSnapshot) {
-    this.devices = this.devices.map((entry) =>
-      entry.deviceId === device.deviceId ? { ...entry, backupSnapshot: snapshot, updatedAt: Date.now() } : entry
-    ) as DeviceRecord[]
-    this.emitDevices()
-  }
-
-  async publishBackupProgress(
-    device: DeviceRecord,
-    progress: { totalFiles: number; processedFiles: number; uploadedFiles: number; updatedAt: number }
-  ) {
-    this.devices = this.devices.map((entry) =>
-      entry.deviceId === device.deviceId ? { ...entry, backupSyncProgress: progress, updatedAt: Date.now() } : entry
-    ) as DeviceRecord[]
-    this.emitDevices()
-  }
-
-  async upsertBackupPolicy(deviceId: string, policy: BackupPolicy) {
-    this.devices = this.devices.map((device) => (device.deviceId === deviceId ? { ...device, backupPolicy: policy } : device))
-    this.emitDevices()
   }
 
   async updateConsent(deviceId: string, consent: ConsentRecord | null) {

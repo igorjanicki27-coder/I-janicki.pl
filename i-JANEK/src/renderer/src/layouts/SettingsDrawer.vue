@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { BellRing, Building2, ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, Trash2, UserPlus, X } from 'lucide-vue-next'
+import { BellRing, Building2, ChevronDown, ChevronRight, Download, Gauge, LogOut, RefreshCw, Stethoscope, UserPlus, X } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import CompanyManagementPanel from '@/components/master/CompanyManagementPanel.vue'
 import RegistrationWorkspace from '@/components/master/RegistrationWorkspace.vue'
@@ -14,10 +14,7 @@ const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
 const checkingUpdates = ref(false)
-const pickingFolder = ref(false)
 const savingDiagnostics = ref(false)
-const removingBackupFolderPath = ref<string | null>(null)
-const removingBackupFolderBusy = ref(false)
 const activeSettingsPanel = ref<'registrations' | 'companies' | 'thresholds' | 'notifications' | 'support' | null>(null)
 
 type ThresholdKind = keyof MetricThreshold
@@ -29,8 +26,7 @@ const thresholdRows: Array<{ metric: MetricThresholdKey; label: string }> = [
   { metric: 'ramUsage', label: 'RAM (%)' },
   { metric: 'diskUsage', label: 'Dysk (%)' },
   { metric: 'cpuTemp', label: 'CPU temperatura (°C)' },
-  { metric: 'gpuTemp', label: 'GPU temperatura (°C)' },
-  { metric: 'backupAgeHours', label: 'Wiek backupu (h)' }
+  { metric: 'gpuTemp', label: 'GPU temperatura (°C)' }
 ]
 
 function createThresholdDrafts(thresholds: MetricThresholds): ThresholdDrafts {
@@ -55,11 +51,6 @@ const enabledNotificationCategories = computed(() => {
   return enabled
 })
 
-const backupFolderPathMap: Record<'Desktop' | 'Documents', string> = {
-  Desktop: '%USERPROFILE%\\Desktop',
-  Documents: '%USERPROFILE%\\Documents'
-}
-
 const syncStateLabel = computed(() => {
   return store.syncState === 'offline' ? 'offline' : 'connected'
 })
@@ -77,16 +68,6 @@ watch(
   (open) => {
     if (!open) {
       activeSettingsPanel.value = null
-      return
-    }
-    if (!store.pendingDeviceAlias) {
-      store.pendingDeviceAlias = slaveDevice.value?.deviceAlias ?? slaveDevice.value?.hostname ?? ''
-    }
-    if (!store.pendingCompanyName) {
-      store.pendingCompanyName = slaveDevice.value?.companyName?.trim() || store.masterSettings.companyOptions[0] || ''
-    }
-    if (!store.pendingInstallationLocation) {
-      store.pendingInstallationLocation = slaveDevice.value?.installationLocation?.trim() || ''
     }
   },
   { immediate: true }
@@ -166,52 +147,6 @@ function updateTemperatureNotifications(enabled: boolean) {
   })
 }
 
-function toggleFolder(name: 'Desktop' | 'Documents') {
-  const selected = new Set(store.slaveSettings.backupFolders)
-  if (selected.has(name)) selected.delete(name)
-  else selected.add(name)
-  store.updateSlaveSettings({ backupFolders: Array.from(selected) as Array<'Desktop' | 'Documents'> })
-}
-
-function removeBackupFolderEntry(path: string) {
-  removingBackupFolderPath.value = path
-}
-
-const backupFolderEntries = computed(() => {
-  const selectedSystemFolders = store.slaveSettings.backupFolders.map((folderName) => ({
-    key: `system:${folderName}`,
-    name: folderName,
-    path: backupFolderPathMap[folderName]
-  }))
-  const customFolders = store.slaveSettings.customBackupFolders.map((folderPath) => ({
-    key: `custom:${folderPath}`,
-    name: folderPath.split(/[/\\]/).filter(Boolean).pop() ?? folderPath,
-    path: folderPath
-  }))
-  return [...selectedSystemFolders, ...customFolders]
-})
-
-async function forceBackupWithSave() {
-  await store.applySlaveBackupSettings()
-  await store.syncBackupNow()
-}
-
-function closeRemoveBackupFolderModal() {
-  if (removingBackupFolderBusy.value) return
-  removingBackupFolderPath.value = null
-}
-
-async function confirmRemoveBackupFolder() {
-  if (!removingBackupFolderPath.value || removingBackupFolderBusy.value) return
-  removingBackupFolderBusy.value = true
-  try {
-    await store.removeBackupFolder(removingBackupFolderPath.value)
-    removingBackupFolderPath.value = null
-  } finally {
-    removingBackupFolderBusy.value = false
-  }
-}
-
 
 async function checkForUpdatesNow() {
   if (checkingUpdates.value) return
@@ -243,22 +178,6 @@ function readinessDot(status: 'ok' | 'warning' | 'error' | 'skipped') {
   if (status === 'warning') return 'bg-amber-400'
   if (status === 'error') return 'bg-rose-400'
   return 'bg-slate-400'
-}
-
-async function addCustomFolderFromPicker() {
-  if (pickingFolder.value) return
-  pickingFolder.value = true
-  try {
-    const selectedPath = await window.janek.system.selectFolder()
-    const nextPath = selectedPath?.trim()
-    if (!nextPath) return
-    if (store.slaveSettings.customBackupFolders.includes(nextPath)) return
-    store.updateSlaveSettings({
-      customBackupFolders: [...store.slaveSettings.customBackupFolders, nextPath]
-    })
-  } finally {
-    pickingFolder.value = false
-  }
 }
 
 </script>
@@ -367,112 +286,30 @@ async function addCustomFolderFromPicker() {
 
         <template v-else>
           <section class="rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Użytkownik</div>
-            <div class="mt-3 space-y-2 text-sm text-[var(--text-dim)]">
+            <div class="text-sm font-semibold text-white">Dane konta i urządzenia</div>
+            <div class="mt-3 divide-y divide-white/[0.07] text-sm text-[var(--text-dim)]">
               <div class="flex items-center justify-between">
                 <span>Email</span>
-                <span class="mono text-white">{{ store.user?.email ?? '—' }}</span>
+                <span class="mono max-w-[70%] truncate text-right text-white">{{ store.user?.email ?? '—' }}</span>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="shrink-0">Firma</span>
-                <div class="flex min-w-0 flex-1 gap-2">
-                  <input v-model="store.pendingCompanyName" class="soft-input min-w-0 !py-2" placeholder="Nazwa firmy" />
-                </div>
+              <div class="flex items-center justify-between gap-4 py-2.5">
+                <span>Nazwa komputera</span>
+                <span class="max-w-[65%] truncate text-right text-white">{{ slaveDevice?.deviceAlias?.trim() || slaveDevice?.hostname || '—' }}</span>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="shrink-0">Miejsce</span>
-                <input v-model="store.pendingInstallationLocation" class="soft-input min-w-0 !py-2" placeholder="Opcjonalnie" />
+              <div class="flex items-center justify-between gap-4 py-2.5">
+                <span>Firma</span>
+                <span class="max-w-[65%] truncate text-right text-white">{{ slaveDevice?.companyName?.trim() || '—' }}</span>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="shrink-0">Nazwa urzadzenia</span>
-                <div class="flex min-w-0 flex-1 gap-2">
-                  <input
-                    v-model="store.pendingDeviceAlias"
-                    class="soft-input min-w-0 !py-2"
-                    placeholder="np. Biuro PC / Laptop Dom"
-                  />
-                  <button class="glass-button !px-4 !py-2" type="button" @click="store.saveDeviceAlias()">Zapisz</button>
-                </div>
+              <div class="flex items-center justify-between gap-4 py-2.5">
+                <span>Osoba</span>
+                <span class="max-w-[65%] truncate text-right text-white">{{ slaveDevice?.contactName?.trim() || store.user?.displayName || '—' }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4 py-2.5">
+                <span>Lokalizacja</span>
+                <span class="max-w-[65%] truncate text-right text-white">{{ slaveDevice?.installationLocation?.trim() || '—' }}</span>
               </div>
             </div>
-          </section>
-
-          <section class="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div class="flex items-center justify-between gap-2">
-              <div class="text-sm font-semibold text-white">Backup</div>
-              <button class="glass-button !px-4 !py-2" type="button" :disabled="pickingFolder" @click="addCustomFolderFromPicker()">
-                {{ pickingFolder ? 'Dodawanie...' : 'Dodaj folder' }}
-              </button>
-            </div>
-            <div class="mt-4 space-y-3">
-              <div class="flex flex-wrap items-center gap-4">
-                <label class="flex items-center gap-2 text-sm text-[var(--text-dim)]">
-                  <input :checked="store.slaveSettings.backupFolders.includes('Desktop')" type="checkbox" @change="toggleFolder('Desktop')" />
-                  Pulpit
-                </label>
-                <label class="flex items-center gap-2 text-sm text-[var(--text-dim)]">
-                  <input :checked="store.slaveSettings.backupFolders.includes('Documents')" type="checkbox" @change="toggleFolder('Documents')" />
-                  Dokumenty
-                </label>
-              </div>
-
-              <div class="space-y-2">
-                <div
-                  v-for="folder in backupFolderEntries"
-                  :key="folder.key"
-                  class="flex items-center justify-between rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]"
-                >
-                  <div class="min-w-0">
-                    <div class="truncate text-white">{{ folder.name }}</div>
-                    <div class="mono truncate text-[11px] text-[var(--text-dim)]">{{ folder.path }}</div>
-                  </div>
-                  <button
-                    class="ghost-button !h-8 !w-8 !rounded-lg !px-0 !py-0"
-                    type="button"
-                    @click="removeBackupFolderEntry(folder.path)"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
-                </div>
-                <div v-if="!backupFolderEntries.length" class="rounded-2xl border border-white/10 px-3 py-2 text-sm text-[var(--text-dim)]">
-                  Brak folderow wybranych do backupu.
-                </div>
-              </div>
-
-              <div class="grid gap-2 md:grid-cols-2">
-                <label class="text-sm text-[var(--text-dim)]">
-                  Max plik (MB)
-                  <input
-                    class="soft-input mt-1 !py-2"
-                    type="number"
-                    min="10"
-                    :value="store.slaveSettings.maxFileSizeMb"
-                    @input="store.updateSlaveSettings({ maxFileSizeMb: Number(($event.target as HTMLInputElement).value) || 100 })"
-                  />
-                </label>
-                <label class="text-sm text-[var(--text-dim)]">
-                  Miejsce na backup (GB)
-                  <input
-                    class="soft-input mt-1 !py-2"
-                    type="number"
-                    min="1"
-                    :value="store.slaveSettings.maxQuotaGb"
-                    @input="store.updateSlaveSettings({ maxQuotaGb: Number(($event.target as HTMLInputElement).value) || 10 })"
-                  />
-                </label>
-              </div>
-            </div>
-            <div class="mt-2 flex gap-2">
-              <button class="ghost-button flex-1 justify-center !rounded-2xl !px-4 !py-3 text-sm" type="button" @click="store.previewBackupFiles()">
-                Przegladnij pliki
-              </button>
-              <button class="ghost-button flex-1 justify-center !rounded-2xl !px-4 !py-3 text-sm" type="button" @click="store.restoreBackupNow()">
-                Przywroc backup
-              </button>
-              <button class="glass-button flex-1 justify-center !rounded-2xl !px-4 !py-3 text-sm" type="button" @click="forceBackupWithSave()">
-                Wymus backup
-              </button>
-            </div>
+            <p class="mt-3 text-xs leading-5 text-[var(--text-dim)]">Zmiany tych danych może wprowadzić administrator.</p>
           </section>
 
           <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -886,31 +723,5 @@ async function addCustomFolderFromPicker() {
       </section>
     </div>
 
-    <div
-      v-if="removingBackupFolderPath"
-      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4"
-      @click.self="closeRemoveBackupFolderModal()"
-    >
-      <div class="glass-panel w-full max-w-md rounded-[24px] border border-rose-400/35 p-5">
-        <div class="text-sm font-semibold text-white">Usunąć folder z backupu?</div>
-        <p class="mt-2 text-sm leading-6 text-[var(--text-dim)]">
-          Ta operacja usunie wskazany folder z listy synchronizacji oraz skasuje jego kopię z chmury Google Drive dla tego urządzenia.
-        </p>
-        <p class="mt-2 text-sm leading-6 text-amber-200">
-          Tych plików nie będzie można później przywrócić z backupu, chyba że dodasz folder ponownie i wykonasz nowy backup.
-        </p>
-        <div class="mt-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2">
-          <div class="truncate text-sm text-white">{{ removingBackupFolderPath }}</div>
-        </div>
-        <div class="mt-4 flex gap-2">
-          <button class="ghost-button flex-1 justify-center !rounded-xl !px-4 !py-2.5 text-sm" type="button" :disabled="removingBackupFolderBusy" @click="closeRemoveBackupFolderModal()">
-            Anuluj
-          </button>
-          <button class="glass-button flex-1 justify-center !rounded-xl !px-4 !py-2.5 text-sm" type="button" :disabled="removingBackupFolderBusy" @click="confirmRemoveBackupFolder()">
-            {{ removingBackupFolderBusy ? 'Usuwanie...' : 'Tak, usuń' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>

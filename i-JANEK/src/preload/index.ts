@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { BackupPolicy, CommandShell } from '@shared/contracts'
+import type { CommandShell } from '@shared/contracts'
 import type { DwServicePocStatus, JanekApi, UpdateStatusPayload } from '@shared/ipc'
 
 const api: JanekApi = {
@@ -38,8 +38,6 @@ const api: JanekApi = {
     setUpdateChannel: (channel) => ipcRenderer.invoke('system:set-update-channel', channel),
     createDiagnosticBundle: (summary) => ipcRenderer.invoke('system:create-diagnostic-bundle', summary),
     logEvent: (level, event, details) => ipcRenderer.invoke('system:log-event', level, event, details),
-    signInWithGoogle: () => ipcRenderer.invoke('system:sign-in-with-google'),
-    selectFolder: () => ipcRenderer.invoke('system:select-folder'),
     setRegisteredDeviceId: (deviceId) => ipcRenderer.invoke('system:set-registered-device-id', deviceId),
     promptRestart: (title, body, remindAfterMinutes) => ipcRenderer.invoke('system:prompt-restart', title, body, remindAfterMinutes)
   },
@@ -50,22 +48,6 @@ const api: JanekApi = {
   terminal: {
     execute: (shell: CommandShell, command: string, deviceId?: string, requestedBy?: string) =>
       ipcRenderer.invoke('terminal:execute', shell, command, deviceId, requestedBy)
-  },
-  backup: {
-    sync: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string) =>
-      ipcRenderer.invoke('backup:sync', policy, accessToken, deviceId, hostname),
-    listFiles: (policy: BackupPolicy, accessToken: string, hostname: string) =>
-      ipcRenderer.invoke('backup:list-files', policy, accessToken, hostname),
-    removePathFromCloud: (policy: BackupPolicy, accessToken: string, deviceId: string, hostname: string, watchedPath: string) =>
-      ipcRenderer.invoke('backup:remove-path-from-cloud', policy, accessToken, deviceId, hostname, watchedPath),
-    restore: (policy: BackupPolicy, accessToken: string, hostname: string) =>
-      ipcRenderer.invoke('backup:restore', policy, accessToken, hostname),
-    onSyncProgress: (callback) => {
-      const listener = (_event: unknown, payload: { deviceId: string; totalFiles: number; processedFiles: number; uploadedFiles: number }) =>
-        callback(payload)
-      ipcRenderer.on('backup:sync-progress', listener)
-      return () => ipcRenderer.removeListener('backup:sync-progress', listener)
-    }
   }
 }
 

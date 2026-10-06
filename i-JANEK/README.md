@@ -141,7 +141,7 @@ npm run test:rules
 - Aplikacja działa na darmowym planie Firebase Spark: nie korzysta z Firebase Storage ani Cloud Functions.
 - Inwentaryzacja jest przechowywana w Firestore jako jeden aktualny raport na urządzenie. Duże listy aplikacji i aktualizacji są dzielone na dokumenty mniejsze niż limit 1 MiB.
 - RTDB obsługuje czat, polecenia, obecność i telemetrię; plan Spark wystarcza do 100 jednoczesnych połączeń.
-- Domyślne katalogi backupu dla Windows to `%USERPROFILE%\\Desktop`, `%USERPROFILE%\\Documents` i `%USERPROFILE%\\Pictures`.
+- Domyślnym katalogiem backupu dla Windows jest wyłącznie `%USERPROFILE%\\Desktop`. Użytkownik może później dodać inne foldery w ustawieniach backupu.
 - Auto-update jest przygotowany pod publiczne repo `igorjanicki27-coder/I-janicki.pl`.
 - Aplikacja sprawdza aktualizacje przy każdym uruchomieniu oraz co 12 godzin podczas ciągłej pracy.
 - Po pobraniu aktualizacji aplikacja proponuje instalację od razu albo później; po odroczeniu przypomina ponownie po 4 godzinach.

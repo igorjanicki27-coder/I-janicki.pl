@@ -7,6 +7,7 @@ import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
 import DwServicePocPanel from '@/components/master/DwServicePocPanel.vue'
 import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
+import { isDeviceOnline } from '@/services/device-presence'
 import { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@shared/contracts'
 
@@ -58,7 +59,7 @@ function companyNameFor(device: DeviceRecord) {
   return device.companyName?.trim() || 'Bez firmy'
 }
 function isOnline(device: DeviceRecord) {
-  return !device.offline && Date.now() - device.lastSeenAt < 5 * 60 * 1000
+  return isDeviceOnline(device, store.statusNow)
 }
 function alertCount(device: DeviceRecord) {
   return store.alerts.filter((alert) => alert.deviceId === device.deviceId && alert.severity !== 'info').length
@@ -161,14 +162,14 @@ onBeforeUnmount(() => {
           </section>
           <section>
             <div class="mb-4 flex items-end justify-between gap-4"><div><h2 class="text-base font-semibold text-white">Komputery wymagające uwagi</h2><p class="mt-1 text-sm text-[var(--text-dim)]">Kliknij kafelek, aby otworzyć pełne informacje.</p></div><button class="text-xs text-cyan-200 hover:text-white" type="button" @click="openDevices()">Wszystkie komputery</button></div>
-            <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" :thresholds="store.masterSettings.thresholds" @open="openDevice(device, 'overview')" /></div>
+            <div v-if="attentionDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in attentionDevices.slice(0, 6)" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" :thresholds="store.masterSettings.thresholds" :now="store.statusNow" @open="openDevice(device, 'overview')" /></div>
             <div v-else class="content-card flex items-center gap-3"><CheckCircle2 class="h-6 w-6 text-emerald-300" /><div><strong class="text-sm text-white">Wszystko pod kontrolą</strong><p class="mt-1 text-xs text-[var(--text-dim)]">Żaden zatwierdzony komputer nie wymaga teraz reakcji.</p></div></div>
           </section>
         </div>
 
         <div v-else-if="activeSection === 'devices'" class="p-5 lg:p-6">
           <div class="mb-5 flex justify-end"><label class="relative block w-full xl:max-w-sm"><Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" /><input v-model="searchQuery" class="soft-input !rounded-xl !py-2.5 !pl-9" placeholder="Szukaj komputera..." /></label></div>
-          <div v-if="pageDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in pageDevices" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" :thresholds="store.masterSettings.thresholds" @open="openDevice(device, 'devices')" /></div>
+          <div v-if="pageDevices.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"><ComputerTile v-for="device in pageDevices" :key="device.deviceId" :device="device" :alert-count="alertCount(device)" :thresholds="store.masterSettings.thresholds" :now="store.statusNow" @open="openDevice(device, 'devices')" /></div>
           <div v-else class="rounded-2xl border border-dashed border-white/10 p-12 text-center"><Monitor class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Brak komputerów</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Ta firma nie ma jeszcze urządzeń albo żaden komputer nie pasuje do filtra.</p></div>
         </div>
 

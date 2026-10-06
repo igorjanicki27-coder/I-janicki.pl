@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
+import { isDeviceOnline } from '@/services/device-presence'
+import { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@shared/contracts'
 
 interface MetricThreshold {
@@ -25,13 +27,18 @@ const props = defineProps<{
   alertCount?: number
   thresholds: MetricThresholds
 }>()
+const store = useAppStore()
 
-const maxDiskUsage = computed(() => Math.max(...(props.device.telemetry?.disks?.map((entry) => entry.usedPercent) ?? [0])))
+const isOnline = computed(() => isDeviceOnline(props.device, store.statusNow))
+const liveTelemetry = computed(() => isOnline.value ? props.device.telemetry : undefined)
+const maxDiskUsage = computed(() => {
+  const disks = liveTelemetry.value?.disks ?? []
+  return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
+})
 const backupAgeHours = computed(() => {
   if (!props.device.backupSnapshot?.scannedAt) return null
   return (Date.now() - props.device.backupSnapshot.scannedAt) / (60 * 60 * 1000)
 })
-const isOnline = computed(() => !props.device.offline && Date.now() - props.device.lastSeenAt < 5 * 60 * 1000)
 
 function metricState(value: number | null | undefined, threshold: MetricThreshold) {
   if (value === null || value === undefined || Number.isNaN(value)) return 0
@@ -60,14 +67,16 @@ function metricClasses(value: number | null | undefined, threshold: MetricThresh
 }
 
 const cpuTileClass = computed(() => {
-  const usageState = metricState(props.device.telemetry?.cpuUsagePercent, props.thresholds.cpuUsage)
-  const tempState = metricState(props.device.telemetry?.cpuTemperatureC, props.thresholds.cpuTemp)
+  if (!liveTelemetry.value) return metricClasses(undefined, props.thresholds.cpuUsage)
+  const usageState = metricState(liveTelemetry.value.cpuUsagePercent, props.thresholds.cpuUsage)
+  const tempState = metricState(liveTelemetry.value.cpuTemperatureC, props.thresholds.cpuTemp)
   return metricClassesFromState(Math.max(usageState, tempState))
 })
 
 const gpuTileClass = computed(() => {
-  const usageState = metricState(props.device.telemetry?.gpu?.usagePercent, props.thresholds.gpuUsage)
-  const tempState = metricState(props.device.telemetry?.gpu?.temperatureC, props.thresholds.gpuTemp)
+  if (!liveTelemetry.value) return metricClasses(undefined, props.thresholds.gpuUsage)
+  const usageState = metricState(liveTelemetry.value.gpu?.usagePercent, props.thresholds.gpuUsage)
+  const tempState = metricState(liveTelemetry.value.gpu?.temperatureC, props.thresholds.gpuTemp)
   return metricClassesFromState(Math.max(usageState, tempState))
 })
 
@@ -117,9 +126,9 @@ function formatBackupTimestamp(timestamp?: number) {
           CPU
         </div>
         <div class="mt-1 text-[15px] font-semibold">
-          {{ device.telemetry?.cpuUsagePercent ?? '—' }}<span v-if="device.telemetry?.cpuUsagePercent !== null && device.telemetry?.cpuUsagePercent !== undefined">%</span>
+          {{ liveTelemetry?.cpuUsagePercent ?? '—' }}<span v-if="liveTelemetry?.cpuUsagePercent != null">%</span>
           |
-          {{ device.telemetry?.cpuTemperatureC ?? '—' }}<span v-if="device.telemetry?.cpuTemperatureC !== null && device.telemetry?.cpuTemperatureC !== undefined">°C</span>
+          {{ liveTelemetry?.cpuTemperatureC ?? '—' }}<span v-if="liveTelemetry?.cpuTemperatureC != null">°C</span>
         </div>
       </div>
 
@@ -129,18 +138,18 @@ function formatBackupTimestamp(timestamp?: number) {
           GPU
         </div>
         <div class="mt-1 text-[15px] font-semibold">
-          {{ device.telemetry?.gpu?.usagePercent ?? '—' }}<span v-if="device.telemetry?.gpu?.usagePercent !== null && device.telemetry?.gpu?.usagePercent !== undefined">%</span>
+          {{ liveTelemetry?.gpu?.usagePercent ?? '—' }}<span v-if="liveTelemetry?.gpu?.usagePercent != null">%</span>
           |
-          {{ device.telemetry?.gpu?.temperatureC ?? '—' }}<span v-if="device.telemetry?.gpu?.temperatureC !== null && device.telemetry?.gpu?.temperatureC !== undefined">°C</span>
+          {{ liveTelemetry?.gpu?.temperatureC ?? '—' }}<span v-if="liveTelemetry?.gpu?.temperatureC != null">°C</span>
         </div>
       </div>
 
-      <div class="rounded-2xl border px-2.5 py-2" :class="metricClasses(device.telemetry?.memoryUsedPercent, props.thresholds.ramUsage)">
+      <div class="rounded-2xl border px-2.5 py-2" :class="metricClasses(liveTelemetry?.memoryUsedPercent, props.thresholds.ramUsage)">
         <div class="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em]">
           <MemoryStick class="h-3.5 w-3.5" />
           RAM
         </div>
-        <div class="mt-1 text-[15px] font-semibold">{{ device.telemetry?.memoryUsedPercent ?? '—' }}<span v-if="device.telemetry?.memoryUsedPercent !== null && device.telemetry?.memoryUsedPercent !== undefined">%</span></div>
+        <div class="mt-1 text-[15px] font-semibold">{{ liveTelemetry?.memoryUsedPercent ?? '—' }}<span v-if="liveTelemetry?.memoryUsedPercent != null">%</span></div>
       </div>
 
       <div class="rounded-2xl border px-2.5 py-2" :class="metricClasses(maxDiskUsage, props.thresholds.diskUsage)">
@@ -148,7 +157,7 @@ function formatBackupTimestamp(timestamp?: number) {
           <HardDrive class="h-3.5 w-3.5" />
           Dysk
         </div>
-        <div class="mt-1 text-[15px] font-semibold">{{ maxDiskUsage || maxDiskUsage === 0 ? maxDiskUsage : '—' }}<span v-if="maxDiskUsage || maxDiskUsage === 0">%</span></div>
+        <div class="mt-1 text-[15px] font-semibold">{{ maxDiskUsage ?? '—' }}<span v-if="maxDiskUsage != null">%</span></div>
       </div>
     </div>
 
