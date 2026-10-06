@@ -1251,9 +1251,27 @@ export const useAppStore = defineStore('app', () => {
     }
 
     if (user.value?.role === 'slave' && systemContext.value) {
-      const requestedIdentity = toDeviceIdentity(systemContext.value, requestedDeviceId)
       const currentDevice = selfDevice.value
 
+      if (currentDevice?.approvalStatus === 'approved') {
+        await backend.value?.updateConsent(currentDevice.deviceId, nextConsent)
+        await window.janek.system.setRegisteredDeviceId(currentDevice.deviceId)
+        systemContext.value = { ...systemContext.value, deviceId: currentDevice.deviceId }
+        pendingDeviceAlias.value = currentDevice.deviceAlias ?? currentDevice.hostname
+        pendingCompanyName.value = currentDevice.companyName?.trim() || companyName
+        selectedDeviceId.value = currentDevice.deviceId
+        selectedConversationOwnerUid.value = currentDevice.ownerUid
+        devices.value = devices.value.map((device) =>
+          device.deviceId === currentDevice.deviceId
+            ? { ...device, consent: nextConsent, consentAcceptedAt: nextConsent.acceptedAt, updatedAt: Date.now() }
+            : device
+        )
+        consent.value = nextConsent
+        await window.janek.system.setConsent(cloneForIpc(nextConsent))
+        return
+      }
+
+      const requestedIdentity = toDeviceIdentity(systemContext.value, requestedDeviceId)
       if (currentDevice && currentDevice.deviceId !== requestedDeviceId) {
         const migrated = await backend.value!.migrateDeviceRecord(user.value, currentDevice, requestedIdentity, aliasName, companyName)
         await backend.value?.updateConsent(migrated.deviceId, nextConsent)

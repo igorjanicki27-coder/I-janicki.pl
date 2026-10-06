@@ -469,7 +469,7 @@ function createTray() {
 }
 
 function bindUpdaterEvents() {
-  autoUpdater.autoDownload = true
+  autoUpdater.autoDownload = process.platform !== 'win32'
   if (process.platform === 'win32') {
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.allowDowngrade = false
@@ -630,8 +630,8 @@ async function runUpdateCheck(silent: boolean) {
     const result = await autoUpdater.checkForUpdates()
     const nextVersion = result?.updateInfo?.version
     if (nextVersion && isNewerAppVersion(nextVersion, app.getVersion())) {
-      if (process.platform === 'win32' && hasWindowsUpdateAgent() && result?.downloadPromise) {
-        void result.downloadPromise.then((files) => {
+      if (process.platform === 'win32' && hasWindowsUpdateAgent()) {
+        void autoUpdater.downloadUpdate().then((files) => {
           const installerPath = files.find((filePath) => filePath.toLowerCase().endsWith('.exe'))
           if (!installerPath) throw new Error('Nie znaleziono pobranego instalatora Windows.')
           handOffWindowsUpdate(nextVersion, installerPath)
