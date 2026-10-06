@@ -136,6 +136,10 @@ function openRegistrationsPanel() {
   if (store.isMaster) activeSettingsPanel.value = 'registrations'
 }
 
+function openUnregisterDialog() {
+  window.dispatchEvent(new CustomEvent('i-janek:open-unregister-dialog'))
+}
+
 onMounted(() => {
   window.addEventListener('i-janek:open-device-registrations', openRegistrationsPanel)
 })
@@ -556,6 +560,7 @@ async function addCustomFolderFromPicker() {
         </button>
 
         <AppFooterLink class="mt-4 pb-2 pt-1" />
+        <button v-if="!store.isMaster && store.isDesktopAgent" class="mt-2 w-full py-2 text-center text-[11px] text-white/30 transition hover:text-rose-200/70" type="button" @click="openUnregisterDialog()">Wyrejestruj urządzenie</button>
       </div>
     </aside>
 

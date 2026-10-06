@@ -1,8 +1,11 @@
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
+  EmailAuthProvider,
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
@@ -21,6 +24,7 @@ import {
   getDoc,
   getDocFromServer,
   getDocs,
+  getDocsFromServer,
   getFirestore,
   increment,
   limit,
@@ -89,6 +93,9 @@ export interface BackendClient {
   ) => Promise<DeviceRecord>
   archiveDeviceRecord: (deviceId: string, actorEmail: string) => Promise<void>
   deleteDeviceRecord: (deviceId: string) => Promise<void>
+  getOwnedDeviceCount: (ownerUid: string) => Promise<number>
+  prepareAccountDeletion: (password?: string) => Promise<void>
+  deleteCurrentAccount: () => Promise<void>
   subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
   subscribeServiceRequests: (user: AppUser, callback: (requests: ServiceRequest[]) => void) => Unsubscribe
@@ -559,6 +566,42 @@ class FirebaseBackend implements BackendClient {
     await deleteDoc(doc(firebaseServices!.firestore, 'devices', deviceId))
   }
 
+  async getOwnedDeviceCount(ownerUid: string) {
+    const snapshot = await getDocsFromServer(query(collection(firebaseServices!.firestore, 'devices'), where('ownerUid', '==', ownerUid)))
+    return snapshot.size
+  }
+
+  async prepareAccountDeletion(password?: string) {
+    const currentUser = firebaseServices!.auth.currentUser
+    if (!currentUser || toRole(currentUser.email ?? '') !== 'slave') throw new Error('Brak konta klienta do usunięcia.')
+    if (currentUser.providerData.some((provider) => provider.providerId === 'password') && !password) {
+      throw new Error('Wpisz hasło konta, aby potwierdzić jego usunięcie.')
+    }
+    if (password) {
+      if (!currentUser.email) throw new Error('Konto nie ma adresu e-mail do potwierdzenia hasłem.')
+      await reauthenticateWithCredential(currentUser, EmailAuthProvider.credential(currentUser.email, password))
+    } else if (!currentUser.metadata.lastSignInTime || Date.now() - Date.parse(currentUser.metadata.lastSignInTime) > 4 * 60_000) {
+      throw new Error('Zaloguj się ponownie i ponów wyrejestrowanie ostatniego urządzenia.')
+    }
+  }
+
+  async deleteCurrentAccount() {
+    const currentUser = firebaseServices!.auth.currentUser
+    if (!currentUser || toRole(currentUser.email ?? '') !== 'slave') throw new Error('Brak konta klienta do usunięcia.')
+    const remainingDevices = await this.getOwnedDeviceCount(currentUser.uid)
+    if (remainingDevices > 0) throw new Error('Konto ma jeszcze zarejestrowane urządzenia.')
+    await deleteDoc(doc(firebaseServices!.firestore, 'clients', currentUser.uid))
+    try {
+      await deleteUser(currentUser)
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : ''
+      if (code === 'auth/requires-recent-login') throw new Error('Zaloguj się ponownie i ponów usunięcie konta.')
+      throw error
+    }
+    this.clearProviderAccessToken()
+    this.activeRegistrationDetails = null
+  }
+
   async archiveDeviceRecord(deviceId: string, actorEmail: string) {
     const archivedAt = Date.now()
     await updateDoc(doc(firebaseServices!.firestore, 'devices', deviceId), {
@@ -968,7 +1011,8 @@ class FirebaseBackend implements BackendClient {
       deviceId,
       details: {
         diagnosticsConsent: Boolean(consent?.diagnosticsConsent),
-        remoteCommandConsent: Boolean(consent?.remoteCommandConsent)
+        remoteCommandConsent: Boolean(consent?.remoteCommandConsent),
+        dwServiceConsent: Boolean(consent?.dwServiceConsent)
       }
     })
   }
@@ -1625,6 +1669,19 @@ class MockBackend implements BackendClient {
   async deleteDeviceRecord(deviceId: string) {
     this.devices = this.devices.filter((device) => device.deviceId !== deviceId)
     this.emitDevices()
+  }
+
+  async getOwnedDeviceCount(ownerUid: string) {
+    return this.devices.filter((device) => device.ownerUid === ownerUid).length
+  }
+
+  async prepareAccountDeletion(_password?: string) {}
+
+  async deleteCurrentAccount() {
+    if (!this.currentUser || this.currentUser.role !== 'slave') throw new Error('Brak konta klienta do usunięcia.')
+    if (await this.getOwnedDeviceCount(this.currentUser.uid)) throw new Error('Konto ma jeszcze zarejestrowane urządzenia.')
+    this.clientProfiles.delete(this.currentUser.uid)
+    await this.signOut()
   }
 
   async archiveDeviceRecord(deviceId: string, actorEmail: string) {

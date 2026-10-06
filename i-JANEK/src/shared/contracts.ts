@@ -353,6 +353,7 @@ export interface ConsentRecord {
   policyVersion: string
   diagnosticsConsent: boolean
   remoteCommandConsent: boolean
+  dwServiceConsent: boolean
 }
 
 export interface SystemContext extends DeviceIdentity {

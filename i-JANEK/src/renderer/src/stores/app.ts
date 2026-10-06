@@ -264,6 +264,7 @@ export const useAppStore = defineStore('app', () => {
   const offline = ref(!navigator.onLine)
   const lastError = ref<string>('')
   const consent = ref<ConsentRecord | null>(null)
+  let deregisteringCurrentDevice = false
   const pendingTerminalCommand = ref('')
   const pendingChatMessage = ref('')
   const chatSendError = ref('')
@@ -899,7 +900,7 @@ export const useAppStore = defineStore('app', () => {
           }
         }
 
-        if (!selfDevice && isAuthoritative && !deviceRegistrationInFlight) {
+        if (!selfDevice && isAuthoritative && !deviceRegistrationInFlight && !deregisteringCurrentDevice) {
           deviceRegistrationInFlight = true
           const context = systemContext.value
           const existingConsent = consent.value
@@ -1184,11 +1185,26 @@ export const useAppStore = defineStore('app', () => {
     resetSessionState()
   }
 
-  async function deregisterAndSignOut() {
+  async function getCurrentAccountDeviceCount() {
+    if (!user.value || user.value.role !== 'slave') throw new Error('Brak konta klienta.')
+    return backend.value!.getOwnedDeviceCount(user.value.uid)
+  }
+
+  async function deregisterAndSignOut(options: { deleteAccount: boolean; password?: string; expectedLastDevice: boolean }) {
+    if (!user.value || user.value.role !== 'slave') throw new Error('Tylko klient może wyrejestrować swoje urządzenie.')
+    deregisteringCurrentDevice = true
     try {
-      if (user.value?.role === 'slave' && selfDevice.value) {
+      const ownedDeviceCount = await backend.value!.getOwnedDeviceCount(user.value.uid)
+      const isLastDevice = ownedDeviceCount <= 1
+      if (isLastDevice !== options.expectedLastDevice) {
+        throw new Error('Liczba urządzeń na koncie zmieniła się. Otwórz potwierdzenie ponownie.')
+      }
+      if (options.deleteAccount && !isLastDevice) throw new Error('Najpierw wyrejestruj pozostałe urządzenia.')
+      if (options.deleteAccount) await backend.value!.prepareAccountDeletion(options.password)
+      if (selfDevice.value) {
         await backend.value?.deleteDeviceRecord(selfDevice.value.deviceId)
       }
+      if (options.deleteAccount) await backend.value!.deleteCurrentAccount()
       await window.janek.system.setRegisteredDeviceId(null)
       await window.janek.system.setConsent(null)
       consent.value = null
@@ -1201,10 +1217,14 @@ export const useAppStore = defineStore('app', () => {
       await signOut()
     } catch (error) {
       lastError.value = error instanceof Error ? error.message : 'Nie udało się wyrejestrować urządzenia.'
+      throw error
+    } finally {
+      deregisteringCurrentDevice = false
     }
   }
 
-  async function acceptConsent() {
+  async function acceptConsent(dwServiceConsent = false) {
+    if (!dwServiceConsent && !consent.value?.dwServiceConsent) throw new Error('Wymagana jest zgoda na instalację i użycie DWService.')
     const companyName = pendingCompanyName.value.trim()
     const aliasName = pendingDeviceAlias.value.trim()
     if (!companyName || !aliasName || aliasName.length < MIN_DEVICE_ALIAS_LENGTH) {
@@ -1226,6 +1246,7 @@ export const useAppStore = defineStore('app', () => {
       acceptedAt: Date.now(),
       diagnosticsConsent: true,
       remoteCommandConsent: true,
+      dwServiceConsent: dwServiceConsent || Boolean(consent.value?.dwServiceConsent),
       policyVersion: CURRENT_CONSENT_POLICY_VERSION
     }
 
@@ -1645,7 +1666,8 @@ export const useAppStore = defineStore('app', () => {
 
   async function processDwServiceProvisioning(device: DeviceRecord) {
     const configuration = device.dwservice
-    if (!configuration || device.approvalStatus !== 'approved' || offline.value || !isDesktopAgent.value) return
+    if (!configuration || device.approvalStatus !== 'approved' || offline.value || !isDesktopAgent.value
+      || device.consent?.policyVersion !== CURRENT_CONSENT_POLICY_VERSION || !device.consent.dwServiceConsent) return
 
     try {
       const expectedHash = await hashDwServiceCode(configuration.installationCode)
@@ -2472,6 +2494,7 @@ export const useAppStore = defineStore('app', () => {
     signInWithGoogle,
     signInWithEmail,
     registerWithEmail,
+    getCurrentAccountDeviceCount,
     sendPasswordReset,
     signOut,
     deregisterAndSignOut,

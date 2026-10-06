@@ -12,6 +12,14 @@ const store = useAppStore()
 const settingsOpen = ref(false)
 const consentAccepted = ref(false)
 const remoteCommandsAccepted = ref(false)
+const dwServiceAccepted = ref(false)
+const dwServiceInfoOpen = ref(false)
+const unregisterDialogOpen = ref(false)
+const unregisterBusy = ref(false)
+const unregisterDeviceCount = ref<number | null>(null)
+const deleteAccountAfterUnregister = ref(false)
+const unregisterPassword = ref('')
+const unregisterError = ref('')
 const MIN_DEVICE_ALIAS_LENGTH = 3
 const consentValidationMessage = ref('')
 const authMode = ref<'login' | 'register'>('login')
@@ -57,7 +65,8 @@ const needsConsent = computed(
     !store.consent ||
     store.consent.policyVersion !== CURRENT_CONSENT_POLICY_VERSION ||
     !store.consent.diagnosticsConsent ||
-    !store.consent.remoteCommandConsent
+    !store.consent.remoteCommandConsent ||
+    !store.consent.dwServiceConsent
   )
 )
 const isApprovalBlocked = computed(() => store.isApprovalBlocked)
@@ -68,6 +77,7 @@ const isDeviceRegistrationMissing = computed(() => Boolean(
   && store.consent
   && !store.selfDevice
 ))
+const isLastDevice = computed(() => unregisterDeviceCount.value !== null && unregisterDeviceCount.value <= 1)
 const aliasTooShort = computed(() => {
   const currentLength = store.pendingDeviceAlias.trim().length
   return currentLength > 0 && currentLength < MIN_DEVICE_ALIAS_LENGTH
@@ -166,9 +176,14 @@ async function handleAcceptConsent() {
     return
   }
 
+  if (!dwServiceAccepted.value) {
+    consentValidationMessage.value = 'Zaznacz zgodę na instalację i użycie DWService.'
+    return
+  }
+
   consentValidationMessage.value = ''
   try {
-    await store.acceptConsent()
+    await store.acceptConsent(dwServiceAccepted.value)
   } catch (error) {
     consentValidationMessage.value = error instanceof Error
       ? error.message
@@ -202,7 +217,40 @@ function approvalStatusLabel(status: string | null) {
   return 'Brak statusu'
 }
 
+async function openUnregisterDialog() {
+  deleteAccountAfterUnregister.value = false
+  unregisterPassword.value = ''
+  unregisterError.value = ''
+  unregisterDeviceCount.value = null
+  unregisterDialogOpen.value = true
+  try {
+    unregisterDeviceCount.value = await store.getCurrentAccountDeviceCount()
+  } catch (error) {
+    unregisterError.value = error instanceof Error ? error.message : 'Nie udało się sprawdzić urządzeń konta.'
+  }
+}
+
+async function confirmUnregister() {
+  if (unregisterBusy.value || unregisterDeviceCount.value === null) return
+  unregisterBusy.value = true
+  unregisterError.value = ''
+  try {
+    await store.deregisterAndSignOut({
+      deleteAccount: isLastDevice.value && deleteAccountAfterUnregister.value,
+      password: unregisterPassword.value || undefined,
+      expectedLastDevice: isLastDevice.value
+    })
+    unregisterDialogOpen.value = false
+    settingsOpen.value = false
+  } catch (error) {
+    unregisterError.value = error instanceof Error ? error.message : 'Nie udało się wyrejestrować urządzenia.'
+  } finally {
+    unregisterBusy.value = false
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('i-janek:open-unregister-dialog', openUnregisterDialog)
   if (window.janek?.system?.onUpdateStatus) {
     updateStatusCleanup = window.janek.system.onUpdateStatus(handleUpdateStatus)
     const currentStatus = await window.janek.system.getUpdateStatus()
@@ -212,12 +260,13 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('i-janek:open-unregister-dialog', openUnregisterDialog)
   updateStatusCleanup?.()
   clearUpdateStatusTimer()
 })
 
 watch(
-  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted, remoteCommandsAccepted],
+  [() => store.pendingDeviceAlias, () => store.pendingCompanyName, consentAccepted, remoteCommandsAccepted, dwServiceAccepted],
   () => {
     if (!consentValidationMessage.value) return
     consentValidationMessage.value = ''
@@ -552,6 +601,10 @@ watch(
             <input v-model="remoteCommandsAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />
             <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Zezwalam zaakceptowanemu administratorowi na uruchamianie poleceń diagnostycznych i naprawczych. Każde polecenie i wynik są zapisywane w historii audytowej.</span>
           </label>
+          <div class="mt-2 flex items-start gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
+            <input id="dwservice-consent" v-model="dwServiceAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />
+            <label for="dwservice-consent" class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Wyrażam zgodę na instalację komponentu zdalnego wsparcia <button class="underline underline-offset-2 hover:text-white" type="button" @click.stop.prevent="dwServiceInfoOpen = true">DWService</button> na tym urządzeniu oraz jego wykorzystanie przez i-JANICKI do świadczenia usług zdalnego wsparcia.</label>
+          </div>
           <p v-if="consentValidationMessage" class="mt-3 text-center text-sm text-amber-300">
             {{ consentValidationMessage }}
           </p>
@@ -564,6 +617,7 @@ watch(
               Akceptuję i przechodzę dalej
             </button>
           </div>
+          <button class="mx-auto mt-4 block text-xs text-white/35 transition hover:text-rose-200/70" type="button" @click="openUnregisterDialog()">Wyrejestruj urządzenie</button>
         </div>
       </section>
 
@@ -623,8 +677,8 @@ watch(
               <button class="px-2 py-1 text-xs text-white/30 transition hover:text-white/55" type="button" @click="store.signOut()">
                 Wyloguj
               </button>
-              <button class="px-2 py-1 text-xs text-white/25 transition hover:text-rose-200/60" type="button" @click="store.deregisterAndSignOut()">
-                Wyrejestruj urządzenie i wyloguj
+              <button class="px-2 py-1 text-xs text-white/25 transition hover:text-rose-200/60" type="button" @click="openUnregisterDialog()">
+                Wyrejestruj urządzenie
               </button>
             </div>
           </div>
@@ -634,6 +688,41 @@ watch(
       <MasterDashboard v-else-if="store.isMaster" @open-settings="settingsOpen = true" />
       <SlaveLayout v-else />
     </main>
+    <div v-if="dwServiceInfoOpen" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="dwservice-info-title" @click.self="dwServiceInfoOpen = false">
+      <div class="glass-panel w-full max-w-lg rounded-[28px] p-6">
+        <div class="flex items-start justify-between gap-4"><h2 id="dwservice-info-title" class="text-lg font-semibold text-white">Czym jest DWService?</h2><button type="button" aria-label="Zamknij" @click="dwServiceInfoOpen = false"><X class="h-5 w-5" /></button></div>
+        <div class="mt-4 space-y-3 text-sm leading-6 text-[var(--text-dim)]">
+          <p>DWService to komponent umożliwiający i-JANICKI zdalne wsparcie tego komputera, na przykład diagnozę problemów i pomoc w ich rozwiązaniu.</p>
+          <p>Po zatwierdzeniu urządzenia komponent może działać w tle, w trybie silent, bez każdorazowego uruchamiania go przez użytkownika.</p>
+          <p>Możesz wycofać zgodę przez wyrejestrowanie urządzenia w ustawieniach i odinstalowanie aplikacji. Na macOS trzeba też osobno usunąć DWAgent. Do czasu odinstalowania komponent może nadal działać w tle.</p>
+        </div>
+        <button class="glass-button mt-5" type="button" @click="dwServiceInfoOpen = false">Rozumiem</button>
+      </div>
+    </div>
     <SettingsDrawer v-if="store.user && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" :open="settingsOpen" @close="settingsOpen = false" />
+    <div v-if="unregisterDialogOpen" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="unregister-title" @click.self="!unregisterBusy && (unregisterDialogOpen = false)">
+      <section class="glass-panel w-full max-w-lg rounded-[28px] border border-rose-300/20 p-6">
+        <h2 id="unregister-title" class="text-lg font-semibold text-white">Wyrejestrować urządzenie?</h2>
+        <div class="mt-3 space-y-3 text-sm leading-6 text-[var(--text-dim)]">
+          <p>To urządzenie zostanie usunięte z i-JANEK. Utracisz na nim dostęp do aplikacji oraz zdalnego wsparcia. Aby wrócić, będzie potrzebna nowa rejestracja i akceptacja administratora.</p>
+          <p v-if="isLastDevice">To ostatnie urządzenie na koncie. Możesz zachować konto albo zdecydować o jego trwałym usunięciu.</p>
+          <p v-else-if="unregisterDeviceCount !== null">Pozostałe urządzenia i konto pozostaną aktywne.</p>
+          <p v-else>Sprawdzanie liczby urządzeń konta…</p>
+          <p>Po wyrejestrowaniu odinstaluj i-JANEK. Na macOS usuń także osobno DWAgent; do tego czasu komponent może nadal działać w tle.</p>
+        </div>
+        <label v-if="isLastDevice" class="mt-5 flex items-start gap-3 rounded-[18px] border border-white/10 bg-white/5 p-3 text-sm text-[var(--text-dim)]">
+          <input v-model="deleteAccountAfterUnregister" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-rose-500" />
+          <span><strong class="text-white">Chcę również usunąć konto.</strong> Profil klienta i konto logowania zostaną trwale usunięte, a adres e-mail będzie można ponownie zarejestrować.</span>
+        </label>
+        <label v-if="isLastDevice && deleteAccountAfterUnregister" class="mt-4 block text-xs text-[var(--text-dim)]">Hasło konta (jeśli logujesz się e-mailem i hasłem)
+          <input v-model="unregisterPassword" class="soft-input mt-2" type="password" autocomplete="current-password" />
+        </label>
+        <p v-if="unregisterError" class="mt-3 text-sm text-rose-200">{{ unregisterError }}</p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="ghost-button" type="button" :disabled="unregisterBusy" @click="unregisterDialogOpen = false">Anuluj</button>
+          <button class="glass-button border-rose-300/30 text-rose-100" type="button" :disabled="unregisterBusy || unregisterDeviceCount === null" @click="confirmUnregister()">{{ unregisterBusy ? 'Usuwanie…' : isLastDevice && deleteAccountAfterUnregister ? 'Wyrejestruj i usuń konto' : 'Wyrejestruj urządzenie' }}</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
