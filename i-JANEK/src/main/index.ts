@@ -28,6 +28,7 @@ let updateCheckInFlight: Promise<{ status: string; message: string }> | null = n
 let updateInstallPromptOpen = false
 let windowsRestartSpawned = false
 let windowsRestartAttempts = 0
+let windowsRestartAttemptId: string | null = null
 let pendingWindowsUpdateVersion: string | null = null
 let pendingWindowsUpdateRequestId: string | null = null
 let windowsAgentRequestStartedAt = 0
@@ -97,25 +98,30 @@ function hasWindowsUpdateAgent() {
 function restartAfterWindowsUpdate(version: string) {
   if (windowsRestartSpawned || windowsRestartAttempts >= 3) return
   windowsRestartAttempts += 1
+  const attemptId = `${process.pid}-${Date.now()}-${windowsRestartAttempts}`
   const sourceScriptPath = path.join(process.resourcesPath, 'resources', 'scripts', 'restart-after-update.ps1')
   const restartDir = path.join(app.getPath('userData'), 'update-restart')
   const scriptPath = path.join(restartDir, 'restart-after-update.ps1')
   const logPath = path.join(restartDir, 'restart-after-update.log')
-  const consoleLogPath = path.join(restartDir, 'restart-after-update.console.log')
+  const consoleLogPath = path.join(restartDir, `restart-after-update-${attemptId}.console.log`)
+  const handshakePath = path.join(restartDir, `watcher-${attemptId}.ready`)
   const shouldRestartHidden = !mainWindow || !mainWindow.isVisible() || mainWindow.isMinimized()
   try {
     fs.mkdirSync(restartDir, { recursive: true })
     fs.copyFileSync(sourceScriptPath, scriptPath)
-    fs.writeFileSync(logPath, `[${new Date().toISOString()}] Przygotowano restart po aktualizacji ${version}.\n`, 'utf8')
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Przygotowano restart po aktualizacji ${version}. Próba=${attemptId}.\n`, 'utf8')
+    fs.rmSync(handshakePath, { force: true })
   } catch (error) {
     publishUpdateStatus({ status: 'error', message: `Nie udało się przygotować pliku ponownego uruchomienia: ${(error as Error).message}` })
     return
   }
   windowsRestartSpawned = true
+  windowsRestartAttemptId = attemptId
   const powershellPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   const watcherArgs = [
     '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
-    '-Version', version, '-AppExe', process.execPath, '-LogPath', logPath
+    '-Version', version, '-AppExe', process.execPath, '-LogPath', logPath,
+    '-AttemptId', attemptId, '-HandshakePath', handshakePath
   ]
   if (shouldRestartHidden) watcherArgs.push('-StartHidden')
   let outputFd: number
@@ -138,27 +144,28 @@ function restartAfterWindowsUpdate(version: string) {
   }
   let restartConfirmed = false
   const failRestart = (message: string) => {
-    if (restartConfirmed || !windowsRestartSpawned) return
+    if (restartConfirmed || !windowsRestartSpawned || windowsRestartAttemptId !== attemptId) return
     windowsRestartSpawned = false
+    windowsRestartAttemptId = null
     publishUpdateStatus({ status: 'error', version, message })
-    void writeDiagnosticLog('error', 'windows_restart_watcher_failed', { version, message, consoleLogPath })
+    void writeDiagnosticLog('error', 'windows_restart_watcher_failed', { version, attemptId, message, consoleLogPath })
   }
   watcher.once('error', (error) => {
     failRestart(`Nie udało się uruchomić procesu ponownego startu: ${error.message}`)
   })
   watcher.once('exit', (code) => {
-    failRestart(`Proces ponownego startu zakończył się przed uruchomieniem obserwatora (kod ${code ?? 'nieznany'}). Sprawdź restart-after-update.console.log.`)
+    failRestart(`Proces ponownego startu zakończył się przed uruchomieniem obserwatora (kod ${code ?? 'nieznany'}). Sprawdź ${path.basename(consoleLogPath)}.`)
   })
   if (!watcher.pid) {
     failRestart('Nie udało się uruchomić procesu ponownego startu aplikacji.')
     return
   }
   watcher.unref()
-  const deadline = Date.now() + 10_000
+  const deadline = Date.now() + 2 * 60_000
   const confirmRestartWatcher = () => {
-    if (!windowsRestartSpawned || restartConfirmed) return
+    if (!windowsRestartSpawned || windowsRestartAttemptId !== attemptId || restartConfirmed) return
     try {
-      if (fs.readFileSync(logPath, 'utf8').includes(`Uruchomiono obserwatora aktualizacji ${version}.`)) {
+      if (fs.readFileSync(handshakePath, 'utf8').trim() === attemptId) {
         restartConfirmed = true
         forceQuit = true
         app.quit()
@@ -167,7 +174,7 @@ function restartAfterWindowsUpdate(version: string) {
     } catch { /* The watcher has not written its first line yet. */ }
     if (Date.now() >= deadline) {
       watcher.kill()
-      failRestart('Proces ponownego startu nie uruchomił się. Aplikacja pozostaje otwarta; sprawdź log restart-after-update.console.log.')
+      failRestart(`Proces ponownego startu nie uruchomił się w ciągu 2 minut. Aplikacja pozostaje otwarta; sprawdź ${path.basename(consoleLogPath)}.`)
       return
     }
     setTimeout(confirmRestartWatcher, 200)
@@ -254,6 +261,7 @@ function handOffWindowsUpdate(version: string, installerPath: string) {
   pendingWindowsUpdateVersion = version
   pendingWindowsUpdateRequestId = requestId
   windowsRestartSpawned = false
+  windowsRestartAttemptId = null
   windowsRestartAttempts = 0
   windowsAgentRequestStartedAt = Date.now()
   windowsAgentLastProgressAt = 0

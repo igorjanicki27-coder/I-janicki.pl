@@ -2,6 +2,8 @@
   [Parameter(Mandatory=$true)][string]$Version,
   [Parameter(Mandatory=$true)][string]$AppExe,
   [Parameter(Mandatory=$true)][string]$LogPath,
+  [Parameter(Mandatory=$true)][string]$AttemptId,
+  [Parameter(Mandatory=$true)][string]$HandshakePath,
   [switch]$StartHidden
 )
 
@@ -15,7 +17,8 @@ function Write-RestartLog([string]$Message) {
 }
 
 try {
-  Write-RestartLog "Uruchomiono obserwatora aktualizacji $Version. AppExe=$AppExe StartHidden=$StartHidden"
+  Write-RestartLog "Uruchomiono obserwatora aktualizacji $Version. Próba=$AttemptId AppExe=$AppExe StartHidden=$StartHidden"
+  [IO.File]::WriteAllText($HandshakePath, $AttemptId, (New-Object Text.UTF8Encoding $false))
   $deadline = [DateTime]::UtcNow.AddMinutes(15)
   $finalState = 'timeout'
   while ([DateTime]::UtcNow -lt $deadline) {
