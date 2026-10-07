@@ -34,14 +34,17 @@ const contacts = computed<ContactEntry[]>(() => {
   for (const device of store.devices) {
     const companyName = device.companyName?.trim() || 'Bez firmy'
     const messages = store.companyChats[device.ownerUid] ?? []
+    const chatStateReady = Object.prototype.hasOwnProperty.call(store.companyChatStates, device.ownerUid)
     const lastReadAt = store.companyChatStates[device.ownerUid]?.master?.lastReadAt ?? 0
-    const latestUnreadMessageAt = messages.reduce((latest, message) => (
+    const latestUnreadMessageAt = chatStateReady ? messages.reduce((latest, message) => (
       message.senderRole === 'slave' && message.createdAt > lastReadAt
         ? Math.max(latest, message.createdAt)
         : latest
-    ), 0)
+    ), 0) : 0
     const latestMessageAt = messages.reduce((latest, message) => Math.max(latest, message.createdAt), 0)
-    const unread = messages.filter((message) => message.senderRole === 'slave' && message.createdAt > lastReadAt).length
+    const unread = chatStateReady
+      ? messages.filter((message) => message.senderRole === 'slave' && message.createdAt > lastReadAt).length
+      : 0
     const existing = grouped.get(device.ownerUid)
     if (existing) {
       existing.devices.push(device)

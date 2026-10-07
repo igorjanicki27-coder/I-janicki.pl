@@ -39,12 +39,15 @@ const maxDiskUsage = computed(() => {
 const messageNotificationsMuted = computed(() => store.slaveSettings.muteChatSounds)
 const conversationTimeline = computed(() => buildConversationTimeline(store.selectedConversationMessages))
 const unreadMessageIds = computed(
-  () =>
-    new Set(
+  () => {
+    const ownerUid = store.selectedConversationOwnerUid
+    if (!ownerUid || !Object.prototype.hasOwnProperty.call(store.companyChatStates, ownerUid)) return new Set<string>()
+    return new Set(
       store.selectedConversationMessages
         .filter((message) => message.senderRole === 'master' && message.createdAt > (store.companyChatStates[message.ownerUid]?.slave?.lastReadAt ?? 0))
         .map((message) => message.id)
     )
+  }
 )
 const unreadMessagesCount = computed(() => unreadMessageIds.value.size)
 const masterIsTyping = computed(() => {

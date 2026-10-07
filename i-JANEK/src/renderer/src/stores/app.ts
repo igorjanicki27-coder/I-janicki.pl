@@ -36,6 +36,11 @@ import {
 import { buildDeviceId } from '@shared/device-id'
 import { isMetricThresholdValid, type MetricThresholdKey } from '@shared/thresholds'
 import { createBackendClient, type BackendClient } from '@/services/backend'
+import {
+  acknowledgePendingChatParticipantState,
+  persistPendingChatParticipantState,
+  readPendingChatParticipantState
+} from '@/services/chat-state-cache'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import {
   countUserFacingOfflineOperations,
@@ -272,6 +277,7 @@ export const useAppStore = defineStore('app', () => {
   const commandHistoryCleanup = new Map<string, () => void>()
   const initializedCompanyChats = new Set<string>()
   const initializedCompanyChatStates = new Set<string>()
+  const pendingChatStateFlushes = new Set<string>()
   const seenAlertIds = new Set<string>()
   let alertsSnapshotReady = false
   let lastSelfApprovalStatus: ApprovalStatus | null = null
@@ -302,6 +308,7 @@ export const useAppStore = defineStore('app', () => {
     const role = user.value?.role
     if (!role) return 0
     return Object.entries(companyChats.value).reduce((total, [ownerUid, messages]) => {
+      if (!Object.prototype.hasOwnProperty.call(companyChatStates.value, ownerUid)) return total
       const lastReadAt = companyChatStates.value[ownerUid]?.[role]?.lastReadAt ?? 0
       return total + messages.filter((message) => message.senderRole !== role && message.createdAt > lastReadAt).length
     }, 0)
@@ -642,7 +649,45 @@ export const useAppStore = defineStore('app', () => {
       companyChatCleanup.set(ownerUid, cleanup)
 
       const stateCleanup = backend.value!.subscribeCompanyChatState(ownerUid, (state) => {
-        companyChatStates.value = { ...companyChatStates.value, [ownerUid]: state }
+        const role = user.value?.role
+        const email = user.value?.email
+        let nextState = state
+        if (role && email) {
+          const remoteParticipantState = state[role]
+          const localParticipantState = companyChatStates.value[ownerUid]?.[role]
+          const pendingParticipantState = readPendingChatParticipantState(ownerUid, role, email)
+          const newestLocalState = localParticipantState && (
+            !remoteParticipantState || localParticipantState.updatedAt > remoteParticipantState.updatedAt
+          ) ? localParticipantState : remoteParticipantState
+          const mergedParticipantState: CompanyChatParticipantState = {
+            role,
+            email,
+            typing: newestLocalState?.typing ?? false,
+            lastDeliveredAt: Math.max(
+              remoteParticipantState?.lastDeliveredAt ?? 0,
+              localParticipantState?.lastDeliveredAt ?? 0,
+              pendingParticipantState?.lastDeliveredAt ?? 0
+            ),
+            lastReadAt: Math.max(
+              remoteParticipantState?.lastReadAt ?? 0,
+              localParticipantState?.lastReadAt ?? 0,
+              pendingParticipantState?.lastReadAt ?? 0
+            ),
+            updatedAt: Math.max(
+              remoteParticipantState?.updatedAt ?? 0,
+              localParticipantState?.updatedAt ?? 0,
+              pendingParticipantState?.updatedAt ?? 0
+            )
+          }
+          nextState = { ...state, [role]: mergedParticipantState }
+          if (pendingParticipantState && remoteParticipantState) {
+            acknowledgePendingChatParticipantState(ownerUid, role, email, remoteParticipantState)
+          }
+        }
+        companyChatStates.value = { ...companyChatStates.value, [ownerUid]: nextState }
+        if (role && email && readPendingChatParticipantState(ownerUid, role, email)) {
+          void flushPendingChatParticipantState(ownerUid, role)
+        }
         initializedCompanyChatStates.add(ownerUid)
         markLatestIncomingDelivered(ownerUid)
       })
@@ -1269,22 +1314,61 @@ export const useAppStore = defineStore('app', () => {
   ) {
     if (!backend.value || !user.value || user.value.role !== participant) return
     const current = companyChatStates.value[ownerUid]?.[participant]
+    const pending = readPendingChatParticipantState(ownerUid, participant, user.value.email)
     const nextState: CompanyChatParticipantState = {
       role: participant,
       email: user.value.email,
       typing: patch.typing ?? current?.typing ?? false,
-      lastDeliveredAt: Math.max(current?.lastDeliveredAt ?? 0, patch.lastDeliveredAt ?? 0),
-      lastReadAt: Math.max(current?.lastReadAt ?? 0, patch.lastReadAt ?? 0),
+      lastDeliveredAt: Math.max(current?.lastDeliveredAt ?? 0, pending?.lastDeliveredAt ?? 0, patch.lastDeliveredAt ?? 0),
+      lastReadAt: Math.max(current?.lastReadAt ?? 0, pending?.lastReadAt ?? 0, patch.lastReadAt ?? 0),
       updatedAt: Date.now()
     }
     companyChatStates.value = {
       ...companyChatStates.value,
       [ownerUid]: { ...(companyChatStates.value[ownerUid] ?? {}), [participant]: nextState }
     }
+    if (patch.lastDeliveredAt !== undefined || patch.lastReadAt !== undefined || pending) {
+      persistPendingChatParticipantState(ownerUid, participant, nextState)
+    }
     try {
       await backend.value.updateCompanyChatParticipantState(ownerUid, participant, nextState)
+      acknowledgePendingChatParticipantState(ownerUid, participant, nextState.email, nextState)
     } catch (error) {
       console.warn('[i-JANEK] Nie udało się zaktualizować stanu rozmowy:', error)
+      void window.janek.system.logEvent('warning', 'chat_participant_state_update_failed', {
+        participant,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  async function flushPendingChatParticipantState(ownerUid: string, participant: CompanyChatParticipant) {
+    const currentUser = user.value
+    if (!backend.value || !currentUser || currentUser.role !== participant) return
+    const pending = readPendingChatParticipantState(ownerUid, participant, currentUser.email)
+    if (!pending) return
+    const flushKey = `${participant}:${ownerUid}`
+    if (pendingChatStateFlushes.has(flushKey)) return
+    pendingChatStateFlushes.add(flushKey)
+    const current = companyChatStates.value[ownerUid]?.[participant]
+    const nextState: CompanyChatParticipantState = {
+      role: participant,
+      email: currentUser.email,
+      typing: current?.typing ?? false,
+      lastDeliveredAt: Math.max(current?.lastDeliveredAt ?? 0, pending.lastDeliveredAt),
+      lastReadAt: Math.max(current?.lastReadAt ?? 0, pending.lastReadAt),
+      updatedAt: Date.now()
+    }
+    try {
+      await backend.value.updateCompanyChatParticipantState(ownerUid, participant, nextState)
+      acknowledgePendingChatParticipantState(ownerUid, participant, currentUser.email, nextState)
+    } catch (error) {
+      void window.janek.system.logEvent('warning', 'pending_chat_participant_state_flush_failed', {
+        participant,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    } finally {
+      pendingChatStateFlushes.delete(flushKey)
     }
   }
 
