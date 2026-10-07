@@ -523,7 +523,7 @@ function formatTrackedDuration(seconds: number) {
             <div>
               <h2 id="archive-device-title" class="text-base font-semibold text-white">Usunąć komputer?</h2>
               <p class="mt-2 text-sm leading-6 text-[var(--text-dim)]">
-                <strong class="text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</strong> zniknie z aktywnych komputerów. Wiadomości, zgłoszenia i historia zostaną zachowane w archiwum i nie będą wpływać na bieżące liczniki.
+                <strong class="text-white">{{ formatDeviceLabelForMaster(store.selectedDevice) }}</strong> zniknie z aktywnych komputerów. Wiadomości i historia zostaną zachowane w archiwum i nie będą wpływać na bieżące liczniki.
               </p>
               <p class="mt-2 text-xs leading-5 text-amber-100/80">Agent na tym komputerze zostanie wyrejestrowany przy najbliższej synchronizacji.</p>
             </div>

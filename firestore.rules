@@ -153,62 +153,6 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    function isCreatingOwnServiceRequest() {
-      return isAuthenticated()
-        && request.auth.token.email != null
-        && request.resource.data.keys().hasOnly([
-          'ownerUid',
-          'ownerEmail',
-          'deviceId',
-          'deviceLabel',
-          'companyName',
-          'title',
-          'description',
-          'priority',
-          'status',
-          'createdAt',
-          'updatedAt',
-          'resolvedAt'
-        ])
-        && request.resource.data.keys().hasAll([
-          'ownerUid',
-          'ownerEmail',
-          'deviceId',
-          'deviceLabel',
-          'companyName',
-          'title',
-          'description',
-          'priority',
-          'status',
-          'createdAt',
-          'updatedAt',
-          'resolvedAt'
-        ])
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.ownerEmail == request.auth.token.email
-        && request.resource.data.deviceId is string
-        && exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId))
-        && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.ownerUid == request.auth.uid
-        && get(/databases/$(database)/documents/devices/$(request.resource.data.deviceId)).data.approvalStatus == 'approved'
-        && request.resource.data.deviceLabel is string
-        && request.resource.data.deviceLabel.size() >= 1
-        && request.resource.data.deviceLabel.size() <= 120
-        && request.resource.data.companyName is string
-        && request.resource.data.companyName.size() >= 1
-        && request.resource.data.companyName.size() <= 160
-        && request.resource.data.title is string
-        && request.resource.data.title.size() >= 3
-        && request.resource.data.title.size() <= 160
-        && request.resource.data.description is string
-        && request.resource.data.description.size() >= 5
-        && request.resource.data.description.size() <= 4000
-        && request.resource.data.priority in ['low', 'normal', 'high', 'critical']
-        && request.resource.data.status == 'open'
-        && request.resource.data.createdAt is int
-        && request.resource.data.updatedAt == request.resource.data.createdAt
-        && request.resource.data.resolvedAt == null;
-    }
-
     function isPinFormat(pin) {
       return pin is string && pin.matches('^\\d{4,6}$');
     }
@@ -534,41 +478,6 @@ service cloud.firestore {
       allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       allow create: if isMaster() || isCreatingOwnEvent();
       allow delete: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
-    }
-
-    match /serviceRequests/{requestId} {
-      allow read: if isMaster() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
-      allow create: if isCreatingOwnServiceRequest();
-      allow update: if isMaster()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'updatedAt', 'resolvedAt'])
-        && request.resource.data.status in ['open', 'in_progress', 'resolved']
-        && request.resource.data.updatedAt is int
-        && (
-          (request.resource.data.status == 'resolved' && request.resource.data.resolvedAt is int)
-          || (request.resource.data.status != 'resolved' && request.resource.data.resolvedAt == null)
-        );
-      allow delete: if isMaster();
-    }
-
-    match /serviceRequestInternalComments/{commentId} {
-      allow read: if isMaster();
-      allow create: if isMaster()
-        && request.resource.data.keys().hasOnly([
-          'requestId',
-          'authorUid',
-          'authorEmail',
-          'body',
-          'createdAt'
-        ])
-        && request.resource.data.requestId is string
-        && exists(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId))
-        && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorEmail == request.auth.token.email
-        && request.resource.data.body is string
-        && request.resource.data.body.size() >= 1
-        && request.resource.data.body.size() <= 2000
-        && request.resource.data.createdAt is int;
-      allow update, delete: if false;
     }
 
     match /usageDaily/{rollupId} {

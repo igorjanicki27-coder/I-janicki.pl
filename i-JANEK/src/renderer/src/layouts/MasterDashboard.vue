@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, LayoutDashboard, MessageSquare, Monitor, MonitorUp, Search, Settings } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, LayoutDashboard, MessageSquare, Monitor, MonitorUp, Search, Settings } from 'lucide-vue-next'
 import ComputerTile from '@/components/master/ComputerTile.vue'
 import DeviceWorkspace from '@/components/master/DeviceWorkspace.vue'
 import MessagesWorkspace from '@/components/master/MessagesWorkspace.vue'
 import DwServicePocPanel from '@/components/master/DwServicePocPanel.vue'
-import TasksWorkspace from '@/components/master/TasksWorkspace.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { isDeviceOnline } from '@/services/device-presence'
 import { useAppStore } from '@/stores/app'
@@ -13,7 +12,7 @@ import type { DeviceRecord } from '@shared/contracts'
 
 const emit = defineEmits<{ openSettings: [] }>()
 const store = useAppStore()
-type Section = 'overview' | 'devices' | 'tasks' | 'messages' | 'agents'
+type Section = 'overview' | 'devices' | 'messages' | 'agents'
 
 const activeSection = ref<Section>('overview')
 const deviceDetailOpen = ref(false)
@@ -39,7 +38,6 @@ const pageDevices = computed(() => {
 const pageMeta = computed(() => {
   if (deviceDetailOpen.value && store.selectedDevice) return { title: 'Szczegóły komputera', description: `${companyNameFor(store.selectedDevice)} · ${formatDeviceLabelForMaster(store.selectedDevice)}` }
   if (activeSection.value === 'devices') return { title: 'Wszystkie komputery', description: `${pageDevices.value.length} z ${approvedDevices.value.length} urządzeń` }
-  if (activeSection.value === 'tasks') return { title: 'Zadania', description: `${store.openServiceRequests.length} wymaga obsługi` }
   if (activeSection.value === 'messages') return { title: 'Wiadomości', description: 'Rozmowy z klientami' }
   if (activeSection.value === 'agents') return { title: 'Agenci', description: 'Panel zdalnego dostępu DWService' }
   return { title: 'Przegląd', description: 'Stan całej infrastruktury' }
@@ -51,7 +49,6 @@ const navItems = computed(() => [
     ? [{ key: 'agents' as const, label: 'Agenci', icon: MonitorUp, badge: 0, showZero: false }]
     : []),
   { key: 'devices' as const, label: 'Komputery', icon: Monitor, badge: approvedDevices.value.length, showZero: false },
-  { key: 'tasks' as const, label: 'Zadania', icon: ClipboardList, badge: store.openServiceRequests.length, showZero: false },
   { key: 'messages' as const, label: 'Wiadomości', icon: MessageSquare, badge: store.unreadCompanyChatCount, showZero: false }
 ])
 
@@ -88,12 +85,6 @@ function openDevice(device: DeviceRecord, returnSection: Section = activeSection
   detailReturnSection.value = returnSection
   deviceDetailOpen.value = true
 }
-function openDeviceById(deviceId: string, ownerUid: string) {
-  const device = store.devices.find((entry) => entry.deviceId === deviceId)
-  if (!device) return
-  store.selectedConversationOwnerUid = ownerUid
-  openDevice(device, 'tasks')
-}
 function closeDeviceDetails() {
   deviceDetailOpen.value = false
   activeSection.value = detailReturnSection.value
@@ -104,15 +95,6 @@ function handleDeviceArchived() {
   activeSection.value = 'devices'
 }
 
-function openTasks() {
-  navigate('tasks')
-}
-onMounted(() => {
-  window.addEventListener('i-janek:open-service-requests', openTasks)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('i-janek:open-service-requests', openTasks)
-})
 </script>
 
 <template>
@@ -124,7 +106,6 @@ onBeforeUnmount(() => {
       </div>
       <nav class="mt-5 space-y-1" aria-label="Główna nawigacja">
         <template v-for="item in navItems" :key="item.key">
-          <div v-if="item.key === 'tasks'" class="my-3 border-t border-white/10" aria-hidden="true" />
           <button type="button" class="sidebar-link" :class="activeSection === item.key && !deviceDetailOpen ? 'sidebar-link-active' : ''" @click="navigate(item.key)">
             <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" /><span class="flex-1">{{ item.label }}</span>
             <template v-if="item.key === 'messages' && item.badge">
@@ -148,16 +129,15 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex items-center gap-2"><div v-if="store.lastSyncAt" class="hidden text-right text-xs text-[var(--text-dim)] sm:block"><div>Ostatnia synchronizacja</div><div class="mono mt-0.5 text-white/70">{{ new Date(store.lastSyncAt).toLocaleTimeString('pl-PL') }}</div></div><button class="ghost-button relative !h-10 !w-10 !rounded-xl !px-0 lg:hidden" type="button" title="Ustawienia" @click="emit('openSettings')"><Settings class="h-4 w-4" /><span v-if="pendingDevices.length" class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]" aria-hidden="true" /><span v-if="pendingDevices.length" class="sr-only">Oczekujące rejestracje urządzeń</span></button></div>
       </header>
-      <nav v-if="!deviceDetailOpen" class="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><template v-for="item in navItems" :key="item.key"><span v-if="item.key === 'tasks'" class="mx-1 h-5 border-l border-white/15" aria-hidden="true" /><button class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<template v-if="item.key === 'messages' && item.badge"><span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /><span class="sr-only">{{ item.badge }} nieodczytanych wiadomości</span></template><span v-else-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></template></nav>
+      <nav v-if="!deviceDetailOpen" class="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 py-2 lg:hidden" aria-label="Nawigacja mobilna"><template v-for="item in navItems" :key="item.key"><button class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs" :class="activeSection === item.key ? 'bg-cyan-400/10 text-white' : 'text-[var(--text-dim)]'" type="button" @click="navigate(item.key)">{{ item.label }}<template v-if="item.key === 'messages' && item.badge"><span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /><span class="sr-only">{{ item.badge }} nieodczytanych wiadomości</span></template><span v-else-if="item.badge || item.showZero" class="mono rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px]">{{ item.badge }}</span></button></template></nav>
 
       <div class="scrollbar-glass min-h-0 flex-1" :class="activeSection === 'agents' && !deviceDetailOpen ? 'overflow-hidden' : 'overflow-y-auto'">
         <DeviceWorkspace v-if="deviceDetailOpen && store.selectedDevice" @archived="handleDeviceArchived" />
 
         <div v-else-if="activeSection === 'overview'" class="space-y-6 p-5 lg:p-6">
-          <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-emerald-400/10 text-emerald-200"><Activity class="h-5 w-5" /></span><span><span class="summary-label">Online</span><strong class="summary-value">{{ onlineDevices.length }}</strong><small>z {{ approvedDevices.length }} komputerów</small></span></button>
             <button class="summary-card text-left" type="button" @click="openDevices()"><span class="summary-icon bg-amber-400/10 text-amber-200"><AlertTriangle class="h-5 w-5" /></span><span><span class="summary-label">Wymagają uwagi</span><strong class="summary-value">{{ attentionDevices.length }}</strong><small>alerty zatwierdzonych komputerów</small></span></button>
-            <button class="summary-card text-left" type="button" @click="navigate('tasks')"><span class="summary-icon bg-fuchsia-400/10 text-fuchsia-200"><ClipboardList class="h-5 w-5" /></span><span><span class="summary-label">Otwarte zadania</span><strong class="summary-value">{{ store.openServiceRequests.length }}</strong><small>zgłoszenia klientów</small></span></button>
             <article class="summary-card"><span class="summary-icon bg-cyan-400/10 text-cyan-200"><Monitor class="h-5 w-5" /></span><span><span class="summary-label">Offline</span><strong class="summary-value">{{ offlineDevices.length }}</strong><small>komputery bez połączenia</small></span></article>
           </section>
           <section>
@@ -173,7 +153,6 @@ onBeforeUnmount(() => {
           <div v-else class="rounded-2xl border border-dashed border-white/10 p-12 text-center"><Monitor class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Brak komputerów</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Ta firma nie ma jeszcze urządzeń albo żaden komputer nie pasuje do filtra.</p></div>
         </div>
 
-        <TasksWorkspace v-else-if="activeSection === 'tasks'" @open-device="openDeviceById" />
         <DwServicePocPanel v-else-if="activeSection === 'agents'" />
         <MessagesWorkspace v-else />
       </div>

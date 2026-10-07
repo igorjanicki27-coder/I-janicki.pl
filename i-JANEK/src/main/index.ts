@@ -102,7 +102,6 @@ function restartAfterWindowsUpdate(version: string) {
   const restartDir = path.join(app.getPath('userData'), 'update-restart')
   const scriptPath = path.join(restartDir, 'restart-after-update.ps1')
   const logPath = path.join(restartDir, 'restart-after-update.log')
-  const consoleLogPath = path.join(restartDir, `restart-after-update-${attemptId}.console.log`)
   const handshakePath = path.join(restartDir, `watcher-${attemptId}.ready`)
   const shouldRestartHidden = !mainWindow || !mainWindow.isVisible() || mainWindow.isMinimized()
   try {
@@ -123,23 +122,13 @@ function restartAfterWindowsUpdate(version: string) {
     '-AttemptId', attemptId, '-HandshakePath', handshakePath
   ]
   if (shouldRestartHidden) watcherArgs.push('-StartHidden')
-  let outputFd: number
-  try {
-    outputFd = fs.openSync(consoleLogPath, 'w')
-  } catch (error) {
-    windowsRestartSpawned = false
-    publishUpdateStatus({ status: 'error', message: `Nie udało się otworzyć logu ponownego uruchomienia: ${(error as Error).message}` })
-    return
-  }
   let watcher: ReturnType<typeof spawn>
   try {
-    watcher = spawn(powershellPath, watcherArgs, { detached: true, windowsHide: true, stdio: ['ignore', outputFd, outputFd] })
+    watcher = spawn(powershellPath, watcherArgs, { detached: true, windowsHide: true, stdio: 'ignore' })
   } catch (error) {
     windowsRestartSpawned = false
     publishUpdateStatus({ status: 'error', version, message: `Nie udało się uruchomić procesu ponownego startu: ${(error as Error).message}` })
     return
-  } finally {
-    fs.closeSync(outputFd)
   }
   let restartConfirmed = false
   const failRestart = (message: string) => {
@@ -147,13 +136,27 @@ function restartAfterWindowsUpdate(version: string) {
     windowsRestartSpawned = false
     windowsRestartAttemptId = null
     publishUpdateStatus({ status: 'error', version, message })
-    void writeDiagnosticLog('error', 'windows_restart_watcher_failed', { version, attemptId, message, consoleLogPath })
+    void writeDiagnosticLog('error', 'windows_restart_watcher_failed', { version, attemptId, message, logPath, handshakePath })
+  }
+  const confirmRestart = () => {
+    if (restartConfirmed) return true
+    if (!windowsRestartSpawned || windowsRestartAttemptId !== attemptId) return false
+    try {
+      if (fs.readFileSync(handshakePath, 'utf8').trim() !== attemptId) return false
+      restartConfirmed = true
+      forceQuit = true
+      app.quit()
+      return true
+    } catch {
+      return false
+    }
   }
   watcher.once('error', (error) => {
     failRestart(`Nie udało się uruchomić procesu ponownego startu: ${error.message}`)
   })
   watcher.once('exit', (code) => {
-    failRestart(`Proces ponownego startu zakończył się przed uruchomieniem obserwatora (kod ${code ?? 'nieznany'}). Sprawdź ${path.basename(consoleLogPath)}.`)
+    if (confirmRestart()) return
+    failRestart(`Proces ponownego startu zakończył się przed uruchomieniem obserwatora (kod ${code ?? 'nieznany'}). Sprawdź restart-after-update.log.`)
   })
   if (!watcher.pid) {
     failRestart('Nie udało się uruchomić procesu ponownego startu aplikacji.')
@@ -163,17 +166,10 @@ function restartAfterWindowsUpdate(version: string) {
   const deadline = Date.now() + 2 * 60_000
   const confirmRestartWatcher = () => {
     if (!windowsRestartSpawned || windowsRestartAttemptId !== attemptId || restartConfirmed) return
-    try {
-      if (fs.readFileSync(handshakePath, 'utf8').trim() === attemptId) {
-        restartConfirmed = true
-        forceQuit = true
-        app.quit()
-        return
-      }
-    } catch { /* The watcher has not written its first line yet. */ }
+    if (confirmRestart()) return
     if (Date.now() >= deadline) {
       watcher.kill()
-      failRestart(`Proces ponownego startu nie uruchomił się w ciągu 2 minut. Aplikacja pozostaje otwarta; sprawdź ${path.basename(consoleLogPath)}.`)
+      failRestart('Proces ponownego startu nie uruchomił się w ciągu 2 minut. Aplikacja pozostaje otwarta; sprawdź restart-after-update.log.')
       return
     }
     setTimeout(confirmRestartWatcher, 200)

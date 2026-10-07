@@ -20,10 +20,6 @@ import type {
   RemoteActionRequest,
   RegistrationDetails,
   ReadinessCheckResult,
-  ServiceRequest,
-  ServiceRequestInternalComment,
-  ServiceRequestPriority,
-  ServiceRequestStatus,
   TerminalCommand,
   TelemetryMode,
   DeviceTelemetry,
@@ -220,8 +216,6 @@ export const useAppStore = defineStore('app', () => {
   const devices = ref<DeviceRecord[]>([])
   const archivedDevices = ref<DeviceRecord[]>([])
   const allAlerts = ref<AlertEvent[]>([])
-  const allServiceRequests = ref<ServiceRequest[]>([])
-  const serviceRequestComments = ref<ServiceRequestInternalComment[]>([])
   const usageHistory = ref<Record<string, UsageDailyRollup[]>>({})
   const inventory = ref<Record<string, InventoryReport>>({})
   const allCompanyChats = ref<Record<string, CompanyChatMessage[]>>({})
@@ -279,9 +273,7 @@ export const useAppStore = defineStore('app', () => {
   const initializedCompanyChats = new Set<string>()
   const initializedCompanyChatStates = new Set<string>()
   const seenAlertIds = new Set<string>()
-  const seenServiceRequestIds = new Set<string>()
   let alertsSnapshotReady = false
-  let serviceRequestsSnapshotReady = false
   let lastSelfApprovalStatus: ApprovalStatus | null = null
   let pendingNewAccountEmail: string | null = null
   let deviceRegistrationInFlight = false
@@ -296,7 +288,6 @@ export const useAppStore = defineStore('app', () => {
   const archivedDeviceIds = computed(() => new Set(archivedDevices.value.map((device) => device.deviceId)))
   const activeOwnerUids = computed(() => new Set(devices.value.map((device) => device.ownerUid)))
   const alerts = computed(() => allAlerts.value.filter((alert) => !archivedDeviceIds.value.has(alert.deviceId)))
-  const serviceRequests = computed(() => allServiceRequests.value.filter((request) => !archivedDeviceIds.value.has(request.deviceId)))
   const companyChats = computed<Record<string, CompanyChatMessage[]>>(() => {
     const visible: Record<string, CompanyChatMessage[]> = {}
     for (const [ownerUid, messages] of Object.entries(allCompanyChats.value)) {
@@ -324,7 +315,6 @@ export const useAppStore = defineStore('app', () => {
   })
   const approvalQueue = computed(() => devices.value.filter((device) => device.approvalStatus === 'pending'))
   const criticalAlerts = computed(() => alerts.value.filter((alert) => alert.severity === 'critical'))
-  const openServiceRequests = computed(() => serviceRequests.value.filter((request) => request.status !== 'resolved'))
   const isMaster = computed(() => user.value?.email?.toLowerCase() === (import.meta.env.VITE_MASTER_EMAIL || DEFAULT_MASTER_EMAIL).toLowerCase())
   const isDesktopAgent = computed(() => systemContext.value?.platform !== 'web')
   const approvalGateStatus = computed<'approved' | 'pending' | 'rejected' | null>(() => {
@@ -542,7 +532,6 @@ export const useAppStore = defineStore('app', () => {
     devices.value = []
     archivedDevices.value = []
     allAlerts.value = []
-    allServiceRequests.value = []
     inventory.value = {}
     allCompanyChats.value = {}
     companyChatStates.value = {}
@@ -562,9 +551,7 @@ export const useAppStore = defineStore('app', () => {
     initializedCompanyChats.clear()
     initializedCompanyChatStates.clear()
     seenAlertIds.clear()
-    seenServiceRequestIds.clear()
     alertsSnapshotReady = false
-    serviceRequestsSnapshotReady = false
     lastSelfApprovalStatus = null
     deviceRegistrationInFlight = false
     archivedDeviceResetInFlight = false
@@ -582,8 +569,6 @@ export const useAppStore = defineStore('app', () => {
           devices.value = []
           archivedDevices.value = []
           allAlerts.value = []
-          allServiceRequests.value = []
-          serviceRequestComments.value = []
           usageHistory.value = {}
           allCompanyChats.value = {}
           companyChatStates.value = {}
@@ -729,8 +714,6 @@ export const useAppStore = defineStore('app', () => {
     devices.value = []
     archivedDevices.value = []
     allAlerts.value = []
-    allServiceRequests.value = []
-    serviceRequestComments.value = []
     usageHistory.value = {}
     allCompanyChats.value = {}
     companyChatStates.value = {}
@@ -744,9 +727,7 @@ export const useAppStore = defineStore('app', () => {
     initializedCompanyChats.clear()
     initializedCompanyChatStates.clear()
     seenAlertIds.clear()
-    seenServiceRequestIds.clear()
     alertsSnapshotReady = false
-    serviceRequestsSnapshotReady = false
     deviceRegistrationInFlight = false
     archivedDeviceResetInFlight = false
     telemetryAlertSignatures.clear()
@@ -871,6 +852,8 @@ export const useAppStore = defineStore('app', () => {
         }
 
         if (selfDevice) {
+          selectedDeviceId.value = selfDevice.deviceId
+          selectedConversationOwnerUid.value = selfDevice.ownerUid
           const previousApprovalStatus = lastSelfApprovalStatus
           lastSelfApprovalStatus = selfDevice.approvalStatus
           if (previousApprovalStatus === 'pending' && selfDevice.approvalStatus === 'approved') {
@@ -925,36 +908,6 @@ export const useAppStore = defineStore('app', () => {
       }
     })
     sessionCleanup.add(alertsCleanup)
-
-    const serviceRequestsCleanup = backend.value!.subscribeServiceRequests(nextUser, (nextRequests) => {
-      const previousIds = new Set(seenServiceRequestIds)
-      allServiceRequests.value = nextRequests
-      lastSyncAt.value = Date.now()
-
-      if (!serviceRequestsSnapshotReady) {
-        nextRequests.forEach((request) => seenServiceRequestIds.add(request.id))
-        serviceRequestsSnapshotReady = true
-        return
-      }
-
-      const newRequests = serviceRequests.value.filter((request) => request.status === 'open' && !previousIds.has(request.id))
-      nextRequests.forEach((request) => seenServiceRequestIds.add(request.id))
-      if (nextUser.role !== 'master' || !isDesktopAgent.value) return
-      for (const request of newRequests) {
-        void notifyUser(
-          `Nowe zgłoszenie: ${request.companyName}`,
-          `${request.deviceLabel}: ${request.title}`
-        )
-      }
-    })
-    sessionCleanup.add(serviceRequestsCleanup)
-
-    if (nextUser.role === 'master') {
-      const commentsCleanup = backend.value!.subscribeServiceRequestComments((comments) => {
-        serviceRequestComments.value = comments
-      })
-      sessionCleanup.add(commentsCleanup)
-    }
 
   }
 
@@ -1027,8 +980,6 @@ export const useAppStore = defineStore('app', () => {
             await backend.value.publishTelemetry(device, operation.payload)
           } else if (operation.kind === 'inventory') {
             await backend.value.publishInventory(device, operation.payload)
-          } else if (operation.kind === 'service_request') {
-            await backend.value.createServiceRequest(device, operation.payload)
           } else {
             await backend.value.recordUsageRollup(device, operation.payload)
           }
@@ -1435,55 +1386,6 @@ export const useAppStore = defineStore('app', () => {
       if (!pendingChatMessage.value) pendingChatMessage.value = body
       return false
     }
-  }
-
-  async function createServiceRequest(
-    title: string,
-    description: string,
-    priority: ServiceRequestPriority
-  ) {
-    const device = selfDevice.value ?? selectedDevice.value
-    if (!device || user.value?.role !== 'slave') {
-      throw new Error('Nie znaleziono urządzenia przypisanego do zgłoszenia.')
-    }
-    const normalizedTitle = title.trim()
-    const normalizedDescription = description.trim()
-    if (normalizedTitle.length < 3 || normalizedDescription.length < 5) {
-      throw new Error('Uzupełnij temat i opis zgłoszenia.')
-    }
-    const payload = {
-      title: normalizedTitle,
-      description: normalizedDescription,
-      priority
-    }
-    if (offline.value) {
-      queueOfflineOperation({ kind: 'service_request', deviceId: device.deviceId, payload })
-      return 'queued' as const
-    }
-    try {
-      await backend.value!.createServiceRequest(device, payload)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      if (!navigator.onLine || /network|offline|unavailable|timeout/i.test(message)) {
-        queueOfflineOperation({ kind: 'service_request', deviceId: device.deviceId, payload })
-        return 'queued' as const
-      }
-      throw error
-    }
-    return 'sent' as const
-  }
-
-  async function updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
-    if (!isMaster.value) throw new Error('Tylko Master może zmieniać status zgłoszenia.')
-    await backend.value!.updateServiceRequestStatus(requestId, status)
-  }
-
-  async function addServiceRequestComment(requestId: string, body: string) {
-    if (!isMaster.value || !user.value) throw new Error('Komentarze wewnętrzne są dostępne tylko dla Mastera.')
-    const normalizedBody = body.trim()
-    if (!normalizedBody) return
-    if (normalizedBody.length > 2000) throw new Error('Komentarz może mieć maksymalnie 2000 znaków.')
-    await backend.value!.addServiceRequestComment(requestId, normalizedBody, user.value)
   }
 
   async function loadUsageHistory(deviceId = selectedDeviceId.value, days = 30) {
@@ -2187,8 +2089,6 @@ export const useAppStore = defineStore('app', () => {
     user,
     devices,
     alerts,
-    serviceRequests,
-    serviceRequestComments,
     usageHistory,
     companyChats,
     companyChatStates,
@@ -2205,7 +2105,6 @@ export const useAppStore = defineStore('app', () => {
     needsDeviceAlias,
     approvalQueue,
     criticalAlerts,
-    openServiceRequests,
     offline,
     lastError,
     consent,
@@ -2255,9 +2154,6 @@ export const useAppStore = defineStore('app', () => {
     setChatTyping,
     markChatRead,
     getChatMessageStatus,
-    createServiceRequest,
-    updateServiceRequestStatus,
-    addServiceRequestComment,
     loadUsageHistory,
     queueTerminalCommand,
     saveDeviceDetails,

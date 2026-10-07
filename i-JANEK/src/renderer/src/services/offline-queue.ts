@@ -1,4 +1,4 @@
-import type { DeviceTelemetry, InventoryReport, ServiceRequestPriority, UsageRollupDelta } from '@shared/contracts'
+import type { DeviceTelemetry, InventoryReport, UsageRollupDelta } from '@shared/contracts'
 
 const STORAGE_KEY = 'i-janek-offline-operations-v1'
 const MAX_OPERATIONS = 200
@@ -22,14 +22,6 @@ export type OfflineOperation =
     }
   | {
       id: string
-      kind: 'service_request'
-      deviceId: string
-      createdAt: number
-      attempts: number
-      payload: { title: string; description: string; priority: ServiceRequestPriority }
-    }
-  | {
-      id: string
       kind: 'usage_rollup'
       deviceId: string
       createdAt: number
@@ -45,7 +37,7 @@ function isOperation(value: unknown): value is OfflineOperation {
     typeof candidate.deviceId === 'string' &&
     typeof candidate.createdAt === 'number' &&
     typeof candidate.attempts === 'number' &&
-    ['telemetry', 'inventory', 'service_request', 'usage_rollup'].includes(String(candidate.kind))
+    ['telemetry', 'inventory', 'usage_rollup'].includes(String(candidate.kind))
   )
 }
 
@@ -54,7 +46,10 @@ export function readOfflineQueue(): OfflineOperation[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter(isOperation).sort((a, b) => a.createdAt - b.createdAt) : []
+    if (!Array.isArray(parsed)) return []
+    const operations = parsed.filter(isOperation).sort((a, b) => a.createdAt - b.createdAt)
+    if (operations.length !== parsed.length) writeOfflineQueue(operations)
+    return operations
   } catch {
     return []
   }

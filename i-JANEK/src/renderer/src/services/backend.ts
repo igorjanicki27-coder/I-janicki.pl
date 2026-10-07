@@ -51,10 +51,6 @@ import type {
   RemoteMasterSettings,
   RemoteActionRequest,
   RegistrationDetails,
-  ServiceRequest,
-  ServiceRequestInternalComment,
-  ServiceRequestPriority,
-  ServiceRequestStatus,
   TerminalCommand,
   UsageDailyRollup,
   UsageRollupDelta,
@@ -90,8 +86,6 @@ export interface BackendClient {
   deleteCurrentAccount: () => Promise<void>
   subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
-  subscribeServiceRequests: (user: AppUser, callback: (requests: ServiceRequest[]) => void) => Unsubscribe
-  subscribeServiceRequestComments: (callback: (comments: ServiceRequestInternalComment[]) => void) => Unsubscribe
   subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
   subscribeCompanyChatState: (ownerUid: string, callback: (state: CompanyChatState) => void) => Unsubscribe
   subscribeRemoteMasterSettings: (callback: (settings: Partial<RemoteMasterSettings> | null) => void) => Unsubscribe
@@ -134,12 +128,6 @@ export interface BackendClient {
   pushAlert: (device: DeviceRecord, alert: AlertEvent) => Promise<void>
   removeAlert: (alertId: string) => Promise<void>
   removeActiveAlerts: (deviceId: string, types: AlertEvent['type'][]) => Promise<void>
-  createServiceRequest: (
-    device: DeviceRecord,
-    payload: { title: string; description: string; priority: ServiceRequestPriority }
-  ) => Promise<void>
-  updateServiceRequestStatus: (requestId: string, status: ServiceRequestStatus) => Promise<void>
-  addServiceRequestComment: (requestId: string, body: string, author: AppUser) => Promise<void>
   recordUsageRollup: (device: DeviceRecord, delta: UsageRollupDelta) => Promise<void>
   getUsageRollups: (deviceId: string, fromDayKey: string) => Promise<UsageDailyRollup[]>
   setPresence: (device: DeviceRecord, role: AppUser['role'], online: boolean) => Promise<void>
@@ -529,35 +517,6 @@ class FirebaseBackend implements BackendClient {
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, 100)
       callback(alerts)
-    })
-  }
-
-  subscribeServiceRequests(user: AppUser, callback: (requests: ServiceRequest[]) => void) {
-    const requestsQuery =
-      user.role === 'master'
-        ? query(collection(firebaseServices!.firestore, 'serviceRequests'), orderBy('createdAt', 'desc'), limit(250))
-        : query(collection(firebaseServices!.firestore, 'serviceRequests'), where('ownerUid', '==', user.uid))
-
-    return onSnapshot(requestsQuery, (snapshot) => {
-      const requests = snapshot.docs
-        .map((entry) => ({ id: entry.id, ...(entry.data() as Omit<ServiceRequest, 'id'>) }))
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 250)
-      callback(requests)
-    })
-  }
-
-  subscribeServiceRequestComments(callback: (comments: ServiceRequestInternalComment[]) => void) {
-    const commentsQuery = query(
-      collection(firebaseServices!.firestore, 'serviceRequestInternalComments'),
-      orderBy('createdAt', 'asc'),
-      limit(1000)
-    )
-    return onSnapshot(commentsQuery, (snapshot) => {
-      callback(snapshot.docs.map((entry) => ({
-        id: entry.id,
-        ...(entry.data() as Omit<ServiceRequestInternalComment, 'id'>)
-      })))
     })
   }
 
@@ -1015,56 +974,6 @@ class FirebaseBackend implements BackendClient {
     await Promise.all(tasks)
   }
 
-  async createServiceRequest(
-    device: DeviceRecord,
-    payload: { title: string; description: string; priority: ServiceRequestPriority }
-  ) {
-    const now = Date.now()
-    await addDoc(collection(firebaseServices!.firestore, 'serviceRequests'), {
-      ownerUid: device.ownerUid,
-      ownerEmail: device.ownerEmail,
-      deviceId: device.deviceId,
-      deviceLabel: device.deviceAlias?.trim() || device.hostname,
-      companyName: device.companyName?.trim() || device.ownerEmail,
-      title: payload.title.trim(),
-      description: payload.description.trim(),
-      priority: payload.priority,
-      status: 'open',
-      createdAt: now,
-      updatedAt: now,
-      resolvedAt: null
-    } satisfies Omit<ServiceRequest, 'id'>)
-    this.queueAuditLog('service_request_created', {
-      deviceId: device.deviceId,
-      ownerUid: device.ownerUid,
-      details: { priority: payload.priority, title: payload.title.trim() }
-    })
-  }
-
-  async updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
-    await updateDoc(doc(firebaseServices!.firestore, 'serviceRequests', requestId), {
-      status,
-      updatedAt: Date.now(),
-      resolvedAt: status === 'resolved' ? Date.now() : null
-    })
-    this.queueAuditLog('service_request_status_changed', { details: { requestId, status } })
-  }
-
-  async addServiceRequestComment(requestId: string, body: string, author: AppUser) {
-    const normalizedBody = body.trim()
-    if (!normalizedBody) return
-    await addDoc(collection(firebaseServices!.firestore, 'serviceRequestInternalComments'), {
-      requestId,
-      authorUid: author.uid,
-      authorEmail: author.email,
-      body: normalizedBody,
-      createdAt: Date.now()
-    } satisfies Omit<ServiceRequestInternalComment, 'id'>)
-    this.queueAuditLog('service_request_internal_comment_created', {
-      details: { requestId, commentLength: normalizedBody.length }
-    })
-  }
-
   async recordUsageRollup(device: DeviceRecord, delta: UsageRollupDelta) {
     const rollupId = `${device.deviceId}_${delta.dayKey}`
     await setDoc(doc(firebaseServices!.firestore, 'usageDaily', rollupId), {
@@ -1114,15 +1023,12 @@ class MockBackend implements BackendClient {
   private authListeners = new Set<(user: AppUser | null) => void>()
   private deviceListeners = new Set<(devices: DeviceRecord[]) => void>()
   private alertListeners = new Set<(alerts: AlertEvent[]) => void>()
-  private serviceRequestListeners = new Set<() => void>()
-  private serviceRequestCommentListeners = new Set<(comments: ServiceRequestInternalComment[]) => void>()
   private masterSettingsListeners = new Set<(settings: Partial<RemoteMasterSettings> | null) => void>()
   private chatListeners = new Map<string, Set<(messages: CompanyChatMessage[]) => void>>()
   private chatStateListeners = new Map<string, Set<(state: CompanyChatState) => void>>()
   private commandListeners = new Map<string, Set<(commands: TerminalCommand[]) => void>>()
   private clientProfiles = new Map<string, ClientProfile>()
   private inventories = new Map<string, InventoryReport>()
-  private serviceRequestComments: ServiceRequestInternalComment[] = []
   private usageRollups = new Map<string, UsageDailyRollup>()
   private currentUser: AppUser | null = null
   private devices: DeviceRecord[] = [
@@ -1304,38 +1210,6 @@ class MockBackend implements BackendClient {
       message: 'Wolna przestrzeń na dysku C: spadła poniżej poziomu bezpieczeństwa.',
       severity: 'warning',
       createdAt: Date.now() - 140_000
-    }
-  ]
-  private serviceRequests: ServiceRequest[] = [
-    {
-      id: 'mock-request-1',
-      ownerUid: 'mock-client-2',
-      ownerEmail: 'biuro@firma.pl',
-      deviceId: 'BIURO-MOCK003',
-      deviceLabel: 'Biuro-PC',
-      companyName: 'Firma Klienta',
-      title: 'Komputer bardzo wolno się uruchamia',
-      description: 'Od dzisiaj start systemu trwa około dziesięciu minut, a po zalogowaniu aplikacje przestają odpowiadać.',
-      priority: 'high',
-      status: 'open',
-      createdAt: Date.now() - 95_000,
-      updatedAt: Date.now() - 95_000,
-      resolvedAt: null
-    },
-    {
-      id: 'mock-request-2',
-      ownerUid: 'mock-client',
-      ownerEmail: 'klient@example.com',
-      deviceId: 'LAPTOP-MOCK002',
-      deviceLabel: 'Laptop Serwis',
-      companyName: 'i-JANEK Demo',
-      title: 'Brak dostępu do drukarki',
-      description: 'Drukarka sieciowa jest widoczna, ale każde zadanie kończy się błędem połączenia.',
-      priority: 'normal',
-      status: 'in_progress',
-      createdAt: Date.now() - 3_600_000,
-      updatedAt: Date.now() - 1_800_000,
-      resolvedAt: null
     }
   ]
   private chats = new Map<string, CompanyChatMessage[]>()
@@ -1547,24 +1421,6 @@ class MockBackend implements BackendClient {
     this.alertListeners.add(callback)
     callback(this.alerts)
     return () => this.alertListeners.delete(callback)
-  }
-
-  subscribeServiceRequests(user: AppUser, callback: (requests: ServiceRequest[]) => void) {
-    const emit = () => {
-      const visible = user.role === 'master'
-        ? this.serviceRequests
-        : this.serviceRequests.filter((request) => request.ownerUid === user.uid)
-      callback([...visible].sort((left, right) => right.createdAt - left.createdAt))
-    }
-    this.serviceRequestListeners.add(emit)
-    emit()
-    return () => this.serviceRequestListeners.delete(emit)
-  }
-
-  subscribeServiceRequestComments(callback: (comments: ServiceRequestInternalComment[]) => void) {
-    this.serviceRequestCommentListeners.add(callback)
-    callback([...this.serviceRequestComments])
-    return () => this.serviceRequestCommentListeners.delete(callback)
   }
 
   subscribeCompanyChats(ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) {
@@ -1856,51 +1712,6 @@ class MockBackend implements BackendClient {
     if (!types.length) return
     this.alerts = this.alerts.filter((entry) => !(entry.deviceId === deviceId && entry.severity === 'critical' && types.includes(entry.type)))
     this.alertListeners.forEach((listener) => listener(this.alerts))
-  }
-
-  async createServiceRequest(
-    device: DeviceRecord,
-    payload: { title: string; description: string; priority: ServiceRequestPriority }
-  ) {
-    const now = Date.now()
-    this.serviceRequests.unshift({
-      id: crypto.randomUUID(),
-      ownerUid: device.ownerUid,
-      ownerEmail: device.ownerEmail,
-      deviceId: device.deviceId,
-      deviceLabel: device.deviceAlias?.trim() || device.hostname,
-      companyName: device.companyName?.trim() || device.ownerEmail,
-      title: payload.title.trim(),
-      description: payload.description.trim(),
-      priority: payload.priority,
-      status: 'open',
-      createdAt: now,
-      updatedAt: now,
-      resolvedAt: null
-    })
-    this.serviceRequestListeners.forEach((listener) => listener())
-  }
-
-  async updateServiceRequestStatus(requestId: string, status: ServiceRequestStatus) {
-    const now = Date.now()
-    this.serviceRequests = this.serviceRequests.map((request) =>
-      request.id === requestId
-        ? { ...request, status, updatedAt: now, resolvedAt: status === 'resolved' ? now : null }
-        : request
-    )
-    this.serviceRequestListeners.forEach((listener) => listener())
-  }
-
-  async addServiceRequestComment(requestId: string, body: string, author: AppUser) {
-    this.serviceRequestComments.push({
-      id: crypto.randomUUID(),
-      requestId,
-      authorUid: author.uid,
-      authorEmail: author.email,
-      body: body.trim(),
-      createdAt: Date.now()
-    })
-    this.serviceRequestCommentListeners.forEach((listener) => listener([...this.serviceRequestComments]))
   }
 
   async recordUsageRollup(device: DeviceRecord, delta: UsageRollupDelta) {

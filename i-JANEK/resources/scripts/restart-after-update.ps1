@@ -17,8 +17,8 @@ function Write-RestartLog([string]$Message) {
 }
 
 try {
-  Write-RestartLog "Uruchomiono obserwatora aktualizacji $Version. Próba=$AttemptId AppExe=$AppExe StartHidden=$StartHidden"
   [IO.File]::WriteAllText($HandshakePath, $AttemptId, (New-Object Text.UTF8Encoding $false))
+  Write-RestartLog "Uruchomiono obserwatora aktualizacji $Version. Próba=$AttemptId AppExe=$AppExe StartHidden=$StartHidden"
   $deadline = [DateTime]::UtcNow.AddMinutes(15)
   $finalState = 'timeout'
   while ([DateTime]::UtcNow -lt $deadline) {
@@ -37,6 +37,10 @@ try {
   }
   Write-RestartLog "Zakończono oczekiwanie na agenta. Stan=$finalState"
 
+  if ($finalState -ne 'installed') {
+    throw "Agent aktualizacji zakończył oczekiwanie ze stanem: $finalState"
+  }
+
   if (-not (Test-Path -LiteralPath $AppExe -PathType Leaf)) {
     throw "Nie znaleziono aplikacji po aktualizacji: $AppExe"
   }
@@ -46,6 +50,6 @@ try {
   $process = Start-Process -FilePath $AppExe -ArgumentList $arguments -PassThru
   Write-RestartLog "Uruchomiono i-JANEK. PID=$($process.Id) Argumenty=$($arguments -join ' ')"
 } catch {
-  Write-RestartLog "BŁĄD: $($_.Exception.Message)"
+  try { Write-RestartLog "BŁĄD: $($_.Exception.Message)" } catch {}
   exit 1
 }

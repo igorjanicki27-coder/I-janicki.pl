@@ -85,7 +85,6 @@ const aliasTooShort = computed(() => {
 })
 const headerOnlineCount = computed(() => store.devices.filter((device) => isDeviceOnline(device, store.statusNow)).length)
 const hasHeaderAlerts = computed(() => store.criticalAlerts.length > 0)
-const hasOpenServiceRequests = computed(() => store.openServiceRequests.length > 0)
 const slaveHeaderDeviceName = computed(
   () => store.selectedDevice?.deviceAlias || store.selectedDevice?.hostname || store.selfDevice?.deviceAlias || store.selfDevice?.hostname || 'Urządzenie'
 )
@@ -97,10 +96,6 @@ const slaveHeaderAlertsCount = computed(() => {
 
 function openSlaveAlertModal() {
   window.dispatchEvent(new CustomEvent('i-janek:open-slave-alert-modal'))
-}
-
-function openServiceRequests() {
-  window.dispatchEvent(new CustomEvent('i-janek:open-service-requests'))
 }
 
 async function handleEmailAuth() {
@@ -315,7 +310,7 @@ watch(
     <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
-        class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
+        class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
       >
         <div class="rounded-[14px] border px-3 py-2" :class="hasHeaderAlerts ? 'border-rose-400/50 bg-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.3)]' : 'border-white/10 bg-white/5'">
           <div class="mono flex items-center justify-between whitespace-nowrap text-xs uppercase tracking-[0.14em]" :class="hasHeaderAlerts ? 'text-rose-100' : 'text-[var(--text-dim)]'">
@@ -338,17 +333,6 @@ watch(
             <span class="text-base font-semibold text-white">{{ store.devices.length }}</span>
           </div>
         </div>
-        <button
-          class="rounded-[14px] border px-3 py-2 text-left transition"
-          :class="hasOpenServiceRequests ? 'border-fuchsia-300/45 bg-fuchsia-500/15 shadow-[0_0_18px_rgba(217,70,239,0.22)]' : 'border-white/10 bg-white/5 hover:border-white/20'"
-          type="button"
-          @click="openServiceRequests()"
-        >
-          <div class="mono flex items-center justify-between whitespace-nowrap text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
-            <span>Zadania</span>
-            <span class="text-base font-semibold text-white">{{ store.openServiceRequests.length }}</span>
-          </div>
-        </button>
         <div class="justify-self-end flex items-center gap-2">
           <button
             class="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[var(--text-dim)] transition hover:text-white"

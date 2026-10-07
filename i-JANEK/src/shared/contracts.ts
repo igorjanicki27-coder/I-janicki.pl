@@ -7,8 +7,6 @@ export type RemoteActionType = 'notify' | 'restart_prompt'
 export type DwServiceProvisioningStatus = 'unconfigured' | 'pending' | 'installing' | 'ready' | 'error'
 export type TelemetryMode = 'standard' | 'aggressive'
 export type UpdateChannel = 'test' | 'beta' | 'stable'
-export type ServiceRequestPriority = 'low' | 'normal' | 'high' | 'critical'
-export type ServiceRequestStatus = 'open' | 'in_progress' | 'resolved'
 export type ReadinessStatus = 'ok' | 'warning' | 'error' | 'skipped'
 export type DiagnosticLogLevel = 'info' | 'warning' | 'error'
 
@@ -247,31 +245,6 @@ export interface AlertEvent {
   severity: 'info' | 'warning' | 'critical'
   createdAt: number
   acknowledgedBy?: string
-}
-
-export interface ServiceRequest {
-  id: string
-  ownerUid: string
-  ownerEmail: string
-  deviceId: string
-  deviceLabel: string
-  companyName: string
-  title: string
-  description: string
-  priority: ServiceRequestPriority
-  status: ServiceRequestStatus
-  createdAt: number
-  updatedAt: number
-  resolvedAt?: number | null
-}
-
-export interface ServiceRequestInternalComment {
-  id: string
-  requestId: string
-  authorUid: string
-  authorEmail: string
-  body: string
-  createdAt: number
 }
 
 export interface UsageDailyRollup {

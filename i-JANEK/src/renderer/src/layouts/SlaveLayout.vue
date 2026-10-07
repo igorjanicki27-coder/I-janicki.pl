@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ClipboardList, Cpu, HardDrive, MemoryStick, MessageSquareText, Plus, Workflow } from 'lucide-vue-next'
+import { Activity, Cpu, HardDrive, MemoryStick, MessageSquareText, Workflow } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import { buildConversationTimeline } from '@/services/chat'
+import { isDeviceOnline } from '@/services/device-presence'
 import { useAppStore } from '@/stores/app'
-import type { AlertEvent, CompanyChatMessage, MetricThreshold, ServiceRequestPriority, ServiceRequestStatus } from '@shared/contracts'
+import type { AlertEvent, CompanyChatMessage, MetricThreshold } from '@shared/contracts'
 
 const store = useAppStore()
 const alertsModalOpen = ref(false)
-const serviceRequestModalOpen = ref(false)
-const requestTitle = ref('')
-const requestDescription = ref('')
-const requestPriority = ref<ServiceRequestPriority>('normal')
-const serviceRequestBusy = ref(false)
-const serviceRequestMessage = ref('')
 const chatViewport = ref<HTMLElement | null>(null)
 let markReadTimer: number | null = null
 let typingTimer: number | null = null
 let typingActive = false
 
-const device = computed(() => store.selectedDevice)
+const device = computed(() => store.selfDevice ?? store.selectedDevice)
+const deviceOnline = computed(() => Boolean(device.value && isDeviceOnline(device.value, store.statusNow)))
+const telemetryAgeLabel = computed(() => {
+  const capturedAt = device.value?.telemetry?.capturedAt
+  if (!capturedAt) return 'brak odczytu'
+  const elapsedMinutes = Math.max(0, Math.floor((store.statusNow - capturedAt) / 60_000))
+  if (elapsedMinutes < 1) return 'odczyt przed chwilą'
+  if (elapsedMinutes < 60) return `odczyt ${elapsedMinutes} min temu`
+  return `odczyt ${Math.floor(elapsedMinutes / 60)} godz. temu`
+})
 const deviceAlerts = computed(() =>
   device.value
     ? [...store.alerts]
@@ -28,11 +32,6 @@ const deviceAlerts = computed(() =>
     : []
 )
 const hasActiveAlerts = computed(() => deviceAlerts.value.length > 0)
-const ownServiceRequests = computed(() =>
-  [...store.serviceRequests]
-    .filter((request) => !device.value || request.deviceId === device.value.deviceId)
-    .sort((left, right) => right.createdAt - left.createdAt)
-)
 const maxDiskUsage = computed(() => {
   const values = device.value?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? []
   return values.length ? Math.max(...values) : null
@@ -154,51 +153,6 @@ function closeAlertModal() {
   alertsModalOpen.value = false
 }
 
-function serviceRequestStatusLabel(status: ServiceRequestStatus) {
-  if (status === 'in_progress') return 'W trakcie'
-  if (status === 'resolved') return 'Zakończone'
-  return 'Nowe'
-}
-
-function serviceRequestStatusClass(status: ServiceRequestStatus) {
-  if (status === 'resolved') return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
-  if (status === 'in_progress') return 'border-cyan-400/30 bg-cyan-500/10 text-cyan-100'
-  return 'border-amber-400/30 bg-amber-500/10 text-amber-100'
-}
-
-function serviceRequestPriorityLabel(priority: ServiceRequestPriority) {
-  if (priority === 'critical') return 'Krytyczny'
-  if (priority === 'high') return 'Wysoki'
-  if (priority === 'low') return 'Niski'
-  return 'Normalny'
-}
-
-async function submitServiceRequest() {
-  if (serviceRequestBusy.value) return
-  const title = requestTitle.value.trim()
-  const description = requestDescription.value.trim()
-  if (title.length < 3 || description.length < 5) {
-    serviceRequestMessage.value = 'Podaj temat (min. 3 znaki) i dokładniejszy opis awarii.'
-    return
-  }
-
-  serviceRequestBusy.value = true
-  serviceRequestMessage.value = ''
-  try {
-    const result = await store.createServiceRequest(title, description, requestPriority.value)
-    requestTitle.value = ''
-    requestDescription.value = ''
-    requestPriority.value = 'normal'
-    serviceRequestMessage.value = result === 'queued'
-      ? 'Brak sieci. Zgłoszenie zapisano i zostanie wysłane automatycznie.'
-      : 'Zgłoszenie zostało wysłane do administratora.'
-  } catch (error) {
-    serviceRequestMessage.value = error instanceof Error ? error.message : 'Nie udało się wysłać zgłoszenia.'
-  } finally {
-    serviceRequestBusy.value = false
-  }
-}
-
 async function removeAlert(alertId: string) {
   await store.removeAlertById(alertId)
   if (!deviceAlerts.value.length) {
@@ -307,18 +261,34 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
     <section class="glass-panel shrink-0 rounded-[24px] p-3">
+      <div class="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+        <div class="flex min-w-0 items-center gap-2 text-xs">
+          <span
+            class="h-2.5 w-2.5 shrink-0 rounded-full"
+            :class="deviceOnline ? 'bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,.55)]' : 'bg-slate-500'"
+          />
+          <span class="font-medium" :class="deviceOnline ? 'text-emerald-200' : 'text-slate-300'">
+            {{ deviceOnline ? 'Urządzenie online' : 'Urządzenie offline' }}
+          </span>
+          <Activity class="h-3.5 w-3.5 text-[var(--text-dim)]" />
+        </div>
+        <span class="mono shrink-0 text-[10px] text-[var(--text-dim)]">{{ telemetryAgeLabel }}</span>
+      </div>
+
       <div class="grid grid-cols-4 gap-1.5">
         <div class="rounded-[14px] border px-2.5 py-2" :class="cpuTileClass">
           <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><Cpu class="h-3 w-3" /> CPU</div>
-          <div class="mt-1.5 text-[19px] font-semibold leading-none">
-            {{ formatMetricValue(device?.telemetry?.cpuUsagePercent, '%') }} | {{ formatMetricValue(device?.telemetry?.cpuTemperatureC, '°C') }}
+          <div class="mt-1.5 flex items-end justify-between gap-2">
+            <span class="text-[22px] font-semibold leading-none">{{ formatMetricValue(device?.telemetry?.cpuUsagePercent, '%') }}</span>
+            <span class="text-[10px] leading-none opacity-70">temp. {{ formatMetricValue(device?.telemetry?.cpuTemperatureC, '°C') }}</span>
           </div>
         </div>
 
         <div class="rounded-[14px] border px-2.5 py-2" :class="gpuTileClass">
           <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><Workflow class="h-3 w-3" /> GPU</div>
-          <div class="mt-1.5 text-[19px] font-semibold leading-none">
-            {{ formatMetricValue(device?.telemetry?.gpu?.usagePercent, '%') }} | {{ formatMetricValue(device?.telemetry?.gpu?.temperatureC, '°C') }}
+          <div class="mt-1.5 flex items-end justify-between gap-2">
+            <span class="text-[22px] font-semibold leading-none">{{ formatMetricValue(device?.telemetry?.gpu?.usagePercent, '%') }}</span>
+            <span class="text-[10px] leading-none opacity-70">temp. {{ formatMetricValue(device?.telemetry?.gpu?.temperatureC, '°C') }}</span>
           </div>
         </div>
 
@@ -354,14 +324,6 @@ onBeforeUnmount(() => {
           >
             {{ unreadMessagesCount }} nowa
           </span>
-          <button
-            class="inline-flex items-center gap-1.5 rounded-xl border border-fuchsia-300/30 bg-fuchsia-400/10 px-2.5 py-1.5 text-[10px] font-semibold text-fuchsia-100 transition hover:border-fuchsia-200/50"
-            type="button"
-            @click="serviceRequestModalOpen = true; serviceRequestMessage = ''"
-          >
-            <Plus class="h-3.5 w-3.5" />
-            Zgłoś awarię
-          </button>
         </div>
       </div>
 
@@ -439,7 +401,7 @@ onBeforeUnmount(() => {
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="mono text-[11px] uppercase tracking-[0.14em] text-rose-200">Alerty</div>
-            <h3 class="mt-1 text-base font-semibold text-white">Aktywne zgłoszenia ({{ deviceAlerts.length }})</h3>
+            <h3 class="mt-1 text-base font-semibold text-white">Aktywne alerty ({{ deviceAlerts.length }})</h3>
           </div>
           <button class="ghost-button !rounded-lg !px-2 !py-1 !text-xs" type="button" @click="closeAlertModal()">Zamknij</button>
         </div>
@@ -468,74 +430,5 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      v-if="serviceRequestModalOpen"
-      class="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 px-4 py-6"
-      @click.self="serviceRequestModalOpen = false"
-    >
-      <div class="glass-panel flex max-h-[88vh] w-full max-w-3xl flex-col rounded-[28px] border border-fuchsia-300/25 p-5">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="mono flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-fuchsia-200">
-              <ClipboardList class="h-4 w-4" /> Zgłoszenie serwisowe
-            </div>
-            <h3 class="mt-1 text-lg font-semibold text-white">Opisz awarię tego komputera</h3>
-          </div>
-          <button class="ghost-button !rounded-lg !px-2 !py-1 !text-xs" type="button" @click="serviceRequestModalOpen = false">Zamknij</button>
-        </div>
-
-        <div class="mt-4 grid min-h-0 gap-5 overflow-auto pr-1 md:grid-cols-[0.9fr_1.1fr] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <form class="space-y-3" @submit.prevent="submitServiceRequest()">
-            <label class="block text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
-              Temat
-              <input v-model="requestTitle" class="soft-input mt-2" maxlength="160" placeholder="np. Brak internetu" />
-            </label>
-            <label class="block text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
-              Opis awarii
-              <textarea
-                v-model="requestDescription"
-                class="soft-input mt-2 min-h-32 resize-y"
-                maxlength="4000"
-                placeholder="Co się dzieje, od kiedy i jaki komunikat widzisz?"
-              />
-            </label>
-            <label class="block text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
-              Priorytet
-              <select v-model="requestPriority" class="soft-input mt-2">
-                <option value="low">Niski</option>
-                <option value="normal">Normalny</option>
-                <option value="high">Wysoki</option>
-                <option value="critical">Krytyczny — praca niemożliwa</option>
-              </select>
-            </label>
-            <p v-if="serviceRequestMessage" class="text-sm leading-5 text-cyan-100">{{ serviceRequestMessage }}</p>
-            <button class="glass-button w-full justify-center" type="submit" :disabled="serviceRequestBusy">
-              {{ serviceRequestBusy ? 'Wysyłanie...' : 'Wyślij zgłoszenie' }}
-            </button>
-          </form>
-
-          <div class="min-h-0">
-            <div class="text-sm font-semibold text-white">Historia tego komputera</div>
-            <div class="mt-3 space-y-3">
-              <article v-for="request in ownServiceRequests" :key="request.id" class="rounded-2xl border border-white/10 bg-black/15 p-3">
-                <div class="flex flex-wrap items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <h4 class="text-sm font-semibold text-white">{{ request.title }}</h4>
-                    <div class="mt-1 text-[11px] text-[var(--text-dim)]">{{ formatDateTime(request.createdAt) }} · {{ serviceRequestPriorityLabel(request.priority) }}</div>
-                  </div>
-                  <span class="rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.12em]" :class="serviceRequestStatusClass(request.status)">
-                    {{ serviceRequestStatusLabel(request.status) }}
-                  </span>
-                </div>
-                <p class="mt-2 whitespace-pre-wrap text-sm leading-5 text-white/85">{{ request.description }}</p>
-              </article>
-              <div v-if="!ownServiceRequests.length" class="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-[var(--text-dim)]">
-                Nie ma jeszcze zgłoszeń dla tego komputera.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>

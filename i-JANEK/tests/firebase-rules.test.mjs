@@ -45,25 +45,6 @@ async function seedApprovedDevice() {
   })
 }
 
-async function seedServiceRequest() {
-  await environment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), 'serviceRequests', 'request-1'), {
-      ownerUid: owner.uid,
-      ownerEmail: owner.email,
-      deviceId,
-      deviceLabel: 'CLIENT-PC',
-      companyName: 'Client',
-      title: 'Problem testowy',
-      description: 'Opis problemu testowego',
-      priority: 'normal',
-      status: 'open',
-      createdAt: 1_700_000_000_000,
-      updatedAt: 1_700_000_000_000,
-      resolvedAt: null
-    })
-  })
-}
-
 before(async () => {
   const [firestoreRules, databaseRules] = await Promise.all([
     fs.readFile(path.join(projectRoot, 'firestore.rules'), 'utf8'),
@@ -195,29 +176,6 @@ test('stan komunikatora może aktualizować wyłącznie właściwy uczestnik roz
   await assertFails(set(ref(strangerDb, `ownerChatStates/${owner.uid}/slave`), { ...slaveState, email: stranger.email }))
   await assertSucceeds(get(ref(masterDb, `ownerChatStates/${owner.uid}`)))
   await assertFails(get(ref(strangerDb, `ownerChatStates/${owner.uid}`)))
-})
-
-test('komentarze wewnętrzne może czytać i tworzyć wyłącznie Master', async () => {
-  await seedServiceRequest()
-  const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).firestore()
-  const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
-  const commentRef = doc(masterDb, 'serviceRequestInternalComments', 'comment-1')
-  await assertSucceeds(setDoc(commentRef, {
-    requestId: 'request-1',
-    authorUid: master.uid,
-    authorEmail: master.email,
-    body: 'Notatka techniczna dla administratora.',
-    createdAt: 1_700_000_000_000
-  }))
-  await assertSucceeds(getDoc(commentRef))
-  await assertFails(getDoc(doc(ownerDb, 'serviceRequestInternalComments', 'comment-1')))
-  await assertFails(setDoc(doc(ownerDb, 'serviceRequestInternalComments', 'comment-2'), {
-    requestId: 'request-1',
-    authorUid: owner.uid,
-    authorEmail: owner.email,
-    body: 'Klient nie może dodać komentarza wewnętrznego.',
-    createdAt: 1_700_000_000_000
-  }))
 })
 
 test('właściciel zapisuje dzienny agregat obciążenia, Master go odczytuje, a obce konto nie', async () => {

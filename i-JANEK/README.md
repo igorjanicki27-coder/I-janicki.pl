@@ -112,10 +112,9 @@ Opcjonalne sekrety do podpisywania instalatorów w awaryjnym workflow: `MAC_CSC_
 
 ## Niezawodność i testy bezpieczeństwa
 
-- Telemetria, inwentaryzacja oraz zgłoszenia awarii są odkładane w trwałej kolejce lokalnej, gdy sieć jest niedostępna. Powrót połączenia uruchamia synchronizację automatycznie; można ją też wymusić w ustawieniach.
+- Telemetria i inwentaryzacja są odkładane w trwałej kolejce lokalnej, gdy sieć jest niedostępna. Powrót połączenia uruchamia synchronizację automatycznie; można ją też wymusić w ustawieniach.
 - Ustawienia zawierają test gotowości sprawdzający środowisko aplikacji, sieć, sesję i odczyt Firestore, zatwierdzenie urządzenia, DWService, kanał aktualizacji oraz kolejkę offline.
 - Przycisk `Zapisz diagnostykę` tworzy lokalny plik `.json.gz`. Logi są rotowane i automatycznie usuwają tokeny, hasła, klucze, dane uwierzytelniające oraz adresy e-mail.
-- Zgłoszenia serwisowe mają komentarze wewnętrzne dostępne wyłącznie dla Mastera; klient nie może ich odczytać ani utworzyć zgodnie z regułami Firestore.
 - Historia obciążenia zapisuje dzienne agregaty czasu pracy oraz czasu CPU, GPU, RAM i dysku ponad 80%. Agregaty są buforowane lokalnie i wysyłane najwyżej raz na godzinę, aby ograniczyć wykorzystanie darmowych limitów Firestore.
 - Reguły Firestore i RTDB mają testy emulatorowe. GitHub Actions uruchamia je dla pull requestów oraz przed dotychczasowym wdrożeniem reguł Firestore.
 
