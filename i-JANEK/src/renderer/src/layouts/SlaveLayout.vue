@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ClipboardList, CloudUpload, Cpu, HardDrive, MemoryStick, MessageSquareText, Plus, ShieldCheck, Workflow } from 'lucide-vue-next'
+import { ClipboardList, Cpu, HardDrive, MemoryStick, MessageSquareText, Plus, Workflow } from 'lucide-vue-next'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import { buildConversationTimeline } from '@/services/chat'
 import { useAppStore } from '@/stores/app'
@@ -36,21 +36,6 @@ const ownServiceRequests = computed(() =>
 const maxDiskUsage = computed(() => {
   const values = device.value?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? []
   return values.length ? Math.max(...values) : null
-})
-const backupAgeHours = computed(() => {
-  if (!device.value?.backupSnapshot?.scannedAt) return null
-  return (Date.now() - device.value.backupSnapshot.scannedAt) / (60 * 60 * 1000)
-})
-const backupUsagePercent = computed(() => {
-  const quotaGb = device.value?.backupPolicy?.maxQuotaGb ?? 0
-  if (!quotaGb) return null
-  const usedBytes = device.value?.backupSnapshot?.totalBytes ?? 0
-  return Math.min(100, (usedBytes / (quotaGb * 1024 * 1024 * 1024)) * 100)
-})
-const backupFreeGb = computed(() => {
-  const quotaGb = device.value?.backupPolicy?.maxQuotaGb ?? 0
-  const usedGb = (device.value?.backupSnapshot?.totalBytes ?? 0) / 1024 / 1024 / 1024
-  return Math.max(0, quotaGb - usedGb)
 })
 const messageNotificationsMuted = computed(() => store.slaveSettings.muteChatSounds)
 const conversationTimeline = computed(() => buildConversationTimeline(store.selectedConversationMessages))
@@ -135,7 +120,6 @@ const gpuTileClass = computed(() => {
 function alertTypeLabel(alert: AlertEvent) {
   if (alert.type === 'temperature') return 'Temperatura'
   if (alert.type === 'usage') return 'Zużycie'
-  if (alert.type === 'backup') return 'Backup'
   if (alert.type === 'approval') return 'Autoryzacja'
   if (alert.type === 'disk') return 'Dysk'
   return 'System'
@@ -150,17 +134,6 @@ function formatDateTime(timestamp?: number | null) {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-function formatRelativeHours(value: number | null) {
-  if (value === null || Number.isNaN(value)) return 'brak danych'
-  if (value < 1) return 'mniej niż 1h temu'
-  return `${value.toFixed(1)}h temu`
-}
-
-function formatQuota(value: number | null) {
-  if (value === null || value === undefined || Number.isNaN(value)) return 'brak danych'
-  return `${value.toFixed(1)} GB wolne`
 }
 
 function senderLabel(message: CompanyChatMessage) {
@@ -363,39 +336,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="col-span-2 rounded-[14px] border px-2.5 py-1.5" :class="metricClasses(backupUsagePercent, store.masterSettings.thresholds.diskUsage)">
-          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><ShieldCheck class="h-3 w-3" /> Chmura</div>
-          <div class="mt-1 flex items-center justify-between gap-2">
-            <span class="text-xs font-semibold text-white">{{ formatQuota(backupFreeGb) }}</span>
-            <span class="text-[10px] text-[var(--text-dim)]">{{ backupUsagePercent === null ? 'brak danych' : `Wykorzystanie: ${backupUsagePercent.toFixed(1)}%` }}</span>
-          </div>
-          <div class="mt-1 h-1.5 rounded-full bg-black/25">
-            <div
-              class="h-full rounded-full transition-all"
-              :class="
-                (backupUsagePercent ?? 0) >= store.masterSettings.thresholds.diskUsage.critical
-                  ? 'bg-rose-400'
-                  : (backupUsagePercent ?? 0) >= store.masterSettings.thresholds.diskUsage.warning
-                    ? 'bg-amber-400'
-                    : 'bg-emerald-400'
-              "
-              :style="{ width: `${backupUsagePercent ?? 0}%` }"
-            />
-          </div>
-        </div>
-
-        <div class="col-span-2 rounded-[14px] border px-2.5 py-1.5" :class="metricClasses(backupAgeHours, store.masterSettings.thresholds.backupAgeHours)">
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><CloudUpload class="h-3 w-3" /> Backup</div>
-            <button class="ghost-button !rounded-md !px-2 !py-1 !text-[10px]" type="button" @click="store.syncBackupNow()">
-              Utwórz
-            </button>
-          </div>
-          <div class="mt-1 flex items-center justify-between gap-2">
-            <div class="truncate text-xs font-semibold text-white">{{ formatDateTime(device?.backupSnapshot?.scannedAt) }}</div>
-            <div class="shrink-0 text-[10px] text-[var(--text-dim)]">{{ formatRelativeHours(backupAgeHours) }}</div>
-          </div>
-        </div>
       </div>
 
     </section>

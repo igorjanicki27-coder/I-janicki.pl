@@ -33,6 +33,7 @@ try {
     (Join-Path $root 'rustdesk-config.txt'),
     (Join-Path $root 'rustdesk-policy-run.txt'),
     (Join-Path $root 'rustdesk-policy-applied.txt'),
+    (Join-Path $root 'google-oauth-desktop.local.json'),
     (Join-Path $agentDir 'rustdesk-agent.ps1')
   )) {
     if (Test-Path -LiteralPath $legacyPath) { Remove-Item -LiteralPath $legacyPath -Force }
@@ -51,11 +52,6 @@ try {
   Copy-Item -LiteralPath (Join-Path $sourceDir 'update-signing-public.json') -Destination (Join-Path $agentDir 'update-signing-public.json') -Force
   $config = @{ installDir = (Resolve-Path -LiteralPath $InstallDir).Path } | ConvertTo-Json -Compress
   [IO.File]::WriteAllText((Join-Path $root 'agent-config.json'), $config, (New-Object Text.UTF8Encoding $false))
-  $googleOAuthSource = Join-Path $InstallDir 'resources\resources\google-oauth-desktop.local.json'
-  if (Test-Path -LiteralPath $googleOAuthSource -PathType Leaf) {
-    Copy-Item -LiteralPath $googleOAuthSource -Destination (Join-Path $root 'google-oauth-desktop.local.json') -Force
-  }
-
   Write-InstallLog 'Rejestrowanie zadania aktualizacji.'
   $powershell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
   $scriptPath = Join-Path $agentDir 'update-agent.ps1'

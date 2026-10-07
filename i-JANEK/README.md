@@ -6,20 +6,14 @@ Desktopowa aplikacja Electron + Vue 3 dla architektury Master/Slave i-JANICKI.
 
 - osobny projekt w `./i-JANEK`, bez zmian w plikach strony
 - UI Master/Slave w stylistyce glassmorphism opartej o tokeny z `i-janicki.pl`
-- integracje Firebase, Google OAuth i Google Drive przez warstwę adapterów
-- telemetria, inwentaryzacja, cichy terminal, DWService i backup jako usługi Electron
+- integracja Firebase przez warstwę adapterów
+- telemetria, inwentaryzacja, cichy terminal i DWService jako usługi Electron
 - instalator NSIS z hookami PowerShell pod certyfikat, autostart i clean uninstall
 
 ## Szybki start
 
 1. Skopiuj `.env.example` do `.env`.
-2. Uzupełnij konfigurację Firebase oraz desktopowego Google OAuth. Nie commituj sekretów do repo.
-   - Firebase Auth nadal wymaga włączenia providera Google.
-   - Dla aplikacji Electron utwórz w Google Cloud OAuth Client typu `Desktop app`.
-   - Masz dwie darmowe opcje konfiguracji:
-     - w `.env` wpisz `GOOGLE_DESKTOP_CLIENT_ID` i `GOOGLE_DESKTOP_CLIENT_SECRET`
-     - albo dostarczony przez instalator plik JSON, który trafia do `%APPDATA%\i-JANEK\google-oauth-desktop.local.json`
-   - Instalator kopiuje JSON automatycznie do profilu użytkownika, więc nie trzeba go dogrywać ręcznie.
+2. Uzupełnij konfigurację Firebase. Nie commituj sekretów do repo. Firebase Authentication korzysta z logowania adresem e-mail i hasłem.
    - Przy ręcznym uruchomieniu aplikacja pokazuje główne okno od razu; tryb `--tray` jest zarezerwowany dla autostartu.
 3. Włącz w koncie DWService możliwość cichej instalacji agenta. Kod instalacyjny przypisuje Master podczas akceptacji urządzenia.
 4. Dodaj ikony builda:
@@ -116,8 +110,6 @@ Jednorazowo w `Settings -> Secrets and variables -> Actions -> Variables` trzeba
 
 Opcjonalne sekrety do podpisywania instalatorów w awaryjnym workflow: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `WINDOWS_CSC_LINK`, `WINDOWS_CSC_KEY_PASSWORD`. macOS musi używać dokładnie kopii `i-JANEK-podpis-macOS.p12`; automat odrzuci inny odcisk. Płatny certyfikat Apple `Developer ID Application` nie jest wymagany w kontrolowanym wdrożeniu, ale bez niego system będzie pokazywał niezaufanego dewelopera i nie będzie możliwa notaryzacja.
 
-Plik Google OAuth nie jest wstrzykiwany do publicznego GitHub Release. Publiczny instalator można rozpakować, więc umieszczenie w nim prywatnych danych udostępniłoby je każdemu. Lokalne skrypty używają osobnej konfiguracji `electron-builder.private.yml` i tworzą prywatny instalator wdrożeniowy, który należy przekazać klientowi bezpośrednio. Przy pierwszym uruchomieniu ustawienia są utrwalane w profilu użytkownika, dzięki czemu późniejsze publiczne aktualizacje ich nie usuwają.
-
 ## Niezawodność i testy bezpieczeństwa
 
 - Telemetria, inwentaryzacja oraz zgłoszenia awarii są odkładane w trwałej kolejce lokalnej, gdy sieć jest niedostępna. Powrót połączenia uruchamia synchronizację automatycznie; można ją też wymusić w ustawieniach.
@@ -141,7 +133,6 @@ npm run test:rules
 - Aplikacja działa na darmowym planie Firebase Spark: nie korzysta z Firebase Storage ani Cloud Functions.
 - Inwentaryzacja jest przechowywana w Firestore jako jeden aktualny raport na urządzenie. Duże listy aplikacji i aktualizacji są dzielone na dokumenty mniejsze niż limit 1 MiB.
 - RTDB obsługuje czat, polecenia, obecność i telemetrię; plan Spark wystarcza do 100 jednoczesnych połączeń.
-- Domyślnym katalogiem backupu dla Windows jest wyłącznie `%USERPROFILE%\\Desktop`. Użytkownik może później dodać inne foldery w ustawieniach backupu.
 - Auto-update jest przygotowany pod publiczne repo `igorjanicki27-coder/I-janicki.pl`.
 - Aplikacja sprawdza aktualizacje przy każdym uruchomieniu oraz co 12 godzin podczas ciągłej pracy.
 - Po pobraniu aktualizacji aplikacja proponuje instalację od razu albo później; po odroczeniu przypomina ponownie po 4 godzinach.

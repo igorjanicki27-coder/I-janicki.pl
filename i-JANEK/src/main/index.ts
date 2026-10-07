@@ -47,6 +47,7 @@ function cleanupLegacyRemoteIntegrationData() {
   }
   for (const target of [
     path.join(app.getPath('userData'), 'rustdesk-config.local.txt'),
+    path.join(app.getPath('userData'), 'google-oauth-desktop.local.json'),
     path.join(app.getPath('userData'), 'Partitions', 'action1')
   ]) {
     try {

@@ -18,7 +18,6 @@ interface MetricThresholds {
   diskUsage: MetricThreshold
   cpuTemp: MetricThreshold
   gpuTemp: MetricThreshold
-  backupAgeHours: MetricThreshold
 }
 
 const props = defineProps<{
@@ -35,11 +34,6 @@ const maxDiskUsage = computed(() => {
   const disks = liveTelemetry.value?.disks ?? []
   return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
 })
-const backupAgeHours = computed(() => {
-  if (!props.device.backupSnapshot?.scannedAt) return null
-  return (Date.now() - props.device.backupSnapshot.scannedAt) / (60 * 60 * 1000)
-})
-
 function metricState(value: number | null | undefined, threshold: MetricThreshold) {
   if (value === null || value === undefined || Number.isNaN(value)) return 0
   if (value >= threshold.critical) return 2
@@ -80,15 +74,6 @@ const gpuTileClass = computed(() => {
   return metricClassesFromState(Math.max(usageState, tempState))
 })
 
-function formatBackupTimestamp(timestamp?: number) {
-  if (!timestamp) return 'brak'
-  return new Date(timestamp).toLocaleString('pl-PL', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 </script>
 
 <template>
@@ -158,13 +143,6 @@ function formatBackupTimestamp(timestamp?: number) {
           Dysk
         </div>
         <div class="mt-1 text-[15px] font-semibold">{{ maxDiskUsage ?? '—' }}<span v-if="maxDiskUsage != null">%</span></div>
-      </div>
-    </div>
-
-    <div class="mt-1.5 grid grid-cols-1 gap-1.5">
-      <div class="rounded-2xl border px-2.5 py-2" :class="metricClasses(backupAgeHours, props.thresholds.backupAgeHours)">
-        <div class="text-[10px] uppercase tracking-[0.18em]">Backup</div>
-        <div class="mt-1 truncate text-[11px] font-semibold">{{ formatBackupTimestamp(device.backupSnapshot?.scannedAt) }}</div>
       </div>
     </div>
 

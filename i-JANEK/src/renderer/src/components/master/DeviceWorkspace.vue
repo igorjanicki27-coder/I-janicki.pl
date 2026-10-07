@@ -6,7 +6,6 @@ import {
   BarChart3,
   Bell,
   CheckCircle2,
-  CloudCog,
   Cpu,
   HardDrive,
   MemoryStick,
@@ -28,7 +27,7 @@ import { useAppStore } from '@/stores/app'
 import type { UpdateChannel } from '@shared/contracts'
 
 const emit = defineEmits<{ archived: [] }>()
-const tabs = ['overview', 'diagnostics', 'tools', 'backup', 'inventory'] as const
+const tabs = ['overview', 'diagnostics', 'tools', 'inventory'] as const
 const store = useAppStore()
 const activeTab = ref<(typeof tabs)[number]>('overview')
 const usageRangeDays = ref<7 | 30 | 90>(30)
@@ -61,22 +60,6 @@ const deviceHealth = computed(() => {
   if (selectedAlerts.value.some((alert) => alert.severity === 'critical')) return { label: 'Wymaga pilnej uwagi', detail: 'Wykryto krytyczny alert.', tone: 'critical' as const }
   if (selectedAlerts.value.length) return { label: 'Wymaga uwagi', detail: `${selectedAlerts.value.length} aktywne alerty`, tone: 'warning' as const }
   return { label: 'Wszystko w porządku', detail: 'Brak aktywnych alertów.', tone: 'healthy' as const }
-})
-const backupStatusLabel = computed(() => {
-  const age = backupAgeHours()
-  if (age === null) return 'Brak backupu'
-  if (age >= store.masterSettings.thresholds.backupAgeHours.critical) return 'Nieaktualny'
-  if (age >= store.masterSettings.thresholds.backupAgeHours.warning) return 'Sprawdź backup'
-  return 'Aktualny'
-})
-const selectedBackupProgress = computed(() => {
-  if (!store.selectedDevice) return null
-  return store.selectedDevice.backupSyncProgress ?? store.backupSyncProgress[store.selectedDevice.deviceId] ?? null
-})
-const selectedBackupProgressPercent = computed(() => {
-  const total = selectedBackupProgress.value?.totalFiles ?? 0
-  if (!total) return 0
-  return Math.min(100, (selectedBackupProgress.value!.processedFiles / total) * 100)
 })
 const selectedInventory = computed(() => {
   const deviceId = store.selectedDevice?.deviceId
@@ -188,11 +171,6 @@ function maxDiskUsage() {
   return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
 }
 
-function backupAgeHours() {
-  if (!store.selectedDevice?.backupSnapshot?.scannedAt) return null
-  return (Date.now() - store.selectedDevice.backupSnapshot.scannedAt) / (60 * 60 * 1000)
-}
-
 function metricClasses(value: number | null | undefined, warning: number, critical: number) {
   if (value === null || value === undefined || Number.isNaN(value)) return 'border-white/10 bg-white/[0.035] text-[var(--text-dim)]'
   if (value >= critical) return 'border-rose-400/35 bg-rose-500/10 text-rose-100'
@@ -228,18 +206,6 @@ function formatTrackedDuration(seconds: number) {
   return hours ? `${hours} h ${minutes} min` : `${minutes} min`
 }
 
-function formatFileSize(sizeBytes: number) {
-  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let value = sizeBytes
-  let index = 0
-  while (value >= 1024 && index < units.length - 1) {
-    value /= 1024
-    index += 1
-  }
-  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
-}
-
 </script>
 
 <template>
@@ -253,7 +219,7 @@ function formatFileSize(sizeBytes: number) {
             <span class="hidden rounded-md bg-white/[0.055] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dim)] md:inline">{{ deviceOnline ? 'online' : 'offline' }}</span>
           </div>
           <p class="mt-1 truncate pl-5.5 text-xs text-[var(--text-dim)]">
-            {{ store.selectedDevice.companyName || store.selectedDevice.ownerEmail }}<span v-if="store.selectedDevice.installationLocation"> · {{ store.selectedDevice.installationLocation }}</span> · {{ store.selectedDevice.hostname }}
+            {{ store.selectedDevice.contactName || store.selectedDevice.ownerEmail }}<span v-if="store.selectedDevice.companyName"> · {{ store.selectedDevice.companyName }}</span><span v-if="store.selectedDevice.installationLocation"> · {{ store.selectedDevice.installationLocation }}</span>
           </p>
         </div>
         <button class="ghost-button !rounded-xl !px-3 !py-2 text-xs text-rose-200 hover:!border-rose-300/30 hover:!bg-rose-500/10" type="button" @click="showArchiveConfirm = true; archiveError = ''">
@@ -271,7 +237,7 @@ function formatFileSize(sizeBytes: number) {
         type="button"
         @click="activeTab = tab"
       >
-        {{ tab === 'overview' ? 'Pulpit' : tab === 'diagnostics' ? 'Diagnostyka' : tab === 'tools' ? 'Narzędzia' : tab === 'backup' ? 'Backup' : 'Sprzęt' }}
+        {{ tab === 'overview' ? 'Pulpit' : tab === 'diagnostics' ? 'Diagnostyka' : tab === 'tools' ? 'Narzędzia' : 'Sprzęt' }}
         <span v-if="activeTab === tab" class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-cyan-300 to-fuchsia-400" />
       </button>
     </nav>
@@ -301,7 +267,7 @@ function formatFileSize(sizeBytes: number) {
         </section>
 
         <section class="content-card !p-0">
-          <div class="grid grid-cols-2 divide-x divide-y divide-white/10 md:grid-cols-4 md:divide-y-0">
+          <div class="grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><Cpu class="h-3.5 w-3.5" /> CPU</div>
               <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(currentTelemetry?.cpuUsagePercent, store.masterSettings.thresholds.cpuUsage.warning, store.masterSettings.thresholds.cpuUsage.critical)">{{ currentTelemetry?.cpuUsagePercent ?? '—' }}<small v-if="currentTelemetry?.cpuUsagePercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
@@ -313,10 +279,6 @@ function formatFileSize(sizeBytes: number) {
             <div class="p-4">
               <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><HardDrive class="h-3.5 w-3.5" /> Dysk</div>
               <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">{{ maxDiskUsage() ?? '—' }}<small v-if="maxDiskUsage() != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
-            </div>
-            <div class="p-4">
-              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><CloudCog class="h-3.5 w-3.5" /> Backup</div>
-              <div class="mt-2 truncate text-sm font-semibold" :class="metricTextClasses(backupAgeHours(), store.masterSettings.thresholds.backupAgeHours.warning, store.masterSettings.thresholds.backupAgeHours.critical)">{{ backupStatusLabel }}</div>
             </div>
           </div>
         </section>
@@ -427,9 +389,6 @@ function formatFileSize(sizeBytes: number) {
           <div class="metric-card" :class="metricClasses(currentTelemetry?.gpu?.temperatureC, store.masterSettings.thresholds.gpuTemp.warning, store.masterSettings.thresholds.gpuTemp.critical)">
             <div class="metric-label"><Thermometer class="h-4 w-4" /> GPU temp.</div><div class="metric-value">{{ currentTelemetry?.gpu?.temperatureC ?? '—' }}<small v-if="currentTelemetry?.gpu?.temperatureC != null">°C</small></div>
           </div>
-          <div class="metric-card" :class="metricClasses(backupAgeHours(), store.masterSettings.thresholds.backupAgeHours.warning, store.masterSettings.thresholds.backupAgeHours.critical)">
-            <div class="metric-label"><CloudCog class="h-4 w-4" /> Backup</div><div class="mt-2 text-sm font-semibold">{{ formatDateTime(store.selectedDevice.backupSnapshot?.scannedAt) }}</div>
-          </div>
           <div class="metric-card border-white/10 bg-white/[0.035] text-white">
             <div class="metric-label text-[var(--text-dim)]"><ShieldAlert class="h-4 w-4" /> Uptime</div><div class="metric-value">{{ formatDuration(currentTelemetry?.uptimeSeconds) }}</div>
           </div>
@@ -510,30 +469,6 @@ function formatFileSize(sizeBytes: number) {
           <div class="mt-2 font-mono text-sm text-white">{{ command.command }}</div>
           <pre class="mt-3 overflow-auto rounded-xl bg-black/25 p-3 text-xs text-[var(--text-dim)]">{{ command.output || command.error || 'Oczekiwanie na wynik...' }}</pre>
         </article>
-      </div>
-
-      <div v-else-if="activeTab === 'backup'" class="grid gap-4 xl:grid-cols-2">
-        <section class="content-card">
-          <h3 class="text-sm font-semibold text-white">Polityka backupu</h3>
-          <dl class="mt-4 space-y-3 text-sm text-[var(--text-dim)]">
-            <div class="flex justify-between gap-4"><dt>Ostatni backup</dt><dd class="mono text-right text-white">{{ formatDateTime(store.selectedDevice.backupSnapshot?.scannedAt) }}</dd></div>
-            <div class="flex justify-between"><dt>Maksymalny plik</dt><dd class="mono text-white">{{ store.selectedDevice.backupPolicy?.maxFileSizeMb ?? 0 }} MB</dd></div>
-            <div class="flex justify-between"><dt>Limit miejsca</dt><dd class="mono text-white">{{ store.selectedDevice.backupPolicy?.maxQuotaGb ?? 0 }} GB</dd></div>
-            <div class="flex justify-between"><dt>Folder</dt><dd class="mono text-white">{{ store.selectedDevice.backupPolicy?.driveFolderName ?? '—' }}</dd></div>
-          </dl>
-          <div class="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-            <div class="flex justify-between text-xs text-[var(--text-dim)]"><span>Postęp synchronizacji</span><span>{{ selectedBackupProgress?.processedFiles ?? 0 }} / {{ selectedBackupProgress?.totalFiles ?? 0 }}</span></div>
-            <div class="mt-2 h-2 rounded-full bg-black/40"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-400" :style="{ width: `${selectedBackupProgressPercent}%` }" /></div>
-          </div>
-          <button class="glass-button mt-4 !rounded-xl" type="button" @click="store.syncBackupNow()">Uruchom backup</button>
-        </section>
-        <section class="content-card">
-          <div class="flex items-center justify-between"><h3 class="text-sm font-semibold text-white">Pliki backupu</h3><button class="ghost-button !rounded-xl" type="button" @click="store.previewBackupFiles()">Odśwież</button></div>
-          <div class="mt-4 space-y-2">
-            <div v-for="file in store.selectedBackupFiles" :key="`${file.path}:${file.modifiedAt ?? 0}`" class="rounded-xl border border-white/10 px-3 py-2 text-sm"><div class="truncate text-white">{{ file.path }}</div><div class="mt-1 flex justify-between text-xs text-[var(--text-dim)]"><span>{{ formatFileSize(file.sizeBytes) }}</span><span>{{ formatDateTime(file.modifiedAt) }}</span></div></div>
-            <p v-if="!store.selectedBackupFiles.length" class="text-sm text-[var(--text-dim)]">Brak plików lub brak odczytu.</p>
-          </div>
-        </section>
       </div>
 
       <div v-else class="space-y-4">

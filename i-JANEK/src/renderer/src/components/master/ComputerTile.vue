@@ -41,10 +41,6 @@ function formatLastSeen(timestamp: number) {
   return new Date(timestamp).toLocaleDateString('pl-PL')
 }
 
-function formatBackup(timestamp?: number) {
-  if (!timestamp) return 'brak backupu'
-  return new Date(timestamp).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
-}
 </script>
 
 <template>
@@ -80,7 +76,6 @@ function formatBackup(timestamp?: number) {
     <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">
       <div class="min-w-0 text-[11px] text-[var(--text-dim)]">
         <span class="block truncate">{{ online ? 'Online' : `Offline · ${formatLastSeen(device.lastSeenAt)}` }}</span>
-        <span class="mt-0.5 block truncate text-white/45">Backup: {{ formatBackup(device.backupSnapshot?.scannedAt) }}</span>
       </div>
       <span class="shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium" :class="device.dwservice?.status === 'ready' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-white/[0.055] text-white/50'">
         Agent: {{ device.dwservice?.status === 'ready' ? 'gotowy' : 'oczekuje' }}

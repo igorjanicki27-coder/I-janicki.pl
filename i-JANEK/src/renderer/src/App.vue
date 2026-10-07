@@ -417,45 +417,7 @@ watch(
               Aplikacja do administrowania Twoim komputerem.
             </p>
 
-            <div class="mt-8 flex justify-center">
-              <button class="google-auth-shell" :disabled="store.signingIn" type="button" @click="store.signInWithGoogle()">
-                <span class="google-auth-inner">
-                  <span class="google-auth-core">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" height="38" width="38" aria-hidden="true">
-                      <g fill="none" fill-rule="evenodd">
-                        <g fill-rule="nonzero" transform="translate(3 2)">
-                          <path
-                            fill="#4285F4"
-                            d="M57.812 30.152c0-2.426-.197-4.195-.622-6.031H29.496v10.946h16.255c-.328 2.72-2.098 6.817-6.03 9.57l-.055.367 8.756 6.783.607.06c5.571-5.145 8.783-12.716 8.783-21.695"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M29.496 58.992c7.964 0 14.65-2.622 19.533-7.144l-9.308-7.21c-2.49 1.736-5.833 2.949-10.225 2.949-7.8 0-14.42-5.145-16.78-12.257l-.346.03-9.105 7.045-.119.331c4.85 9.635 14.814 16.256 26.35 16.256"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M12.716 35.33c-.623-1.836-.983-3.802-.983-5.834 0-2.032.36-3.998.95-5.834l-.016-.391-9.22-7.16-.3.144A29.317 29.317 0 0 0 0 29.496c0 4.752 1.147 9.242 3.146 13.24l9.57-7.406"
-                          />
-                          <path
-                            fill="#EB4335"
-                            d="M29.496 11.405c5.539 0 9.275 2.392 11.405 4.392l8.324-8.128C44.113 2.917 37.46 0 29.496 0 17.96 0 7.997 6.62 3.146 16.255l9.537 7.407c2.393-7.112 9.013-12.257 16.813-12.257"
-                          />
-                        </g>
-                      </g>
-                    </svg>
-                    <span class="google-auth-label">{{ store.signingIn ? 'Logowanie...' : 'Sign In with Google' }}</span>
-                  </span>
-                </span>
-              </button>
-            </div>
-
-            <div class="mx-auto my-6 flex max-w-md items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              <span class="h-px flex-1 bg-white/10" />
-              albo e-mail
-              <span class="h-px flex-1 bg-white/10" />
-            </div>
-
-            <form class="mx-auto max-w-md rounded-[28px] border border-white/10 bg-white/[0.035] p-4 text-left" @submit.prevent="handleEmailAuth()">
+            <form class="mx-auto mt-8 max-w-md rounded-[28px] border border-white/10 bg-white/[0.035] p-4 text-left" @submit.prevent="handleEmailAuth()">
               <div class="mb-4 grid grid-cols-2 rounded-2xl bg-black/20 p-1">
                 <button
                   class="rounded-xl px-3 py-2 text-sm transition"
@@ -560,7 +522,6 @@ watch(
             <p>Poniższe zgody są wymagane do działania opieki informatycznej.</p>
             <ul class="space-y-1.5">
               <li>Uruchamianie zdalnych skryptów naprawczych w celu optymalizacji systemu.</li>
-              <li>Synchronizację wybranych folderów z Twoim kontem Google Drive w celach backupu.</li>
               <li>Realizację zdalnej diagnostyki: odczyt temperatury, obciążenia procesora i stanu dysków.</li>
               <li>Instalację i konfigurację agenta zdalnego dostępu dopiero po akceptacji urządzenia przez administratora.</li>
               <li>Przesyłanie logów systemowych, listy procesów i stanu antywirusa do panelu administratora i-JANICKI.pl.</li>
@@ -596,7 +557,7 @@ watch(
           </div>
           <label class="mt-3 flex items-center gap-3 rounded-[24px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
             <input v-model="consentAccepted" type="checkbox" class="h-4 w-4 shrink-0 accent-fuchsia-500" />
-            <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Akceptuję politykę prywatności oraz diagnostykę i backup zgodnie z powyższą informacją.</span>
+            <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Akceptuję politykę prywatności oraz diagnostykę zgodnie z powyższą informacją.</span>
           </label>
           <label class="mt-2 flex items-start gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
             <input v-model="remoteCommandsAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />

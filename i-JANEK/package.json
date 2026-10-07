@@ -1,6 +1,6 @@
 {
   "name": "i-janek",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "private": true,
   "description": "i-JANEK desktop supervision platform for Master/Slave IT support workflows.",
   "author": "i-JANICKI",
@@ -36,7 +36,6 @@
     "electron-store": "^10.1.0",
     "electron-updater": "^6.3.9",
     "firebase": "^11.6.1",
-    "googleapis": "^148.0.0",
     "lucide-vue-next": "^0.511.0",
     "mime-types": "^3.0.1",
     "node-machine-id": "^1.1.12",

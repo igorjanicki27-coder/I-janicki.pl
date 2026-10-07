@@ -16,7 +16,7 @@ Po zbudowaniu instalatora skrypt `scripts/sign-windows-update.mjs` tworzy `dist/
 
 Ręczny workflow awaryjny na GitHub Actions wymaga osobnego sekretu `WINDOWS_UPDATE_SIGNING_KEY_PEM` z tym samym kluczem prywatnym. Bez sekretu kończy się błędem przed publikacją. Ustawienie go oznacza świadome umieszczenie klucza w sekretach repozytorium; lokalny automat wydania korzysta bezpośrednio z lokalnego pliku.
 
-Przy pierwszej prywatnej instalacji konfiguracja Google OAuth jest kopiowana do chronionych danych systemowych, aby nowy użytkownik mógł z niej korzystać także po późniejszej publicznej aktualizacji. Kod DWService trafia do krótkotrwałego zgłoszenia w chronionym katalogu `ProgramData\\i-JANEK\\requests`; agent SYSTEM usuwa je po obsłużeniu i zapisuje wyłącznie skrót kodu oraz status konfiguracji.
+Kod DWService trafia do krótkotrwałego zgłoszenia w chronionym katalogu `ProgramData\\i-JANEK\\requests`; agent SYSTEM usuwa je po obsłużeniu i zapisuje wyłącznie skrót kodu oraz status konfiguracji.
 
 ## Test przed wydaniem
 
