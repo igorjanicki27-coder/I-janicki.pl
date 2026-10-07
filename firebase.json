@@ -8,6 +8,9 @@
   "database": {
     "rules": "database.rules.json"
   },
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -21,6 +24,15 @@
       "postcss.config.js",
       "package.json",
       "package-lock.json"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/google-reviews",
+        "function": {
+          "functionId": "googleBusinessReviews",
+          "region": "europe-west1"
+        }
+      }
     ],
     "headers": [
       {

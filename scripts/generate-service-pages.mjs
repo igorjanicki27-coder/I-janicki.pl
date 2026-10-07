@@ -17,6 +17,7 @@ const navigation = [
 ];
 
 const relatedServices = [
+  ['kampanie-reklamowe', 'Kampanie reklamowe Google Ads'],
   ['oferta/sroda-slaska', 'Strony WWW — Środa Śląska'],
   ['oferta/miekinia-lutynia', 'Strony WWW — Miękinia i Lutynia'],
   ['oferta/wroclaw', 'Strony WWW — Wrocław'],
@@ -29,6 +30,7 @@ const relatedServices = [
 ];
 
 const footerNavigation = [
+  ['kampanie-reklamowe', 'Google Ads'],
   ['oferta/strony-www', 'Strony WWW'],
   ['oferta/aplikacje', 'Aplikacje'],
   ['oferta/seo', 'SEO'],
@@ -463,6 +465,70 @@ const pages = [
       ['Czy zajmujesz się lokalnym SEO?', 'Tak. Zakres może obejmować strukturę strony, treści dla obszaru obsługi i rekomendacje dotyczące Profilu Firmy Google.'],
       ['Czy pozycjonowanie jest jednorazowe?', 'Audyt i część poprawek mogą być jednorazowe, ale konkurencja, oferta i wyniki wyszukiwania zmieniają się, dlatego widoczność zwykle wymaga dalszej pracy.']
     ]
+  },
+  {
+    slug: 'kampanie-reklamowe',
+    navLabel: 'Kampanie reklamowe',
+    areaServed: ['Polska'],
+    metaTitle: 'Kampanie reklamowe Google Ads | i-JANICKI',
+    metaDescription: 'Tworzenie, prowadzenie i optymalizacja kampanii Google Ads. Konfiguracja pomiaru, dobór słów kluczowych, kontrola budżetu i regularne ulepszanie reklam.',
+    eyebrow: 'Tworzenie • prowadzenie • optymalizacja',
+    title: 'Kampanie reklamowe Google Ads',
+    lead: 'Tworzę, utrzymuję i optymalizuję kampanie Google Ads. Dbam o poprawną konfigurację, kontroluję sposób wykorzystania budżetu i rozwijam reklamy na podstawie danych, aby docierały do osób realnie zainteresowanych ofertą.',
+    facts: [
+      ['Platforma', 'Google Ads'],
+      ['Obsługa', 'start i stałe prowadzenie'],
+      ['Optymalizacja', 'na podstawie danych'],
+      ['Wycena', 'indywidualna']
+    ],
+    benefitsTitle: 'Reklama, która nie kończy się na uruchomieniu kampanii',
+    benefitsLead: 'Kampania wymaga regularnej kontroli. Zmieniają się zapytania klientów, konkurencja, koszty kliknięć i skuteczność reklam, dlatego ustawienia trzeba rozwijać wraz z danymi.',
+    benefits: [
+      ['Przemyślany start', 'Porządkuję cele, obszar działania, ofertę, słowa kluczowe i budżet, zanim kampania zacznie wydawać środki.'],
+      ['Stałe utrzymanie', 'Kontroluję działanie reklam, odrzucenia, wyszukiwane hasła, koszty i elementy wymagające korekty.'],
+      ['Regularna optymalizacja', 'Rozwijam kampanię na podstawie wyników — poprawiam reklamy, kierowanie, stawki i podział budżetu.']
+    ],
+    scopeTitle: 'Co może obejmować obsługa Google Ads',
+    scopeLead: 'Zakres dobieram do celu firmy, dostępnego budżetu i stanu obecnego konta. Mogę przygotować nową kampanię albo przejąć i uporządkować już działające reklamy.',
+    scope: [
+      'Analiza oferty, odbiorców i celu kampanii',
+      'Audyt istniejącego konta lub konfiguracja kampanii od początku',
+      'Dobór słów kluczowych, lokalizacji i harmonogramu emisji',
+      'Przygotowanie reklam oraz rozszerzeń zasobów',
+      'Ustalenie budżetu i strategii stawek',
+      'Konfiguracja lub weryfikacja pomiaru konwersji',
+      'Analiza wyszukiwanych haseł i wykluczanie nietrafnych zapytań',
+      'Kontrola kosztów, skuteczności i jakości ruchu',
+      'Testowanie zmian i regularna optymalizacja kampanii',
+      'Czytelne omówienie wyników i dalszych rekomendacji'
+    ],
+    processTitle: 'Jak wygląda prowadzenie kampanii',
+    process: [
+      ['Cel i dostęp', 'Ustalamy, co ma być wartościowym efektem reklamy, jaki jest obszar działania firmy oraz jaki budżet można przeznaczyć na emisję.'],
+      ['Konfiguracja', 'Przygotowuję strukturę kampanii, reklamy, kierowanie i pomiar albo porządkuję ustawienia istniejącego konta.'],
+      ['Uruchomienie i kontrola', 'Po starcie sprawdzam, na jakie zapytania wyświetlają się reklamy i jak kampania wykorzystuje budżet.'],
+      ['Optymalizacja', 'Na podstawie zebranych danych wprowadzam korekty i wskazuję kolejne działania, które mogą poprawić jakość wyników.']
+    ],
+    localKicker: 'Współpraca',
+    localTitle: 'Prowadzenie kampanii lokalnie i w całej Polsce',
+    localText: ['Kampanie Google Ads mogę obsługiwać całkowicie zdalnie. Zakres geograficzny reklam dopasowuję do tego, gdzie firma rzeczywiście pozyskuje klientów — od jednej miejscowości po całą Polskę.', 'Pracuję na koncie reklamowym klienta, dzięki czemu zachowujesz dostęp do kampanii, danych i historii działań. Zakres uprawnień ustalamy przed rozpoczęciem współpracy.'],
+    localPanelTitle: 'Zasięg dopasowany do firmy',
+    localPanelText: 'Reklamy mogą być kierowane lokalnie lub szerzej. Nie rozszerzam zasięgu tylko po to, aby zwiększyć liczbę kliknięć — liczy się zgodność z realną ofertą i obszarem obsługi.',
+    areas: ['Lokalnie', 'Dolny Śląsk', 'Cała Polska', 'Obsługa zdalna'],
+    priceTitle: 'Koszt obsługi i budżet reklamowy',
+    priceLead: 'Koszt przygotowania lub prowadzenia kampanii wyceniam indywidualnie. Budżet reklamowy jest osobnym, płatnym kosztem i trafia bezpośrednio do Google — nie jest częścią wynagrodzenia za obsługę.',
+    priceCards: [
+      ['Konfiguracja lub prowadzenie kampanii', 'wycena indywidualna', 'Cena zależy od liczby kampanii, zakresu pomiaru, konkurencji, regionu i częstotliwości prac optymalizacyjnych.'],
+      ['Budżet reklamowy Google Ads', 'ustalany osobno', 'Środki na kliknięcia i emisję reklam są opłacane bezpośrednio na koncie Google Ads klienta.']
+    ],
+    faq: [
+      ['Czy możesz stworzyć kampanię od początku?', 'Tak. Mogę przygotować strukturę kampanii, reklamy, kierowanie, budżet i pomiar od podstaw albo przejąć istniejące konto.'],
+      ['Czy zajmujesz się również stałą obsługą?', 'Tak. Usługa może obejmować regularną kontrolę, analizę wyszukiwanych haseł, wykluczenia, korekty budżetu, reklam i stawek oraz omawianie wyników.'],
+      ['Jaki budżet reklamowy jest potrzebny?', 'Zależy to od branży, lokalizacji, konkurencji i celu kampanii. Proponuję budżet po analizie, a decyzję o jego wysokości podejmujesz przed uruchomieniem reklam.'],
+      ['Czy budżet reklamowy jest w cenie obsługi?', 'Nie. Koszt obsługi i środki wydawane na reklamy to dwa osobne koszty. Budżet reklamowy jest opłacany bezpośrednio do Google.'],
+      ['Czy gwarantujesz określoną liczbę klientów?', 'Nie. Mogę odpowiadać za poprawną konfigurację, prowadzenie i optymalizację, ale liczba zapytań zależy także od oferty, strony docelowej, konkurencji, budżetu i decyzji klientów.'],
+      ['Czy kampania będzie działać na moim koncie?', 'Tak. Rekomenduję prowadzenie reklam na koncie należącym do klienta, aby zachować dostęp do danych i pełną historię kampanii.']
+    ]
   }
 ];
 
@@ -768,7 +834,7 @@ function renderPage(page) {
     '    </section>',
     '    <section class="section">',
     '      <div class="container local-grid">',
-    '        <div class="local-copy"><p class="section-kicker">Lokalnie</p><h2>' + escapeHtml(page.localTitle) + '</h2>' + localParagraphs + '</div>',
+    '        <div class="local-copy"><p class="section-kicker">' + escapeHtml(page.localKicker || 'Lokalnie') + '</p><h2>' + escapeHtml(page.localTitle) + '</h2>' + localParagraphs + '</div>',
     '        <aside class="local-panel"><strong>' + escapeHtml(page.localPanelTitle) + '</strong><p>' + escapeHtml(page.localPanelText) + '</p><div class="area-tags">' + areaTags + '</div></aside>',
     '      </div>',
     '    </section>',
@@ -821,6 +887,7 @@ function renderOfferHub() {
     { slug: 'oferta/cennik', kicker: 'Wspólna oferta', title: 'Cennik', description: 'Strony od 49 zł/mies., aplikacje od 99 zł/mies. i pozostałe ceny orientacyjne.' },
     { slug: 'oferta/strony-www', kicker: 'Wspólna oferta', title: 'Strony WWW', description: 'Projektowanie i tworzenie responsywnych stron internetowych dopasowanych do celu firmy.' },
     { slug: 'oferta/aplikacje', kicker: 'Wspólna oferta', title: 'Aplikacje', description: 'Aplikacje webowe, desktopowe i mobilne dopasowane do procesu w firmie.' },
+    { slug: 'kampanie-reklamowe', kicker: 'Wspólna oferta', title: 'Kampanie reklamowe', description: 'Tworzenie, prowadzenie i optymalizacja kampanii Google Ads.' },
     { slug: 'oferta/opieka-it', kicker: 'Wspólna oferta', title: 'Opieka IT', description: 'Bieżące wsparcie, aktualizacje, monitoring i pomoc techniczna.' },
     { slug: 'oferta/sieci', kicker: 'Wspólna oferta', title: 'Sieci LAN, Wi-Fi i VPN', description: 'Projektowanie, konfiguracja i diagnoza sieci dla firm oraz domów.' },
     { slug: 'oferta/seo', kicker: 'Wspólna oferta', title: 'Pozycjonowanie i SEO', description: 'Techniczne SEO, rozwój treści i widoczność na właściwe zapytania.' }
@@ -830,7 +897,7 @@ function renderOfferHub() {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: 'Oferta i-JANICKI',
-    description: 'Strony internetowe, aplikacje, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.',
+    description: 'Strony internetowe, aplikacje, kampanie Google Ads, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.',
     url: canonical,
     mainEntity: {
       '@type': 'ItemList',
@@ -847,7 +914,7 @@ function renderOfferHub() {
     '  <meta charset="utf-8">',
     '  <meta name="viewport" content="width=device-width, initial-scale=1">',
     '  <meta name="theme-color" content="#05060c">',
-    '  <meta name="description" content="Strony internetowe, aplikacje, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.">',
+    '  <meta name="description" content="Strony internetowe, aplikacje, kampanie Google Ads, SEO, sieci i opieka IT dla firm ze Środy Śląskiej, Miękini, Lutyni, Wrocławia i okolic.">',
     '  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">',
     '  <link rel="canonical" href="' + canonical + '">',
     '  <meta property="og:type" content="website">',

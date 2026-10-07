@@ -405,7 +405,7 @@
             <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="todayVisits">-</strong></div>
             <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="todayTutorial">-</strong></div>
             <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="todayAvgTime">-</strong></div>
-            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="todayReviews">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie Google</span><strong class="metric-value" id="todayReviews">-</strong></div>
           </div>
         </article>
 
@@ -415,7 +415,7 @@
             <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="days7Visits">-</strong></div>
             <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="days7Tutorial">-</strong></div>
             <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="days7AvgTime">-</strong></div>
-            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="days7Reviews">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie Google</span><strong class="metric-value" id="days7Reviews">-</strong></div>
           </div>
         </article>
 
@@ -425,7 +425,7 @@
             <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="monthVisits">-</strong></div>
             <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="monthTutorial">-</strong></div>
             <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="monthAvgTime">-</strong></div>
-            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="monthReviews">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie Google</span><strong class="metric-value" id="monthReviews">-</strong></div>
           </div>
         </article>
 
@@ -435,7 +435,7 @@
             <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="yearVisits">-</strong></div>
             <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="yearTutorial">-</strong></div>
             <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="yearAvgTime">-</strong></div>
-            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="yearReviews">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie Google</span><strong class="metric-value" id="yearReviews">-</strong></div>
           </div>
         </article>
 
@@ -445,7 +445,7 @@
             <div class="metric-row"><span class="metric-label">Wejscia</span><strong class="metric-value" id="allVisits">-</strong></div>
             <div class="metric-row"><span class="metric-label">Ukonczone tutoriale</span><strong class="metric-value" id="allTutorial">-</strong></div>
             <div class="metric-row"><span class="metric-label">Sredni czas</span><strong class="metric-value" id="allAvgTime">-</strong></div>
-            <div class="metric-row"><span class="metric-label">Opinie (zatwierdzone)</span><strong class="metric-value" id="allReviews">-</strong></div>
+            <div class="metric-row"><span class="metric-label">Opinie Google</span><strong class="metric-value" id="allReviews">-</strong></div>
           </div>
         </article>
       </section>
@@ -481,7 +481,7 @@
       </section>
 
       <section class="footnote">
-        <p><strong>Jak czytać dane:</strong> zakres <strong>miesiąc</strong> i <strong>rok</strong> dotyczy bieżącego miesiąca i bieżącego roku. Zdarzenia są zapisywane wyłącznie po zgodzie na analitykę, więc nie obejmują wszystkich odwiedzających. Opinie liczone są jako zatwierdzone (<code>approved = true</code>).</p>
+        <p><strong>Jak czytać dane:</strong> zakres <strong>miesiąc</strong> i <strong>rok</strong> dotyczy bieżącego miesiąca i bieżącego roku. Zdarzenia są zapisywane wyłącznie po zgodzie na analitykę, więc nie obejmują wszystkich odwiedzających. Opinie pochodzą z Profilu Firmy w Google.</p>
       </section>
 
     </main>
@@ -575,14 +575,15 @@
         }).filter((entry) => Number.isFinite(entry.timestampMs));
       }
 
-      async function fetchApprovedReviews() {
-        const snapshot = await getFirestore()
-          .collection('reviews')
-          .where('approved', '==', true)
-          .get();
+      async function fetchGoogleReviews() {
+        const response = await fetch('/api/google-reviews', {
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Google reviews HTTP ${response.status}`);
+        const data = await response.json();
 
-        return snapshot.docs.map((doc) => {
-          const timestampMs = parseTimestampToMs(doc.get('timestamp'));
+        return (Array.isArray(data.reviews) ? data.reviews : []).map((review) => {
+          const timestampMs = Date.parse(review.createTime || review.updateTime || '');
           return { timestampMs };
         }).filter((entry) => Number.isFinite(entry.timestampMs));
       }
@@ -605,7 +606,7 @@
         return timestampMs >= periodStartMs && timestampMs <= nowMs;
       }
 
-      function buildPeriodStats(periodKey, analyticsEvents, approvedReviews, now) {
+      function buildPeriodStats(periodKey, analyticsEvents, googleReviews, now) {
         const nowMs = now.getTime();
         const startMs = getPeriodStartMs(periodKey, now);
 
@@ -624,7 +625,7 @@
           ? durations.reduce((sum, value) => sum + value, 0) / durations.length
           : 0;
 
-        const reviews = approvedReviews.filter((review) =>
+        const reviews = googleReviews.filter((review) =>
           isInPeriod(review.timestampMs, periodKey, nowMs, startMs)
         ).length;
 
@@ -872,22 +873,22 @@
       async function loadStats() {
         try {
           ensureFirebaseApp();
-          const [analyticsEvents, approvedReviews] = await Promise.all([
+          const [analyticsEvents, googleReviews] = await Promise.all([
             fetchAnalyticsEvents(),
-            fetchApprovedReviews(),
+            fetchGoogleReviews(),
           ]);
 
           const now = new Date();
-          const globalStats = buildPeriodStats('all', analyticsEvents, approvedReviews, now);
+          const globalStats = buildPeriodStats('all', analyticsEvents, googleReviews, now);
 
           setValue('visitsValue', formatCount(globalStats.visits));
           setValue('tutorialValue', formatCount(globalStats.tutorialCompletions));
           setValue('avgTimeValue', formatDuration(globalStats.averageDuration));
 
-          setPeriodValues('today', buildPeriodStats('today', analyticsEvents, approvedReviews, now));
-          setPeriodValues('days7', buildPeriodStats('days7', analyticsEvents, approvedReviews, now));
-          setPeriodValues('month', buildPeriodStats('month', analyticsEvents, approvedReviews, now));
-          setPeriodValues('year', buildPeriodStats('year', analyticsEvents, approvedReviews, now));
+          setPeriodValues('today', buildPeriodStats('today', analyticsEvents, googleReviews, now));
+          setPeriodValues('days7', buildPeriodStats('days7', analyticsEvents, googleReviews, now));
+          setPeriodValues('month', buildPeriodStats('month', analyticsEvents, googleReviews, now));
+          setPeriodValues('year', buildPeriodStats('year', analyticsEvents, googleReviews, now));
           setPeriodValues('all', globalStats);
           renderDetailedStats(analyticsEvents, now);
 

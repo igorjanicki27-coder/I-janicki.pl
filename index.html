@@ -46,7 +46,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=28" />
+  <link rel="stylesheet" href="styles.min.css?v=30" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -60,8 +60,7 @@
 
   <!-- Analytics — zaladuje się defer (mały plik, potrzebny od razu) -->
   <script defer src="analytics.js?v=10"></script>
-  <!-- Firebase Firestore — załaduje się DOPIERO na żądanie (Reviews) by przyspieszyć start -->
-  <!-- Wczytane dynamicznie w script.js gdy user kliknie na Reviews -->
+  <!-- Opinie Google są pobierane dopiero po otwarciu sekcji przez bezpieczny endpoint backendowy. -->
 
   <!-- Structured Data — WebSite -->
   <script type="application/ld+json">
@@ -1194,15 +1193,15 @@
   <template id="tpl-services">
     <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-services">Usługi</h2>
     <div class="svc-grid">
-      <div class="svc">
-        <div class="svc-ico">⌬</div>
-        <h3 data-i18n="services-design-title">Kampanie reklamowe Google Ads</h3>
-        <p data-i18n="services-design-desc">Tworzę i optymalizuję kampanie Google Ads, które zwiększają widoczność firmy i pomagają docierać do nowych klientów.</p>
-      </div>
       <a class="svc" href="/oferta/strony-www/">
         <div class="svc-ico">⟨⟩</div>
         <h3 data-i18n="services-web-title">Strony internetowe</h3>
         <p data-i18n="services-web-desc">Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.</p>
+      </a>
+      <a class="svc" href="/kampanie-reklamowe/">
+        <div class="svc-ico">⌬</div>
+        <h3 data-i18n="services-design-title">Kampanie reklamowe</h3>
+        <p data-i18n="services-design-desc">Tworzę i optymalizuję kampanie Google Ads, które zwiększają widoczność firmy i pomagają docierać do nowych klientów.</p>
       </a>
       <a class="svc" href="/oferta/aplikacje/">
         <div class="svc-ico">▣</div>
@@ -1282,13 +1281,13 @@
         <div class="trusted-track">
           <div class="trusted-group">
             <div class="trusted-logo" aria-label="ELMET">
-              <img src="/loga-firm/ELMET.webp" alt="ELMET" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET.webp" alt="ELMET" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo trusted-logo--wordmark" aria-label="EL-TECH">
               <span>EL-TECH</span>
             </div>
             <div class="trusted-logo" aria-label="Cukiernia YOGI">
-              <img src="/loga-firm/YOGI.webp" alt="Cukiernia YOGI" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="Cukiernia YOGI" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo" aria-label="Średzka Korona">
               <img src="/loga-firm/Sredzka-Korona.png" alt="Średzka Korona" loading="lazy" decoding="async" />
@@ -1296,13 +1295,13 @@
           </div>
           <div class="trusted-group" aria-hidden="true">
             <div class="trusted-logo">
-              <img src="/loga-firm/ELMET.webp" alt="" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET.webp" alt="" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo trusted-logo--wordmark">
               <span>EL-TECH</span>
             </div>
             <div class="trusted-logo">
-              <img src="/loga-firm/YOGI.webp" alt="" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo">
               <img src="/loga-firm/Sredzka-Korona.png" alt="" loading="lazy" decoding="async" />
@@ -1379,39 +1378,20 @@
       <!-- Pionowy separator — laser świetlny -->
       <div class="reviews-laser-divider" aria-hidden="true"></div>
 
-      <!-- Prawa kolumna: Formularz opinii -->
+      <!-- Prawa kolumna: podsumowanie i przejście do Google -->
       <div class="modal-review-form-container">
-        <h3 class="reviews-section-title" data-i18n="reviews-form-title">Zostaw opinię</h3>
-        <form id="modalReviewForm" class="review-form" novalidate>
-          <div class="star-picker" id="modalStarPicker" role="radiogroup" aria-label="Wybierz ocenę" data-i18n-aria-label="reviews-stars-label">
-            <button type="button" class="star" data-val="1" aria-label="1 gwiazdka" data-i18n-aria-label="reviews-star-1">★</button>
-            <button type="button" class="star" data-val="2" aria-label="2 gwiazdki" data-i18n-aria-label="reviews-star-2">★</button>
-            <button type="button" class="star" data-val="3" aria-label="3 gwiazdki" data-i18n-aria-label="reviews-star-3">★</button>
-            <button type="button" class="star" data-val="4" aria-label="4 gwiazdki" data-i18n-aria-label="reviews-star-4">★</button>
-            <button type="button" class="star" data-val="5" aria-label="5 gwiazdek" data-i18n-aria-label="reviews-star-5">★</button>
+        <div class="google-review-cta">
+          <div class="google-maps-attribution" aria-label="Źródło opinii: Google Maps">Google Maps</div>
+          <h3 class="reviews-section-title" data-i18n="reviews-form-title">Oceń i-JANICKI</h3>
+          <p class="google-review-summary" data-google-review-summary hidden></p>
+          <p class="google-review-note" data-i18n="reviews-google-note">Opinie są pobierane z Profilu Firmy w Google i uporządkowane od najnowszych.</p>
+          <div class="google-review-actions">
+            <a class="btn google-review-link" data-google-write-review href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+              <strong data-i18n="reviews-google-write">NAPISZ OPINIĘ W GOOGLE</strong>
+            </a>
+            <a class="google-review-all-link" data-google-profile href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true" data-i18n="reviews-google-open">Zobacz wszystkie opinie w Google</a>
           </div>
-          <input type="hidden" id="modalReviewRating" value="0" />
-          <div class="review-form-fields">
-            <div class="review-field">
-              <input type="text" id="modalReviewName" placeholder="Twoje imię" required minlength="2" autocomplete="name" data-i18n-placeholder="reviews-name-placeholder" />
-            </div>
-            <div class="review-field">
-              <input type="email" id="modalReviewEmail" placeholder="E-mail (weryfikacja — nie będzie widoczny)" required autocomplete="email" data-i18n-placeholder="reviews-email-placeholder" />
-            </div>
-            <div class="review-field">
-              <textarea id="modalReviewComment" placeholder="Twoja opinia…" rows="3" required minlength="5" maxlength="1000" data-i18n-placeholder="reviews-comment-placeholder"></textarea>
-            </div>
-          </div>
-          <div class="review-form-status" id="modalReviewStatus" role="status" aria-live="polite"></div>
-          <button type="submit" class="btn review-submit-btn">
-            <div class="container-stars-r"><div class="stars-r"></div></div>
-            <div class="glow-r">
-              <div class="circle-container-r"><div class="circle-r"></div></div>
-              <div class="circle-container-r"><div class="circle-r"></div></div>
-            </div>
-            <strong data-i18n="reviews-submit">WYŚLIJ OPINIĘ</strong>
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   </template>
@@ -1421,7 +1401,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
-  <script defer src="script.min.js?v=27"></script>
+  <script defer src="script.min.js?v=28"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

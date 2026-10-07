@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════
    i-JANICKI — script.js  v2.0
-   Tutorial · Eye-tracking · Firebase reviews · Cookie consent
+   Tutorial · Eye-tracking · Google reviews · Cookie consent
    ══════════════════════════════════════════════════════════════════ */
 
 'use strict';
@@ -8,14 +8,8 @@
 // ─────────────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────────────
-const FIREBASE_PROJECT = 'i-janicki';
-const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
-const EMAILJS_SERVICE  = 'service_0m7ieum';
-const EMAILJS_TEMPLATE = 'template_gd8aaq5';
-const EMAILJS_KEY      = 'BugGXsqvUvMyP4buf';
-const OWNER_EMAIL      = 'kontakt@i-janicki.pl';
-const WEB3FORMS_KEY    = 'e1b3a82b-63d0-4f05-a808-676a7b22537a';
+const GOOGLE_REVIEWS_ENDPOINT = '/api/google-reviews';
 const COOKIE_POLICY_VERSION = '1.2';
 
 // ─────────────────────────────────────────────────────────────────
@@ -78,7 +72,6 @@ function getStepIndex(stepId) {
 let tutStep      = 0;
 let userName     = localStorage.getItem(LS.NAME) || '';
 let tutDone      = localStorage.getItem(LS.TUTORIAL_DONE) === 'true';
-let reviewRating = 0;
 let visitedSteps = new Set(); // Track which steps user has visited
 let currentView = null;
 let currentDocName = null;
@@ -112,9 +105,6 @@ const dom = {
   get docOverlay()     { return $('docOverlay');            },
   get docContent()     { return $('docContent');            },
   get docTitle()       { return $('docTitle');              },
-  get reviewForm()     { return $('modalReviewForm');       },
-  get reviewStatus()   { return $('modalReviewStatus');     },
-  get starPicker()     { return $('modalStarPicker');       },
   get themeToggle()    { return $('themeToggle');           },
   get year()           { return $('year');                  },
   get brandName()      { return document.querySelector('.brand-name'); },
@@ -133,8 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initDocViewer();
   initCursor();
   registerSW();
-  handleApproveReview();
-
   // Opóźnij tutorial do następnej klatki (requestAnimationFrame)
   // Tutorial zawiera 1000+ DOM mutacji - nie blokuj initial render
   requestAnimationFrame(() => {
@@ -235,7 +223,7 @@ const TRANSLATIONS = {
     'about-li-apps': 'Aplikacje webowe, desktopowe i mobilne na zamówienie',
     'about-li-network': 'Konfiguracja sieci i administracja',
     'about-li-support': 'Wsparcie i opieka IT',
-    'services-design-title': 'Kampanie reklamowe Google Ads',
+    'services-design-title': 'Kampanie reklamowe',
     'services-design-desc': 'Tworzę i optymalizuję kampanie Google Ads, które zwiększają widoczność firmy i pomagają docierać do nowych klientów.',
     'services-web-title': 'Strony internetowe',
     'services-web-desc': 'Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.',
@@ -290,33 +278,17 @@ const TRANSLATIONS = {
     'contact-sending': 'Wysyłanie…',
     'contact-sent': '✓ Wiadomość wysłana! Odpiszę możliwie szybko.',
     'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na kontakt@i-janicki.pl',
-    'reviews-lead': 'Tu możesz przeczytać opinie dotychczasowych klientów.',
-    'reviews-loading': 'Ładowanie opinii…',
-    'reviews-empty': 'Brak opinii — bądź pierwszy! ⬆',
-    'reviews-error': 'Nie udało się załadować opinii.',
-    'reviews-anonymous': 'Anonimowy',
-    'reviews-form-title': 'Zostaw opinię',
-    'reviews-stars-label': 'Wybierz ocenę',
-    'reviews-star-1': '1 gwiazdka',
-    'reviews-star-2': '2 gwiazdki',
-    'reviews-star-3': '3 gwiazdki',
-    'reviews-star-4': '4 gwiazdki',
-    'reviews-star-5': '5 gwiazdek',
-    'reviews-name-placeholder': 'Twoje imię',
-    'reviews-email-placeholder': 'E-mail (weryfikacja — nie będzie widoczny)',
-    'reviews-comment-placeholder': 'Twoja opinia…',
-    'reviews-submit': 'WYŚLIJ OPINIĘ',
-    'reviews-choose-rating': 'Wybierz ocenę (1–5 gwiazdek).',
-    'reviews-invalid-name': 'Imię musi mieć co najmniej 3 znaki.',
-    'reviews-invalid-email': 'Podaj poprawny adres e-mail (potrzebny do weryfikacji).',
-    'reviews-invalid-comment': 'Napisz krótką opinię (min. 5 znaków).',
-    'reviews-checking': 'Sprawdzanie…',
-    'reviews-sending': 'Wysyłanie…',
-    'reviews-success': '✓ Dziękuję! Potwierdź link w e-mailu, aby opublikować opinię.',
-    'reviews-submit-error': '✗ Coś poszło nie tak. Spróbuj ponownie.',
-    'reviews-already-submitted': '✗ Już wysłałeś opinię. Każdy e-mail może wysłać tylko jedną opinię.',
-    'reviews-wait-days': '✗ Czekaj {days} dni na następną próbę (poprzednia opinia czeka na weryfikację).',
-    'reviews-wait-hours': '✗ Czekaj jeszcze {hours}h na następną opinię.',
+    'reviews-lead': 'Opinie klientów pobierane bezpośrednio z Profilu Firmy w Google.',
+    'reviews-loading': 'Ładowanie opinii z Google…',
+    'reviews-empty': 'Profil Google nie ma jeszcze opinii.',
+    'reviews-error': 'Opinie Google są chwilowo niedostępne.',
+    'reviews-anonymous': 'Użytkownik Google',
+    'reviews-no-comment': 'Ocena bez komentarza',
+    'reviews-form-title': 'Oceń i-JANICKI',
+    'reviews-google-note': 'Opinie są pobierane z Profilu Firmy w Google i uporządkowane od najnowszych.',
+    'reviews-google-write': 'NAPISZ OPINIĘ W GOOGLE',
+    'reviews-google-open': 'Zobacz wszystkie opinie w Google',
+    'reviews-average': '{rating}/5 na podstawie {count} opinii',
     'returning-title': 'Witaj ponownie!',
     'returning-message': 'Witaj ponownie, <strong>{name}</strong>! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
     'returning-message-no-name': 'Witaj ponownie! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
@@ -326,11 +298,9 @@ const TRANSLATIONS = {
     'tutorial-complete-next': 'Klikając w sekcje poniżej, możesz wrócić do interesujących Cię informacji albo jeszcze raz przejść samouczek.',
     'tutorial-summary-title': 'Witaj ponownie!',
     'tutorial-summary-message': '{name}, prowadziłem Cię po wszystkich zakładkach, jakie możesz znaleźć na tej stronie. Jeśli chcesz do czegoś wrócić, wybierz temat poniżej, a jeśli chcesz abym oprowadził Cię po stronie ponownie, kliknij Prezentacja!',
-    'review-step-message': 'Mamy prawie koniec{name}! ⭐ Chcesz wystawić opinię lub zobaczyć, co piszą inni?',
+    'review-step-message': 'Mamy prawie koniec{name}! ⭐ Zobacz opinie klientów lub dodaj własną w Google.',
     'faq-aria': 'FAQ — Często zadawane pytania',
     'faq-subtitle': 'Często zadawane pytania',
-    'verify-success': '✓ Opinia potwierdzona! Dzięki za opinię 🎉',
-    'verify-error': '✗ Nie udało się zweryfikować opinii.',
   },
   en: {
     'btn-about': 'About',
@@ -397,7 +367,7 @@ const TRANSLATIONS = {
     'about-li-apps': 'Custom web, desktop, and mobile apps',
     'about-li-network': 'Network setup and administration',
     'about-li-support': 'IT support and ongoing care',
-    'services-design-title': 'Google Ads campaigns',
+    'services-design-title': 'Advertising campaigns',
     'services-design-desc': 'I create and optimize Google Ads campaigns that increase brand visibility and help reach new customers.',
     'services-web-title': 'Websites',
     'services-web-desc': 'I design and deliver custom websites, from business cards to larger portals. Responsive, fast, and SEO-friendly.',
@@ -452,33 +422,17 @@ const TRANSLATIONS = {
     'contact-sending': 'Sending…',
     'contact-sent': '✓ Message sent! I\'ll get back to you as soon as possible.',
     'contact-error': '✗ Something went wrong. Please write directly to kontakt@i-janicki.pl',
-    'reviews-lead': 'Here you can read reviews from previous clients.',
-    'reviews-loading': 'Loading reviews…',
-    'reviews-empty': 'No reviews yet — be the first! ⬆',
-    'reviews-error': 'Unable to load reviews.',
-    'reviews-anonymous': 'Anonymous',
-    'reviews-form-title': 'Leave a review',
-    'reviews-stars-label': 'Choose a rating',
-    'reviews-star-1': '1 star',
-    'reviews-star-2': '2 stars',
-    'reviews-star-3': '3 stars',
-    'reviews-star-4': '4 stars',
-    'reviews-star-5': '5 stars',
-    'reviews-name-placeholder': 'Your name',
-    'reviews-email-placeholder': 'E-mail (for verification — not visible publicly)',
-    'reviews-comment-placeholder': 'Your review…',
-    'reviews-submit': 'SEND REVIEW',
-    'reviews-choose-rating': 'Choose a rating (1–5 stars).',
-    'reviews-invalid-name': 'Name must contain at least 3 characters.',
-    'reviews-invalid-email': 'Enter a valid e-mail address (needed for verification).',
-    'reviews-invalid-comment': 'Write a short review (minimum 5 characters).',
-    'reviews-checking': 'Checking…',
-    'reviews-sending': 'Sending…',
-    'reviews-success': '✓ Thank you! Confirm the link in your e-mail to publish the review.',
-    'reviews-submit-error': '✗ Something went wrong. Please try again.',
-    'reviews-already-submitted': '✗ You have already submitted a review. Each e-mail can submit only one review.',
-    'reviews-wait-days': '✗ Wait {days} more days before another attempt (your previous review is still pending verification).',
-    'reviews-wait-hours': '✗ Please wait {hours} more hours before sending another review.',
+    'reviews-lead': 'Client reviews fetched directly from the Google Business Profile.',
+    'reviews-loading': 'Loading Google reviews…',
+    'reviews-empty': 'The Google profile has no reviews yet.',
+    'reviews-error': 'Google reviews are temporarily unavailable.',
+    'reviews-anonymous': 'Google user',
+    'reviews-no-comment': 'Rating without a comment',
+    'reviews-form-title': 'Review i-JANICKI',
+    'reviews-google-note': 'Reviews come from the Google Business Profile and are ordered from newest to oldest.',
+    'reviews-google-write': 'WRITE A GOOGLE REVIEW',
+    'reviews-google-open': 'See all reviews on Google',
+    'reviews-average': '{rating}/5 based on {count} reviews',
     'returning-title': 'Welcome back!',
     'returning-message': 'Welcome back, <strong>{name}</strong>! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
     'returning-message-no-name': 'Welcome back! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
@@ -488,11 +442,9 @@ const TRANSLATIONS = {
     'tutorial-complete-next': 'Use the sections below to return to the details you need or go through the tutorial again.',
     'tutorial-summary-title': 'Welcome back!',
     'tutorial-summary-message': '{name}, I\'ve walked you through every section on this site. If you want to return to anything, choose a topic below, and if you want another guided tour, click Tutorial!',
-    'review-step-message': 'We\'re almost done{name}! ⭐ Would you like to leave a review or see what others wrote?',
+    'review-step-message': 'We\'re almost done{name}! ⭐ Read client reviews or add your own on Google.',
     'faq-aria': 'FAQ — Frequently asked questions',
     'faq-subtitle': 'Frequently asked questions',
-    'verify-success': '✓ Review confirmed! Thanks for your feedback 🎉',
-    'verify-error': '✗ The review could not be verified.',
   },
 };
 
@@ -1052,9 +1004,6 @@ function renderReviewStep() {
   if (tpl) $('secContent').appendChild(tpl.content.cloneNode(true));
 
   $('panel')?.classList.add('has-section');
-  setupReviewForm();
-  prefillReviewName();
-
   requestAnimationFrame(() => {
     const el = $('modalReviewsCarousel');
     if (el) loadReviews(el);
@@ -1100,11 +1049,6 @@ function captureName() {
   if (!val) return;
   userName = val;
   localStorage.setItem(LS.NAME, userName);
-}
-
-function prefillReviewName() {
-  const fn = $('modalReviewName');
-  if (fn && userName) fn.value = userName;
 }
 
 const TOPIC_ICONS = {
@@ -1270,8 +1214,6 @@ function openModal(topic) {
 
   if (topic === 'reviews') {
     dom.modalRoot.querySelector('.modal').classList.add('modal--wide');
-    setupReviewForm();
-    prefillReviewName();
     requestAnimationFrame(() => {
       const el = $('modalReviewsCarousel');
       if (el) loadReviews(el);
@@ -1542,59 +1484,22 @@ function closeDoc() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FIREBASE FIRESTORE REVIEWS — REST API (no SDK needed)
-//
-// Required Firestore security rules:
-//   match /reviews/{id} {
-//     allow read:   if resource.data.approved == true;
-//     allow create: if request.resource.data.approved == false;
-//     allow update: if resource.data.approved == false
-//                   && request.resource.data.approved == true;
-//     allow list:   if true;  // needed by runQuery
-//   }
-//
-// For ordered queries, create a composite index in Firebase Console:
-//   Collection: reviews | Fields: rating DESC, timestamp DESC
+// GOOGLE BUSINESS PROFILE REVIEWS
 // ─────────────────────────────────────────────────────────────────
 
-/**
- * Pobiera zatwierdzone opinie z Firestore używając runQuery z filtrem.
- * Filtrowanie po approved == true odbywa się po stronie serwera,
- * więc niezatwierdzone opinie nigdy nie opuszczają bazy danych.
- * Wymaga reguły 'allow list' w security rules Firestore.
- */
 async function loadReviews(container) {
   if (!container) return;
   container.innerHTML = `<div class="reviews-loading"><span>${t('reviews-loading')}</span></div>`;
 
   try {
-    const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        structuredQuery: {
-          from:  [{ collectionId: 'reviews' }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'approved' },
-              op:    'EQUAL',
-              value: { booleanValue: true },
-            },
-          },
-        },
-      }),
+    const res = await fetch(`${GOOGLE_REVIEWS_ENDPOINT}?lang=${encodeURIComponent(currentLang)}`, {
+      headers: { Accept: 'application/json' },
     });
-
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
-
-    // runQuery zwraca tablicę { document: {...}, readTime: "..." }
-    const docs = Array.isArray(data)
-      ? data.filter(r => r.document).map(r => r.document)
-      : [];
-
-    const reviews = docs.map(d => parseDoc(d));
+    const reviews = Array.isArray(data.reviews) ? data.reviews.map(parseGoogleReview) : [];
+    updateGoogleReviewLinks(container, data);
 
     if (!reviews.length) {
       container.innerHTML = `<p class="reviews-empty">${t('reviews-empty')}</p>`;
@@ -1602,25 +1507,64 @@ async function loadReviews(container) {
     }
 
     container.innerHTML = '';
-    reviews.forEach(r => container.appendChild(buildCard(r)));
+    reviews.forEach(review => container.appendChild(buildCard(review)));
 
   } catch (err) {
-    console.warn('Reviews load error:', err);
+    console.warn('Google reviews load error:', err);
     container.innerHTML = `<p class="reviews-empty" style="opacity:.4">${t('reviews-error')}</p>`;
   }
 }
 
-
-function parseDoc(doc) {
-  const f = doc.fields || {};
+function parseGoogleReview(review) {
   return {
-    name:      f.name?.stringValue                                      || t('reviews-anonymous'),
-    email:     f.email?.stringValue                                     || '',
-    comment:   f.comment?.stringValue                                   || '',
-    rating:    +(f.rating?.integerValue    ?? f.rating?.doubleValue    ?? 0),
-    timestamp: f.timestamp?.timestampValue                              || new Date().toISOString(),
-    approved:  f.approved?.booleanValue                                 || false,
+    id: String(review?.id || ''),
+    name: String(review?.authorName || t('reviews-anonymous')),
+    authorPhotoUrl: safeHttpsUrl(review?.authorPhotoUrl),
+    comment: String(review?.comment || ''),
+    rating: Math.max(0, Math.min(5, Number(review?.rating) || 0)),
+    timestamp: String(review?.createTime || review?.updateTime || ''),
+    sourceUrl: safeHttpsUrl(review?.sourceUrl),
   };
+}
+
+function safeHttpsUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+function updateGoogleReviewLinks(container, data) {
+  const section = container.closest('.modal-reviews-container') || container.parentElement;
+  if (!section) return;
+
+  const profileUrl = safeHttpsUrl(data.profileUrl);
+  const reviewUrl = safeHttpsUrl(data.reviewUrl) || profileUrl;
+  const summary = section.querySelector('[data-google-review-summary]');
+  const rating = Number(data.averageRating) || 0;
+  const count = Number(data.totalReviewCount) || 0;
+
+  if (summary && count > 0) {
+    summary.textContent = tf('reviews-average', {
+      rating: rating.toLocaleString(currentLang === 'en' ? 'en-GB' : 'pl-PL', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+      count: count.toLocaleString(currentLang === 'en' ? 'en-GB' : 'pl-PL'),
+    });
+    summary.hidden = false;
+  }
+
+  setGoogleReviewLink(section.querySelector('[data-google-profile]'), profileUrl);
+  setGoogleReviewLink(section.querySelector('[data-google-write-review]'), reviewUrl);
+}
+
+function setGoogleReviewLink(link, url) {
+  if (!link || !url) return;
+  link.href = url;
+  link.removeAttribute('aria-disabled');
 }
 
 function buildCard(r) {
@@ -1628,17 +1572,21 @@ function buildCard(r) {
   div.className = `review-card${r.rating >= 5 ? ' max-stars' : ''}`;
   const filled = '★'.repeat(Math.max(0, Math.min(5, r.rating)));
   const empty  = '☆'.repeat(5 - filled.length);
-  const date   = new Date(r.timestamp).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'pl-PL', {
+  const parsedDate = new Date(r.timestamp);
+  const date = Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'pl-PL', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
-  // Class names match styles.css: .review-card-stars / .review-card-name / .review-card-comment / .review-card-date
+  const avatar = r.authorPhotoUrl
+    ? `<img class="review-card-avatar" src="${escHtml(r.authorPhotoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+    : '<span class="review-card-avatar review-card-avatar--fallback" aria-hidden="true">G</span>';
+  const comment = r.comment || t('reviews-no-comment');
+
   div.innerHTML = `
     <div class="review-card-stars">${filled}${empty}</div>
-    <p class="review-card-comment">${escHtml(r.comment)}</p>
-    <div class="review-card-name">${escHtml(r.name)}</div>
+    <p class="review-card-comment">${escHtml(comment)}</p>
+    <div class="review-card-author">${avatar}<div><div class="review-card-name">${escHtml(r.name)}</div><div class="review-card-source">Google Maps</div></div></div>
     <div class="review-card-date">${date}</div>`;
 
-  // Kliknięcie karty otwiera modal podglądu z pełnym tekstem
   div.addEventListener('click', (e) => {
     e.stopPropagation();
     openReviewPreview(r, filled, empty, date);
@@ -1648,268 +1596,34 @@ function buildCard(r) {
 }
 
 function openReviewPreview(r, filled, empty, date) {
-  // Usuń istniejący overlay jeśli jest
   const existing = document.querySelector('.review-preview-overlay');
   if (existing) existing.remove();
 
+  const avatar = r.authorPhotoUrl
+    ? `<img class="review-card-avatar" src="${escHtml(r.authorPhotoUrl)}" alt="" referrerpolicy="no-referrer" />`
+    : '<span class="review-card-avatar review-card-avatar--fallback" aria-hidden="true">G</span>';
+  const comment = r.comment || t('reviews-no-comment');
   const overlay = document.createElement('div');
   overlay.className = 'review-preview-overlay';
   overlay.innerHTML = `
     <div class="review-preview-card">
       <button class="review-preview-close" aria-label="${t('close')}">✕</button>
       <div class="review-preview-stars">${filled}${empty}</div>
-      <p class="review-preview-comment">${escHtml(r.comment)}</p>
-      <div class="review-preview-name">${escHtml(r.name)}</div>
+      <p class="review-preview-comment">${escHtml(comment)}</p>
+      <div class="review-card-author">${avatar}<div><div class="review-preview-name">${escHtml(r.name)}</div><div class="review-card-source">Google Maps</div></div></div>
       <div class="review-preview-date">${date}</div>
     </div>`;
 
   document.body.appendChild(overlay);
 
-  // Zamknięcie po kliknięciu w overlay (tło) lub przycisk X
   const close = () => overlay.remove();
   overlay.querySelector('.review-preview-close').addEventListener('click', close);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
 
-  // Zamknięcie po Escape
   const onKey = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
   document.addEventListener('keydown', onKey);
-}
-
-// ─────────────────────────────────────────────────────────────────
-// REVIEW FORM
-// ─────────────────────────────────────────────────────────────────
-
-async function checkReviewLimits(email) {
-  try {
-    // Użyj listDocuments zamiast runQuery — unikamy błędu 403 (brak uprawnienia 'list')
-    const res = await fetch(`${FIRESTORE_BASE}/reviews`, {
-      method:  'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-    const docs = data.documents || [];
-
-    // Filtruj po emailu po stronie klienta
-    const reviews = docs.map(d => parseDoc(d))
-      .filter(r => r.email === email);
-
-    if (!reviews.length) {
-      return { blocked: false };
-    }
-
-    const now = Date.now();
-    const day24h = 24 * 60 * 60 * 1000;
-    const day7 = 7 * 24 * 60 * 60 * 1000;
-
-    // 1. Czy email ma już zatwierdzoną opinię?
-    const approved = reviews.find(r => r.approved === true);
-    if (approved) {
-      return {
-        blocked: true,
-        message: t('reviews-already-submitted')
-      };
-    }
-
-    // 2. Która opinia jest najnowsza?
-    const newest = reviews.sort((a, b) =>
-      new Date(b.timestamp) - new Date(a.timestamp)
-    )[0];
-
-    if (!newest) {
-      return { blocked: false };
-    }
-
-    const lastTime = new Date(newest.timestamp).getTime();
-    const timeSince = now - lastTime;
-
-    // 3. Jeśli ostatnia nie zatwierdzona i < 7 dni
-    if (!newest.approved && timeSince < day7) {
-      const daysLeft = Math.ceil((day7 - timeSince) / (24 * 60 * 60 * 1000));
-      return {
-        blocked: true,
-        message: tf('reviews-wait-days', { days: daysLeft })
-      };
-    }
-
-    // 4. Jeśli jakkolwiek ostatnia < 24h
-    if (timeSince < day24h) {
-      const hoursLeft = Math.ceil((day24h - timeSince) / (60 * 60 * 1000));
-      return {
-        blocked: true,
-        message: tf('reviews-wait-hours', { hours: hoursLeft })
-      };
-    }
-
-    return { blocked: false };
-
-  } catch (err) {
-    console.warn('Review limit check error:', err);
-    return { blocked: false }; // na wypadek błędu — nie blokuj
-  }
-}
-
-function setupReviewForm() {
-  const starPicker = $('modalStarPicker');
-  const reviewForm = $('modalReviewForm');
-
-  if (!starPicker || !reviewForm) return;
-
-  starPicker.querySelectorAll('.star').forEach(star => {
-    star.addEventListener('click', () => {
-      reviewRating = +star.dataset.val;
-      $('modalReviewRating').value = reviewRating;
-      renderStars(reviewRating);
-      starPicker.classList.toggle('is-max', reviewRating === 5);
-    });
-    star.addEventListener('mouseenter', () => renderStars(+star.dataset.val, true));
-  });
-  starPicker.addEventListener('mouseleave', () => renderStars(reviewRating));
-
-  reviewForm.addEventListener('submit', submitReview);
-}
-
-function renderStars(n, hover = false) {
-  dom.starPicker.querySelectorAll('.star').forEach((s, i) => {
-    s.classList.toggle('is-active', i < n);
-    s.classList.toggle('is-hover',  hover && i < n);
-  });
-}
-
-async function submitReview(e) {
-  e.preventDefault();
-
-  if (!reviewRating) {
-    setReviewStatus('err', t('reviews-choose-rating'));
-    return;
-  }
-
-  const name    = $('modalReviewName').value.trim();
-  const email   = $('modalReviewEmail').value.trim();
-  const comment = $('modalReviewComment').value.trim();
-
-  // Walidacja imienia (min. 3 znaki bez spacji)
-  if (name.replace(/\s/g, '').length < 3) {
-    setReviewStatus('err', t('reviews-invalid-name'));
-    return;
-  }
-
-  // Walidacja e-mail
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-    setReviewStatus('err', t('reviews-invalid-email'));
-    return;
-  }
-
-  if (!comment || comment.length < 5) {
-    setReviewStatus('err', t('reviews-invalid-comment'));
-    return;
-  }
-
-  const submitBtn = dom.reviewForm.querySelector('.review-submit-btn');
-  submitBtn.disabled = true;
-  setReviewStatus('', t('reviews-checking'));
-
-  // Sprawdź ograniczenia emaila
-  const limitCheck = await checkReviewLimits(email);
-  if (limitCheck.blocked) {
-    submitBtn.disabled = false;
-    setReviewStatus('err', limitCheck.message);
-    return;
-  }
-
-  setReviewStatus('', t('reviews-sending'));
-
-  try {
-    // 1 — Zapisz do Firestore (approved:false — do zatwierdzenia przez właściciela e-mailem)
-    const fsRes = await fetch(`${FIRESTORE_BASE}/reviews`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fields: {
-          name:      { stringValue:    name                     },
-          email:     { stringValue:    email                    },
-          comment:   { stringValue:    comment                  },
-          rating:    { integerValue:   String(reviewRating)     },
-          timestamp: { timestampValue: new Date().toISOString() },
-          approved:  { booleanValue:   false                    },
-        },
-      }),
-    });
-    if (!fsRes.ok) throw new Error(`Firestore ${fsRes.status}`);
-
-    // 2 — Pobierz ID nowo utworzonego dokumentu
-    const fsData = await fsRes.json();
-    const docId  = fsData.name?.split('/').pop() || '';
-
-    // 3 — Wyślij e-mail do AUTORA opinii z prośbą o potwierdzenie (EmailJS)
-    const verifyUrl = `https://i-janicki.pl?verify_review=${docId}&email=${encodeURIComponent(email)}`;
-    try {
-      const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id:  EMAILJS_SERVICE,
-          template_id: EMAILJS_TEMPLATE,
-          user_id:     EMAILJS_KEY,
-          template_params: {
-            to_email:   email,
-            name:       name,
-            verify_url: verifyUrl,
-          },
-        }),
-      });
-      if (!emailRes.ok) {
-        console.warn('EmailJS błąd:', emailRes.status, await emailRes.text());
-      }
-    } catch (emailErr) {
-      console.warn('EmailJS fetch nieudany:', emailErr);
-    }
-
-    // Jeśli formularz jest w modalu — zamknij modal; jeśli w tutorialu — nie zamykaj
-    const isInModal = dom.reviewForm.closest('.modal-root') !== null;
-    if (isInModal) {
-      const formContainer = dom.reviewForm.closest('.modal-review-form-container');
-      formContainer.innerHTML = `
-        <div class="review-success">
-          <p class="review-success-msg">${t('reviews-success')}</p>
-        </div>`;
-      reviewRating = 0;
-      setTimeout(() => { closeModal(); finishTutorial(); }, 3000);
-    } else {
-      // Jesteśmy w tutorialu — formularz jest w panelu, podmieniamy zawartość
-      const formContainer = dom.reviewForm.closest('.modal-review-form-container');
-      if (formContainer) {
-        formContainer.innerHTML = `
-          <div class="review-success">
-            <p class="review-success-msg">${t('reviews-success')}</p>
-          </div>`;
-      }
-      reviewRating = 0;
-      // Od razu zakończ tutorial (bez closeModal, bo modal nie jest otwarty)
-      setTimeout(() => finishTutorial(), 1500);
-    }
-
-  } catch (err) {
-    console.warn(err);
-    setReviewStatus('err', t('reviews-submit-error'));
-  } finally {
-    if (submitBtn && submitBtn.parentNode) {
-      submitBtn.disabled = false;
-    }
-  }
-}
-
-function setReviewStatus(type, msg) {
-  // Base class matches HTML: class="review-form-status"
-  const cls = type === 'ok' ? 'review-form-status is-ok'
-            : type === 'err' ? 'review-form-status is-error'
-            : 'review-form-status';
-  dom.reviewStatus.className   = cls;
-  dom.reviewStatus.textContent = msg;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1935,79 +1649,6 @@ function escHtml(s) {
     .replace(/>/g,  '&gt;')
     .replace(/"/g,  '&quot;')
     .replace(/'/g,  '&#039;');
-}
-
-// ─────────────────────────────────────────────────────────────────
-// WERYFIKACJA OPINII (link z e-maila autora)
-// Firestore security rules should allow:
-//   allow update: if resource.data.approved == false
-//                 && request.resource.data.approved == true;
-// ─────────────────────────────────────────────────────────────────
-async function handleApproveReview() {
-  const params   = new URLSearchParams(window.location.search);
-  const reviewId = params.get('verify_review');
-  const email    = params.get('email');
-  if (!reviewId) return;
-
-  // Usuń parametr z URL natychmiast
-  history.replaceState({}, '', window.location.pathname);
-
-  try {
-    const res = await fetch(
-      `${FIRESTORE_BASE}/reviews/${reviewId}?updateMask.fieldPaths=approved`,
-      {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ fields: { approved: { booleanValue: true } } }),
-      }
-    );
-    if (res.ok) {
-      // Krótkie opóźnienie aby Firestore zdążył z propagacją zmiany approved=true
-      await new Promise(r => setTimeout(r, 500));
-
-      // Pobierz dane opinii aby wysłać powiadomienie do właściciela
-      const getRes = await fetch(`${FIRESTORE_BASE}/reviews/${reviewId}`);
-      if (getRes.ok) {
-        const doc = await getRes.json();
-        const review = parseDoc(doc);
-
-        // Wyślij powiadomienie do WŁAŚCICIELA
-        fetch('https://api.web3forms.com/submit', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            access_key: WEB3FORMS_KEY,
-            to_email:   OWNER_EMAIL,
-            subject:    `i-janicki.pl — nowa opinia (${review.rating}★) od ${review.name}`,
-            from_name:  'i-JANICKI Opinie',
-            message: [
-              `Ocena:  ${review.rating}/5`,
-              `Imię:   ${review.name}`,
-              `E-mail: ${review.email || '(anonimowy)'}`,
-              `Opinia: ${review.comment}`,
-              '',
-              'Opinia została zatwierdzona i opublikowana na stronie.',
-            ].join('\n'),
-          }),
-        }).catch(() => {});
-      }
-
-      showToast(t('verify-success'), 'ok');
-    } else {
-      throw new Error(`HTTP ${res.status}`);
-    }
-  } catch (err) {
-    console.warn('Verify error:', err);
-    showToast(t('verify-error'), 'err');
-  }
-}
-
-function showToast(msg, type = '') {
-  const toast = document.createElement('div');
-  toast.className = `verify-toast${type ? ' is-' + type : ''}`;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
 }
 
 // ─────────────────────────────────────────────────────────────────

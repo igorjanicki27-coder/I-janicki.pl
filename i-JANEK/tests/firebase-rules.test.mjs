@@ -89,6 +89,30 @@ test('Master może odczytać raport klienta', async () => {
   await assertSucceeds(getDoc(doc(db, 'inventoryReports', deviceId)))
 })
 
+test('stara kolekcja opinii nie jest dostępna ani zapisywalna z klienta', async () => {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'reviews', 'legacy-review'), {
+      name: 'Klient',
+      email: 'client@example.com',
+      comment: 'Historyczna opinia',
+      rating: 5,
+      approved: true
+    })
+  })
+
+  const publicDb = environment.unauthenticatedContext().firestore()
+  const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).firestore()
+  await assertFails(getDoc(doc(publicDb, 'reviews', 'legacy-review')))
+  await assertFails(getDoc(doc(masterDb, 'reviews', 'legacy-review')))
+  await assertFails(setDoc(doc(publicDb, 'reviews', 'new-review'), {
+    name: 'Spam',
+    email: 'spam@example.com',
+    comment: 'Nie powinno się zapisać',
+    rating: 5,
+    approved: false
+  }))
+})
+
 test('właściciel może zapisać poprawne sekcje raportu w jednej operacji', async () => {
   const db = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
   const batch = writeBatch(db)

@@ -112,35 +112,9 @@ service cloud.firestore {
     }
 
     match /reviews/{id} {
-      allow get: if resource.data.approved == true;
-      allow list: if true;
-      allow create: if request.resource.data.keys().hasOnly([
-          'name',
-          'email',
-          'comment',
-          'rating',
-          'timestamp',
-          'approved'
-        ])
-        && request.resource.data.keys().hasAll([
-          'name',
-          'email',
-          'comment',
-          'rating',
-          'timestamp',
-          'approved'
-        ])
-        && request.resource.data.name is string
-        && request.resource.data.email is string
-        && request.resource.data.comment is string
-        && request.resource.data.rating is int
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5
-        && request.resource.data.timestamp is timestamp
-        && request.resource.data.approved == false;
-      allow update: if resource.data.approved == false
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['approved'])
-        && request.resource.data.approved == true;
+      // Legacy collection. Reviews now come from Google Business Profile.
+      // Keep historical documents private and block all client-side writes.
+      allow read, write: if false;
     }
 
     match /contact_leads/{leadId} {
