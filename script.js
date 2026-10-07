@@ -9,7 +9,7 @@
 // CONFIG
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
-const GOOGLE_REVIEWS_ENDPOINT = '/api/google-reviews';
+const GOOGLE_REVIEWS_ENDPOINT = 'https://europe-west1-i-janicki.cloudfunctions.net/googleBusinessReviews';
 const COOKIE_POLICY_VERSION = '1.2';
 
 // ─────────────────────────────────────────────────────────────────

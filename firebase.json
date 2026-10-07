@@ -20,6 +20,7 @@
       "firebase-debug.log",
       ".firebase/**",
       "**/node_modules/**",
+      "functions/**",
       "i-JANEK/**",
       "postcss.config.js",
       "package.json",

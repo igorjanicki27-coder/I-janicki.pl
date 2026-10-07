@@ -4,11 +4,17 @@ Funkcja `googleBusinessReviews` pobiera opinie zweryfikowanej lokalizacji przez
 Google Business Profile API. Dane OAuth pozostają w Firebase Secret Manager i
 nie trafiają do publicznego JavaScriptu strony.
 
+Strona produkcyjna działa na GitHub Pages, dlatego frontend łączy się
+bezpośrednio z funkcją w regionie `europe-west1`. Funkcja dopuszcza żądania
+przeglądarkowe wyłącznie z `i-janicki.pl` i `www.i-janicki.pl`.
+
 ## Wymagania
 
 1. Zweryfikowany Profil Firmy w Google aktywny od co najmniej 60 dni.
 2. Zatwierdzony dostęp projektu `i-janicki` do Google Business Profile APIs.
-3. Włączone Google My Business API i My Business Account Management API.
+3. Włączone interfejsy udostępnione po akceptacji, w szczególności Google My
+   Business API, My Business Account Management API i My Business Business
+   Information API.
 4. Klient OAuth 2.0 oraz refresh token ze scope
    `https://www.googleapis.com/auth/business.manage`.
 5. Projekt Firebase w planie Blaze, wymaganym przez Cloud Functions i Secret

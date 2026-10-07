@@ -145,7 +145,14 @@ function restartAfterWindowsUpdate(version: string) {
       if (fs.readFileSync(handshakePath, 'utf8').trim() !== attemptId) return false
       restartConfirmed = true
       forceQuit = true
-      app.quit()
+      try {
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] Obserwator gotowy. Wymuszam zakończenie aplikacji przed instalacją. Próba=${attemptId}.\n`, 'utf8')
+      } catch { /* A diagnostic log failure must not block the verified update handoff. */ }
+      // The SYSTEM update agent cannot replace the application while any Electron
+      // process is still alive. app.quit() can be cancelled by a window lifecycle
+      // handler, so use the immediate exit path only after the restart watcher has
+      // confirmed that it is ready to relaunch the updated application.
+      app.exit(0)
       return true
     } catch {
       return false

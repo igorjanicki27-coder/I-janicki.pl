@@ -13,6 +13,10 @@ const googleBusinessAccountId = defineString('GOOGLE_BUSINESS_ACCOUNT_ID');
 const googleBusinessLocationId = defineString('GOOGLE_BUSINESS_LOCATION_ID');
 const googleBusinessProfileUrl = defineString('GOOGLE_BUSINESS_PROFILE_URL', { default: '' });
 const googleBusinessReviewUrl = defineString('GOOGLE_BUSINESS_REVIEW_URL', { default: '' });
+const allowedOrigins = new Set([
+  'https://i-janicki.pl',
+  'https://www.i-janicki.pl',
+]);
 
 exports.googleBusinessReviews = onRequest({
   region: 'europe-west1',
@@ -25,8 +29,26 @@ exports.googleBusinessReviews = onRequest({
     googleOauthRefreshToken,
   ],
 }, async (request, response) => {
+  const origin = String(request.get('Origin') || '');
+  response.set('Vary', 'Origin');
+  if (origin && !allowedOrigins.has(origin)) {
+    response.status(403).json({ error: 'origin_not_allowed' });
+    return;
+  }
+
+  if (origin) {
+    response.set('Access-Control-Allow-Origin', origin);
+  }
+
+  if (request.method === 'OPTIONS') {
+    response.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.set('Access-Control-Allow-Headers', 'Accept, Content-Type');
+    response.status(204).send('');
+    return;
+  }
+
   if (request.method !== 'GET') {
-    response.set('Allow', 'GET');
+    response.set('Allow', 'GET, OPTIONS');
     response.status(405).json({ error: 'method_not_allowed' });
     return;
   }

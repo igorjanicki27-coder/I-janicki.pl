@@ -489,6 +489,7 @@
 
   <script>
     (function () {
+      const GOOGLE_REVIEWS_ENDPOINT = 'https://europe-west1-i-janicki.cloudfunctions.net/googleBusinessReviews';
       const firebaseConfig =
         window.IJanickiAnalytics?.config?.firebaseConfig || {
           apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
@@ -576,7 +577,7 @@
       }
 
       async function fetchGoogleReviews() {
-        const response = await fetch('/api/google-reviews', {
+        const response = await fetch(GOOGLE_REVIEWS_ENDPOINT, {
           headers: { Accept: 'application/json' },
         });
         if (!response.ok) throw new Error(`Google reviews HTTP ${response.status}`);
@@ -873,10 +874,16 @@
       async function loadStats() {
         try {
           ensureFirebaseApp();
-          const [analyticsEvents, googleReviews] = await Promise.all([
-            fetchAnalyticsEvents(),
-            fetchGoogleReviews(),
-          ]);
+          const analyticsEvents = await fetchAnalyticsEvents();
+          let googleReviews = [];
+          let googleReviewsAvailable = true;
+
+          try {
+            googleReviews = await fetchGoogleReviews();
+          } catch (error) {
+            googleReviewsAvailable = false;
+            console.warn('Google reviews stats unavailable:', error);
+          }
 
           const now = new Date();
           const globalStats = buildPeriodStats('all', analyticsEvents, googleReviews, now);
@@ -892,7 +899,16 @@
           setPeriodValues('all', globalStats);
           renderDetailedStats(analyticsEvents, now);
 
-          setStatus(`Ostatnie odświeżenie: ${new Date().toLocaleString('pl-PL')}`);
+          if (!googleReviewsAvailable) {
+            ['today', 'days7', 'month', 'year', 'all'].forEach((prefix) => {
+              setValue(`${prefix}Reviews`, 'Niedost.');
+            });
+          }
+
+          const reviewsStatus = googleReviewsAvailable
+            ? ''
+            : ' Opinie Google są chwilowo niedostępne.';
+          setStatus(`Ostatnie odświeżenie: ${new Date().toLocaleString('pl-PL')}.${reviewsStatus}`);
         } catch (err) {
           console.warn('Stats page load error:', err);
           setValue('visitsValue', 'Blad');
