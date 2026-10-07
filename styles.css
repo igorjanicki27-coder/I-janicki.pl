@@ -833,6 +833,78 @@ html[data-theme="light"] .modal { background: linear-gradient(#fff,#fff) padding
 }
 .project-app { cursor: default; }
 
+.trusted-companies { margin-top: 24px; }
+.trusted-companies .section-sub { margin-top: 0; }
+.trusted-marquee {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: rgba(127,64,255,0.05);
+  padding: 12px 0;
+  isolation: isolate;
+}
+.trusted-marquee::before,
+.trusted-marquee::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: 42px;
+  pointer-events: none;
+}
+.trusted-marquee::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--bg-1), transparent);
+}
+.trusted-marquee::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--bg-1), transparent);
+}
+.trusted-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: trusted-logos-scroll 24s linear infinite;
+}
+.trusted-marquee:hover .trusted-track,
+.trusted-marquee:focus-within .trusted-track { animation-play-state: paused; }
+.trusted-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  padding-right: 12px;
+}
+.trusted-logo {
+  width: 142px;
+  height: 86px;
+  flex: 0 0 142px;
+  display: grid;
+  place-items: center;
+  padding: 10px 14px;
+  border: 1px solid rgba(127,64,255,0.18);
+  border-radius: 11px;
+  background: rgba(255,255,255,0.035);
+}
+.trusted-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.trusted-logo--wordmark span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--text);
+  text-shadow: 0 0 14px rgba(64,201,255,0.35);
+}
+@keyframes trusted-logos-scroll {
+  to { transform: translateX(-50%); }
+}
+
 /* Legacy card grid (kept for reviews) */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 22px; padding: 10px 4px 6px; justify-items: center; }
 .card {
@@ -1253,21 +1325,21 @@ html[data-theme="light"] .foot-docs {
 }
 
 /* =================== Panel cookies =================== */
-.cookie-overlay {
+.ijanicki-consent-overlay {
   position: fixed; inset: 0; z-index: 500;
   display: flex; align-items: flex-end; justify-content: center;
   padding: 16px; pointer-events: none;
   background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
 }
-.cookie-overlay[aria-hidden="false"] { animation: fade-in 0.25s ease; }
-.cookie-panel {
+.ijanicki-consent-overlay[aria-hidden="false"] { animation: fade-in 0.25s ease; }
+.ijanicki-consent-panel {
   width: min(600px, 96vw); background: var(--bg-1); pointer-events: auto;
   border: 1px solid var(--border);
   border-radius: 20px; padding: 24px;
   box-shadow: 0 -10px 60px rgba(0,0,0,0.6), var(--shadow-neon);
   animation: slide-up 0.35s var(--ease);
 }
-.cookie-panel--embedded {
+.ijanicki-consent-panel--embedded {
   width: 100%;
   max-width: none;
   box-sizing: border-box;
@@ -1278,13 +1350,13 @@ html[data-theme="light"] .foot-docs {
   padding: 0;
   animation: none;
 }
-html[data-theme="light"] .cookie-panel { background: #fff; }
-html[data-theme="light"] .cookie-panel--embedded { background: none; }
+html[data-theme="light"] .ijanicki-consent-panel { background: #fff; }
+html[data-theme="light"] .ijanicki-consent-panel--embedded { background: none; }
 @keyframes slide-up { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-.cookie-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ijanicki-consent-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .cookie-icon { font-size: 24px; }
-.cookie-header h2 { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; margin: 0; color: var(--text); }
+.ijanicki-consent-header h2 { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; margin: 0; color: var(--text); }
 
 /* Tekst banera */
 .cookie-banner-text {
@@ -1733,7 +1805,7 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   .price-grid { grid-template-columns: 1fr; }
 
   /* Cookie panel */
-  .cookie-panel { padding: 18px 14px; max-height: 92dvh; overflow-y: auto; }
+  .ijanicki-consent-panel { padding: 18px 14px; max-height: 92dvh; overflow-y: auto; }
   .cookie-docs-row { flex-wrap: wrap; }
 
   /* FAQ modal */
@@ -1771,6 +1843,8 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   .modal-reviews-container .reviews-laser-divider { width: auto; height: 1px; margin: 0; }
   .btn { width: 11rem; }
   .review-card { min-width: unset; max-width: none; width: 100%; }
+  .trusted-logo { width: 124px; height: 76px; flex-basis: 124px; padding: 8px 12px; }
+  .trusted-logo--wordmark span { font-size: 16px; }
 }
 
 @media (max-width: 360px) {
@@ -1786,6 +1860,9 @@ html[data-theme="light"] .doc-panel { background: #fff; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.1s !important;
   }
+  .trusted-marquee { overflow-x: auto; }
+  .trusted-track { animation: none !important; }
+  .trusted-group[aria-hidden="true"] { display: none; }
 }
 
 /* Header unification: keep only i-JANICKI text in topbar */

@@ -11,6 +11,7 @@ import { useAppStore } from '@/stores/app'
 import type { DeviceRecord } from '@shared/contracts'
 
 const emit = defineEmits<{ openSettings: [] }>()
+const props = defineProps<{ suspended?: boolean }>()
 const store = useAppStore()
 type Section = 'overview' | 'devices' | 'messages' | 'agents'
 
@@ -153,7 +154,7 @@ function handleDeviceArchived() {
           <div v-else class="rounded-2xl border border-dashed border-white/10 p-12 text-center"><Monitor class="mx-auto h-8 w-8 text-[var(--muted)]" /><h2 class="mt-4 text-base font-semibold text-white">Brak komputerów</h2><p class="mt-2 text-sm text-[var(--text-dim)]">Ta firma nie ma jeszcze urządzeń albo żaden komputer nie pasuje do filtra.</p></div>
         </div>
 
-        <DwServicePocPanel v-else-if="activeSection === 'agents'" />
+        <DwServicePocPanel v-else-if="activeSection === 'agents'" :suspended="props.suspended" />
         <MessagesWorkspace v-else />
       </div>
     </main>

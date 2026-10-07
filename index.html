@@ -46,7 +46,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=27" />
+  <link rel="stylesheet" href="styles.min.css?v=28" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1150,7 +1150,7 @@
   </div>
 
   <!-- ═══════════════ PANEL COOKIES ═══════════════ -->
-  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
+  <div class="ijanicki-consent-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
        aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>
 
   <!-- ═══════════════ PRZEGLĄDARKA DOKUMENTÓW ═══════════════ -->
@@ -1196,8 +1196,8 @@
     <div class="svc-grid">
       <div class="svc">
         <div class="svc-ico">⌬</div>
-        <h3 data-i18n="services-design-title">Projektowanie i Marketing</h3>
-        <p data-i18n="services-design-desc">Projektuję logo, ikony i materiały firmowe. Przygotowuję między innymi banery i wizytówki, dbając o spójny wizerunek marki.</p>
+        <h3 data-i18n="services-design-title">Kampanie reklamowe Google Ads</h3>
+        <p data-i18n="services-design-desc">Tworzę i optymalizuję kampanie Google Ads, które zwiększają widoczność firmy i pomagają docierać do nowych klientów.</p>
       </div>
       <a class="svc" href="/oferta/strony-www/">
         <div class="svc-ico">⟨⟩</div>
@@ -1274,6 +1274,43 @@
         </div>
       </div>
     </div>
+
+    <!-- Firmy, które mi zaufały -->
+    <section class="trusted-companies" aria-labelledby="trustedCompaniesTitle">
+      <h3 class="section-sub" id="trustedCompaniesTitle" data-i18n="projects-trusted-title">Firmy, które mi zaufały</h3>
+      <div class="trusted-marquee" role="region" data-i18n-aria-label="projects-trusted-aria">
+        <div class="trusted-track">
+          <div class="trusted-group">
+            <div class="trusted-logo" aria-label="ELMET">
+              <img src="/loga-firm/ELMET.webp" alt="ELMET" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo trusted-logo--wordmark" aria-label="EL-TECH">
+              <span>EL-TECH</span>
+            </div>
+            <div class="trusted-logo" aria-label="Cukiernia YOGI">
+              <img src="/loga-firm/YOGI.webp" alt="Cukiernia YOGI" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="Średzka Korona">
+              <img src="/loga-firm/Sredzka-Korona.png" alt="Średzka Korona" loading="lazy" decoding="async" />
+            </div>
+          </div>
+          <div class="trusted-group" aria-hidden="true">
+            <div class="trusted-logo">
+              <img src="/loga-firm/ELMET.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo trusted-logo--wordmark">
+              <span>EL-TECH</span>
+            </div>
+            <div class="trusted-logo">
+              <img src="/loga-firm/YOGI.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img src="/loga-firm/Sredzka-Korona.png" alt="" loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </template>
 
   <template id="tpl-process">
@@ -1384,7 +1421,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
-  <script defer src="script.min.js?v=26"></script>
+  <script defer src="script.min.js?v=27"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

@@ -631,7 +631,7 @@ watch(
         </div>
       </section>
 
-      <MasterDashboard v-else-if="store.isMaster" @open-settings="settingsOpen = true" />
+      <MasterDashboard v-else-if="store.isMaster" :suspended="settingsOpen" @open-settings="settingsOpen = true" />
       <SlaveLayout v-else />
     </main>
     <div v-if="dwServiceInfoOpen" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="dwservice-info-title" @click.self="dwServiceInfoOpen = false">

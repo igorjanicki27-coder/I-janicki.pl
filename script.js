@@ -235,8 +235,8 @@ const TRANSLATIONS = {
     'about-li-apps': 'Aplikacje webowe, desktopowe i mobilne na zamówienie',
     'about-li-network': 'Konfiguracja sieci i administracja',
     'about-li-support': 'Wsparcie i opieka IT',
-    'services-design-title': 'Projektowanie i Marketing',
-    'services-design-desc': 'Projektuję logo, ikony i materiały firmowe. Przygotowuję między innymi banery i wizytówki, dbając o spójny wizerunek marki.',
+    'services-design-title': 'Kampanie reklamowe Google Ads',
+    'services-design-desc': 'Tworzę i optymalizuję kampanie Google Ads, które zwiększają widoczność firmy i pomagają docierać do nowych klientów.',
     'services-web-title': 'Strony internetowe',
     'services-web-desc': 'Projektuję i wdrażam strony na zamówienie — od wizytówek po rozbudowane portale. Responsywne, szybkie, zoptymalizowane pod SEO.',
     'services-webapps-title': 'Aplikacje',
@@ -254,6 +254,8 @@ const TRANSLATIONS = {
     'projects-elmet-desc': 'Strona firmowa dla ELMET — usługi ślusarskie, CNC i obróbka metali we Wrocławiu.',
     'projects-apps-title': 'Aplikacje',
     'projects-myip-desc': 'Aplikacja macOS — publiczny adres IP i informacje o sieci.',
+    'projects-trusted-title': 'Firmy, które mi zaufały',
+    'projects-trusted-aria': 'Logotypy firm, które mi zaufały',
     'process-step1-title': 'Wstępna rozmowa',
     'process-step1-desc': 'Omawiamy Twoje potrzeby, cel projektu i zakres prac. Możemy porozmawiać przez telefon, e-mail lub Zoom.',
     'process-step2-title': 'Wycena i umowa',
@@ -395,8 +397,8 @@ const TRANSLATIONS = {
     'about-li-apps': 'Custom web, desktop, and mobile apps',
     'about-li-network': 'Network setup and administration',
     'about-li-support': 'IT support and ongoing care',
-    'services-design-title': 'Design',
-    'services-design-desc': 'I design and implement logos and icons.',
+    'services-design-title': 'Google Ads campaigns',
+    'services-design-desc': 'I create and optimize Google Ads campaigns that increase brand visibility and help reach new customers.',
     'services-web-title': 'Websites',
     'services-web-desc': 'I design and deliver custom websites, from business cards to larger portals. Responsive, fast, and SEO-friendly.',
     'services-webapps-title': 'Apps',
@@ -414,6 +416,8 @@ const TRANSLATIONS = {
     'projects-elmet-desc': 'Company website for ELMET — locksmith services, CNC, and metalworking in Wroclaw.',
     'projects-apps-title': 'Apps',
     'projects-myip-desc': 'macOS app with public IP and network information.',
+    'projects-trusted-title': 'Companies that trusted me',
+    'projects-trusted-aria': 'Logos of companies that trusted me',
     'process-step1-title': 'Intro call',
     'process-step1-desc': 'We discuss your needs, project goal, and scope. We can talk by phone, email, or Zoom.',
     'process-step2-title': 'Quote and agreement',
@@ -937,7 +941,9 @@ function renderCookieStep() {
 
 // Renderuje panel cookies: view = 'banner' (pierwszy baner) lub 'settings' (panel z kategoriami)
 function renderCookiePanelHtml(mode, view) {
-  const panelClass = mode === 'tutorial' ? 'cookie-panel cookie-panel--embedded' : 'cookie-panel';
+  const panelClass = mode === 'tutorial'
+    ? 'ijanicki-consent-panel ijanicki-consent-panel--embedded'
+    : 'ijanicki-consent-panel';
   const actualView = view || 'banner';
 
   if (actualView === 'settings') {
@@ -950,7 +956,7 @@ function renderCookiePanelHtml(mode, view) {
 function renderCookieBannerHtml(mode, panelClass) {
   return `
     <div class="${panelClass}" data-cookie-mode="${mode}" data-cookie-view="banner">
-      <div class="cookie-header">
+      <div class="ijanicki-consent-header">
         <span class="cookie-icon" aria-hidden="true">🍪</span>
         <h2>${t('cookie-title')}</h2>
       </div>
@@ -988,7 +994,7 @@ function renderCookieSettingsHtml(mode, panelClass) {
 
   return `
     <div class="${panelClass}" data-cookie-mode="${mode}" data-cookie-view="settings">
-      <div class="cookie-header">
+      <div class="ijanicki-consent-header">
         <span class="cookie-icon" aria-hidden="true">🍪</span>
         <h2>${t('cookie-settings-title-panel')}</h2>
       </div>
