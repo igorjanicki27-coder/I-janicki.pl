@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /i-JANEK/
-Disallow: /functions/
 
 Sitemap: https://i-janicki.pl/sitemap.xml

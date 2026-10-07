@@ -1,0 +1,79 @@
+name: Sync Google Business reviews
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-google-business-reviews
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Publish five newest Google reviews
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: firebase
+
+    steps:
+      - name: Check whether the integration is ready
+        id: configuration
+        env:
+          SYNC_ENABLED: ${{ vars.GOOGLE_BUSINESS_SYNC_ENABLED }}
+          CLIENT_ID: ${{ secrets.GOOGLE_BUSINESS_OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GOOGLE_BUSINESS_OAUTH_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GOOGLE_BUSINESS_OAUTH_REFRESH_TOKEN }}
+          ACCOUNT_ID: ${{ vars.GOOGLE_BUSINESS_ACCOUNT_ID }}
+          LOCATION_ID: ${{ vars.GOOGLE_BUSINESS_LOCATION_ID }}
+          FIREBASE_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_JSON_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}
+        run: |
+          ready=true
+          if [ "$SYNC_ENABLED" != "true" ]; then ready=false; fi
+          for value in "$CLIENT_ID" "$CLIENT_SECRET" "$REFRESH_TOKEN" "$ACCOUNT_ID" "$LOCATION_ID"; do
+            if [ -z "$value" ]; then ready=false; fi
+          done
+          if [ -z "$FIREBASE_JSON" ] && [ -z "$FIREBASE_JSON_BASE64" ]; then ready=false; fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$ready" != "true" ]; then
+            echo "Google reviews sync is waiting for API approval and repository configuration."
+          fi
+
+      - name: Checkout repository
+        if: steps.configuration.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.configuration.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch the five newest reviews
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          GOOGLE_BUSINESS_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_BUSINESS_OAUTH_CLIENT_ID }}
+          GOOGLE_BUSINESS_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_BUSINESS_OAUTH_CLIENT_SECRET }}
+          GOOGLE_BUSINESS_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_BUSINESS_OAUTH_REFRESH_TOKEN }}
+          GOOGLE_BUSINESS_ACCOUNT_ID: ${{ vars.GOOGLE_BUSINESS_ACCOUNT_ID }}
+          GOOGLE_BUSINESS_LOCATION_ID: ${{ vars.GOOGLE_BUSINESS_LOCATION_ID }}
+          GOOGLE_BUSINESS_PROFILE_URL: ${{ vars.GOOGLE_BUSINESS_PROFILE_URL }}
+          GOOGLE_BUSINESS_REVIEW_URL: https://g.page/r/Cejbf595goIfEBM/review
+          GOOGLE_REVIEWS_OUTPUT_PATH: ${{ runner.temp }}/google-business-reviews.json
+        run: node scripts/sync-google-business-reviews.mjs
+
+      - name: Prepare Firebase credentials
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}
+          FIREBASE_PROJECT_ID: i-janicki
+        run: node scripts/prepare-firebase-credentials.mjs
+
+      - name: Publish the snapshot to Firebase RTDB
+        if: steps.configuration.outputs.ready == 'true'
+        run: npx --yes firebase-tools@15.11.0 database:set /publicGoogleReviews "$RUNNER_TEMP/google-business-reviews.json" --confirm --project i-janicki --non-interactive

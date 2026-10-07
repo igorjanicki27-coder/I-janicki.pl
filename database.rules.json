@@ -2,6 +2,10 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "publicGoogleReviews": {
+      ".read": true,
+      ".write": false
+    },
     "cookie_consents": {
       "$anonymous_user_id": {
         "$consent_id": {

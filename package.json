@@ -10,7 +10,8 @@
     "build:css": "postcss styles.css -o styles.min.css",
     "build:js": "terser script.js -o script.min.js -c -m",
     "seo": "node scripts/generate-seo-files.mjs",
-    "audit:seo": "node scripts/audit-seo-content.mjs"
+    "audit:seo": "node scripts/audit-seo-content.mjs",
+    "test:google-reviews": "node --test scripts/google-business-reviews.test.mjs"
   },
   "devDependencies": {
     "cssnano": "^7.0.0",

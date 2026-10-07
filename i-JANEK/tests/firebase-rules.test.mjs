@@ -174,6 +174,25 @@ test('czat właściciela jest prywatny, lecz dostępny dla Mastera', async () =>
   await assertSucceeds(get(ref(masterDb, `ownerChats/${owner.uid}`)))
 })
 
+test('snapshot opinii Google jest publiczny do odczytu i zablokowany do zapisu', async () => {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), 'publicGoogleReviews'), {
+      source: 'google_business_profile',
+      averageRating: 5,
+      totalReviewCount: 1,
+      reviews: [{ id: 'review-1', authorName: 'Klient', rating: 5 }],
+      fetchedAt: '2026-10-07T10:00:00.000Z'
+    })
+  })
+
+  const publicDb = environment.unauthenticatedContext().database()
+  await assertSucceeds(get(ref(publicDb, 'publicGoogleReviews')))
+  await assertFails(set(ref(publicDb, 'publicGoogleReviews'), {
+    source: 'spam',
+    reviews: []
+  }))
+})
+
 test('stan komunikatora może aktualizować wyłącznie właściwy uczestnik rozmowy', async () => {
   const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).database()
   const strangerDb = environment.authenticatedContext(stranger.uid, { email: stranger.email }).database()

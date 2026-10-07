@@ -133,7 +133,6 @@ async function writeRobots() {
     'User-agent: *',
     'Allow: /',
     'Disallow: /i-JANEK/',
-    'Disallow: /functions/',
     '',
     `Sitemap: ${SITE_URL}/sitemap.xml`,
     ''

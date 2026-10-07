@@ -1,12 +1,10 @@
-'use strict';
-
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const {
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
   fetchGoogleBusinessReviews,
   mapReview,
   normalizeResourceId,
-} = require('./google-business');
+} from './google-business-reviews.mjs';
 
 test('normalizeResourceId accepts plain and resource-form IDs', () => {
   assert.equal(normalizeResourceId('123', 'accounts'), '123');
@@ -33,21 +31,23 @@ test('mapReview converts Google rating and anonymous author safely', () => {
   });
 });
 
-test('fetchGoogleBusinessReviews refreshes OAuth and joins paginated reviews', async () => {
+test('fetchGoogleBusinessReviews requests and returns only five newest reviews', async () => {
   const calls = [];
+  const reviews = Array.from({ length: 8 }, (_, index) => ({
+    reviewId: String(index + 1),
+    starRating: index === 0 ? 'FIVE' : 'FOUR',
+    reviewer: { displayName: `Klient ${index + 1}` },
+    updateTime: `2026-10-0${Math.min(index + 1, 9)}T10:00:00Z`,
+  }));
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url: String(url), options });
     if (String(url).includes('oauth2.googleapis.com')) {
       return new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 });
     }
-    const secondPage = String(url).includes('pageToken=next');
-    return new Response(JSON.stringify(secondPage ? {
-      reviews: [{ reviewId: '2', starRating: 'FOUR', reviewer: { displayName: 'B' } }],
-    } : {
-      averageRating: 4.5,
-      totalReviewCount: 2,
-      nextPageToken: 'next',
-      reviews: [{ reviewId: '1', starRating: 'FIVE', reviewer: { displayName: 'A' } }],
+    return new Response(JSON.stringify({
+      averageRating: 4.8,
+      totalReviewCount: 28,
+      reviews,
     }), { status: 200 });
   };
 
@@ -59,12 +59,16 @@ test('fetchGoogleBusinessReviews refreshes OAuth and joins paginated reviews', a
     accountId: 'accounts/123',
     locationId: 'locations/456',
     profileUrl: 'https://example.com/profile',
+    reviewUrl: 'https://g.page/r/example/review',
+    maxReviews: 5,
   });
 
-  assert.equal(result.averageRating, 4.5);
-  assert.equal(result.totalReviewCount, 2);
-  assert.deepEqual(result.reviews.map((review) => review.rating), [5, 4]);
-  assert.equal(calls.length, 3);
+  assert.equal(result.averageRating, 4.8);
+  assert.equal(result.totalReviewCount, 28);
+  assert.equal(result.reviews.length, 5);
+  assert.equal(calls.length, 2);
   assert.match(calls[1].url, /accounts\/123\/locations\/456\/reviews/);
+  assert.match(calls[1].url, /pageSize=5/);
+  assert.match(calls[1].url, /orderBy=updateTime\+desc/);
   assert.equal(calls[1].options.headers.Authorization, 'Bearer access-token');
 });

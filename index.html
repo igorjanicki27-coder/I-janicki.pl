@@ -44,9 +44,8 @@
 
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="icon" type="image/png" href="./icons/icon.png" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=30" />
+  <link rel="stylesheet" href="styles.min.css?v=32" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1281,7 +1280,7 @@
         <div class="trusted-track">
           <div class="trusted-group">
             <div class="trusted-logo" aria-label="ELMET">
-              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET.webp" alt="ELMET" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.png" alt="ELMET" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo trusted-logo--wordmark" aria-label="EL-TECH">
               <span>EL-TECH</span>
@@ -1295,7 +1294,7 @@
           </div>
           <div class="trusted-group" aria-hidden="true">
             <div class="trusted-logo">
-              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET.webp" alt="" loading="lazy" decoding="async" />
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.png" alt="" loading="lazy" decoding="async" />
             </div>
             <div class="trusted-logo trusted-logo--wordmark">
               <span>EL-TECH</span>
@@ -1365,34 +1364,30 @@
   </template>
 
   <template id="tpl-reviews">
-    <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-reviews">Opinie</h2>
     <div class="modal-reviews-container">
-      <!-- Lewa kolumna: Opinie klientów -->
-      <div class="reviews-carousel-section">
-        <p class="section-lead" data-i18n="reviews-lead">Tu możesz przeczytać opinie dotychczasowych klientów.</p>
-        <div id="modalReviewsCarousel" class="reviews-carousel modal-carousel">
-          <div class="reviews-loading"><span data-i18n="reviews-loading">Ładowanie opinii…</span></div>
+      <header class="reviews-modal-header">
+        <div>
+          <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-reviews">Opinie</h2>
+          <p class="section-lead" data-i18n="reviews-lead">Pięć najnowszych opinii klientów z Profilu Firmy w Google.</p>
         </div>
-      </div>
-
-      <!-- Pionowy separator — laser świetlny -->
-      <div class="reviews-laser-divider" aria-hidden="true"></div>
-
-      <!-- Prawa kolumna: podsumowanie i przejście do Google -->
-      <div class="modal-review-form-container">
-        <div class="google-review-cta">
+        <div class="reviews-google-meta">
           <div class="google-maps-attribution" aria-label="Źródło opinii: Google Maps">Google Maps</div>
-          <h3 class="reviews-section-title" data-i18n="reviews-form-title">Oceń i-JANICKI</h3>
           <p class="google-review-summary" data-google-review-summary hidden></p>
-          <p class="google-review-note" data-i18n="reviews-google-note">Opinie są pobierane z Profilu Firmy w Google i uporządkowane od najnowszych.</p>
-          <div class="google-review-actions">
-            <a class="btn google-review-link" data-google-write-review href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
-              <strong data-i18n="reviews-google-write">NAPISZ OPINIĘ W GOOGLE</strong>
-            </a>
-            <a class="google-review-all-link" data-google-profile href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true" data-i18n="reviews-google-open">Zobacz wszystkie opinie w Google</a>
-          </div>
         </div>
+      </header>
+
+      <div id="modalReviewsCarousel" class="reviews-carousel modal-carousel" aria-live="polite" aria-busy="true">
+        <div class="reviews-loading"><span data-i18n="reviews-loading">Ładowanie opinii…</span></div>
       </div>
+
+      <footer class="google-review-footer">
+        <p class="google-review-note" data-i18n="reviews-google-note">Opinie są pobierane bezpośrednio z Profilu Firmy w Google.</p>
+        <a class="google-review-link" href="https://g.page/r/Cejbf595goIfEBM/review" target="_blank" rel="noopener noreferrer">
+          <span aria-hidden="true">★</span>
+          <strong data-i18n="reviews-google-write">Wystaw opinię</strong>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </footer>
     </div>
   </template>
 
@@ -1401,7 +1396,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=5"></script>
-  <script defer src="script.min.js?v=29"></script>
+  <script defer src="script.min.js?v=30"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

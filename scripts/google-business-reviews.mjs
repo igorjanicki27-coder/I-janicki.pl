@@ -1,5 +1,3 @@
-'use strict';
-
 const STAR_RATINGS = Object.freeze({
   ONE: 1,
   TWO: 2,
@@ -27,7 +25,6 @@ function normalizePublicUrl(value) {
 
 function mapReview(review, profileUrl) {
   const reviewer = review?.reviewer || {};
-  const rating = STAR_RATINGS[review?.starRating] || 0;
 
   return {
     id: String(review?.reviewId || ''),
@@ -35,7 +32,7 @@ function mapReview(review, profileUrl) {
       ? 'Użytkownik Google'
       : String(reviewer.displayName || 'Użytkownik Google'),
     authorPhotoUrl: normalizePublicUrl(reviewer.profilePhotoUrl),
-    rating,
+    rating: STAR_RATINGS[review?.starRating] || 0,
     comment: String(review?.comment || ''),
     createTime: String(review?.createTime || review?.updateTime || ''),
     updateTime: String(review?.updateTime || review?.createTime || ''),
@@ -45,14 +42,14 @@ function mapReview(review, profileUrl) {
 
 async function readJson(response, serviceName) {
   if (!response.ok) {
-    const error = new Error(`${serviceName} returned HTTP ${response.status}`);
-    error.status = response.status;
-    throw error;
+    const responseText = await response.text().catch(() => '');
+    const suffix = responseText ? `: ${responseText.slice(0, 300)}` : '';
+    throw new Error(`${serviceName} returned HTTP ${response.status}${suffix}`);
   }
   return response.json();
 }
 
-async function exchangeRefreshToken({ fetchImpl, clientId, clientSecret, refreshToken }) {
+async function exchangeRefreshToken({ fetchImpl = fetch, clientId, clientSecret, refreshToken }) {
   const response = await fetchImpl('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -77,10 +74,12 @@ async function fetchGoogleBusinessReviews({
   locationId,
   profileUrl = '',
   reviewUrl = '',
-  maxPages = 20,
+  maxReviews = 5,
 }) {
   const account = normalizeResourceId(accountId, 'accounts');
   const location = normalizeResourceId(locationId, 'locations');
+  const reviewLimit = Math.max(1, Math.min(50, Number(maxReviews) || 5));
+
   if (!clientId || !clientSecret || !refreshToken || !account || !location) {
     throw new Error('Google Business Profile configuration is incomplete');
   }
@@ -92,49 +91,35 @@ async function fetchGoogleBusinessReviews({
     refreshToken,
   });
 
-  const reviews = [];
-  let pageToken = '';
-  let averageRating = 0;
-  let totalReviewCount = 0;
+  const endpoint = new URL(
+    `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(account)}/locations/${encodeURIComponent(location)}/reviews`,
+  );
+  endpoint.searchParams.set('pageSize', String(reviewLimit));
+  endpoint.searchParams.set('orderBy', 'updateTime desc');
+
+  const response = await fetchImpl(endpoint, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await readJson(response, 'Google Business Profile');
   const safeProfileUrl = normalizePublicUrl(profileUrl);
   const safeReviewUrl = normalizePublicUrl(reviewUrl);
 
-  for (let page = 0; page < maxPages; page += 1) {
-    const endpoint = new URL(
-      `https://mybusiness.googleapis.com/v4/accounts/${encodeURIComponent(account)}/locations/${encodeURIComponent(location)}/reviews`,
-    );
-    endpoint.searchParams.set('pageSize', '50');
-    endpoint.searchParams.set('orderBy', 'updateTime desc');
-    if (pageToken) endpoint.searchParams.set('pageToken', pageToken);
-
-    const response = await fetchImpl(endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const data = await readJson(response, 'Google Business Profile');
-
-    if (page === 0) {
-      averageRating = Number(data.averageRating) || 0;
-      totalReviewCount = Number(data.totalReviewCount) || 0;
-    }
-    reviews.push(...(Array.isArray(data.reviews) ? data.reviews : []));
-
-    pageToken = String(data.nextPageToken || '');
-    if (!pageToken) break;
-  }
-
   return {
     source: 'google_business_profile',
-    averageRating,
-    totalReviewCount,
+    averageRating: Number(data.averageRating) || 0,
+    totalReviewCount: Number(data.totalReviewCount) || 0,
     profileUrl: safeProfileUrl,
     reviewUrl: safeReviewUrl || safeProfileUrl,
-    reviews: reviews.map((review) => mapReview(review, safeProfileUrl)),
+    reviews: (Array.isArray(data.reviews) ? data.reviews : [])
+      .slice(0, reviewLimit)
+      .map((review) => mapReview(review, safeProfileUrl)),
     fetchedAt: new Date().toISOString(),
   };
 }
 
-module.exports = {
+export {
   STAR_RATINGS,
+  exchangeRefreshToken,
   fetchGoogleBusinessReviews,
   mapReview,
   normalizePublicUrl,

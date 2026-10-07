@@ -9,7 +9,7 @@
 // CONFIG
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
-const GOOGLE_REVIEWS_ENDPOINT = 'https://europe-west1-i-janicki.cloudfunctions.net/googleBusinessReviews';
+const GOOGLE_REVIEWS_ENDPOINT = `${FIREBASE_RTDB_BASE}/publicGoogleReviews.json`;
 const COOKIE_POLICY_VERSION = '1.2';
 
 // ─────────────────────────────────────────────────────────────────
@@ -278,16 +278,15 @@ const TRANSLATIONS = {
     'contact-sending': 'Wysyłanie…',
     'contact-sent': '✓ Wiadomość wysłana! Odpiszę możliwie szybko.',
     'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na kontakt@i-janicki.pl',
-    'reviews-lead': 'Opinie klientów pobierane bezpośrednio z Profilu Firmy w Google.',
+    'reviews-lead': 'Pięć najnowszych opinii klientów z Profilu Firmy w Google.',
     'reviews-loading': 'Ładowanie opinii z Google…',
     'reviews-empty': 'Profil Google nie ma jeszcze opinii.',
+    'reviews-pending': 'Opinie pojawią się tutaj po zakończeniu weryfikacji dostępu przez Google.',
     'reviews-error': 'Opinie Google są chwilowo niedostępne.',
     'reviews-anonymous': 'Użytkownik Google',
     'reviews-no-comment': 'Ocena bez komentarza',
-    'reviews-form-title': 'Oceń i-JANICKI',
-    'reviews-google-note': 'Opinie są pobierane z Profilu Firmy w Google i uporządkowane od najnowszych.',
-    'reviews-google-write': 'NAPISZ OPINIĘ W GOOGLE',
-    'reviews-google-open': 'Zobacz wszystkie opinie w Google',
+    'reviews-google-note': 'Opinie są pobierane bezpośrednio z Profilu Firmy w Google.',
+    'reviews-google-write': 'Wystaw opinię',
     'reviews-average': '{rating}/5 na podstawie {count} opinii',
     'returning-title': 'Witaj ponownie!',
     'returning-message': 'Witaj ponownie, <strong>{name}</strong>! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
@@ -422,16 +421,15 @@ const TRANSLATIONS = {
     'contact-sending': 'Sending…',
     'contact-sent': '✓ Message sent! I\'ll get back to you as soon as possible.',
     'contact-error': '✗ Something went wrong. Please write directly to kontakt@i-janicki.pl',
-    'reviews-lead': 'Client reviews fetched directly from the Google Business Profile.',
+    'reviews-lead': 'The five newest client reviews from the Google Business Profile.',
     'reviews-loading': 'Loading Google reviews…',
     'reviews-empty': 'The Google profile has no reviews yet.',
+    'reviews-pending': 'Reviews will appear here once Google approves API access.',
     'reviews-error': 'Google reviews are temporarily unavailable.',
     'reviews-anonymous': 'Google user',
     'reviews-no-comment': 'Rating without a comment',
-    'reviews-form-title': 'Review i-JANICKI',
-    'reviews-google-note': 'Reviews come from the Google Business Profile and are ordered from newest to oldest.',
-    'reviews-google-write': 'WRITE A GOOGLE REVIEW',
-    'reviews-google-open': 'See all reviews on Google',
+    'reviews-google-note': 'Reviews are fetched directly from the Google Business Profile.',
+    'reviews-google-write': 'Leave a review',
     'reviews-average': '{rating}/5 based on {count} reviews',
     'returning-title': 'Welcome back!',
     'returning-message': 'Welcome back, <strong>{name}</strong>! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
@@ -1490,16 +1488,24 @@ function closeDoc() {
 async function loadReviews(container) {
   if (!container) return;
   container.innerHTML = `<div class="reviews-loading"><span>${t('reviews-loading')}</span></div>`;
+  container.setAttribute('aria-busy', 'true');
 
   try {
-    const res = await fetch(`${GOOGLE_REVIEWS_ENDPOINT}?lang=${encodeURIComponent(currentLang)}`, {
+    const res = await fetch(GOOGLE_REVIEWS_ENDPOINT, {
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
-    const reviews = Array.isArray(data.reviews) ? data.reviews.map(parseGoogleReview) : [];
-    updateGoogleReviewLinks(container, data);
+    if (data === null) {
+      container.innerHTML = `<p class="reviews-empty reviews-empty--pending">${t('reviews-pending')}</p>`;
+      return;
+    }
+    if (typeof data !== 'object') throw new Error('Invalid Google reviews snapshot');
+    const reviews = Array.isArray(data.reviews)
+      ? data.reviews.slice(0, 5).map(parseGoogleReview)
+      : [];
+    updateGoogleReviewSummary(container, data);
 
     if (!reviews.length) {
       container.innerHTML = `<p class="reviews-empty">${t('reviews-empty')}</p>`;
@@ -1511,7 +1517,9 @@ async function loadReviews(container) {
 
   } catch (err) {
     console.warn('Google reviews load error:', err);
-    container.innerHTML = `<p class="reviews-empty" style="opacity:.4">${t('reviews-error')}</p>`;
+    container.innerHTML = `<p class="reviews-empty">${t('reviews-error')}</p>`;
+  } finally {
+    container.setAttribute('aria-busy', 'false');
   }
 }
 
@@ -1536,12 +1544,10 @@ function safeHttpsUrl(value) {
   }
 }
 
-function updateGoogleReviewLinks(container, data) {
+function updateGoogleReviewSummary(container, data) {
   const section = container.closest('.modal-reviews-container') || container.parentElement;
   if (!section) return;
 
-  const profileUrl = safeHttpsUrl(data.profileUrl);
-  const reviewUrl = safeHttpsUrl(data.reviewUrl) || profileUrl;
   const summary = section.querySelector('[data-google-review-summary]');
   const rating = Number(data.averageRating) || 0;
   const count = Number(data.totalReviewCount) || 0;
@@ -1556,20 +1562,14 @@ function updateGoogleReviewLinks(container, data) {
     });
     summary.hidden = false;
   }
-
-  setGoogleReviewLink(section.querySelector('[data-google-profile]'), profileUrl);
-  setGoogleReviewLink(section.querySelector('[data-google-write-review]'), reviewUrl);
-}
-
-function setGoogleReviewLink(link, url) {
-  if (!link || !url) return;
-  link.href = url;
-  link.removeAttribute('aria-disabled');
 }
 
 function buildCard(r) {
-  const div  = document.createElement('div');
+  const div  = document.createElement('article');
   div.className = `review-card${r.rating >= 5 ? ' max-stars' : ''}`;
+  div.tabIndex = 0;
+  div.setAttribute('role', 'button');
+  div.setAttribute('aria-label', `${r.name}, ${r.rating}/5`);
   const filled = '★'.repeat(Math.max(0, Math.min(5, r.rating)));
   const empty  = '☆'.repeat(5 - filled.length);
   const parsedDate = new Date(r.timestamp);
@@ -1589,6 +1589,11 @@ function buildCard(r) {
 
   div.addEventListener('click', (e) => {
     e.stopPropagation();
+    openReviewPreview(r, filled, empty, date);
+  });
+  div.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
     openReviewPreview(r, filled, empty, date);
   });
 

@@ -1,4 +1,4 @@
-name: Deploy Firestore Rules
+name: Deploy Firebase Rules
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - firestore.rules
+      - database.rules.json
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-firestore-rules.yml
@@ -16,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-firestore-rules-production
+  group: deploy-firebase-rules-production
   cancel-in-progress: true
 
 jobs:
@@ -54,5 +55,5 @@ jobs:
           FIREBASE_PROJECT_ID: i-janicki
         run: node scripts/prepare-firebase-credentials.mjs
 
-      - name: Deploy Firestore rules
-        run: npx --yes firebase-tools@15.11.0 deploy --only firestore:rules --project i-janicki --non-interactive
+      - name: Deploy Firestore and RTDB rules
+        run: npx --yes firebase-tools@15.11.0 deploy --only firestore:rules,database --project i-janicki --non-interactive
