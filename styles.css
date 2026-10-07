@@ -1029,22 +1029,12 @@ html[data-theme="light"] .form-group input, html[data-theme="light"] .form-group
   padding-right: 44px;
 }
 .reviews-modal-header .modal-section-title { margin-bottom: 8px; }
-.reviews-modal-header .section-lead { margin: 0; max-width: 560px; }
 .reviews-google-meta {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-}
-.google-maps-attribution {
-  padding: 7px 13px;
-  border: 1px solid rgba(255,255,255,0.16);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
-  font: 700 13px/1.2 Arial, sans-serif;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .google-review-summary {
   margin: 0;
@@ -1113,7 +1103,6 @@ html[data-theme="light"] .form-group input, html[data-theme="light"] .form-group
   border-top: 1px solid var(--border-soft);
   text-align: center;
 }
-.google-review-note { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
 .google-review-link {
   min-width: min(100%, 250px);
   display: inline-flex;
@@ -1140,7 +1129,6 @@ html[data-theme="light"] .form-group input, html[data-theme="light"] .form-group
   outline: none;
 }
 html[data-theme="light"] .review-card { background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(235,240,255,0.94)); }
-html[data-theme="light"] .google-maps-attribution { border-color: rgba(22,26,37,0.14); background: rgba(22,26,37,0.04); }
 
 /* Modal podglądu opinii */
 .review-preview-overlay {
