@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { synchronizeReleaseRepository } from './release-git.mjs'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(appRoot, '..')
@@ -11,6 +12,7 @@ const packagePath = resolve(appRoot, 'package.json')
 const args = process.argv.slice(2)
 const channel = args.find((argument) => !argument.startsWith('--'))
 const dryRun = args.includes('--dry-run')
+const resume = args.includes('--resume')
 const explicitVersionArgument = args.find((argument) => argument.startsWith('--version='))
 const explicitVersion = explicitVersionArgument?.slice('--version='.length)
 const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
@@ -98,7 +100,7 @@ function nextVersion(currentVersion) {
 }
 
 if (!['test', 'beta', 'stable'].includes(channel)) {
-  fail('Użycie: node scripts/release-channel.mjs <test|beta|stable> [--dry-run] [--version=x.y.z[-alpha.N|-beta.N]] [--notes="Opis zmian"]')
+  fail('Użycie: node scripts/release-channel.mjs <test|beta|stable> [--dry-run] [--resume] [--version=x.y.z[-alpha.N|-beta.N]] [--notes="Opis zmian"]')
 }
 
 console.log('[release] Sprawdzam poprawność automatu przed rozpoczęciem wydania.')
@@ -112,6 +114,8 @@ for (const script of [
 }
 for (const script of [
   'scripts/release-channel.mjs',
+  'scripts/release-git.mjs',
+  'scripts/release-artifacts.mjs',
   'scripts/publish-release-assets.mjs',
   'scripts/check-macos-signing.mjs',
   'scripts/setup-macos-signing.mjs'
@@ -119,22 +123,49 @@ for (const script of [
   run(process.execPath, ['--check', script], { cwd: appRoot })
 }
 
+function synchronize(builtTag) {
+  console.log('[release] Sprawdzam aktualny main na GitHubie przed dalszymi krokami.')
+  try {
+    synchronizeReleaseRepository(repositoryRoot, { releasePathspec, builtTag })
+  } catch (error) {
+    fail(error.message)
+  }
+}
+
+// Synchronizacja musi poprzedzać odczyt wersji, commit, tag i kosztowny build.
+if (!dryRun && !resume) synchronize()
+
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
-const version = nextVersion(packageJson.version)
+const version = resume ? packageJson.version : nextVersion(packageJson.version)
+if (resume) {
+  if (explicitVersion && explicitVersion !== version) fail('Wznowienie wymaga bieżącej wersji z package.json.')
+  const parsed = parseVersion(version)
+  if ((channel === 'test' && parsed.prerelease !== 'alpha') ||
+      (channel === 'beta' && parsed.prerelease !== 'beta') ||
+      (channel === 'stable' && parsed.prerelease != null)) fail('Bieżąca wersja nie odpowiada kanałowi wznowienia.')
+}
 const tag = `i-janek-v${version}`
-if (!dryRun && !process.env.WINDOWS_UPDATE_SIGNING_KEY_PEM && !existsSync(resolve(appRoot, 'resources/update-signing-private.pem'))) {
+if (!dryRun && !resume && !process.env.WINDOWS_UPDATE_SIGNING_KEY_PEM && !existsSync(resolve(appRoot, 'resources/update-signing-private.pem'))) {
   fail('Brakuje prywatnego klucza podpisu aktualizacji Windows. Wydanie wymaga tego klucza przed zmianą wersji i utworzeniem tagu.')
 }
 
 console.log(`[release] Kanał: ${channel}`)
 console.log(`[release] Wersja: ${packageJson.version} -> ${version}`)
 console.log(`[release] Tag: ${tag}`)
+if (resume) console.log('[release] Wznawiam gotowe wydanie bez zmiany wersji i ponownego budowania.')
 if (releaseNotes) console.log(`[release] Opis: ${releaseNotes}`)
 
 if (dryRun) {
   console.log('[release] Podgląd zakończony. Nie zmieniono plików i niczego nie wysłano.')
   process.exit(0)
 }
+
+if (resume) {
+  const tagPackage = run('git', ['show', `${tag}:i-JANEK/package.json`], { capture: true })
+  if (JSON.parse(tagPackage).version !== version) fail('Wersja zapisana w tagu nie odpowiada bieżącej wersji.')
+  run(process.execPath, ['scripts/publish-release-assets.mjs', channel, '--check-only'], { cwd: appRoot })
+  synchronize(tag)
+} else {
 
 run(process.execPath, ['scripts/check-update-signing.mjs'], { cwd: appRoot })
 run(process.execPath, ['scripts/check-macos-signing.mjs'], { cwd: appRoot })
@@ -174,9 +205,16 @@ const updaterChannel = channel === 'stable' ? 'latest' : channel
 console.log('[release] Buduję lokalnie podpisaną paczkę macOS i paczkę Windows.')
 run('bash', ['scripts/build-public-update-macos.sh', updaterChannel], { cwd: appRoot })
 
+// Automat SEO może dopisać commit również w trakcie budowania paczek.
+synchronize(tag)
+}
+
 console.log('[release] Wysyłam commit i tag do GitHuba.')
-run('git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`])
+const push = spawnSync('git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`], {
+  cwd: repositoryRoot, stdio: 'inherit'
+})
+if (push.status !== 0) fail(`Publikację zatrzymano. Gotowe paczki i tag zachowano. Wznów: npm run release:${channel} -- --resume --version=${version}`)
 const publishArgs = ['scripts/publish-release-assets.mjs', channel]
 if (releaseNotes) publishArgs.push(`--notes=${releaseNotes}`)
-run('node', publishArgs, { cwd: appRoot })
+run(process.execPath, publishArgs, { cwd: appRoot })
 console.log(`[release] Gotowe: https://github.com/igorjanicki27-coder/I-janicki.pl/releases/tag/${tag}`)

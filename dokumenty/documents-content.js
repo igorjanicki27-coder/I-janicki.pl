@@ -1,7 +1,7 @@
 const DOCUMENTS_CONTENT = {
   "regulamin": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin serwisu i-JANICKI</h2>
 
-<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 08.10.2026</em></p>
 
 <h3 id="num-definicje">§1. Definicje</h3>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
@@ -89,14 +89,22 @@ const DOCUMENTS_CONTENT = {
   <li>Usługodawca nie odpowiada za treści, bezpieczeństwo, dostępność ani polityki prywatności stron zewnętrznych.</li>
 </ol>
 
-<h3 id="num-zmiany-regulaminu">§11. Zmiany Regulaminu</h3>
+<h3 id="num-reklamacje">§11. Reklamacje</h3>
+<ol style="list-style-type:decimal;padding-left:1.2rem">
+  <li>Reklamację dotyczącą działania Serwisu lub usługi świadczonej drogą elektroniczną można przesłać na adres e-mail: kontakt@i-janicki.pl.</li>
+  <li>Reklamacja powinna zawierać dane umożliwiające udzielenie odpowiedzi, wskazanie usługi, której dotyczy, oraz opis problemu. Brak któregoś z tych elementów nie powoduje automatycznego pozostawienia reklamacji bez rozpoznania; Usługodawca może poprosić o jej uzupełnienie.</li>
+  <li>Reklamacje są rozpatrywane bez zbędnej zwłoki. Odpowiedź jest przesyłana na adres podany przez osobę składającą reklamację.</li>
+  <li>Postępowanie reklamacyjne nie ogranicza uprawnień wynikających z bezwzględnie obowiązujących przepisów prawa.</li>
+</ol>
+
+<h3 id="num-zmiany-regulaminu">§12. Zmiany Regulaminu</h3>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>Usługodawca może zmienić Regulamin z ważnych przyczyn, w szczególności prawnych, technicznych, organizacyjnych lub związanych ze zmianą zakresu Serwisu.</li>
   <li>Aktualna wersja Regulaminu jest publikowana w Serwisie.</li>
   <li>Zmiany wchodzą w życie z dniem publikacji, chyba że wskazano inny termin.</li>
 </ol>
 
-<h3 id="num-kontakt">§12. Kontakt</h3>
+<h3 id="num-kontakt">§13. Kontakt</h3>
 <p>W sprawach związanych z Serwisem należy kontaktować się:</p>
 <ul>
   <li>Igor Janicki</li>
@@ -108,7 +116,7 @@ const DOCUMENTS_CONTENT = {
 </ul>`,
   "polityka-prywatnosci": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Polityka Prywatności i Plików Cookies</h2>
 
-<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 08.10.2026</em></p>
 
 <h3 id="num-administrator-danych">§1. Administrator danych</h3>
 <p>Administratorem danych osobowych jest:</p>
@@ -120,7 +128,7 @@ const DOCUMENTS_CONTENT = {
   <li>E-mail: kontakt@i-janicki.pl</li>
   <li>Strona: https://i-janicki.pl</li>
 </ul>
-<p>Administrator prowadzi serwis internetowy "i-JANICKI" dostępny pod adresem: https://i-janicki.pl.</p>
+<p>Administrator prowadzi serwis internetowy „i-JANICKI” dostępny pod adresem: https://i-janicki.pl.</p>
 
 <h3 id="num-kontakt-dane-osobowe">§2. Kontakt w sprawach danych osobowych</h3>
 <p>W sprawach dotyczących danych osobowych można kontaktować się z Administratorem:</p>
@@ -172,7 +180,12 @@ Podstawa prawna: art. 6 ust. 1 lit. f RODO.</p>
 <p>Cel: analiza ruchu, poprawa działania strony, bezpieczeństwo i optymalizacja.<br>
 Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cookies/analitykę.</p>
 
-<h3 id="num-okres-przechowywania">§5. Okres przechowywania danych</h3>
+<h3 id="num-dobrowolnosc-danych">§5. Dobrowolność podania danych</h3>
+<p>Podanie danych potrzebnych do wysłania zapytania jest dobrowolne, ale bez adresu do odpowiedzi i treści zapytania Administrator może nie być w stanie udzielić odpowiedzi. Podanie numeru telefonu jest dobrowolne, chyba że użytkownik wybiera kontakt telefoniczny.</p>
+<p>Dane wymagane do zawarcia lub wykonania umowy są potrzebne do jej realizacji. Niepodanie takich danych może uniemożliwić przygotowanie oferty, zawarcie umowy albo wykonanie usługi. Zakres danych wymaganych na fakturze i w dokumentacji rozliczeniowej wynika z przepisów prawa.</p>
+
+<h3 id="num-okres-przechowywania">§6. Okres przechowywania danych</h3>
+<p>Dane osobowe są przechowywane przez okres niezbędny do realizacji celu, dla którego zostały zebrane, a następnie przez okres wymagany przepisami prawa lub potrzebny do ustalenia, dochodzenia albo obrony przed roszczeniami.</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>Dane z korespondencji są przechowywane przez okres potrzebny do obsługi sprawy, a następnie przez okres przedawnienia ewentualnych roszczeń.</li>
   <li>Dane związane z umowami i zleceniami są przechowywane przez czas trwania współpracy, a następnie przez okres przedawnienia roszczeń.</li>
@@ -180,8 +193,10 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>Dane przetwarzane na podstawie zgody są przechowywane do czasu jej wycofania, chyba że istnieje inna podstawa dalszego przetwarzania.</li>
   <li>Dane anonimowe, które nie pozwalają na identyfikację osoby fizycznej, mogą być przechowywane bezterminowo.</li>
 </ol>
+<p>Administrator dokonuje okresowych przeglądów przechowywanych danych i usuwa dane, które nie są już potrzebne.</p>
+<p>Osoba, której dane dotyczą, może żądać usunięcia danych. Żądanie zostanie zrealizowane, jeżeli nie istnieje obowiązek prawny ani inna podstawa uzasadniająca dalsze przechowywanie danych.</p>
 
-<h3 id="num-odbiorcy-danych">§6. Odbiorcy danych</h3>
+<h3 id="num-odbiorcy-danych">§7. Odbiorcy danych</h3>
 <p>Dane mogą być przekazywane podmiotom wspierającym Administratora w prowadzeniu działalności i Serwisu, wyłącznie w zakresie niezbędnym do realizacji wskazanych celów.</p>
 <p>Odbiorcami danych mogą być:</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
@@ -203,11 +218,11 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 </ul>
 <p>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</p>
 
-<h3 id="num-przekazywanie-poza-eog">§7. Przekazywanie danych poza Europejski Obszar Gospodarczy</h3>
+<h3 id="num-przekazywanie-poza-eog">§8. Przekazywanie danych poza Europejski Obszar Gospodarczy</h3>
 <p>Niektórzy dostawcy usług technicznych mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym.</p>
 <p>W takim przypadku przekazywanie danych odbywa się z zastosowaniem mechanizmów przewidzianych przez RODO, w szczególności decyzji stwierdzających odpowiedni stopień ochrony, standardowych klauzul umownych lub innych wymaganych zabezpieczeń.</p>
 
-<h3 id="num-prawa-osob">§8. Prawa osób, których dane dotyczą</h3>
+<h3 id="num-prawa-osob">§9. Prawa osób, których dane dotyczą</h3>
 <p>Osobie, której dane dotyczą, przysługuje prawo do:</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>dostępu do danych,</li>
@@ -221,10 +236,10 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 </ol>
 <p>Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</p>
 
-<h3 id="num-automatyczne-decyzje">§9. Zautomatyzowane podejmowanie decyzji</h3>
+<h3 id="num-automatyczne-decyzje">§10. Zautomatyzowane podejmowanie decyzji</h3>
 <p>Dane osobowe nie są wykorzystywane do zautomatyzowanego podejmowania decyzji wywołujących skutki prawne wobec osoby, której dane dotyczą.</p>
 
-<h3 id="num-pliki-cookies">§10. Pliki cookies</h3>
+<h3 id="num-pliki-cookies">§11. Pliki cookies</h3>
 <p>Serwis korzysta z plików cookies oraz podobnych technologii.</p>
 <p>Cookies mogą być:</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
@@ -235,31 +250,33 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 </ol>
 <p>Cookies niezbędne mogą być stosowane bez zgody użytkownika, jeżeli są konieczne do świadczenia usługi drogą elektroniczną lub zapewnienia działania Serwisu.</p>
 <p>Cookies opcjonalne są wykorzystywane wyłącznie po uzyskaniu zgody użytkownika, jeżeli taka zgoda jest wymagana.</p>
+<p>W celu zapamiętania i udokumentowania wyboru dotyczącego cookies Serwis zapisuje na urządzeniu użytkownika wybrane kategorie zgód. W bazie Firebase zapisywane są również: losowy identyfikator użytkownika, identyfikator decyzji, data jej podjęcia i ostatniej zmiany, wersja informacji o cookies oraz zaakceptowane lub odrzucone kategorie. Serwis nie zapisuje w tym rejestrze imienia, nazwiska ani adresu e-mail użytkownika. Odrzucenie cookies opcjonalnych jest rejestrowane w taki sam sposób jak ich zaakceptowanie.</p>
+<p>Informacje o wyborze dotyczącym cookies są przechowywane do czasu zmiany lub wycofania decyzji przez użytkownika, a dane potrzebne do wykazania prawidłowego zebrania zgody mogą być przechowywane przez okres niezbędny do wykazania zgodności z prawem lub obrony przed roszczeniami.</p>
 
-<h3 id="num-zarzadzanie-cookies">§11. Zarządzanie cookies</h3>
+<h3 id="num-zarzadzanie-cookies">§12. Zarządzanie cookies</h3>
 <p>Użytkownik może zarządzać cookies:</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>przez ustawienia przeglądarki internetowej,</li>
   <li>przez usunięcie zapisanych cookies z urządzenia,</li>
-  <li>przez panel zgód cookies dostępny w Serwisie, jeżeli został wdrożony.</li>
+  <li>przez panel zgód cookies dostępny w Serwisie.</li>
 </ol>
 <p>Ograniczenie cookies może wpłynąć na działanie niektórych funkcji Serwisu.</p>
 
-<h3 id="num-logi-bezpieczenstwo">§12. Logi serwera i bezpieczeństwo</h3>
+<h3 id="num-logi-bezpieczenstwo">§13. Logi serwera i bezpieczeństwo</h3>
 <p>Serwer może automatycznie zapisywać informacje techniczne dotyczące połączenia, takie jak adres IP, data i godzina zapytania, typ przeglądarki, adres żądanej podstrony oraz informacje o błędach.</p>
 <p>Dane te są wykorzystywane w celu zapewnienia bezpieczeństwa, diagnostyki błędów, ochrony przed nadużyciami oraz utrzymania prawidłowego działania Serwisu.</p>
 
-<h3 id="num-linki-zewnetrzne">§13. Linki zewnętrzne</h3>
+<h3 id="num-linki-zewnetrzne">§14. Linki zewnętrzne</h3>
 <p>Serwis może zawierać linki do stron zewnętrznych. Administrator nie odpowiada za treść, bezpieczeństwo ani polityki prywatności tych stron.</p>
 
-<h3 id="num-zmiany-polityki">§14. Zmiany Polityki Prywatności</h3>
+<h3 id="num-zmiany-polityki">§15. Zmiany Polityki Prywatności</h3>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>Administrator może zmienić Politykę Prywatności w przypadku zmian prawnych, technologicznych, organizacyjnych lub zmian w zakresie wykorzystywanych usług.</li>
   <li>Aktualna wersja dokumentu jest publikowana w Serwisie.</li>
 </ol>`,
   "polityka-rodo": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Obowiązek informacyjny RODO</h2>
 
-<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 08.10.2026</em></p>
 
 <h3 id="kto-jest-administratorem-danych">Kto jest administratorem danych?</h3>
 <p>Administratorem danych osobowych jest:</p>
@@ -327,7 +344,12 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>art. 6 ust. 1 lit. a RODO – zgoda, jeżeli przetwarzanie odbywa się na jej podstawie.</li>
 </ol>
 
+<h3 id="dobrowolnosc-danych">Czy podanie danych jest obowiązkowe?</h3>
+<p>Podanie danych potrzebnych do wysłania zapytania jest dobrowolne, ale bez adresu do odpowiedzi i treści zapytania Administrator może nie być w stanie udzielić odpowiedzi. Podanie numeru telefonu jest dobrowolne, chyba że osoba wybiera kontakt telefoniczny.</p>
+<p>Dane wymagane do zawarcia lub wykonania umowy są potrzebne do jej realizacji. Niepodanie takich danych może uniemożliwić przygotowanie oferty, zawarcie umowy albo wykonanie usługi. Zakres danych wymaganych na fakturze i w dokumentacji rozliczeniowej wynika z przepisów prawa.</p>
+
 <h3 id="okres-przetwarzania">Przez jaki czas dane są przetwarzane?</h3>
+<p>Dane osobowe są przechowywane przez okres niezbędny do realizacji celu, dla którego zostały zebrane, a następnie przez okres wymagany przepisami prawa lub potrzebny do ustalenia, dochodzenia albo obrony przed roszczeniami.</p>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
   <li>Dane kontaktowe są przechowywane przez czas potrzebny do obsługi sprawy, a następnie przez okres przedawnienia roszczeń.</li>
   <li>Dane związane z umową są przechowywane przez czas trwania współpracy oraz przez okres przedawnienia roszczeń.</li>
@@ -335,6 +357,8 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>Dane przetwarzane na podstawie zgody są przechowywane do czasu jej wycofania.</li>
   <li>Dane techniczne i logi mogą być przechowywane przez okres potrzebny do zapewnienia bezpieczeństwa i diagnostyki.</li>
 </ol>
+<p>Administrator dokonuje okresowych przeglądów przechowywanych danych i usuwa dane, które nie są już potrzebne.</p>
+<p>Osoba, której dane dotyczą, może żądać usunięcia danych. Żądanie zostanie zrealizowane, jeżeli nie istnieje obowiązek prawny ani inna podstawa uzasadniająca dalsze przechowywanie danych.</p>
 
 <h3 id="odbiorcy-danych">Kto może być odbiorcą danych?</h3>
 <p>Dane mogą być przekazywane:</p>
@@ -372,7 +396,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 `,
   "regulamin-wspolpracy": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Regulamin współpracy B2B oraz powierzenia przetwarzania danych</h2>
 
-<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+<p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 08.10.2026</em></p>
 
 <h3 id="b2b-strony-definicje">§1. Strony i definicje</h3>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
@@ -512,6 +536,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>dopuszczania do danych wyłącznie osób upoważnionych,</li>
   <li>wspierania Klienta w realizacji obowiązków wynikających z RODO w zakresie możliwym i adekwatnym do świadczonych usług,</li>
   <li>informowania Klienta o znanych Dostawcy IT incydentach bezpieczeństwa dotyczących powierzonych danych,</li>
+  <li>udostępniania Klientowi informacji niezbędnych do wykazania wykonania obowiązków określonych w art. 28 RODO oraz umożliwiania Klientowi lub upoważnionemu przez niego audytorowi przeprowadzenia audytu, w tym inspekcji, w uzgodnionym zakresie i terminie, z uwzględnieniem ochrony informacji innych klientów i bezpieczeństwa systemów,</li>
   <li>po zakończeniu współpracy usunięcia lub zwrotu danych zgodnie z decyzją Klienta, chyba że przepisy prawa wymagają dalszego przechowywania.</li>
 </ol>
 
@@ -520,6 +545,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
   <li>Klient wyraża ogólną zgodę na korzystanie przez Dostawcę IT z dalszych podmiotów przetwarzających, jeżeli jest to niezbędne do realizacji usług.</li>
   <li>Subprocesorami mogą być w szczególności dostawcy hostingu, usług chmurowych, repozytoriów kodu, poczty, zabezpieczeń, monitoringu i narzędzi administracyjnych.</li>
   <li>Mogą to być m.in. OVH, Google, GitHub, Cloudflare oraz inni dostawcy faktycznie używani przy realizacji usług.</li>
+  <li>Dostawca IT informuje Klienta przed dodaniem lub zastąpieniem dalszego podmiotu przetwarzającego, wskazując jego nazwę i zakres powierzonych mu czynności oraz zapewniając Klientowi możliwość zgłoszenia sprzeciwu przed rozpoczęciem podpowierzenia.</li>
   <li>Aktualne polityki prywatności dostawców dostępne są na ich oficjalnych stronach internetowych.</li>
   <li>Dostawca IT zobowiązuje się korzystać z podmiotów zapewniających odpowiedni poziom bezpieczeństwa.</li>
 </ol>
@@ -546,9 +572,9 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 
 <h3 id="b2b-zakonczenie-wspolpracy">§18. Zakończenie współpracy</h3>
 <ol style="list-style-type:decimal;padding-left:1.2rem">
-  <li>Po zakończeniu współpracy Klient może zażądać zwrotu lub usunięcia powierzonych danych.</li>
-  <li>Dostawca IT może przechowywać dane niezbędne do rozliczeń, zabezpieczenia roszczeń, dokumentacji wykonanych usług lub spełnienia obowiązków prawnych.</li>
-  <li>Kod źródłowy, kopie robocze, repozytoria i materiały techniczne mogą być przechowywane w zakresie niezbędnym do dokumentacji wykonanych prac, ochrony praw Dostawcy IT lub późniejszego wsparcia, o ile nie narusza to praw Klienta ani przepisów o ochronie danych.</li>
+  <li>Po zakończeniu powierzenia Dostawca IT, według wyboru Klienta, zwraca albo usuwa powierzone dane osobowe oraz usuwa ich istniejące kopie, chyba że prawo nakazuje dalsze przechowywanie określonych danych.</li>
+  <li>Dostawca IT może przechowywać własne dane niezbędne do rozliczeń, zabezpieczenia roszczeń, dokumentacji wykonanych usług lub spełnienia obowiązków prawnych. Nie stanowi to podstawy do dalszego przechowywania powierzonych danych osobowych.</li>
+  <li>Kod źródłowy, repozytoria i materiały techniczne niezawierające powierzonych danych osobowych mogą być przechowywane w zakresie niezbędnym do dokumentacji wykonanych prac, ochrony praw Dostawcy IT lub późniejszego wsparcia, o ile nie narusza to praw Klienta ani obowiązujących przepisów.</li>
 </ol>
 
 <h3 id="b2b-postanowienia-koncowe">§19. Postanowienia końcowe</h3>
@@ -650,30 +676,28 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
 `,
     "warunki-korzystania-z-aplikacji-i-janek": `<h2 style="font-family:'Orbitron',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1.5rem;color:#baeaff">Warunki korzystania z aplikacji i-JANEK</h2>
   
-  <p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 01.05.2026</em></p>
+  <p style="font-size:0.9rem;color:#8899aa;margin-bottom:1.5rem"><em>Data aktualizacji: 08.10.2026</em></p>
   
   <h3 id="postanowienia-ogolne">§1. Postanowienia ogólne</h3>
   <ol style="list-style-type:decimal;padding-left:1.2rem">
     <li>Niniejszy dokument określa zasady korzystania z aplikacji i-JANEK.</li>
     <li>Właścicielem i administratorem rozwiązania jest Igor Janicki, działający pod marką i-JANICKI.</li>
-    <li>Aplikacja i-JANEK może służyć do wsparcia technicznego, diagnostyki, zarządzania urządzeniami, komunikacji, monitoringu technicznego, backupu, obsługi zgłoszeń oraz administracji IT.</li>
+    <li>Aplikacja i-JANEK służy do wsparcia technicznego, diagnostyki, inwentaryzacji i monitorowania stanu urządzeń, komunikacji, obsługi zgłoszeń oraz administracji IT.</li>
     <li>Korzystanie z aplikacji oznacza akceptację niniejszych warunków, o ile użytkownik miał możliwość zapoznania się z nimi przed rozpoczęciem korzystania.</li>
-    <li>Aplikacja może działać samodzielnie albo w połączeniu z usługami zewnętrznymi, takimi jak Google, Firebase, Google Drive, RustDesk, usługi systemowe Windows, usługi chmurowe lub własne zaplecze techniczne.</li>
+    <li>Aplikacja korzysta z usług Firebase do obsługi kont i synchronizacji danych. Funkcja zdalnego wsparcia może korzystać z DWService po wyrażeniu odrębnej zgody i zaakceptowaniu urządzenia przez administratora. Funkcje diagnostyczne korzystają także z usług systemowych Windows lub macOS.</li>
   </ol>
   
   <h3 id="zakres-dzialania-aplikacji">§2. Zakres działania aplikacji</h3>
   <p>Aplikacja może umożliwiać w szczególności:</p>
   <ol style="list-style-type:decimal;padding-left:1.2rem">
     <li>prezentowanie stanu urządzenia,</li>
-    <li>diagnostykę błędów,</li>
-    <li>wyświetlanie komunikatów technicznych,</li>
-    <li>obsługę zgłoszeń,</li>
-    <li>prezentowanie informacji o backupach,</li>
-    <li>wsparcie zdalnej administracji,</li>
-    <li>synchronizację wybranych danych,</li>
-    <li>uruchamianie lub wspieranie czynności serwisowych,</li>
-    <li>prezentowanie historii zdarzeń,</li>
-    <li>obsługę funkcji bezpieczeństwa.</li>
+    <li>zbieranie danych diagnostycznych i inwentaryzacyjnych urządzenia,</li>
+    <li>wyświetlanie alertów i komunikatów technicznych,</li>
+    <li>obsługę zgłoszeń serwisowych i wiadomości,</li>
+    <li>zdalne wsparcie za pośrednictwem DWService, zgodnie z udzieloną zgodą,</li>
+    <li>wykonywanie poleceń diagnostycznych i naprawczych przez uprawnionego administratora, zgodnie z udzieloną zgodą,</li>
+    <li>synchronizację danych urządzenia i prezentowanie historii zdarzeń,</li>
+    <li>obsługę aktualizacji i funkcji bezpieczeństwa.</li>
   </ol>
   <p>Zakres funkcji może zależeć od wersji aplikacji, systemu operacyjnego, konfiguracji urządzenia oraz uprawnień użytkownika.</p>
   
@@ -708,13 +732,15 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
     <li>logi techniczne,</li>
     <li>historię błędów,</li>
     <li>alerty,</li>
-    <li>informacje o backupach,</li>
+    <li>dane inwentaryzacyjne, w tym informacje o sprzęcie, zainstalowanych aplikacjach i aktualizacjach,</li>
+    <li>treść wiadomości i zgłoszeń serwisowych,</li>
+    <li>treść i wyniki poleceń diagnostycznych oraz historię ich wykonania,</li>
     <li>dane konfiguracyjne,</li>
     <li>dane potrzebne do realizacji wsparcia technicznego.</li>
   </ol>
   <p>W przypadku funkcji diagnostycznych aplikacja może przetwarzać informacje o stanie dysków, usług systemowych, zasobów urządzenia, błędach, procesach lub konfiguracji.</p>
-  <p>Zakres przetwarzania danych jest ograniczony do celów związanych z działaniem aplikacji, bezpieczeństwem, diagnostyką, backupem, administracją i wsparciem technicznym.</p>
-  <p>Szczegółowe zasady przetwarzania danych określa Polityka Prywatności i dokumenty dostępne pod adresem: https://i-janicki.pl/dokumenty.</p>
+  <p>Zakres przetwarzania danych jest ograniczony do celów związanych z działaniem aplikacji, bezpieczeństwem, diagnostyką, administracją i wsparciem technicznym.</p>
+  <p>Ogólne informacje o przetwarzaniu danych osobowych przez i-JANICKI są dostępne pod adresem https://i-janicki.pl/dokumenty. Niniejszy dokument opisuje podstawowe kategorie danych związanych z aplikacją.</p>
   
   <h3 id="zasady-korzystania">§6. Zasady korzystania</h3>
   <p>Użytkownik zobowiązuje się do korzystania z aplikacji zgodnie z prawem, przeznaczeniem aplikacji oraz instrukcjami administratora.</p>
@@ -747,21 +773,29 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
     <li>Żadne postanowienie dokumentu nie wyłącza odpowiedzialności, której nie można wyłączyć na podstawie bezwzględnie obowiązujących przepisów prawa.</li>
   </ol>
   
-  <h3 id="aktualizacje">§8. Aktualizacje</h3>
+  <h3 id="reklamacje">§8. Reklamacje</h3>
+  <ol style="list-style-type:decimal;padding-left:1.2rem">
+    <li>Reklamację dotyczącą działania aplikacji można przesłać na adres e-mail: kontakt@i-janicki.pl.</li>
+    <li>Reklamacja powinna zawierać dane umożliwiające udzielenie odpowiedzi, opis problemu oraz, jeśli jest to możliwe, informacje o wersji aplikacji, systemie operacyjnym i okolicznościach wystąpienia błędu. Brak któregoś z tych elementów nie powoduje automatycznego pozostawienia reklamacji bez rozpoznania; administrator może poprosić o jej uzupełnienie.</li>
+    <li>Reklamacje są rozpatrywane bez zbędnej zwłoki. Odpowiedź jest przesyłana na adres podany przez osobę składającą reklamację.</li>
+    <li>Postępowanie reklamacyjne nie ogranicza uprawnień wynikających z bezwzględnie obowiązujących przepisów prawa ani warunków indywidualnej umowy.</li>
+  </ol>
+
+  <h3 id="aktualizacje">§9. Aktualizacje</h3>
   <ol style="list-style-type:decimal;padding-left:1.2rem">
     <li>Aplikacja może być aktualizowana automatycznie lub ręcznie.</li>
     <li>Aktualizacje mogą obejmować poprawki błędów, zmiany bezpieczeństwa, nowe funkcje, zmiany integracji lub usunięcie funkcji przestarzałych.</li>
     <li>Brak aktualizacji może wpłynąć na bezpieczeństwo i prawidłowe działanie aplikacji.</li>
   </ol>
   
-  <h3 id="zakonczenie-korzystania">§9. Zakończenie korzystania</h3>
+  <h3 id="zakonczenie-korzystania">§10. Zakończenie korzystania</h3>
   <ol style="list-style-type:decimal;padding-left:1.2rem">
     <li>Użytkownik może zaprzestać korzystania z aplikacji poprzez jej odinstalowanie lub dezaktywację, o ile nie narusza to zasad obowiązujących w organizacji, która zarządza urządzeniem.</li>
     <li>Administrator może ograniczyć lub zakończyć dostęp do aplikacji w przypadku zakończenia współpracy, naruszenia zasad korzystania, względów bezpieczeństwa lub zmian organizacyjnych.</li>
     <li>Po zakończeniu korzystania dane mogą być przechowywane przez okres niezbędny do rozliczeń, bezpieczeństwa, diagnostyki, obrony przed roszczeniami lub spełnienia obowiązków prawnych.</li>
   </ol>
   
-  <h3 id="kontakt">§10. Kontakt</h3>
+  <h3 id="kontakt">§11. Kontakt</h3>
   <p>W sprawach związanych z aplikacją należy kontaktować się:</p>
   <p>
     Igor Janicki<br>
@@ -770,7 +804,7 @@ Podstawa prawna: art. 6 ust. 1 lit. a RODO, jeżeli wymagana jest zgoda na cooki
     Dokumenty: https://i-janicki.pl/dokumenty
   </p>
   
-  <h3 id="postanowienia-koncowe">§11. Postanowienia końcowe</h3>
+  <h3 id="postanowienia-koncowe">§12. Postanowienia końcowe</h3>
   <ol style="list-style-type:decimal;padding-left:1.2rem">
     <li>Jeżeli którekolwiek postanowienie dokumentu okaże się nieważne lub nieskuteczne, pozostałe postanowienia pozostają w mocy.</li>
     <li>Dokument obowiązuje od chwili opublikowania na stronie https://i-janicki.pl/dokumenty.</li>

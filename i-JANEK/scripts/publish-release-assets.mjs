@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
+import { createReadStream, readFileSync, statSync } from 'node:fs'
 import { request } from 'node:https'
 import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { validateReleaseArtifacts } from './release-artifacts.mjs'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(appRoot, '..')
@@ -173,22 +174,11 @@ async function uploadAssetWithRetry(release, filePath, token, attempts = 4) {
   }
 }
 
-const artifacts = [
-  resolve(appRoot, 'dist', `i-JANEK-Setup-${version}.exe`),
-  resolve(appRoot, 'dist', `i-JANEK-Setup-${version}.exe.blockmap`),
-  resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.dmg`),
-  resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.dmg.blockmap`),
-  resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.zip`),
-  resolve(appRoot, 'dist', `i-JANEK-${version}-arm64.zip.blockmap`),
-  resolve(appRoot, 'dist', `${channelFile}.yml`),
-  resolve(appRoot, 'dist', `${channelFile}-mac.yml`),
-  resolve(appRoot, 'dist', 'update-windows.json'),
-  resolve(appRoot, 'dist', 'update-windows.sig')
-]
-
-const missing = artifacts.filter((filePath) => !existsSync(filePath))
-if (missing.length) {
-  throw new Error(`Brakuje plików wydania:\n${missing.join('\n')}`)
+const artifacts = await validateReleaseArtifacts(appRoot, version, channel)
+console.log(`[release] Sprawdzono paczki, metadane i podpis Windows ${version} (${channel}).`)
+if (args.includes('--check-only')) {
+  console.log('[release] Kontrola zakończona bez publikacji.')
+  process.exit(0)
 }
 
 const token = gitCredential()
