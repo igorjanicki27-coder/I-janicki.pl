@@ -15,7 +15,6 @@ const args = process.argv.slice(2)
 const channel = args.find((argument) => !argument.startsWith('--')) ?? 'stable'
 const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
 const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
-const channelFile = channel === 'stable' ? 'latest' : channel
 const tag = `i-janek-v${version}`
 const owner = 'igorjanicki27-coder'
 const repo = 'I-janicki.pl'

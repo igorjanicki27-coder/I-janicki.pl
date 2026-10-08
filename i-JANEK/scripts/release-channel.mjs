@@ -16,7 +16,7 @@ const resume = args.includes('--resume')
 const explicitVersionArgument = args.find((argument) => argument.startsWith('--version='))
 const explicitVersion = explicitVersionArgument?.slice('--version='.length)
 const releaseNotesArgument = args.find((argument) => argument.startsWith('--notes='))
-const releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
+let releaseNotes = releaseNotesArgument?.slice('--notes='.length).trim() ?? ''
 const semverPattern = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const releasePathspec = [
   'i-JANEK',
@@ -163,50 +163,52 @@ if (dryRun) {
 if (resume) {
   const tagPackage = run('git', ['show', `${tag}:i-JANEK/package.json`], { capture: true })
   if (JSON.parse(tagPackage).version !== version) fail('Wersja zapisana w tagu nie odpowiada bieżącej wersji.')
+  if (!releaseNotesArgument) {
+    releaseNotes = run('git', ['for-each-ref', '--format=%(contents:body)', `refs/tags/${tag}`], { capture: true })
+  }
   run(process.execPath, ['scripts/publish-release-assets.mjs', channel, '--check-only'], { cwd: appRoot })
   synchronize(tag)
 } else {
+  run(process.execPath, ['scripts/check-update-signing.mjs'], { cwd: appRoot })
+  run(process.execPath, ['scripts/check-macos-signing.mjs'], { cwd: appRoot })
 
-run(process.execPath, ['scripts/check-update-signing.mjs'], { cwd: appRoot })
-run(process.execPath, ['scripts/check-macos-signing.mjs'], { cwd: appRoot })
+  const branch = run('git', ['branch', '--show-current'], { capture: true })
+  if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)
 
-const branch = run('git', ['branch', '--show-current'], { capture: true })
-if (branch !== 'main') fail(`Wydanie można rozpocząć wyłącznie z gałęzi main (obecnie: ${branch || 'brak'}).`)
+  const pendingAppChanges = run(
+    'git',
+    ['status', '--short', '--untracked-files=all', '--', ...releasePathspec],
+    { capture: true }
+  )
+  if (pendingAppChanges) {
+    console.log('[release] Zmiany aplikacji, które automat doda do commita:')
+    console.log(pendingAppChanges)
+  }
 
-const pendingAppChanges = run(
-  'git',
-  ['status', '--short', '--untracked-files=all', '--', ...releasePathspec],
-  { capture: true }
-)
-if (pendingAppChanges) {
-  console.log('[release] Zmiany aplikacji, które automat doda do commita:')
-  console.log(pendingAppChanges)
-}
+  const existingTag = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], {
+    cwd: repositoryRoot,
+    stdio: 'ignore'
+  })
+  if (existingTag.status === 0) fail(`Tag ${tag} już istnieje. Aby wznowić gotowe paczki tej wersji: npm run release:${channel} -- --resume --version=${version}`)
 
-const existingTag = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], {
-  cwd: repositoryRoot,
-  stdio: 'ignore'
-})
-if (existingTag.status === 0) fail(`Tag ${tag} już istnieje.`)
+  run('npm', ['run', 'typecheck'], { cwd: appRoot })
+  run('npm', ['version', version, '--no-git-tag-version'], { cwd: appRoot })
+  run('git', ['add', '-A', '--', ...releasePathspec])
+  const stagedAppChanges = run(
+    'git',
+    ['diff', '--cached', '--name-only', '--', ...releasePathspec],
+    { capture: true }
+  )
+  if (!stagedAppChanges) fail('Nie znaleziono zmian aplikacji do zapisania w commicie wydania.')
+  run('git', ['commit', '--only', '-m', `chore(i-janek): release ${version}`, '--', ...releasePathspec])
+  run('git', ['tag', '-a', tag, '-m', releaseNotes ? `i-JANEK ${version}\n\n${releaseNotes}` : `i-JANEK ${version}`])
 
-run('npm', ['run', 'typecheck'], { cwd: appRoot })
-run('npm', ['version', version, '--no-git-tag-version'], { cwd: appRoot })
-run('git', ['add', '-A', '--', ...releasePathspec])
-const stagedAppChanges = run(
-  'git',
-  ['diff', '--cached', '--name-only', '--', ...releasePathspec],
-  { capture: true }
-)
-if (!stagedAppChanges) fail('Nie znaleziono zmian aplikacji do zapisania w commicie wydania.')
-run('git', ['commit', '--only', '-m', `chore(i-janek): release ${version}`, '--', ...releasePathspec])
-run('git', ['tag', '-a', tag, '-m', releaseNotes ? `i-JANEK ${version}\n\n${releaseNotes}` : `i-JANEK ${version}`])
+  const updaterChannel = channel === 'stable' ? 'latest' : channel
+  console.log('[release] Buduję lokalnie podpisaną paczkę macOS i paczkę Windows.')
+  run('bash', ['scripts/build-public-update-macos.sh', updaterChannel], { cwd: appRoot })
 
-const updaterChannel = channel === 'stable' ? 'latest' : channel
-console.log('[release] Buduję lokalnie podpisaną paczkę macOS i paczkę Windows.')
-run('bash', ['scripts/build-public-update-macos.sh', updaterChannel], { cwd: appRoot })
-
-// Automat SEO może dopisać commit również w trakcie budowania paczek.
-synchronize(tag)
+  // Automat SEO może dopisać commit również w trakcie budowania paczek.
+  synchronize(tag)
 }
 
 console.log('[release] Wysyłam commit i tag do GitHuba.')

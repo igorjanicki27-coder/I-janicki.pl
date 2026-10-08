@@ -1726,6 +1726,16 @@ html[data-theme="light"] .doc-panel { background: #fff; }
 
   /* Cookie panel */
   .ijanicki-consent-panel { padding: 18px 14px; max-height: 92dvh; overflow-y: auto; }
+  .cookie-banner-actions,
+  .cookie-settings-actions { flex-direction: column; flex-wrap: nowrap; }
+  .cookie-banner-actions .cookie-btn,
+  .cookie-settings-actions .cookie-btn {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
   .cookie-docs-row { flex-wrap: wrap; }
 
   /* FAQ modal */

@@ -88,6 +88,16 @@ npm run release:stable
 
 Skrypt wymaga gałęzi `main`, zalogowanego Git w systemowym magazynie poświadczeń oraz lokalnej tożsamości `i-JANEK Local Code Signing`. Przy publikowaniu sam dodaje do commita wszystkie zmiany z katalogu `i-JANEK`, aktualizuje numer wersji, tworzy tag i wysyła wydanie. Nie dołącza zmian z pozostałych katalogów repozytorium, plików `.DS_Store`, plików ignorowanych ani lokalnych konfiguracji prywatnych. Kanał test używa wersji `x.y.z-alpha.N`, beta `x.y.z-beta.N`, a stable `x.y.z`. W razie potrzeby można podać wersję ręcznie, np. `npm run release:test -- --version=0.2.0-alpha.1`.
 
+Przed zmianą wersji automat pobiera aktualny `main` i tagi z GitHuba oraz łączy zdalne commity z lokalną gałęzią. Powtarza kontrolę po budowaniu, ponieważ np. automat SEO może w tym czasie dopisać commit. Zachowuje istniejące commity i tagi; przy konflikcie zatrzymuje wydanie i cofa rozpoczęty przez siebie merge. Zdalne zmiany w plikach wydania po budowaniu wymagają przygotowania nowego wydania.
+
+Jeżeli paczki są już zbudowane, a wysyłanie do GitHuba zostało przerwane, wznów tę samą wersję:
+
+```bash
+npm run release:stable -- --resume --version=0.1.37
+```
+
+`--resume` korzysta z bieżącej wersji `package.json`, istniejącego tagu i paczek w `dist`. Sprawdza metadane, rozmiary, sumy kontrolne i podpis manifestu Windows, synchronizuje Git i ponawia wysłanie oraz publikację. Nie podbija wersji ani nie buduje paczek ponownie. Kanały test i beta używają odpowiednio `release:test` i `release:beta`. Opcjonalne `--notes="Opis zmian"` ustawia opis wydania. Samą kontrolę gotowych paczek bez publikacji uruchomisz przez `node scripts/publish-release-assets.mjs stable --check-only`.
+
 Master przypisuje każdemu komputerowi jeden kanał w panelu urządzenia. Nowe urządzenie zawsze zaczyna na `stable`; urządzenia bez zapisanego kanału również są traktowane jako `stable`. Zalecana promocja wydania to kolejno test na jednym komputerze, beta na małej grupie i dopiero potem stable dla wszystkich klientów.
 
 Lokalny automat buduje i publikuje:
