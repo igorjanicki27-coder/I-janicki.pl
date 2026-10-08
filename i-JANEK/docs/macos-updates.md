@@ -6,6 +6,8 @@ Pierwsze przejście z wcześniejszej, niepodpisanej aplikacji albo z podpisu `Ap
 
 Zaszyfrowana kopia tożsamości znajduje się na Pulpicie jako `i-JANEK-podpis-macOS.p12`, a publiczny certyfikat jako `i-JANEK-podpis-macOS.cer`. Hasło pliku P12 jest zapisane w Pęku kluczy pod nazwą `i-JANEK macOS signing backup`. Kopię P12 oraz hasło należy dodatkowo zachować w dwóch oddzielnych, bezpiecznych miejscach. Utrata klucza prywatnego oznacza konieczność kolejnej ręcznej instalacji na wszystkich komputerach Mac.
 
+Po aktualizacji opis z automatu wydania jest dostępny offline w dialogu aplikacji. Kliknięcie `OK` zapisuje potwierdzenie dla tej wersji; do tego czasu interfejs jest zablokowany, ale praca w tle trwa normalnie. Automatyczny restart po instalacji uruchamia aplikację w zasobniku bez przejmowania fokusu.
+
 Kontrola lokalnego certyfikatu:
 
 ```bash

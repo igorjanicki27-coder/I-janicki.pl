@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import LocalDiskUsage from '@/components/LocalDiskUsage.vue'
+import { getMaxLocalDiskUsage } from '@shared/disk-telemetry'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { isDeviceOnline } from '@/services/device-presence'
@@ -30,10 +32,7 @@ const store = useAppStore()
 
 const isOnline = computed(() => isDeviceOnline(props.device, store.statusNow))
 const liveTelemetry = computed(() => isOnline.value ? props.device.telemetry : undefined)
-const maxDiskUsage = computed(() => {
-  const disks = liveTelemetry.value?.disks ?? []
-  return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
-})
+const maxDiskUsage = computed(() => getMaxLocalDiskUsage(liveTelemetry.value?.disks))
 function metricState(value: number | null | undefined, threshold: MetricThreshold) {
   if (value === null || value === undefined || Number.isNaN(value)) return 0
   if (value >= threshold.critical) return 2
@@ -140,9 +139,9 @@ const gpuTileClass = computed(() => {
       <div class="rounded-2xl border px-2.5 py-2" :class="metricClasses(maxDiskUsage, props.thresholds.diskUsage)">
         <div class="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em]">
           <HardDrive class="h-3.5 w-3.5" />
-          Dysk
+          Dyski
         </div>
-        <div class="mt-1 text-[15px] font-semibold">{{ maxDiskUsage ?? '—' }}<span v-if="maxDiskUsage != null">%</span></div>
+        <LocalDiskUsage class="mt-1" :disks="liveTelemetry?.disks" :threshold="props.thresholds.diskUsage" compact />
       </div>
     </div>
 

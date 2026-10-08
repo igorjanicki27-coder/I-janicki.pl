@@ -139,6 +139,14 @@ export interface UpdateRequest {
   requestedBy: string
 }
 
+export interface DiskTelemetry {
+  fs: string
+  mount: string
+  usedPercent: number
+  sizeGb: number
+  isLocal?: boolean
+}
+
 export interface DeviceTelemetry {
   capturedAt: number
   cpuUsagePercent: number
@@ -146,7 +154,7 @@ export interface DeviceTelemetry {
   cpuHotZones: Array<{ label: string; temperatureC: number | null }>
   gpu?: GpuTelemetry | null
   memoryUsedPercent: number
-  disks: Array<{ fs: string; mount: string; usedPercent: number; sizeGb: number }>
+  disks: DiskTelemetry[]
   uptimeSeconds: number
   lastRestartAt?: number | null
   lastShutdownAt?: number | null

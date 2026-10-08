@@ -4,13 +4,16 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Clock3, Download, KeyRound, L
 import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
+import PostUpdateDialog from '@/components/PostUpdateDialog.vue'
 import { useAppStore } from '@/stores/app'
 import { isDeviceOnline } from '@/services/device-presence'
 import { CURRENT_CONSENT_POLICY_VERSION } from '@shared/constants'
-import type { UpdateStatusPayload } from '@shared/ipc'
+import type { PostUpdateNotice, UpdateStatusPayload } from '@shared/ipc'
 
 const store = useAppStore()
 const settingsOpen = ref(false)
+const postUpdateNotice = ref<PostUpdateNotice | null>(null)
+const postUpdateNoticeLoading = ref(true)
 const consentAccepted = ref(false)
 const remoteCommandsAccepted = ref(false)
 const dwServiceAccepted = ref(false)
@@ -250,6 +253,15 @@ async function confirmUnregister() {
 }
 
 onMounted(async () => {
+  // Background services and the restart handshake never wait for the user's OK.
+  void store.bootstrap()
+  void window.janek.system.getPostUpdateNotice().then((notice) => {
+    postUpdateNotice.value = notice
+  }).catch((error: unknown) => {
+    console.warn('[i-JANEK] Nie udało się pobrać opisu aktualizacji:', error)
+  }).finally(() => {
+    postUpdateNoticeLoading.value = false
+  })
   void window.janek?.system?.acknowledgeUpdateStart?.().catch((error: unknown) => {
     console.warn('[i-JANEK] Nie udało się potwierdzić startu po aktualizacji:', error)
   })
@@ -259,7 +271,6 @@ onMounted(async () => {
     const currentStatus = await window.janek.system.getUpdateStatus()
     handleUpdateStatus(currentStatus)
   }
-  void store.bootstrap()
 })
 
 onBeforeUnmount(() => {
@@ -648,7 +659,7 @@ watch(
         </div>
       </section>
 
-      <MasterDashboard v-else-if="store.isMaster" :suspended="settingsOpen" @open-settings="settingsOpen = true" />
+      <MasterDashboard v-else-if="store.isMaster" :suspended="settingsOpen || postUpdateNoticeLoading || Boolean(postUpdateNotice)" @open-settings="settingsOpen = true" />
       <SlaveLayout v-else />
     </main>
     <div v-if="dwServiceInfoOpen" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="dwservice-info-title" @click.self="dwServiceInfoOpen = false">
@@ -687,5 +698,6 @@ watch(
         </div>
       </section>
     </div>
+    <PostUpdateDialog v-if="postUpdateNotice" :notice="postUpdateNotice" @acknowledged="postUpdateNotice = null" />
   </div>
 </template>

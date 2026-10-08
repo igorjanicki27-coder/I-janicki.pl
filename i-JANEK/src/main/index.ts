@@ -6,7 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeIm
 import { closeDwServicePoc, closeDwServicePocPopup, goBackDwServicePoc, openDwServicePoc, setDwServicePocBounds } from './dwservice-poc'
 import electronUpdater from 'electron-updater'
 import type { CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
-import type { UpdateStatusPayload } from '@shared/ipc'
+import type { PostUpdateNotice, UpdateStatusPayload } from '@shared/ipc'
 import { collectInventory, collectTelemetry } from './services/system-probe'
 import { getSystemContext } from './services/device-identity'
 import { executeTerminalCommand } from './services/terminal-service'
@@ -14,6 +14,7 @@ import { applyDwServiceInstallationCode, getDwServiceAgentState } from './servic
 import { localStore } from './store'
 import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
 import { canExitForWindowsUpdate, getWindowsRestartRequestId, type WindowsAgentUpdateStatus } from './services/windows-update-protocol'
+import { advanceUpdateNoticeState, readPostUpdateNotice } from './services/post-update-notice'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -66,7 +67,29 @@ const WINDOWS_UPDATE_ON_OPEN_INTERVAL_MS = 5 * 60 * 1000
 const APP_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/u
 const { autoUpdater } = electronUpdater
 const singleInstanceLock = app.requestSingleInstanceLock()
-const startHidden = process.argv.includes('--tray')
+const isUpdateRestart = process.argv.includes('--updated')
+  || localStore.get('pendingUpdateRestartVersion') === app.getVersion()
+const startHidden = process.argv.includes('--tray') || isUpdateRestart
+let postUpdateNotice: PostUpdateNotice | null = null
+let windowStartupComplete = false
+
+function preparePostUpdateNotice() {
+  if (!app.isPackaged) return
+  const state = advanceUpdateNoticeState(
+    app.getVersion(), localStore.get('updateNoticeState') ?? {}, isUpdateRestart,
+    Boolean(localStore.get('registeredDeviceId') || localStore.get('consent'))
+  )
+  localStore.set('updateNoticeState', state)
+  localStore.delete('pendingUpdateRestartVersion')
+  if (!state.pendingVersion) return
+  let metadata: unknown = null
+  try {
+    metadata = JSON.parse(fs.readFileSync(path.join(process.resourcesPath, 'resources', 'release-notes.json'), 'utf8'))
+  } catch (error) {
+    void writeDiagnosticLog('warning', 'post_update_notes_unavailable', { error })
+  }
+  postUpdateNotice = readPostUpdateNotice(app.getVersion(), metadata)
+}
 
 function isNewerAppVersion(candidate: string, current: string) {
   const candidateMatch = APP_VERSION_PATTERN.exec(candidate)
@@ -268,7 +291,8 @@ if (!singleInstanceLock) {
   app.exit(0)
 }
 
-app.on('second-instance', () => {
+app.on('second-instance', (_event, argv) => {
+  if (argv.includes('--updated')) return
   focusMainWindow()
   checkForUpdatesOnOpen()
 })
@@ -362,8 +386,10 @@ function createWindow() {
   }
 
   mainWindow.once('ready-to-show', () => {
+    windowStartupComplete = true
     if (!startHidden) {
-      focusMainWindow()
+      if (postUpdateNotice) mainWindow?.showInactive()
+      else focusMainWindow()
     }
   })
 }
@@ -495,6 +521,7 @@ function bindUpdaterEvents() {
           message: 'Jednorazowa migracja instalacji systemowej. Windows poprosi teraz o zgodę administratora.'
         })
         forceQuit = true
+        localStore.set('pendingUpdateRestartVersion', updateInfo.version)
         autoUpdater.quitAndInstall(true, true)
       }
     } else {
@@ -553,6 +580,7 @@ async function promptInstallDownloadedUpdate(version: string) {
     if (response.response === 0) {
       clearUpdateInstallReminder()
       forceQuit = true
+      localStore.set('pendingUpdateRestartVersion', version)
       autoUpdater.quitAndInstall(false, true)
       return
     }
@@ -718,6 +746,16 @@ function registerIpc() {
   })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
   ipcMain.handle('system:get-update-status', async () => latestUpdateStatus)
+  ipcMain.handle('system:get-post-update-notice', async (event) => {
+    requireMainRenderer(event)
+    return postUpdateNotice
+  })
+  ipcMain.handle('system:acknowledge-post-update-notice', async (event, version: string) => {
+    requireMainRenderer(event)
+    if (!postUpdateNotice || postUpdateNotice.version !== version) throw new Error('Nieprawidłowa wersja opisu aktualizacji.')
+    localStore.set('updateNoticeState', { lastVersion: version, acknowledgedVersion: version })
+    postUpdateNotice = null
+  })
   ipcMain.handle('system:acknowledge-update-start', async (event) => {
     if (event.sender !== mainWindow?.webContents) return
     acknowledgeWindowsUpdateRestart()
@@ -758,6 +796,7 @@ app.whenReady().then(() => {
   }
 
   cleanupLegacyRemoteIntegrationData()
+  preparePostUpdateNotice()
 
   app.setLoginItemSettings({
     openAtLogin: Boolean(localStore.get('autoLaunch')),
@@ -777,12 +816,16 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (isUpdateRestart && !windowStartupComplete) return
     focusMainWindow()
   })
 })
 
 app.on('before-quit', () => {
   forceQuit = true
+  if (downloadedUpdateVersion && autoUpdater.autoInstallOnAppQuit) {
+    localStore.set('pendingUpdateRestartVersion', downloadedUpdateVersion)
+  }
   if (automaticUpdateInterval) {
     clearInterval(automaticUpdateInterval)
     automaticUpdateInterval = null

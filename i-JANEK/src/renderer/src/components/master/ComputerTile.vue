@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import LocalDiskUsage from '@/components/LocalDiskUsage.vue'
 import { AlertTriangle, Cpu, HardDrive, MemoryStick, Workflow } from 'lucide-vue-next'
 import type { DeviceRecord, MetricThreshold, MetricThresholds } from '@shared/contracts'
 import { isDeviceOnline } from '@/services/device-presence'
@@ -17,10 +18,6 @@ const emit = defineEmits<{
 
 const online = computed(() => isDeviceOnline(props.device, props.now))
 const liveTelemetry = computed(() => online.value ? props.device.telemetry : undefined)
-const diskUsage = computed(() => {
-  const disks = liveTelemetry.value?.disks ?? []
-  return disks.length ? Math.max(...disks.map((disk) => disk.usedPercent)) : null
-})
 
 function metricClasses(value: number | null | undefined, threshold: MetricThreshold) {
   if (value === null || value === undefined || Number.isNaN(value)) return ''
@@ -66,11 +63,11 @@ function formatLastSeen(timestamp: number) {
       </span>
     </div>
 
-    <div class="mt-4 grid grid-cols-4 gap-2">
+    <div class="mt-4 grid grid-cols-4 items-start gap-2">
       <div class="tile-metric" :class="metricClasses(liveTelemetry?.cpuUsagePercent, thresholds.cpuUsage)"><Cpu class="h-3.5 w-3.5" /><span>CPU</span><strong>{{ liveTelemetry?.cpuUsagePercent ?? '—' }}<small v-if="liveTelemetry?.cpuUsagePercent != null">%</small></strong></div>
       <div class="tile-metric" :class="metricClasses(liveTelemetry?.gpu?.usagePercent, thresholds.gpuUsage)"><Workflow class="h-3.5 w-3.5" /><span>GPU</span><strong>{{ liveTelemetry?.gpu?.usagePercent ?? '—' }}<small v-if="liveTelemetry?.gpu?.usagePercent != null">%</small></strong></div>
       <div class="tile-metric" :class="metricClasses(liveTelemetry?.memoryUsedPercent, thresholds.ramUsage)"><MemoryStick class="h-3.5 w-3.5" /><span>RAM</span><strong>{{ liveTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="liveTelemetry?.memoryUsedPercent != null">%</small></strong></div>
-      <div class="tile-metric" :class="metricClasses(diskUsage, thresholds.diskUsage)"><HardDrive class="h-3.5 w-3.5" /><span>Dysk</span><strong>{{ diskUsage ?? '—' }}<small v-if="diskUsage != null">%</small></strong></div>
+      <div class="tile-metric"><HardDrive class="h-3.5 w-3.5" /><span>Dyski</span><LocalDiskUsage class="col-span-2" :disks="liveTelemetry?.disks" :threshold="thresholds.diskUsage" compact /></div>
     </div>
 
     <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">

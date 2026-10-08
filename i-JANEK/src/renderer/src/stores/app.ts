@@ -33,6 +33,7 @@ import {
   DEFAULT_MASTER_EMAIL,
   DEFAULT_TELEMETRY_INTERVAL_MIN
 } from '@shared/constants'
+import { getLocalDisks, getMaxLocalDiskUsage } from '@shared/disk-telemetry'
 import { buildDeviceId } from '@shared/device-id'
 import { isMetricThresholdValid, type MetricThresholdKey } from '@shared/thresholds'
 import { createBackendClient, type BackendClient } from '@/services/backend'
@@ -402,17 +403,18 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function evaluateTelemetryState(telemetry: DeviceTelemetry) {
+    const diskUsage = getMaxLocalDiskUsage(telemetry.disks)
     const cpuUsageCritical = telemetry.cpuUsagePercent >= masterSettings.value.thresholds.cpuUsage.critical
     const gpuUsageCritical = (telemetry.gpu?.usagePercent ?? 0) >= masterSettings.value.thresholds.gpuUsage.critical
     const ramUsageCritical = telemetry.memoryUsedPercent >= masterSettings.value.thresholds.ramUsage.critical
-    const diskUsageCritical = Math.max(...(telemetry.disks?.map((entry) => entry.usedPercent) ?? [0])) >= masterSettings.value.thresholds.diskUsage.critical
+    const diskUsageCritical = (diskUsage ?? 0) >= masterSettings.value.thresholds.diskUsage.critical
     const cpuTempCritical = (telemetry.cpuTemperatureC ?? 0) >= masterSettings.value.thresholds.cpuTemp.critical
     const gpuTempCritical = (telemetry.gpu?.temperatureC ?? 0) >= masterSettings.value.thresholds.gpuTemp.critical
 
     const cpuUsageWarning = telemetry.cpuUsagePercent >= masterSettings.value.thresholds.cpuUsage.warning
     const gpuUsageWarning = (telemetry.gpu?.usagePercent ?? 0) >= masterSettings.value.thresholds.gpuUsage.warning
     const ramUsageWarning = telemetry.memoryUsedPercent >= masterSettings.value.thresholds.ramUsage.warning
-    const diskUsageWarning = Math.max(...(telemetry.disks?.map((entry) => entry.usedPercent) ?? [0])) >= masterSettings.value.thresholds.diskUsage.warning
+    const diskUsageWarning = (diskUsage ?? 0) >= masterSettings.value.thresholds.diskUsage.warning
     const cpuTempWarning = (telemetry.cpuTemperatureC ?? 0) >= masterSettings.value.thresholds.cpuTemp.warning
     const gpuTempWarning = (telemetry.gpu?.temperatureC ?? 0) >= masterSettings.value.thresholds.gpuTemp.warning
 
@@ -451,7 +453,7 @@ export const useAppStore = defineStore('app', () => {
       criticalCauses.push({
         key: 'diskUsage',
         label: 'Dysk',
-        value: Math.max(...(telemetry.disks?.map((entry) => entry.usedPercent) ?? [0])),
+        value: (diskUsage ?? 0),
         critical: masterSettings.value.thresholds.diskUsage.critical,
         unit: '%'
       })
@@ -2097,7 +2099,7 @@ export const useAppStore = defineStore('app', () => {
     const gpuValue = telemetry.gpu?.usagePercent
     const gpuAvailable = typeof gpuValue === 'number' && Number.isFinite(gpuValue)
     const ramAvailable = Number.isFinite(telemetry.memoryUsedPercent)
-    const diskValues = telemetry.disks.map((entry) => entry.usedPercent).filter(Number.isFinite)
+    const diskValues = getLocalDisks(telemetry.disks).map((entry) => entry.usedPercent)
     const diskAvailable = diskValues.length > 0
     const diskValue = diskAvailable ? Math.max(...diskValues) : null
     const anyOver80 = telemetry.cpuUsagePercent > 80

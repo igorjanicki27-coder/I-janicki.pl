@@ -696,6 +696,7 @@ function initGlobalClick() {
 // TUTORIAL — STATE MACHINE
 // ─────────────────────────────────────────────────────────────────
 function startTutorial() {
+  document.documentElement.classList.add('tutorial-active');
   // Filter out cookies step if cookies decision has already been made
   if (localStorage.getItem(LS.COOKIE_DECISION) !== null) {
     window.FILTERED_STEPS = STEPS.filter(step => step.id !== 'cookies');
@@ -1096,6 +1097,7 @@ function finishTutorial() {
 }
 
 function markTutorialDone() {
+  document.documentElement.classList.remove('tutorial-active');
   localStorage.setItem(LS.TUTORIAL_DONE, 'true');
   sessionStorage.removeItem(SS.TUTORIAL_STEP);
   tutDone = true;

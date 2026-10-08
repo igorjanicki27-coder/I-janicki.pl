@@ -185,6 +185,10 @@ test('pełne wznowienie CLI zachowuje wersję i tag oraz opis, bez uruchamiania 
     if (!process.argv.includes('--check-only')) writeFileSync('publication.json', JSON.stringify(process.argv.slice(2)))
   `)
   git(local, 'tag', '-f', '-a', tag, '-m', 'i-JANEK 0.1.37\n\nOpis istniejącego wydania')
+  writeFileSync(join(app, 'resources/release-notes.json'), JSON.stringify({ version: '0.1.37', notes: 'Opis istniejącego wydania' }))
+  git(local, 'add', 'i-JANEK/resources/release-notes.json')
+  git(local, 'commit', '-m', 'bundle release notes')
+  git(local, 'tag', '-f', '-a', tag, '-m', 'i-JANEK 0.1.37\n\nOpis istniejącego wydania')
   const originalTag = git(local, 'rev-parse', tag)
   git(local, 'add', 'i-JANEK/scripts/release-channel.mjs', 'i-JANEK/scripts/release-git.mjs', 'i-JANEK/scripts/release-artifacts.mjs', 'i-JANEK/scripts/publish-release-assets.mjs')
   writeFileSync(join(app, 'README.md'), 'Updated release instructions\n')
@@ -197,4 +201,41 @@ test('pełne wznowienie CLI zachowuje wersję i tag oraz opis, bez uruchamiania 
   assert.equal(git(local, 'rev-parse', tag), originalTag)
   assert.deepEqual(JSON.parse(readFileSync(join(app, 'publication.json'), 'utf8')), ['stable', '--notes=Opis istniejącego wydania'])
   assert.equal(readFileSync(join(local, 'sitemap.xml'), 'utf8'), 'scheduled SEO\n')
+  const changedNotes = spawnSync(process.execPath, ['scripts/release-channel.mjs', 'stable', '--resume', '--notes=Inny opis'], { cwd: app, encoding: 'utf8' })
+  assert.equal(changedNotes.status, 1)
+  assert.match(changedNotes.stderr, /Opis zmian różni się od opisu w gotowych paczkach/u)
+})
+
+test('nowe wydanie dołącza dokładny wielowierszowy opis przed tagiem i budowaniem', (t) => {
+  const { local } = repositories(t)
+  for (const file of ['.firebaserc', 'firebase.json', 'firestore.rules', 'firestore.indexes.json', 'database.rules.json', '.github/workflows/i-janek-firebase-rules-tests.yml', '.github/workflows/i-janek-release.yml', '.github/workflows/deploy-firestore-rules.yml', 'scripts/prepare-firebase-credentials.mjs']) {
+    mkdirSync(dirname(join(local, file)), { recursive: true })
+    writeFileSync(join(local, file), 'release fixture\n')
+  }
+  const app = join(local, 'i-JANEK')
+  mkdirSync(join(app, 'scripts'))
+  mkdirSync(join(app, 'resources'))
+  writeFileSync(join(app, 'resources/update-signing-private.pem'), 'fixture only')
+  writeFileSync(join(app, 'package.json'), JSON.stringify({ version: '0.1.37', scripts: { typecheck: 'node -e "process.exit(0)"' } }))
+  for (const script of ['release-channel.mjs', 'release-git.mjs']) {
+    copyFileSync(join(appRoot, 'scripts', script), join(app, 'scripts', script))
+  }
+  for (const script of ['check-update-signing.mjs', 'check-macos-signing.mjs', 'setup-macos-signing.mjs', 'release-artifacts.mjs']) {
+    writeFileSync(join(app, 'scripts', script), '// External signing/build stub for release-flow test\n')
+  }
+  for (const script of ['release.sh', 'scripts/build-windows-exe-from-macos.sh', 'scripts/prepare-icons.sh']) {
+    writeFileSync(join(app, script), '#!/bin/bash\nexit 0\n')
+  }
+  writeFileSync(join(app, 'scripts/build-public-update-macos.sh'), '#!/bin/bash\ncp resources/release-notes.json build-notes.json\n')
+  writeFileSync(join(app, 'scripts/publish-release-assets.mjs'), `
+    import { writeFileSync } from 'node:fs'
+    writeFileSync('publication.json', JSON.stringify(process.argv.slice(2)))
+  `)
+  const notes = 'Poprawione aktualizacje.\n- Wiadomości: <opis> & "tekst"\n- Diagnostyka'
+  const result = spawnSync(process.execPath, ['scripts/release-channel.mjs', 'stable', '--version=0.1.38', `--notes=${notes}`], { cwd: app, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const expected = { version: '0.1.38', notes }
+  assert.deepEqual(JSON.parse(readFileSync(join(app, 'build-notes.json'), 'utf8')), expected)
+  assert.deepEqual(JSON.parse(git(local, 'show', 'i-janek-v0.1.38:i-JANEK/resources/release-notes.json')), expected)
+  assert.deepEqual(JSON.parse(readFileSync(join(app, 'publication.json'), 'utf8')), ['stable', `--notes=${notes}`])
 })

@@ -27,6 +27,11 @@ export interface UpdateStatusPayload {
   percent?: number
 }
 
+export interface PostUpdateNotice {
+  version: string
+  notes: string
+}
+
 export interface DwServicePocStatus {
   state: 'loading' | 'ready' | 'popup' | 'error' | 'closed'
   url?: string
@@ -61,6 +66,8 @@ export interface JanekApi {
     setConsent: (consent: ConsentRecord | null) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
     getUpdateStatus: () => Promise<UpdateStatusPayload>
+    getPostUpdateNotice: () => Promise<PostUpdateNotice | null>
+    acknowledgePostUpdateNotice: (version: string) => Promise<void>
     acknowledgeUpdateStart?: () => Promise<void>
     onUpdateStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
     setUpdateChannel: (channel: UpdateChannel) => Promise<void>

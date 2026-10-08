@@ -20,6 +20,8 @@ import {
   Workflow,
   X
 } from 'lucide-vue-next'
+import LocalDiskUsage from '@/components/LocalDiskUsage.vue'
+import { getMaxLocalDiskUsage } from '@shared/disk-telemetry'
 import StatusPill from '@/components/StatusPill.vue'
 import { formatDeviceLabelForMaster } from '@/services/device-label'
 import { isDeviceOnline } from '@/services/device-presence'
@@ -167,8 +169,7 @@ async function confirmArchiveDevice() {
 }
 
 function maxDiskUsage() {
-  const disks = currentTelemetry.value?.disks ?? []
-  return disks.length ? Math.max(...disks.map((entry) => entry.usedPercent)) : null
+  return getMaxLocalDiskUsage(currentTelemetry.value?.disks)
 }
 
 function metricClasses(value: number | null | undefined, warning: number, critical: number) {
@@ -277,8 +278,8 @@ function formatTrackedDuration(seconds: number) {
               <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(currentTelemetry?.memoryUsedPercent, store.masterSettings.thresholds.ramUsage.warning, store.masterSettings.thresholds.ramUsage.critical)">{{ currentTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="currentTelemetry?.memoryUsedPercent != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
             </div>
             <div class="p-4">
-              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><HardDrive class="h-3.5 w-3.5" /> Dysk</div>
-              <div class="mt-2 text-xl font-semibold" :class="metricTextClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">{{ maxDiskUsage() ?? '—' }}<small v-if="maxDiskUsage() != null" class="ml-0.5 text-xs font-normal opacity-70">%</small></div>
+              <div class="flex items-center gap-2 text-xs text-[var(--text-dim)]"><HardDrive class="h-3.5 w-3.5" /> Dyski · zajęte miejsce</div>
+              <LocalDiskUsage class="mt-2" :disks="currentTelemetry?.disks" :threshold="store.masterSettings.thresholds.diskUsage" />
             </div>
           </div>
         </section>
@@ -381,7 +382,7 @@ function formatTrackedDuration(seconds: number) {
             <div class="metric-label"><MemoryStick class="h-4 w-4" /> RAM</div><div class="metric-value">{{ currentTelemetry?.memoryUsedPercent ?? '—' }}<small v-if="currentTelemetry?.memoryUsedPercent != null">%</small></div>
           </div>
           <div class="metric-card" :class="metricClasses(maxDiskUsage(), store.masterSettings.thresholds.diskUsage.warning, store.masterSettings.thresholds.diskUsage.critical)">
-            <div class="metric-label"><HardDrive class="h-4 w-4" /> Dysk</div><div class="metric-value">{{ maxDiskUsage() ?? '—' }}<small v-if="maxDiskUsage() != null">%</small></div>
+            <div class="metric-label"><HardDrive class="h-4 w-4" /> Dyski · zajęte miejsce</div><LocalDiskUsage class="mt-2" :disks="currentTelemetry?.disks" :threshold="store.masterSettings.thresholds.diskUsage" />
           </div>
           <div class="metric-card" :class="metricClasses(currentTelemetry?.cpuTemperatureC, store.masterSettings.thresholds.cpuTemp.warning, store.masterSettings.thresholds.cpuTemp.critical)">
             <div class="metric-label"><Thermometer class="h-4 w-4" /> CPU temp.</div><div class="metric-value">{{ currentTelemetry?.cpuTemperatureC ?? '—' }}<small v-if="currentTelemetry?.cpuTemperatureC != null">°C</small></div>

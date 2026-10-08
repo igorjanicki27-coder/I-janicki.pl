@@ -119,7 +119,7 @@ static BOOL AskNotes(NSString *baseVersion, ReleaseChannel channel, NSString **n
     while (YES) {
         NSAlert *alert = [[NSAlert alloc] init];
         alert.messageText = @"Opis zmian";
-        alert.informativeText = [NSString stringWithFormat:@"Wpisz opis aktualizacji %@ (%@). Opis będzie widoczny na GitHubie.", baseVersion, ChannelName(channel)];
+        alert.informativeText = [NSString stringWithFormat:@"Wpisz opis aktualizacji %@ (%@). Opis będzie widoczny na GitHubie i w aplikacji po aktualizacji.", baseVersion, ChannelName(channel)];
         [alert addButtonWithTitle:@"Opublikuj"];
         [alert addButtonWithTitle:@"Tylko sprawdź"];
         [alert addButtonWithTitle:@"Anuluj"];

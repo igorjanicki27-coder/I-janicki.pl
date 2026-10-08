@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -9,6 +9,7 @@ import { synchronizeReleaseRepository } from './release-git.mjs'
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(appRoot, '..')
 const packagePath = resolve(appRoot, 'package.json')
+const releaseNotesPath = resolve(appRoot, 'resources/release-notes.json')
 const args = process.argv.slice(2)
 const channel = args.find((argument) => !argument.startsWith('--'))
 const dryRun = args.includes('--dry-run')
@@ -166,6 +167,12 @@ if (resume) {
   if (!releaseNotesArgument) {
     releaseNotes = run('git', ['for-each-ref', '--format=%(contents:body)', `refs/tags/${tag}`], { capture: true })
   }
+  if (existsSync(releaseNotesPath)) {
+    const bundledNotes = JSON.parse(readFileSync(releaseNotesPath, 'utf8'))
+    if (bundledNotes.version === version && bundledNotes.notes !== releaseNotes) {
+      fail('Opis zmian różni się od opisu w gotowych paczkach. Wznów z oryginalnym opisem albo zbuduj nowe wydanie.')
+    }
+  }
   run(process.execPath, ['scripts/publish-release-assets.mjs', channel, '--check-only'], { cwd: appRoot })
   synchronize(tag)
 } else {
@@ -193,6 +200,7 @@ if (resume) {
 
   run('npm', ['run', 'typecheck'], { cwd: appRoot })
   run('npm', ['version', version, '--no-git-tag-version'], { cwd: appRoot })
+  writeFileSync(releaseNotesPath, `${JSON.stringify({ version, notes: releaseNotes }, null, 2)}\n`)
   run('git', ['add', '-A', '--', ...releasePathspec])
   const stagedAppChanges = run(
     'git',

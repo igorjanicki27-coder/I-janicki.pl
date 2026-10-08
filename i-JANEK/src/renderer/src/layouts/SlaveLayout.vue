@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Activity, Cpu, HardDrive, MemoryStick, MessageSquareText, Workflow } from 'lucide-vue-next'
+import LocalDiskUsage from '@/components/LocalDiskUsage.vue'
+import { getMaxLocalDiskUsage } from '@shared/disk-telemetry'
 import AppFooterLink from '@/components/AppFooterLink.vue'
 import { buildConversationTimeline } from '@/services/chat'
 import { isDeviceOnline } from '@/services/device-presence'
@@ -32,10 +34,8 @@ const deviceAlerts = computed(() =>
     : []
 )
 const hasActiveAlerts = computed(() => deviceAlerts.value.length > 0)
-const maxDiskUsage = computed(() => {
-  const values = device.value?.telemetry?.disks?.map((entry) => entry.usedPercent) ?? []
-  return values.length ? Math.max(...values) : null
-})
+const localDiskTelemetry = computed(() => deviceOnline.value ? device.value?.telemetry?.disks : undefined)
+const maxDiskUsage = computed(() => getMaxLocalDiskUsage(localDiskTelemetry.value))
 const messageNotificationsMuted = computed(() => store.slaveSettings.muteChatSounds)
 const conversationTimeline = computed(() => buildConversationTimeline(store.selectedConversationMessages))
 const unreadMessageIds = computed(
@@ -303,10 +303,8 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="rounded-[14px] border px-2.5 py-2" :class="metricClasses(maxDiskUsage, store.masterSettings.thresholds.diskUsage)">
-          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><HardDrive class="h-3 w-3" /> Dysk</div>
-          <div class="mt-1.5 text-[22px] font-semibold leading-none">
-            {{ maxDiskUsage ?? '—' }}<span v-if="maxDiskUsage !== null">%</span>
-          </div>
+          <div class="flex items-center gap-1 text-[10px] uppercase tracking-[0.13em]"><HardDrive class="h-3 w-3" /> Dyski</div>
+          <LocalDiskUsage class="mt-1.5" :disks="localDiskTelemetry" :threshold="store.masterSettings.thresholds.diskUsage" />
         </div>
 
       </div>

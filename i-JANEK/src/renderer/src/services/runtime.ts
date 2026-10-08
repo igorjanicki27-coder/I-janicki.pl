@@ -54,6 +54,8 @@ function createBrowserApi(): JanekApi {
         else localStorage.removeItem(CONSENT_KEY)
       },
       checkForUpdates: async () => ({ status: 'web', message: 'Panel webowy aktualizuje się automatycznie.' }),
+      getPostUpdateNotice: async () => null,
+      acknowledgePostUpdateNotice: async () => undefined,
       setUpdateChannel: async () => undefined,
       createDiagnosticBundle: async (summary) => {
         const payload = JSON.stringify({

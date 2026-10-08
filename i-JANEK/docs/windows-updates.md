@@ -8,9 +8,15 @@ Po wykryciu nowej wersji `electron-updater` pobiera instalator do profilu użytk
 
 Po weryfikacji agent przejmuje odpowiedzialność za restart: sprawdza ścieżkę procesu zgłaszającego aktualizację, pobiera zwykły token jego interaktywnej sesji Windows i przygotowuje środowisko użytkownika. Dopiero po tym zapisuje `ready` z `restartProtocol: 2` i `restartPrepared: true`. Aplikacja sprawdza identyfikator zgłoszenia i wersję, po czym kończy proces natychmiast. Nie uruchamia żadnego obserwatora PowerShell ani conhost.
 
-Agent czeka na zakończenie procesów aplikacji, uruchamia NSIS z `/S` jako SYSTEM i sprawdza numer zainstalowanej wersji. Następnie uruchamia stały plik `i-JANEK.exe` przez `CreateProcessAsUser` na pulpicie `winsta0\default`, jako zwykły użytkownik z jego profilem. Stan `installed` jest zapisywany dopiero po potwierdzeniu startu interfejsu nowej wersji przez konkretny proces. Nie pojawia się instalator ani UAC. Jeżeli przed aktualizacją okno nie miało fokusu, było ukryte lub zminimalizowane, aplikacja wraca do zasobnika; w przeciwnym razie pokazuje okno. Inna aktywna sesja z i-JANEK blokuje instalację z czytelnym komunikatem. Przy błędzie instalatora agent próbuje ponownie uruchomić istniejącą aplikację, zachowując status błędu.
+Agent czeka na zakończenie procesów aplikacji, uruchamia NSIS z `/S` jako SYSTEM i sprawdza numer zainstalowanej wersji. Następnie uruchamia stały plik `i-JANEK.exe` przez `CreateProcessAsUser` na pulpicie `winsta0\default`, jako zwykły użytkownik z jego profilem. Stan `installed` jest zapisywany dopiero po potwierdzeniu startu interfejsu nowej wersji przez konkretny proces. Nie pojawia się instalator ani UAC. Po aktualizacji aplikacja wraca do zasobnika bez przejmowania fokusu. Inna aktywna sesja z i-JANEK blokuje instalację z czytelnym komunikatem. Przy błędzie instalatora agent próbuje ponownie uruchomić istniejącą aplikację, zachowując status błędu.
 
 Istniejąca instalacja bez agenta wymaga jednej migracyjnej aktualizacji z UAC. Nowe instalacje od razu otrzymują agenta. Instalacja poza Program Files albo z możliwością zapisu dla zwykłych użytkowników jest odrzucana przez agenta; taką instalację trzeba przenieść przez odinstalowanie i nową instalację systemową.
+
+## Opis zmian po aktualizacji
+
+Opis wpisany w lokalnym automacie wydania jest zapisywany w `resources/release-notes.json` przed budowaniem i trafia do obu paczek. Po aktualizacji aplikacja uruchamia się w zasobniku bez przejmowania fokusu. Przy otwarciu użytkownik widzi dialog z wersją i opisem zmian, dostępny także bez internetu. Jedynym sposobem przejścia dalej jest kliknięcie `OK`; Escape i kliknięcie tła nie zamykają dialogu. Potwierdzenie jest zapisywane w profilu użytkownika dla tej wersji. Zamknięcie aplikacji bez potwierdzenia zachowuje dialog na następny start.
+
+Logowanie, telemetria, komunikator, agent DWService i potwierdzenie restartu aktualizatora nie czekają na `OK`. Dialog ogranicza tylko obsługę interfejsu. Nowa instalacja nie pokazuje dialogu. Pierwsza aktualizacja starszej aplikacji jest rozpoznawana po `--updated` albo zapisanej rejestracji/zgodzie urządzenia. Wznowienie publikacji gotowych paczek nie pozwala zmienić opisu względem tego, który dołączono do paczek.
 
 ## Klucz wydania
 

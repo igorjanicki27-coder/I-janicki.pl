@@ -4,6 +4,7 @@ import type { DeviceTelemetry, DeviceHealthState, InventoryReport, ProcessUsage 
 import { DEFAULT_ALERT_CPU_TEMP, DEFAULT_ALERT_DISK_USAGE } from '@shared/constants'
 import { runWindowsScript } from './windows-shell'
 import { collectCpuUsage, WINDOWS_CPU_SAMPLE_SCRIPT } from './cpu-usage'
+import { collectLocalDisks } from './disk-probe'
 
 function normalizeCpuTemp(raw: Awaited<ReturnType<typeof si.cpuTemperature>>): { current: number | null; zones: Array<{ label: string; temperatureC: number | null }> } {
   const zones = raw.cores.map((temperature, index) => ({
@@ -88,10 +89,10 @@ $events | ConvertTo-Json -Depth 3
 }
 
 export async function collectTelemetry(): Promise<DeviceTelemetry> {
-  const [temp, mem, fsSize, processes, timeSignals, graphics] = await Promise.all([
+  const [temp, mem, disks, processes, timeSignals, graphics] = await Promise.all([
     si.cpuTemperature(),
     si.mem(),
-    si.fsSize(),
+    collectLocalDisks(),
     si.processes(),
     resolveWindowsTimeSignals(),
     si.graphics()
@@ -107,13 +108,6 @@ export async function collectTelemetry(): Promise<DeviceTelemetry> {
   })
 
   const cpu = normalizeCpuTemp(temp)
-  const disks = fsSize.map((disk) => ({
-    fs: disk.fs,
-    mount: disk.mount,
-    usedPercent: Number(disk.use?.toFixed(1) ?? 0),
-    sizeGb: Number((disk.size / 1024 / 1024 / 1024).toFixed(1))
-  }))
-
   const topProcesses: ProcessUsage[] = processes.list
     .sort((a, b) => (b.cpu + b.memRss) - (a.cpu + a.memRss))
     .slice(0, 10)

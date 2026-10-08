@@ -1066,7 +1066,7 @@ class MockBackend implements BackendClient {
           driverVersion: '555.12'
         },
         memoryUsedPercent: 77,
-        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 81, sizeGb: 512 }],
+        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 81, sizeGb: 512, isLocal: true }],
         uptimeSeconds: 86_400,
         lastRestartAt: Date.now() - 86_400_000,
         lastShutdownAt: Date.now() - 172_800_000,
@@ -1113,7 +1113,7 @@ class MockBackend implements BackendClient {
           driverVersion: '31.0'
         },
         memoryUsedPercent: 46,
-        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 52, sizeGb: 1000 }],
+        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 52, sizeGb: 1000, isLocal: true }],
         uptimeSeconds: 54_000,
         lastRestartAt: Date.now() - 54_000_000,
         lastShutdownAt: Date.now() - 90_000_000,
@@ -1168,7 +1168,7 @@ class MockBackend implements BackendClient {
           driverVersion: '552.44'
         },
         memoryUsedPercent: 88,
-        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 93, sizeGb: 256 }],
+        disks: [{ fs: 'C:', mount: 'C:', usedPercent: 93, sizeGb: 256, isLocal: true }],
         uptimeSeconds: 240_000,
         lastRestartAt: Date.now() - 240_000_000,
         lastShutdownAt: Date.now() - 360_000_000,
