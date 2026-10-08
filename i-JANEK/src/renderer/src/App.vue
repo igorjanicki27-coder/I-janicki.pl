@@ -52,7 +52,7 @@ function clearUpdateStatusTimer() {
 
 function handleUpdateStatus(status: UpdateStatusPayload) {
   clearUpdateStatusTimer()
-  updateStatus.value = status.status === 'idle' ? null : status
+  updateStatus.value = ['idle', 'available', 'downloading'].includes(status.status) ? null : status
   if (status.status === 'up_to_date') {
     updateStatusDismissTimer = setTimeout(() => {
       updateStatus.value = null

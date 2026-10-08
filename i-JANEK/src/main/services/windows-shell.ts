@@ -5,7 +5,7 @@ export interface ScriptResult {
   stderr: string
 }
 
-export async function runWindowsScript(script: string): Promise<ScriptResult> {
+export async function runWindowsScript(script: string, timeoutMs?: number): Promise<ScriptResult> {
   if (process.platform !== 'win32') {
     return { stdout: '', stderr: 'Windows-only command skipped on non-Windows platform.' }
   }
@@ -21,6 +21,10 @@ export async function runWindowsScript(script: string): Promise<ScriptResult> {
 
     let stdout = ''
     let stderr = ''
+    const timeout = timeoutMs === undefined ? undefined : setTimeout(() => {
+      child.kill()
+      resolve({ stdout: '', stderr: 'Windows command timed out.' })
+    }, timeoutMs)
 
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString()
@@ -30,7 +34,13 @@ export async function runWindowsScript(script: string): Promise<ScriptResult> {
       stderr += chunk.toString()
     })
 
-    child.on('close', () => resolve({ stdout: stdout.trim(), stderr: stderr.trim() }))
-    child.on('error', (error) => resolve({ stdout: '', stderr: error.message }))
+    child.on('close', () => {
+      clearTimeout(timeout)
+      resolve({ stdout: stdout.trim(), stderr: stderr.trim() })
+    })
+    child.on('error', (error) => {
+      clearTimeout(timeout)
+      resolve({ stdout: '', stderr: error.message })
+    })
   })
 }

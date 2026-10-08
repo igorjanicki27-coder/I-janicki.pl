@@ -153,7 +153,7 @@ async function checkForUpdatesNow() {
   checkingUpdates.value = true
   try {
     const result = await window.janek.system.checkForUpdates(store.slaveSettings.silentUpdates)
-    window.alert(result.message)
+    if (result.status !== 'downloading') window.alert(result.message)
   } catch (error) {
     window.alert(`Nie udało się sprawdzić aktualizacji: ${String(error)}`)
   } finally {

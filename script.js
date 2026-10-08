@@ -794,14 +794,6 @@ function goStep(idx) {
   const step = steps[tutStep];
   sessionStorage.setItem(SS.TUTORIAL_STEP, step.id);
 
-  // Odroczone do następnej klatki — eliminuje wymuszone przeformatowanie
-  // (zapis scrollTop przy oczekujących zmianach stylu powoduje flush layoutu)
-  requestAnimationFrame(() => {
-    const stage = document.getElementById('stage');
-    if (stage) stage.scrollTop = 0;
-    window.scrollTo({ top: 0 });
-  });
-
   // Mark current step as visited
   visitedSteps.add(tutStep);
 
@@ -818,6 +810,15 @@ function goStep(idx) {
     case 'reviews':  renderReviewStep();      break;
     default:         renderSectionStep(step); break;
   }
+
+  // Nowy krok zaczyna się od góry również w niezależnie przewijanym panelu mobile.
+  // Poczekaj na wyrenderowanie treści i pomiń płynną animację przewijania.
+  requestAnimationFrame(() => {
+    const scrollStart = { top: 0, left: 0, behavior: 'instant' };
+    document.getElementById('panel')?.scrollTo(scrollStart);
+    document.getElementById('stage')?.scrollTo(scrollStart);
+    window.scrollTo(scrollStart);
+  });
 }
 
 // ─── Step renders ─────────────────────────────────────────────────

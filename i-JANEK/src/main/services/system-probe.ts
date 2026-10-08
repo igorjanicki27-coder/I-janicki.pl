@@ -3,6 +3,7 @@ import si from 'systeminformation'
 import type { DeviceTelemetry, DeviceHealthState, InventoryReport, ProcessUsage } from '@shared/contracts'
 import { DEFAULT_ALERT_CPU_TEMP, DEFAULT_ALERT_DISK_USAGE } from '@shared/constants'
 import { runWindowsScript } from './windows-shell'
+import { collectCpuUsage, WINDOWS_CPU_SAMPLE_SCRIPT } from './cpu-usage'
 
 function normalizeCpuTemp(raw: Awaited<ReturnType<typeof si.cpuTemperature>>): { current: number | null; zones: Array<{ label: string; temperatureC: number | null }> } {
   const zones = raw.cores.map((temperature, index) => ({
@@ -87,15 +88,23 @@ $events | ConvertTo-Json -Depth 3
 }
 
 export async function collectTelemetry(): Promise<DeviceTelemetry> {
-  const [temp, mem, fsSize, processes, timeSignals, currentLoad, graphics] = await Promise.all([
+  const [temp, mem, fsSize, processes, timeSignals, graphics] = await Promise.all([
     si.cpuTemperature(),
     si.mem(),
     si.fsSize(),
     si.processes(),
     resolveWindowsTimeSignals(),
-    si.currentLoad(),
     si.graphics()
   ])
+
+  // Sample after the other probes finish so their PowerShell/process discovery
+  // work does not artificially inflate the CPU reading we publish.
+  const cpuUsagePercent = await collectCpuUsage({
+    platform: process.platform,
+    windowsSample: async () => (await runWindowsScript(WINDOWS_CPU_SAMPLE_SCRIPT, 15_000)).stdout,
+    currentLoad: () => si.currentLoad(),
+    wait: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+  })
 
   const cpu = normalizeCpuTemp(temp)
   const disks = fsSize.map((disk) => ({
@@ -120,7 +129,7 @@ export async function collectTelemetry(): Promise<DeviceTelemetry> {
 
   return {
     capturedAt: Date.now(),
-    cpuUsagePercent: Number(currentLoad.currentLoad.toFixed(1)),
+    cpuUsagePercent,
     cpuTemperatureC: cpu.current,
     cpuHotZones: cpu.zones,
     gpu: normalizeGpuTelemetry(graphics),
