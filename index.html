@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=34" />
+  <link rel="stylesheet" href="styles.min.css?v=35" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -593,6 +593,24 @@
         overflow-x: hidden !important;
       }
 
+      html,
+      body:not(.intro-active) {
+        overflow-y: auto;
+      }
+
+      body {
+        padding-bottom: var(--mobile-bottom-height, 112px);
+      }
+
+      .page-bottom {
+        display: block;
+        position: fixed;
+        inset: auto 0 0;
+        z-index: 80;
+        width: 100%;
+        background: var(--bg-1);
+      }
+
       /* Safari mobile: mniej skoków layoutu podczas chowania/pokazywania paska */
       html {
         scroll-behavior: auto;
@@ -684,12 +702,34 @@
 
       .greeting-prefs {
         margin-top: 12px !important;
-        margin-bottom: 14px !important;
+        margin-bottom: 8px !important;
+        gap: 8px;
       }
 
       .pref-column {
-        padding: 8px 2px !important;
-        gap: 10px;
+        padding: 4px 2px !important;
+        gap: 6px;
+      }
+
+      .greeting-prefs .pref-separator {
+        display: none;
+      }
+
+      .panel:has(.greeting-prefs) .panel-header {
+        margin-bottom: 8px;
+      }
+
+      .panel:has(.greeting-prefs) .tut-message {
+        gap: 6px;
+      }
+
+      .panel:has(.greeting-prefs) .panel-seo-h1 {
+        margin: 0 0 4px;
+        font-size: clamp(16px, 4.5vw, 18px);
+      }
+
+      .stage:has(.greeting-prefs) .bot {
+        width: 76px;
       }
 
       .pref-label {
@@ -706,29 +746,38 @@
       .choice-btn {
         width: 100%;
         min-width: 0;
+        min-height: 44px;
         padding: 9px 6px;
         font-size: clamp(11px, 3.8vw, 13px);
+        overflow-wrap: normal;
       }
 
       .tutorial-nav {
         position: static !important;
         bottom: auto !important;
+        margin-inline: auto;
         z-index: 12;
         width: min(100%, calc(100vw - 22px));
         max-width: min(560px, calc(100vw - 22px));
-        border-radius: 12px;
-        padding: 0;
-        background: transparent;
-        border: 0;
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
+        border-radius: 12px 12px 0 0;
+        padding: 10px 8px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         overflow: hidden;
+      }
+
+      .tutorial-nav:has(#tutNext[hidden]) {
+        display: none;
       }
 
       .tut-main-row,
       .tutorial-nav.has-back .tut-main-row {
         width: 100%;
         gap: 8px;
+        flex-direction: row !important;
+        align-items: stretch !important;
       }
 
       .tut-main-row > *,
@@ -740,13 +789,26 @@
         min-height: 44px;
       }
 
+      .tutorial-nav .tut-back {
+        flex: 0 0 48px;
+        width: 48px;
+      }
+
+      .tutorial-nav .tut-next,
+      .tutorial-nav:not(.has-back) .tut-next {
+        flex: 1;
+        max-width: none;
+      }
+
       .foot {
         flex-wrap: nowrap !important;
         flex-direction: row !important;
         justify-content: center;
         gap: 4px;
         text-align: center;
-        padding: 8px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+        min-height: calc(44px + env(safe-area-inset-bottom, 0px));
+        margin-top: 0;
+        padding: 8px 40px calc(8px + env(safe-area-inset-bottom, 0px));
         font-size: clamp(7px, 2.2vw, 9px);
         white-space: nowrap;
         line-height: 1.1;
@@ -771,14 +833,17 @@
 
       .cookie-foot-btn {
         position: absolute !important;
-        right: 8px;
+        left: 0;
+        right: auto;
         top: 50%;
         bottom: auto;
         margin-left: 0;
-        padding: 3px 10px;
+        width: 44px;
+        min-height: 44px;
+        padding: 0;
         opacity: 0.74;
         transform: translateY(-50%) !important;
-        font-size: 11px;
+        font-size: 20px;
       }
     }
 
@@ -802,9 +867,6 @@
         padding: 8px 10px;
       }
 
-      .pref-btns {
-        grid-template-columns: 1fr;
-      }
     }
 
     /* =================== Mobile Hard Responsive v2 =================== */
@@ -863,26 +925,12 @@
         margin-bottom: 10px !important;
       }
 
-      .pref-btns {
-        grid-template-columns: 1fr;
-      }
-
       .choice-btn {
         padding: 10px 8px;
         font-size: clamp(12px, 4vw, 14px);
       }
 
-      .tut-main-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
-      }
-
-      .tutorial-nav.has-back .tut-main-row > * {
-        width: 100% !important;
-      }
-
       .tut-btn {
-        width: 100% !important;
         min-height: 46px;
         font-size: clamp(12px, 3.9vw, 14px);
       }
@@ -1129,6 +1177,7 @@
   </main>
 
   <!-- ═══════════════ STOPKA ═══════════════ -->
+  <div class="page-bottom" id="pageBottom">
   <footer class="foot">
     <span>© <span id="year" data-year></span> i-JANICKI</span>
     <span class="foot-sep">·</span>
@@ -1137,6 +1186,7 @@
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
+  </div>
 
   <!-- ═══════════════ MODAL (sekcje treści) ═══════════════ -->
   <div class="modal-root" id="modalRoot" aria-hidden="true" role="presentation">
@@ -1393,7 +1443,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=31"></script>
+  <script defer src="script.min.js?v=32"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

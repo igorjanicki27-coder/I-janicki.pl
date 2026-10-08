@@ -120,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initEyeTracking();
   initGlobalClick();
   initCookiePanel();
+  initMobileNavigation();
   initDocViewer();
   initCursor();
   registerSW();
@@ -695,6 +696,31 @@ function initGlobalClick() {
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL — STATE MACHINE
 // ─────────────────────────────────────────────────────────────────
+function initMobileNavigation() {
+  const bottom = $('pageBottom');
+  const nav = dom.tutNav;
+  const stageBot = $('stageBotArea');
+  if (!bottom || !nav || !stageBot) return;
+
+  const mobile = window.matchMedia('(max-width: 768px)');
+  const measureBottom = () => {
+    if (mobile.matches) {
+      document.body.style.setProperty('--mobile-bottom-height', `${bottom.getBoundingClientRect().height}px`);
+    } else {
+      document.body.style.removeProperty('--mobile-bottom-height');
+    }
+  };
+  const syncLayout = () => {
+    // Na telefonie nawigacja jest poza przewijaną i przycinaną sceną.
+    if (mobile.matches) bottom.prepend(nav);
+    else stageBot.append(nav);
+    measureBottom();
+  };
+  mobile.addEventListener('change', syncLayout);
+  new ResizeObserver(measureBottom).observe(bottom);
+  syncLayout();
+}
+
 function startTutorial() {
   // Filter out cookies step if cookies decision has already been made
   if (localStorage.getItem(LS.COOKIE_DECISION) !== null) {

@@ -13,6 +13,7 @@ import { executeTerminalCommand } from './services/terminal-service'
 import { applyDwServiceInstallationCode, getDwServiceAgentState } from './services/dwservice-agent-service'
 import { localStore } from './store'
 import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
+import { spawnWindowsUpdateWatcher } from './services/windows-update-watcher'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -115,7 +116,6 @@ function restartAfterWindowsUpdate(version: string) {
   }
   windowsRestartSpawned = true
   windowsRestartAttemptId = attemptId
-  const powershellPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   const watcherArgs = [
     '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
     '-Version', version, '-AppExe', process.execPath, '-LogPath', logPath,
@@ -124,7 +124,7 @@ function restartAfterWindowsUpdate(version: string) {
   if (shouldRestartHidden) watcherArgs.push('-StartHidden')
   let watcher: ReturnType<typeof spawn>
   try {
-    watcher = spawn(powershellPath, watcherArgs, { detached: true, windowsHide: true, stdio: 'ignore' })
+    watcher = spawnWindowsUpdateWatcher(watcherArgs)
   } catch (error) {
     windowsRestartSpawned = false
     publishUpdateStatus({ status: 'error', version, message: `Nie udało się uruchomić procesu ponownego startu: ${(error as Error).message}` })
@@ -169,6 +169,9 @@ function restartAfterWindowsUpdate(version: string) {
     failRestart('Nie udało się uruchomić procesu ponownego startu aplikacji.')
     return
   }
+  try {
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Uruchomiono conhost --headless. PID=${watcher.pid} Próba=${attemptId}.\n`, 'utf8')
+  } catch { /* The observer handshake remains the authoritative startup check. */ }
   watcher.unref()
   const deadline = Date.now() + 2 * 60_000
   const confirmRestartWatcher = () => {
