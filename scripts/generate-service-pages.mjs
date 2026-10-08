@@ -6,10 +6,22 @@ const SITE_URL = 'https://i-janicki.pl';
 const EMAIL = 'kontakt@i-janicki.pl';
 
 const navigation = [
-  ['oferta', 'Oferta'],
-  ['oferta/cennik', 'Cennik'],
+  ['', 'Strona główna'],
   ['blog', 'Blog'],
   ['faq', 'FAQ']
+];
+
+const offerNavigation = [
+  ['oferta', 'Przegląd oferty'],
+  ['oferta/strony-www', 'Strony internetowe'],
+  ['oferta/aplikacje', 'Aplikacje'],
+  ['oferta/seo', 'Pozycjonowanie i SEO'],
+  ['oferta/sieci', 'Sieci LAN, Wi-Fi i VPN'],
+  ['oferta/opieka-it', 'Opieka IT'],
+  ['oferta/cennik', 'Cennik'],
+  ['oferta/wroclaw', 'Wrocław'],
+  ['oferta/sroda-slaska', 'Środa Śląska'],
+  ['oferta/miekinia-lutynia', 'Miękinia i Lutynia']
 ];
 
 const relatedServices = [
@@ -23,16 +35,6 @@ const relatedServices = [
   ['oferta/opieka-it', 'Opieka IT'],
   ['oferta/sieci', 'Sieci LAN, Wi-Fi i VPN'],
   ['oferta/seo', 'Pozycjonowanie i SEO']
-];
-
-const footerNavigation = [
-  ['kampanie-reklamowe', 'Google Ads'],
-  ['oferta/strony-www', 'Strony WWW'],
-  ['oferta/aplikacje', 'Aplikacje'],
-  ['oferta/seo', 'SEO'],
-  ['oferta/sieci', 'Sieci'],
-  ['oferta/opieka-it', 'Opieka IT'],
-  ['faq', 'FAQ']
 ];
 
 const pages = [
@@ -665,11 +667,26 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+function renderOfferNavigation(currentSlug) {
+  const isOfferPage = currentSlug === 'oferta' || currentSlug.startsWith('oferta/');
+  const links = offerNavigation.map(function (item) {
+    const current = item[0] === currentSlug ? ' aria-current="page"' : '';
+    const href = item[0] ? '/' + item[0] + '/' : '/';
+    return '<a href="' + href + '"' + current + '>' + item[1] + '</a>';
+  }).join('\n          ');
+
+  return '<div class="nav-submenu' + (isOfferPage ? ' is-open' : '') + '" data-nav-submenu>'
+    + '<button class="nav-submenu-toggle' + (isOfferPage ? ' is-active' : '') + '" type="button" aria-expanded="' + String(isOfferPage) + '" aria-controls="offer-navigation" data-nav-submenu-toggle>'
+    + '<span>Oferta</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button>'
+    + '<div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel>' + links + '</div></div>';
+}
+
 function renderNavigation(currentSlug) {
-  return navigation.map(function (item) {
-    const current = item[0] === currentSlug ? ' aria-current="page"'
-      : item[0] === 'oferta' && currentSlug !== 'oferta/cennik' ? ' class="is-active"' : '';
-    return '<a href="/' + item[0] + '/"' + current + '>' + item[1] + '</a>';
+  return navigation.map(function (item, index) {
+    const current = item[0] === currentSlug ? ' aria-current="page"' : '';
+    const href = item[0] ? '/' + item[0] + '/' : '/';
+    const link = '<a href="' + href + '"' + current + '>' + item[1] + '</a>';
+    return index === 0 ? link + '\n          ' + renderOfferNavigation(currentSlug) : link;
   }).join('\n          ');
 }
 
@@ -707,12 +724,6 @@ function renderRelated(currentSlug) {
   return relatedServices.filter(function (item) { return item[0] !== currentSlug; }).slice(0, 4).map(function (item) {
     return '<a href="/' + item[0] + '/">' + item[1] + ' <span aria-hidden="true">→</span></a>';
   }).join('\n          ');
-}
-
-function renderFooterNavigation() {
-  return footerNavigation.map(function (item) {
-    return '<a href="/' + item[0] + '/">' + item[1] + '</a>';
-  }).join('');
 }
 
 function renderStructuredData(page) {
@@ -781,16 +792,16 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=8">',
+    '  <link rel="stylesheet" href="/oferta.css?v=11">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
-    '  <script defer src="/oferta.js?v=6"></script>',
+    '  <script defer src="/oferta.js?v=8"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
     '  <header class="site-header">',
     '    <div class="nav-shell">',
-    '      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
+    '      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><span class="brand-name">i-JANICKI</span></a>',
     '      <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle><span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>',
     '      <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>',
     '          ' + renderNavigation(page.slug),
@@ -855,12 +866,11 @@ function renderPage(page) {
     '    </section>',
     '  </main>',
     '  <footer class="foot">',
-    '    <span>© <span id="year" data-year></span> i-JANICKI</span>',
-    '    <span class="foot-sep">·</span>',
+    '    <span class="foot-copyright">© <span id="year" data-year></span> i-JANICKI</span>',
+    '    <span class="foot-sep foot-copyright-sep">·</span>',
     '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
     '    <span class="foot-sep">·</span>',
     '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
-    '    <nav class="foot-links" aria-label="Najważniejsze podstrony">' + renderFooterNavigation() + '</nav>',
     '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
     '  </footer>',
     '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',
@@ -928,15 +938,15 @@ function renderOfferHub() {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=8">',
+    '  <link rel="stylesheet" href="/oferta.css?v=11">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
-    '  <script defer src="/oferta.js?v=6"></script>',
+    '  <script defer src="/oferta.js?v=8"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
     '  <header class="site-header"><div class="nav-shell">',
-    '    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>',
+    '    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><span class="brand-name">i-JANICKI</span></a>',
     '    <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle><span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>',
     '    <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>' + renderNavigation('oferta') + '<a class="nav-cta" href="/kontakt/">Kontakt</a></nav>',
     '  </div></header>',
@@ -948,12 +958,11 @@ function renderOfferHub() {
     '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div></section>',
     '  </main>',
     '  <footer class="foot">',
-    '    <span>© <span id="year" data-year></span> i-JANICKI</span>',
-    '    <span class="foot-sep">·</span>',
+    '    <span class="foot-copyright">© <span id="year" data-year></span> i-JANICKI</span>',
+    '    <span class="foot-sep foot-copyright-sep">·</span>',
     '    <a href="mailto:' + EMAIL + '" class="foot-mail">' + EMAIL + '</a>',
     '    <span class="foot-sep">·</span>',
     '    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>',
-    '    <nav class="foot-links" aria-label="Najważniejsze podstrony">' + renderFooterNavigation() + '</nav>',
     '    <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>',
     '  </footer>',
     '  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>',

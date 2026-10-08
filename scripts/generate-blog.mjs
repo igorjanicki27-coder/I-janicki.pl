@@ -5,12 +5,6 @@ const ROOT = process.cwd();
 const OUTPUT_ROOT = process.env.BLOG_OUTPUT_ROOT ? path.resolve(process.env.BLOG_OUTPUT_ROOT) : ROOT;
 const SITE_URL = 'https://i-janicki.pl';
 const EMAIL = 'kontakt@i-janicki.pl';
-const FOOTER_LINKS = [
-  ['/oferta/strony-www/', 'Strony WWW'], ['/oferta/aplikacje/', 'Aplikacje'],
-  ['/oferta/seo/', 'SEO'], ['/oferta/sieci/', 'Sieci'],
-  ['/oferta/opieka-it/', 'Opieka IT'], ['/faq/', 'FAQ']
-];
-
 const posts = [
   {
     slug: 'ile-kosztuje-strona-internetowa-dla-malej-firmy',
@@ -183,10 +177,22 @@ const posts = [
 ];
 
 const navigation = [
-  ['/oferta/', 'Oferta'],
-  ['/oferta/cennik/', 'Cennik'],
+  ['/', 'Strona główna'],
   ['/blog/', 'Blog'],
   ['/faq/', 'FAQ']
+];
+
+const offerNavigation = [
+  ['/oferta/', 'Przegląd oferty'],
+  ['/oferta/strony-www/', 'Strony internetowe'],
+  ['/oferta/aplikacje/', 'Aplikacje'],
+  ['/oferta/seo/', 'Pozycjonowanie i SEO'],
+  ['/oferta/sieci/', 'Sieci LAN, Wi-Fi i VPN'],
+  ['/oferta/opieka-it/', 'Opieka IT'],
+  ['/oferta/cennik/', 'Cennik'],
+  ['/oferta/wroclaw/', 'Wrocław'],
+  ['/oferta/sroda-slaska/', 'Środa Śląska'],
+  ['/oferta/miekinia-lutynia/', 'Miękinia i Lutynia']
 ];
 
 function warsawDate() {
@@ -224,19 +230,25 @@ async function writeIfChanged(filePath, content) {
 }
 
 function renderNavigation(currentPath) {
-  return navigation.map(([href, label]) =>
+  const isOfferPage = currentPath === '/oferta/' || currentPath.startsWith('/oferta/');
+  const offerLinks = offerNavigation.map(([href, label]) =>
     `<a href="${href}"${href === currentPath ? ' aria-current="page"' : ''}>${label}</a>`
   ).join('');
+  const offerMenu = `<div class="nav-submenu${isOfferPage ? ' is-open' : ''}" data-nav-submenu><button class="nav-submenu-toggle${isOfferPage ? ' is-active' : ''}" type="button" aria-expanded="${String(isOfferPage)}" aria-controls="offer-navigation" data-nav-submenu-toggle><span>Oferta</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button><div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel>${offerLinks}</div></div>`;
+
+  return navigation.map(([href, label], index) => {
+    const link = `<a href="${href}"${href === currentPath ? ' aria-current="page"' : ''}>${label}</a>`;
+    return index === 0 ? link + offerMenu : link;
+  }).join('');
 }
 
 function renderFooter() {
   return `<footer class="foot">
-    <span>© <span id="year" data-year></span> i-JANICKI</span>
-    <span class="foot-sep">·</span>
+    <span class="foot-copyright">© <span id="year" data-year></span> i-JANICKI</span>
+    <span class="foot-sep foot-copyright-sep">·</span>
     <a href="mailto:${EMAIL}" class="foot-mail">${EMAIL}</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
-    <nav class="foot-links" aria-label="Najważniejsze podstrony">${FOOTER_LINKS.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')}</nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>`;
 }
@@ -262,17 +274,17 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="/oferta.css?v=8">
+  <link rel="stylesheet" href="/oferta.css?v=11">
   <link rel="stylesheet" href="/blog.css?v=2">
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
   <script defer src="/analytics.js?v=10"></script>
-  <script defer src="/oferta.js?v=6"></script>`;
+  <script defer src="/oferta.js?v=8"></script>`;
 }
 
 function renderHeader(currentPath = '/blog/') {
   return `<a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header"><div class="nav-shell">
-    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><span class="brand-name">i-JANICKI</span></a>
     <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle><span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
     <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>${renderNavigation(currentPath)}<a class="nav-cta" href="/kontakt/">Kontakt</a></nav>
   </div></header>`;

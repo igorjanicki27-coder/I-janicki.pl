@@ -25,20 +25,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="/oferta.css?v=8">
+  <link rel="stylesheet" href="/oferta.css?v=11">
   <script type="application/ld+json">[{"@context":"https://schema.org","@type":"Service","@id":"https://i-janicki.pl/oferta/wroclaw/#service","name":"Strony internetowe dla firm z Wrocławia","description":"Nowoczesne strony internetowe dla firm z Wrocławia. Indywidualny projekt, szybkie działanie, responsywność, konwersja i solidne podstawy SEO.","url":"https://i-janicki.pl/oferta/wroclaw/","provider":{"@id":"https://i-janicki.pl/#business"},"areaServed":[{"@type":"AdministrativeArea","name":"Wrocław"},{"@type":"AdministrativeArea","name":"aglomeracja wrocławska"},{"@type":"AdministrativeArea","name":"Dolny Śląsk"}]},{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strona główna","item":"https://i-janicki.pl/"},{"@type":"ListItem","position":2,"name":"Oferta","item":"https://i-janicki.pl/oferta/"},{"@type":"ListItem","position":3,"name":"Wrocław","item":"https://i-janicki.pl/oferta/wroclaw/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ile trwa przygotowanie strony?","acceptedAnswer":{"@type":"Answer","text":"Prosta strona jest zwykle gotowa w ciągu 1–2 tygodni. Termin większego serwisu zależy od liczby podstron, materiałów, integracji i etapów akceptacji."}},{"@type":"Question","name":"Jak wyróżnić stronę firmy we Wrocławiu?","acceptedAnswer":{"@type":"Answer","text":"Najpierw trzeba jasno określić specjalizację i odbiorcę. Następnie warto pokazać konkretne realizacje, obszar obsługi, dowody wiarygodności i odpowiedzi na pytania klientów."}},{"@type":"Question","name":"Czy sama nowa strona wystarczy do wysokich pozycji?","acceptedAnswer":{"@type":"Answer","text":"Nie zawsze. Dobra strona tworzy fundament, ale widoczność zależy również od konkurencji, treści, historii domeny, Profilu Firmy Google, linków i regularnej pracy."}},{"@type":"Question","name":"Czy współpraca może być całkowicie zdalna?","acceptedAnswer":{"@type":"Answer","text":"Tak. Rozmowy, prezentacje projektu, poprawki i odbiór możemy przeprowadzić online."}},{"@type":"Question","name":"Czy stronę można później rozbudować?","acceptedAnswer":{"@type":"Answer","text":"Tak. Od początku można zaplanować miejsce na kolejne usługi, realizacje, treści poradnikowe, wersje językowe lub integracje."}}]}]</script>
   <script defer src="/analytics.js?v=10"></script>
-  <script defer src="/oferta.js?v=6"></script>
+  <script defer src="/oferta.js?v=8"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Przejdź do treści</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><span class="brand-name">i-JANICKI</span></a>
       <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle><span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
       <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav>
-          <a href="/oferta/" class="is-active">Oferta</a>
+          <a href="/">Strona główna</a>
+          <div class="nav-submenu is-open" data-nav-submenu><button class="nav-submenu-toggle is-active" type="button" aria-expanded="true" aria-controls="offer-navigation" data-nav-submenu-toggle><span>Oferta</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button><div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel><a href="/oferta/">Przegląd oferty</a>
+          <a href="/oferta/strony-www/">Strony internetowe</a>
+          <a href="/oferta/aplikacje/">Aplikacje</a>
+          <a href="/oferta/seo/">Pozycjonowanie i SEO</a>
+          <a href="/oferta/sieci/">Sieci LAN, Wi-Fi i VPN</a>
+          <a href="/oferta/opieka-it/">Opieka IT</a>
           <a href="/oferta/cennik/">Cennik</a>
+          <a href="/oferta/wroclaw/" aria-current="page">Wrocław</a>
+          <a href="/oferta/sroda-slaska/">Środa Śląska</a>
+          <a href="/oferta/miekinia-lutynia/">Miękinia i Lutynia</a></div></div>
           <a href="/blog/">Blog</a>
           <a href="/faq/">FAQ</a>
           <a class="nav-cta" href="/kontakt/">Kontakt</a>
@@ -126,12 +135,11 @@
     </section>
   </main>
   <footer class="foot">
-    <span>© <span id="year" data-year></span> i-JANICKI</span>
-    <span class="foot-sep">·</span>
+    <span class="foot-copyright">© <span id="year" data-year></span> i-JANICKI</span>
+    <span class="foot-sep foot-copyright-sep">·</span>
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
-    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/kampanie-reklamowe/">Google Ads</a><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
   <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>

@@ -14,9 +14,16 @@ test('fresh Windows installation requires explicit DWService consent', () => {
   assert.match(installer, /\$\{Silent\}[\s\S]*\$DWServiceExistingInstall != "true"[\s\S]*SetErrorLevel 2/)
 })
 
-test('DWService code is optional, format checked and does not enable provisioning yet', () => {
-  assert.match(installer, /Kod instalacyjny DWService \(opcjonalnie na tym etapie\)/)
-  assert.match(installScript, /\^\\d\{3\}-\\d\{3\}-\\d\{3\}\$/)
+test('DWService code is required, segmented and must match the configured code', () => {
+  assert.match(installer, /Kod instalacyjny DWService \(wymagany\)/)
+  assert.match(installer, /!define DW_SERVICE_REQUIRED_INSTALLATION_CODE "000-000-000"/)
+  assert.equal((installer.match(/\$\{NSD_CreateNumber\}/g) || []).length, 3)
+  assert.equal((installer.match(/\$\{EM_LIMITTEXT\} 3/g) || []).length, 3)
+  assert.match(installer, /dwServiceCodePart1Changed[\s\S]*\$\{WM_NEXTDLGCTL\} \$DWServiceCodePart2Input 1/)
+  assert.match(installer, /dwServiceCodePart2Changed[\s\S]*\$\{WM_NEXTDLGCTL\} \$DWServiceCodePart3Input 1/)
+  assert.match(installer, /StrCpy \$DWServiceInstallationCode "\$1-\$2-\$3"/)
+  assert.match(installer, /StrCmp \$DWServiceInstallationCode "\$\{DW_SERVICE_REQUIRED_INSTALLATION_CODE\}" code_valid code_invalid/)
+  assert.match(installScript, /\$DwServiceInstallationCode -cne '000-000-000'/)
   assert.match(installScript, /ProtectedData\]::Protect/)
   assert.match(installScript, /icacls\.exe \$dwServiceBootstrapPath \/inheritance:r/)
   assert.match(installScript, /consentPolicyVersion = '2026-10-06'/)

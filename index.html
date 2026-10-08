@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=38" />
+  <link rel="stylesheet" href="styles.min.css?v=41" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1089,6 +1089,32 @@
         <div class="tut-progress-steps" id="tutProgressSteps"></div>
       </div>
     </a>
+    <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="main-navigation" data-nav-toggle>
+      <span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <nav class="nav-links" id="main-navigation" aria-label="Główna nawigacja" data-nav>
+      <a href="/" aria-current="page">Strona główna</a>
+      <div class="nav-submenu" data-nav-submenu>
+        <button class="nav-submenu-toggle" type="button" aria-expanded="false" aria-controls="offer-navigation" data-nav-submenu-toggle>
+          <span>Oferta</span><span class="nav-submenu-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel>
+          <a href="/oferta/">Przegląd oferty</a>
+          <a href="/oferta/strony-www/">Strony internetowe</a>
+          <a href="/oferta/aplikacje/">Aplikacje</a>
+          <a href="/oferta/seo/">Pozycjonowanie i SEO</a>
+          <a href="/oferta/sieci/">Sieci LAN, Wi-Fi i VPN</a>
+          <a href="/oferta/opieka-it/">Opieka IT</a>
+          <a href="/oferta/cennik/">Cennik</a>
+          <a href="/oferta/wroclaw/">Wrocław</a>
+          <a href="/oferta/sroda-slaska/">Środa Śląska</a>
+          <a href="/oferta/miekinia-lutynia/">Miękinia i Lutynia</a>
+        </div>
+      </div>
+      <a href="/blog/">Blog</a>
+      <a href="/faq/">FAQ</a>
+      <a href="/kontakt/" class="nav-cta">Kontakt</a>
+    </nav>
   </header>
 
   <!-- ═══════════════ GŁÓWNA SCENA ═══════════════ -->
@@ -1198,8 +1224,8 @@
   <!-- ═══════════════ STOPKA ═══════════════ -->
   <div class="page-bottom" id="pageBottom">
   <footer class="foot">
-    <span>© <span id="year" data-year></span> i-JANICKI</span>
-    <span class="foot-sep">·</span>
+    <span class="foot-copyright">© <span id="year" data-year></span> i-JANICKI</span>
+    <span class="foot-sep foot-copyright-sep">·</span>
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
     <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
@@ -1462,7 +1488,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=38"></script>
+  <script defer src="script.min.js?v=40"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

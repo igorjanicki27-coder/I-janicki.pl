@@ -31,8 +31,8 @@ try {
     if ($DwServiceConsentAccepted -ne 'true') {
       throw 'Instalacja i-JANEK wymaga zaakceptowania zgody na instalację i użycie DWService.'
     }
-    if ($DwServiceInstallationCode -and $DwServiceInstallationCode -notmatch '^\d{3}-\d{3}-\d{3}$') {
-      throw 'Kod instalacyjny DWService musi mieć format 123-456-789 albo pozostać pusty.'
+    if ($DwServiceInstallationCode -cne '000-000-000') {
+      throw 'Kod instalacyjny DWService jest wymagany i nie jest zgodny z kodem instalacyjnym skonfigurowanym dla i-JANEK.'
     }
   }
 
@@ -63,33 +63,30 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Nie udało się nadać uprawnień do zgłoszeń aktualizacji.' }
 
   if (-not $IsUpdate) {
-    $protectedCode = $null
-    if ($DwServiceInstallationCode) {
-      $plainBytes = [Text.Encoding]::UTF8.GetBytes($DwServiceInstallationCode)
-      try {
-        $encryptedBytes = [Security.Cryptography.ProtectedData]::Protect(
-          $plainBytes,
-          $null,
-          [Security.Cryptography.DataProtectionScope]::LocalMachine
-        )
-        $protectedCode = [Convert]::ToBase64String($encryptedBytes)
-      } finally {
-        [Array]::Clear($plainBytes, 0, $plainBytes.Length)
-      }
+    $plainBytes = [Text.Encoding]::UTF8.GetBytes($DwServiceInstallationCode)
+    try {
+      $encryptedBytes = [Security.Cryptography.ProtectedData]::Protect(
+        $plainBytes,
+        $null,
+        [Security.Cryptography.DataProtectionScope]::LocalMachine
+      )
+      $protectedCode = [Convert]::ToBase64String($encryptedBytes)
+    } finally {
+      [Array]::Clear($plainBytes, 0, $plainBytes.Length)
     }
     $bootstrap = @{
       schemaVersion = 1
       consentPolicyVersion = '2026-10-06'
       consentAccepted = $true
       consentAcceptedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-      hasInstallationCode = [bool]$DwServiceInstallationCode
+      hasInstallationCode = $true
       installationCodeProtected = $protectedCode
       provisioningEnabled = $false
     } | ConvertTo-Json -Compress
     [IO.File]::WriteAllText($dwServiceBootstrapPath, $bootstrap, (New-Object Text.UTF8Encoding $false))
     & icacls.exe $dwServiceBootstrapPath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Nie udało się zabezpieczyć ustawień startowych DWService.' }
-    Write-InstallLog "Zapisano zgodę DWService. KodPodany=$([bool]$DwServiceInstallationCode) ProvisioningEnabled=False"
+    Write-InstallLog 'Zapisano zgodę DWService. KodPodany=True ProvisioningEnabled=False'
   }
 
   Write-InstallLog 'Kopiowanie plików agenta.'

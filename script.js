@@ -118,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   dom.year.textContent = new Date().getFullYear();
   initTheme();
   initLang();
+  initHeaderMenu();
   initEyeTracking();
   initGlobalClick();
   initCookiePanel();
@@ -143,6 +144,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // Nie wysyłaj home_visit event - oszczędza 102KB Firebase SDK na initial load
   // Firebase załaduje się dopiero gdy user wyśle inny event (tutorial_complete, review, itp)
 });
+
+function initHeaderMenu() {
+  const toggle = document.querySelector('[data-nav-toggle]');
+  const nav = document.querySelector('[data-nav]');
+  if (!toggle || !nav) return;
+
+  const submenu = nav.querySelector('[data-nav-submenu]');
+  const submenuToggle = nav.querySelector('[data-nav-submenu-toggle]');
+
+  const setSubmenuOpen = isOpen => {
+    if (!submenu || !submenuToggle) return;
+    submenu.classList.toggle('is-open', isOpen);
+    submenuToggle.setAttribute('aria-expanded', String(isOpen));
+  };
+
+  const close = () => {
+    nav.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Otwórz menu');
+    setSubmenuOpen(false);
+  };
+
+  submenuToggle?.addEventListener('click', () => {
+    setSubmenuOpen(!submenu.classList.contains('is-open'));
+  });
+
+  toggle.addEventListener('click', event => {
+    event.stopPropagation();
+    const isOpen = nav.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? 'Zamknij menu' : 'Otwórz menu');
+  });
+  nav.addEventListener('click', event => {
+    if (event.target.closest('a')) close();
+  });
+  document.addEventListener('click', event => {
+    if (!nav.contains(event.target)) close();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') close();
+  });
+}
 
 function initTutorialReturnLinks() {
   document.addEventListener('click', event => {

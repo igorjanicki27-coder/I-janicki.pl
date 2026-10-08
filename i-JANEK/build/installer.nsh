@@ -4,10 +4,14 @@
 
 !ifndef BUILD_UNINSTALLER
 Var DWServiceConsentCheckbox
-Var DWServiceCodeInput
+Var DWServiceCodePart1Input
+Var DWServiceCodePart2Input
+Var DWServiceCodePart3Input
 Var DWServiceConsentAccepted
 Var DWServiceInstallationCode
 Var DWServiceExistingInstall
+
+!define DW_SERVICE_REQUIRED_INSTALLATION_CODE "000-000-000"
 
 !macro customInit
   StrCpy $DWServiceConsentAccepted "false"
@@ -49,16 +53,46 @@ Function dwServiceConsentPageCreate
   ${NSD_CreateCheckbox} 0 40u 100% 38u "Wyrażam zgodę na instalację komponentu zdalnego wsparcia DWService na tym urządzeniu oraz jego wykorzystanie przez i-JANICKI do świadczenia usług zdalnego wsparcia."
   Pop $DWServiceConsentCheckbox
 
-  ${NSD_CreateLabel} 0 88u 100% 14u "Kod instalacyjny DWService (opcjonalnie na tym etapie)"
+  ${NSD_CreateLabel} 0 88u 100% 14u "Kod instalacyjny DWService (wymagany)"
   Pop $0
-  ${NSD_CreateText} 0 106u 55% 13u "$DWServiceInstallationCode"
-  Pop $DWServiceCodeInput
-  SendMessage $DWServiceCodeInput ${EM_LIMITTEXT} 11 0
+  ${NSD_CreateNumber} 0 106u 48u 13u ""
+  Pop $DWServiceCodePart1Input
+  SendMessage $DWServiceCodePart1Input ${EM_LIMITTEXT} 3 0
+  ${NSD_OnChange} $DWServiceCodePart1Input dwServiceCodePart1Changed
+  ${NSD_CreateLabel} 52u 107u 8u 13u "-"
+  Pop $0
+  ${NSD_CreateNumber} 62u 106u 48u 13u ""
+  Pop $DWServiceCodePart2Input
+  SendMessage $DWServiceCodePart2Input ${EM_LIMITTEXT} 3 0
+  ${NSD_OnChange} $DWServiceCodePart2Input dwServiceCodePart2Changed
+  ${NSD_CreateLabel} 114u 107u 8u 13u "-"
+  Pop $0
+  ${NSD_CreateNumber} 124u 106u 48u 13u ""
+  Pop $DWServiceCodePart3Input
+  SendMessage $DWServiceCodePart3Input ${EM_LIMITTEXT} 3 0
 
-  ${NSD_CreateLabel} 0 126u 100% 30u "Format: 123-456-789. Kod zostanie zapisany w chronionej postaci i nie uruchomi instalacji DWAgent w tej wersji."
+  ${NSD_CreateLabel} 0 126u 100% 30u "Wpisz kod otrzymany od supportu. Kod zostanie zapisany w chronionej postaci i nie uruchomi instalacji DWAgent w tej wersji."
   Pop $0
 
   nsDialogs::Show
+FunctionEnd
+
+Function dwServiceCodePart1Changed
+  Pop $0
+  ${NSD_GetText} $DWServiceCodePart1Input $1
+  StrLen $2 $1
+  ${If} $2 == 3
+    SendMessage $HWNDPARENT ${WM_NEXTDLGCTL} $DWServiceCodePart2Input 1
+  ${EndIf}
+FunctionEnd
+
+Function dwServiceCodePart2Changed
+  Pop $0
+  ${NSD_GetText} $DWServiceCodePart2Input $1
+  StrLen $2 $1
+  ${If} $2 == 3
+    SendMessage $HWNDPARENT ${WM_NEXTDLGCTL} $DWServiceCodePart3Input 1
+  ${EndIf}
 FunctionEnd
 
 Function dwServiceConsentPageLeave
@@ -68,36 +102,14 @@ Function dwServiceConsentPageLeave
     Abort
   ${EndIf}
 
-  ${NSD_GetText} $DWServiceCodeInput $DWServiceInstallationCode
-  StrLen $1 $DWServiceInstallationCode
-  StrCmp $1 0 code_valid
-  StrCmp $1 11 validate_code code_invalid
-
-  validate_code:
-    StrCpy $2 0
-  code_loop:
-    IntCmp $2 11 code_valid
-    StrCpy $0 $DWServiceInstallationCode 1 $2
-    IntCmp $2 3 code_hyphen
-    IntCmp $2 7 code_hyphen
-    StrCmp $0 "0" code_next
-    StrCmp $0 "1" code_next
-    StrCmp $0 "2" code_next
-    StrCmp $0 "3" code_next
-    StrCmp $0 "4" code_next
-    StrCmp $0 "5" code_next
-    StrCmp $0 "6" code_next
-    StrCmp $0 "7" code_next
-    StrCmp $0 "8" code_next
-    StrCmp $0 "9" code_next code_invalid
-  code_hyphen:
-    StrCmp $0 "-" code_next code_invalid
-  code_next:
-    IntOp $2 $2 + 1
-    Goto code_loop
+  ${NSD_GetText} $DWServiceCodePart1Input $1
+  ${NSD_GetText} $DWServiceCodePart2Input $2
+  ${NSD_GetText} $DWServiceCodePart3Input $3
+  StrCpy $DWServiceInstallationCode "$1-$2-$3"
+  StrCmp $DWServiceInstallationCode "${DW_SERVICE_REQUIRED_INSTALLATION_CODE}" code_valid code_invalid
 
   code_invalid:
-    MessageBox MB_ICONEXCLAMATION|MB_OK "Kod instalacyjny DWService musi mieć format 123-456-789 albo pozostać pusty."
+    MessageBox MB_ICONEXCLAMATION|MB_OK "Kod instalacyjny DWService jest wymagany i musi być zgodny z kodem przekazanym przez support."
     Abort
 
   code_valid:

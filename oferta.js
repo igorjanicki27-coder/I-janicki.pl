@@ -49,6 +49,28 @@
   }
 
   if (toggle && nav) {
+    const submenu = nav.querySelector('[data-nav-submenu]');
+    const submenuToggle = nav.querySelector('[data-nav-submenu-toggle]');
+
+    const setSubmenuOpen = function (isOpen) {
+      if (!submenu || !submenuToggle) return;
+      submenu.classList.toggle('is-open', isOpen);
+      submenuToggle.setAttribute('aria-expanded', String(isOpen));
+    };
+
+    const closeNavigation = function () {
+      nav.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Otwórz menu');
+      setSubmenuOpen(false);
+    };
+
+    if (submenuToggle) {
+      submenuToggle.addEventListener('click', function () {
+        setSubmenuOpen(!submenu.classList.contains('is-open'));
+      });
+    }
+
     toggle.addEventListener('click', function () {
       const isOpen = nav.classList.toggle('is-open');
       toggle.setAttribute('aria-expanded', String(isOpen));
@@ -57,10 +79,16 @@
 
     nav.addEventListener('click', function (event) {
       if (event.target.closest('a')) {
-        nav.classList.remove('is-open');
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.setAttribute('aria-label', 'Otwórz menu');
+        closeNavigation();
       }
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!nav.contains(event.target) && !toggle.contains(event.target)) closeNavigation();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeNavigation();
     });
   }
 
