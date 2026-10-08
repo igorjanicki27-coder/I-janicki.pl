@@ -1,278 +1,76 @@
 <!doctype html>
-<html lang="pl" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="description" content="Regulaminy, polityka prywatności, informacje RODO i warunki współpracy i-JANICKI." />
-  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large" />
-  <link rel="canonical" href="https://i-janicki.pl/dokumenty/" />
-  <title>Dokumenty — i-JANICKI</title>
-  <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="documents-content.js"></script>
-
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="../analytics.js"></script>
-
-  <link rel="stylesheet" href="../styles.css" />
-
-  <style>
-    :root {
-      --bg-0: #000; --bg-1: #0b0e13; --bg-2: #12172a;
-      --text: #e6e8ff; --text-dim: #9aa0c3; --muted: #6b7193;
-      --accent-1: #7f40ff; --accent-4: #40c9ff;
-      --border: rgba(127,64,255,0.35); --border-soft: rgba(127,64,255,0.18);
-      --panel-bg: rgba(15,19,32,0.55);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { min-height: 100vh; background: var(--bg-0); color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
-    body {
-      display: flex; flex-direction: column;
-      min-height: 100vh;
-      background: radial-gradient(ellipse at 50% 30%,#1a1033 0%,#05060c 65%,#000 100%);
-    }
-
-    /* Topbar */
-    .topbar {
-      display: flex; align-items: center; gap: 16px; padding: 14px 24px;
-      border-bottom: 1px solid var(--border-soft);
-      background: rgba(5,6,12,0.8); backdrop-filter: blur(12px);
-      position: sticky; top: 0; z-index: 10;
-    }
-    .brand {
-      font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700;
-      letter-spacing: 3px; text-decoration: none;
-      background: linear-gradient(135deg,#baeaff,#7f40ff 50%,#ff00d4);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-    .topbar-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      color: var(--muted); letter-spacing: 1px; }
-
-    /* Main */
-    .main {
-      flex: 1;
-      max-width: 760px; margin: 0 auto; padding: 40px 24px 60px;
-      width: 100%;
-    }
-    h1 {
-      font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700;
-      letter-spacing: 2px; margin-bottom: 8px;
-      background: linear-gradient(135deg,#baeaff,#7f40ff 60%,#ff00d4);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
-
-    /* Document items */
-    .doc-list { display: flex; flex-direction: column; gap: 12px; }
-    .doc-item {
-      border: 1px solid var(--border-soft); border-radius: 16px;
-      background: var(--panel-bg); backdrop-filter: blur(14px);
-      overflow: hidden; transition: border-color 0.2s;
-    }
-    .doc-item:hover { border-color: var(--accent-1); }
-
-    .doc-header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; padding: 16px 20px; cursor: pointer;
-    }
-    .doc-header-title {
-      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
-      color: var(--text); letter-spacing: 0.5px;
-    }
-    .doc-direct-link {
-      margin-left: auto; color: var(--accent-4); font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; text-decoration: none; white-space: nowrap;
-    }
-    .doc-direct-link:hover { text-decoration: underline; }
-    .doc-toggle {
-      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-      background: rgba(127,64,255,0.12); border: 1px solid var(--border-soft);
-      display: grid; place-items: center; color: var(--accent-4); font-size: 16px;
-      transition: transform 0.3s, background 0.2s; user-select: none;
-    }
-    .doc-item.is-open .doc-toggle { transform: rotate(45deg); background: rgba(127,64,255,0.22); }
-
-    .doc-body {
-      display: none; padding: 0 20px 20px;
-      color: var(--text-dim); font-size: 14px; line-height: 1.75;
-    }
-    .doc-item.is-open .doc-body { display: block; }
-
-    /* Document content typography */
-    .doc-body h2 { font-family: 'Orbitron', sans-serif; font-size: 1.05rem;
-      letter-spacing: 1px; color: #baeaff; margin-bottom: 1.2rem; margin-top: 0.5rem; }
-    .doc-body h3 { font-size: 0.9rem; color: var(--text); margin: 1.2rem 0 0.4rem;
-      font-weight: 700; }
-    .doc-body p { margin-bottom: 0.7rem; }
-    .doc-body a { color: var(--accent-4); }
-    .doc-body strong { color: var(--text); }
-    .doc-body ul, .doc-body ol { padding-left: 1.4rem; margin-bottom: 0.7rem; }
-    .doc-body li { margin-bottom: 0.3rem; }
-    .doc-body hr { border: none; border-top: 1px solid var(--border-soft); margin: 1rem 0; }
-
-    /* Loading */
-    .doc-loading { color: var(--muted); font-size: 13px; }
-
-    /* Back link */
-    .back-link {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-family: 'JetBrains Mono', monospace; font-size: 12px;
-      color: var(--muted); text-decoration: none; padding: 6px 12px;
-      border: 1px solid var(--border-soft); border-radius: 8px;
-      transition: color 0.2s, border-color 0.2s; margin-bottom: 28px;
-    }
-    .back-link:hover { color: var(--accent-4); border-color: var(--accent-4); }
-
-
-    /* Na mobile nie pokazujemy custom kursora */
-    @media (max-width: 768px) {
-      .cursor-dot,
-      .cursor-ring {
-        display: none !important;
-      }
-    }
-  </style>
-</head>
-<body>
-
-<header class="topbar">
-  <a class="brand" href="../">i-JANICKI</a>
-  <span class="topbar-sub">/ Dokumenty</span>
-</header>
-
-<main class="main">
-  <a class="back-link" href="../">← Strona główna</a>
-  <h1>Dokumenty</h1>
-  <p class="subtitle">Regulamin i polityki obowiązujące w serwisie i-janicki.pl</p>
-
-  <div class="doc-list" id="docList">
-
-    <div class="doc-item" data-src="regulamin.html">
-      <div class="doc-header">
-        <span class="doc-header-title">📋 Regulamin witryny</span>
-        <a class="doc-direct-link" href="regulamin.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-regulamin">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
+<html lang="pl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05060c">
+<meta name="description" content="Regulaminy, polityka prywatności, informacje RODO i warunki współpracy i-JANICKI.">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<link rel="canonical" href="https://i-janicki.pl/dokumenty/">
+<title>Dokumenty — i-JANICKI</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap">
+<link rel="stylesheet" href="/oferta.css?v=7">
+<link rel="stylesheet" href="/dokumenty/dokument.css?v=2">
+<script defer src="/analytics.js?v=10"></script>
+<script defer src="/oferta.js?v=5"></script>
+<script defer src="documents-content.js"></script>
+</head><body>
+<a class="skip-link" href="#main">Przejdź do treści</a>
+<header class="site-header">
+    <div class="nav-shell">
+      <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><img src="/icons/icon-ui.webp" width="34" height="34" alt=""><span>i-JANICKI</span></a>
+      <button class="nav-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="service-navigation" data-nav-toggle><span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
+      <nav class="nav-links" id="service-navigation" aria-label="Główna nawigacja" data-nav><a href="/oferta/">Oferta</a><a href="/oferta/cennik/">Cennik</a><a href="/blog/">Blog</a><a href="/faq/">FAQ</a><a href="/kontakt/" class="nav-cta">Kontakt</a></nav>
     </div>
-
-    <div class="doc-item" data-src="polityka-prywatnosci.html">
-      <div class="doc-header">
-        <span class="doc-header-title">🔒 Polityka prywatności</span>
-        <a class="doc-direct-link" href="polityka-prywatnosci.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-polityka-prywatnosci">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
-    </div>
-
-    <div class="doc-item" data-src="polityka-rodo.html">
-      <div class="doc-header">
-        <span class="doc-header-title">🛡 Polityka RODO</span>
-        <a class="doc-direct-link" href="polityka-rodo.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-polityka-rodo">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
-    </div>
-
-    <div class="doc-item" data-src="regulamin-wspolpracy.html">
-      <div class="doc-header">
-        <span class="doc-header-title">📄 Regulamin współpracy B2B</span>
-        <a class="doc-direct-link" href="regulamin-wspolpracy.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-regulamin-wspolpracy">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
-    </div>
-
-    <div class="doc-item" data-src="polityka-wspolpracy.html">
-      <div class="doc-header">
-        <span class="doc-header-title">🤝 Polityka współpracy i przetwarzania danych</span>
-        <a class="doc-direct-link" href="polityka-wspolpracy.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-polityka-wspolpracy">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
-    </div>
-
-    <div class="doc-item" data-src="warunki-korzystania-z-aplikacji-i-janek.html">
-      <div class="doc-header">
-        <span class="doc-header-title">🧭 Warunki korzystania z aplikacji i-JANEK</span>
-        <a class="doc-direct-link" href="warunki-korzystania-z-aplikacji-i-janek.html">Otwórz dokument</a>
-        <div class="doc-toggle">+</div>
-      </div>
-      <div class="doc-body" id="body-warunki-korzystania-z-aplikacji-i-janek">
-        <div class="doc-loading">Ładowanie…</div>
-      </div>
-    </div>
-  </div>
+  </header>
+<main id="main">
+<div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">Dokumenty</li></ol></div>
+<section class="hero"><div class="container"><p class="eyebrow">Zasady i prywatność</p><h1>Dokumenty</h1><p class="hero-lead">Regulaminy, informacje o ochronie danych i warunki współpracy. Otwórz dokument lub rozwiń jego treść poniżej.</p></div></section>
+<div class="container document-list"><article class="document-entry">
+  <div class="document-entry-header"><h2><a href="regulamin.html">Regulamin witryny</a></h2><a class="text-link" href="regulamin.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="regulamin"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article>
+<article class="document-entry">
+  <div class="document-entry-header"><h2><a href="polityka-prywatnosci.html">Polityka prywatności</a></h2><a class="text-link" href="polityka-prywatnosci.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="polityka-prywatnosci"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article>
+<article class="document-entry">
+  <div class="document-entry-header"><h2><a href="polityka-rodo.html">Polityka RODO</a></h2><a class="text-link" href="polityka-rodo.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="polityka-rodo"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article>
+<article class="document-entry">
+  <div class="document-entry-header"><h2><a href="regulamin-wspolpracy.html">Regulamin współpracy B2B</a></h2><a class="text-link" href="regulamin-wspolpracy.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="regulamin-wspolpracy"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article>
+<article class="document-entry">
+  <div class="document-entry-header"><h2><a href="polityka-wspolpracy.html">Polityka współpracy i przetwarzania danych</a></h2><a class="text-link" href="polityka-wspolpracy.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="polityka-wspolpracy"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article>
+<article class="document-entry">
+  <div class="document-entry-header"><h2><a href="warunki-korzystania-z-aplikacji-i-janek.html">Warunki korzystania z aplikacji i-JANEK</a></h2><a class="text-link" href="warunki-korzystania-z-aplikacji-i-janek.html">Otwórz dokument <span aria-hidden="true">→</span></a></div>
+  <details data-document="warunki-korzystania-z-aplikacji-i-janek"><summary>Podgląd treści</summary><div class="doc-body"></div></details>
+</article></div>
 </main>
-
 <footer class="foot">
-    <span>© <span id="year"></span> i-JANICKI</span>
+    <span>© <span id="year" data-year></span> i-JANICKI</span>
     <span class="foot-sep">·</span>
     <a href="mailto:kontakt@i-janicki.pl" class="foot-mail">kontakt@i-janicki.pl</a>
     <span class="foot-sep">·</span>
-    <a href="../" class="foot-docs">Strona główna</a>
+    <a href="/dokumenty/" class="foot-docs">Dokumenty</a>
+    <nav class="foot-links" aria-label="Najważniejsze podstrony"><a href="/oferta/strony-www/">Strony WWW</a><a href="/oferta/aplikacje/">Aplikacje</a><a href="/oferta/seo/">SEO</a><a href="/oferta/sieci/">Sieci</a><a href="/oferta/opieka-it/">Opieka IT</a><a href="/faq/">FAQ</a><a href="/blog/">Blog</a></nav>
     <button class="cookie-foot-btn" id="cookieFootBtn" type="button" aria-label="Zmień ustawienia cookies" data-i18n-aria-label="cookie-settings-change">🍪</button>
   </footer>
-
-  <div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true"
-       aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>
-
-<script src="../script.min.js?v=19"></script>
+<div class="cookie-overlay" id="cookieOverlay" role="dialog" aria-modal="true" aria-label="Ustawienia plików cookie" aria-hidden="true" hidden></div>
 <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
-
-  // Jeśli brak decyzji o cookies — otwórz panel (tutorial nie istnieje na tej stronie)
-  if (!localStorage.getItem('ijanek_cookie_decision')) {
-    if (typeof showCookieBanner === 'function') {
-      showCookieBanner();
-    }
-  }
-
-  // Obsługa przycisku cookie w stopce — otwiera panel ustawień lub przekierowuje na stronę główną
-  document.getElementById('cookieFootBtn')?.addEventListener('click', function() {
-    if (typeof openCookiePanel === 'function') {
-      openCookiePanel();
-    } else {
-      window.location.href = '../#cookie';
-    }
+document.querySelectorAll('[data-document]').forEach(function (details) {
+  details.addEventListener('toggle', function () {
+    if (!details.open || details.dataset.loaded) return;
+    const content = DOCUMENTS_CONTENT[details.dataset.document];
+    details.querySelector('.doc-body').innerHTML = content || '<p>Otwórz dokument, aby przeczytać jego treść.</p>';
+    details.dataset.loaded = 'true';
   });
-
-  document.querySelectorAll('.doc-item').forEach(item => {
-    const header  = item.querySelector('.doc-header');
-    const body    = item.querySelector('.doc-body');
-    const src     = item.dataset.src;
-    let   loaded  = false;
-
-    header.addEventListener('click', (event) => {
-      if (event.target.closest('a')) return;
-      const willOpen = !item.classList.contains('is-open');
-      item.classList.toggle('is-open');
-
-      if (willOpen && !loaded) {
-        loaded = true;
-        const key = src.replace('.html', '');
-        body.innerHTML = DOCUMENTS_CONTENT[key] || '<p style="color:#ff6b6b">Nie udało się załadować dokumentu.</p>';
-      }
-    });
-  });
+});
 </script>
-  <!-- Personalizowany kursor -->
-  <div class="cursor-dot"  id="cursorDot"  aria-hidden="true"></div>
-  <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
-
-</body>
-</html>
+</body></html>

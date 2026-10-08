@@ -7,13 +7,9 @@ const EMAIL = 'kontakt@i-janicki.pl';
 
 const navigation = [
   ['oferta', 'Oferta'],
-  ['oferta/wroclaw', 'Wrocław'],
-  ['oferta/sroda-slaska', 'Środa Śląska'],
-  ['oferta/miekinia-lutynia', 'Miękinia i Lutynia'],
   ['oferta/cennik', 'Cennik'],
-  ['oferta/strony-www', 'Strony WWW'],
-  ['oferta/aplikacje', 'Aplikacje'],
-  ['blog', 'Blog']
+  ['blog', 'Blog'],
+  ['faq', 'FAQ']
 ];
 
 const relatedServices = [
@@ -671,7 +667,8 @@ function escapeHtml(value) {
 
 function renderNavigation(currentSlug) {
   return navigation.map(function (item) {
-    const current = item[0] === currentSlug ? ' aria-current="page"' : '';
+    const current = item[0] === currentSlug ? ' aria-current="page"'
+      : item[0] === 'oferta' && currentSlug !== 'oferta/cennik' ? ' class="is-active"' : '';
     return '<a href="/' + item[0] + '/"' + current + '>' + item[1] + '</a>';
   }).join('\n          ');
 }
@@ -784,7 +781,7 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=6">',
+    '  <link rel="stylesheet" href="/oferta.css?v=7">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
     '  <script defer src="/oferta.js?v=5"></script>',
@@ -851,7 +848,7 @@ function renderPage(page) {
     '      </div>',
     '    </section>',
     '    <section class="section">',
-    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Odezwę się z pytaniami, które pozwolą ustalić sensowny zakres i przygotować wycenę bez dokładania przypadkowych elementów.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div>',
+    '      <div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Opisz krótko, czego potrzebuje Twoja firma</h2><p>Napisz, czego potrzebujesz. Ustalimy zakres prac i przygotuję wycenę.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div>',
     '    </section>',
     '    <section class="section section-muted">',
     '      <div class="container"><div class="section-heading"><p class="section-kicker">Powiązane usługi</p><h2>Sprawdź także</h2></div><nav class="related-links" aria-label="Powiązane usługi">' + renderRelated(page.slug) + '</nav></div>',
@@ -874,7 +871,7 @@ function renderPage(page) {
 }
 
 function renderHubCard(item) {
-  return '<a class="offer-card" href="/' + item.slug + '/"><span class="section-kicker">' + escapeHtml(item.kicker) + '</span><h2>' + escapeHtml(item.title) + '</h2><p>' + escapeHtml(item.description) + '</p><strong>Sprawdź ofertę <span aria-hidden="true">→</span></strong></a>';
+  return '<a class="offer-card" href="/' + item.slug + '/"><h2>' + escapeHtml(item.title) + '</h2><p>' + escapeHtml(item.description) + '</p><strong aria-hidden="true">→</strong></a>';
 }
 
 function renderOfferHub() {
@@ -931,7 +928,7 @@ function renderOfferHub() {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=6">',
+    '  <link rel="stylesheet" href="/oferta.css?v=7">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
     '  <script defer src="/oferta.js?v=5"></script>',
@@ -945,9 +942,9 @@ function renderOfferHub() {
     '  </div></header>',
     '  <main id="main">',
     '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">Oferta</li></ol></div>',
-    '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Rozwiązania internetowe i IT dla Twojej firmy</h1><p class="hero-lead">Wybierz lokalną stronę dla Środy Śląskiej, Miękini i Lutyni albo Wrocławia — lub przejdź bezpośrednio do wspólnej usługi. Cennik i zasady współpracy są takie same niezależnie od miasta.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Zapytaj o wycenę</a><a class="button button-secondary" href="#lokalnie">Wybierz lokalizację</a></div></div></section>',
-    '    <section class="section section-muted" id="lokalnie"><div class="container"><div class="section-heading"><p class="section-kicker">Strony lokalne</p><h2>Wybierz rynek, na którym działasz</h2><p>Każda strona ma własny kontekst i treść, ale prowadzi do jednej wspólnej oferty oraz kontaktu.</p></div><div class="offer-grid offer-grid-locations">' + locations.map(renderHubCard).join('') + '</div></div></section>',
-    '    <section class="section"><div class="container"><div class="section-heading"><p class="section-kicker">Usługi wspólne</p><h2>Jedna oferta dla wszystkich lokalizacji</h2><p>Nie powielam cennika ani tych samych opisów usług dla każdego miasta. Dzięki temu struktura jest czytelna dla klientów i wyszukiwarki.</p></div><div class="offer-grid">' + services.map(renderHubCard).join('') + '</div></div></section>',
+    '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Strony, aplikacje i obsługa IT</h1><p class="hero-lead">Tworzę strony internetowe i aplikacje, prowadzę kampanie reklamowe i pomagam w codziennej obsłudze IT. Wybierz usługę, żeby poznać zakres i orientacyjne ceny.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Zapytaj o wycenę</a><a class="button button-secondary" href="#uslugi">Zobacz usługi</a></div></div></section>',
+    '    <section class="section" id="uslugi"><div class="container"><div class="section-heading"><p class="section-kicker">Oferta</p><h2>W czym mogę pomóc</h2></div><div class="offer-grid">' + services.map(renderHubCard).join('') + '</div></div></section>',
+    '    <section class="section section-muted" id="lokalnie"><div class="container"><div class="section-heading"><p class="section-kicker">Lokalnie i zdalnie</p><h2>Gdzie działam</h2><p>Wrocław, Środa Śląska, Miękinia i Lutynia. Strony i aplikacje realizuję również zdalnie dla firm z całej Polski.</p></div><div class="offer-grid offer-grid-locations">' + locations.map(renderHubCard).join('') + '</div></div></section>',
     '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div></section>',
     '  </main>',
     '  <footer class="foot">',

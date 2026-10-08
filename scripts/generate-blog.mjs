@@ -184,10 +184,9 @@ const posts = [
 
 const navigation = [
   ['/oferta/', 'Oferta'],
-  ['/oferta/strony-www/', 'Strony WWW'],
-  ['/oferta/aplikacje/', 'Aplikacje'],
   ['/oferta/cennik/', 'Cennik'],
-  ['/blog/', 'Blog']
+  ['/blog/', 'Blog'],
+  ['/faq/', 'FAQ']
 ];
 
 function warsawDate() {
@@ -263,8 +262,8 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="/oferta.css?v=6">
-  <link rel="stylesheet" href="/blog.css?v=1">
+  <link rel="stylesheet" href="/oferta.css?v=7">
+  <link rel="stylesheet" href="/blog.css?v=2">
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
   <script defer src="/analytics.js?v=10"></script>
   <script defer src="/oferta.js?v=5"></script>`;
