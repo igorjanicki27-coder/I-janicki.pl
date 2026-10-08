@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=36" />
+  <link rel="stylesheet" href="styles.min.css?v=37" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -605,6 +605,7 @@
       }
 
       body {
+        grid-template-columns: minmax(0, 1fr);
         padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
       }
 
@@ -652,6 +653,8 @@
       }
 
       .stage {
+        width: 100%;
+        min-width: 0;
         margin-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
         max-height: none !important;
         padding: 8px 10px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
@@ -662,7 +665,7 @@
 
       .stage-bot {
         width: 100%;
-        max-width: min(560px, calc(100vw - 22px));
+        max-width: 560px;
         gap: 10px;
         overflow-x: clip;
         min-width: 0;
@@ -683,8 +686,8 @@
       }
 
       .stage-bot .panel {
-        width: min(100%, calc(100vw - 22px));
-        max-width: min(560px, calc(100vw - 22px));
+        width: 100%;
+        max-width: 100%;
         min-width: 0;
         max-height: max(180px, calc(100dvh - 280px));
         padding: clamp(12px, 3vw, 16px);
@@ -709,6 +712,15 @@
         font-size: 13px;
         line-height: 1.55;
         overflow-wrap: anywhere;
+      }
+
+      /* iPhone: pola o mniejszej czcionce mogą powiększać stronę przy focusie. */
+      .stage-bot .panel input,
+      .stage-bot .panel textarea,
+      .stage-bot .panel select {
+        font-size: 16px;
+        min-width: 0;
+        max-width: 100%;
       }
 
       .greeting-prefs {
@@ -768,8 +780,8 @@
         bottom: auto !important;
         margin-inline: auto;
         z-index: 12;
-        width: min(100%, calc(100vw - 22px));
-        max-width: min(560px, calc(100vw - 22px));
+        width: 100%;
+        max-width: 100%;
         padding: 0 0 8px;
         background: transparent;
         border: 0;
@@ -883,10 +895,6 @@
     /* =================== Mobile Hard Responsive v2 =================== */
     @media (max-width: 820px) {
       .stage,
-      .stage-bot,
-      .panel,
-      .tutorial-nav,
-      .stage-content,
       .foot,
       .topbar {
         max-inline-size: 100%;
@@ -906,8 +914,8 @@
       .panel,
       .tutorial-nav,
       .stage-content {
-        inline-size: calc(100vw - 16px) !important;
-        max-inline-size: calc(100vw - 16px) !important;
+        inline-size: 100% !important;
+        max-inline-size: 100% !important;
         margin-inline: auto;
       }
 
@@ -1454,7 +1462,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=34"></script>
+  <script defer src="script.min.js?v=35"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

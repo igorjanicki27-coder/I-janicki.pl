@@ -877,7 +877,7 @@ function renderNameInput() {
   const inp = $('nameInput');
   const advance = () => { captureName(); goStep(tutStep + 1); };
   inp?.addEventListener('keydown', e => { if (e.key === 'Enter') advance(); });
-  requestAnimationFrame(() => inp?.focus());
+  requestAnimationFrame(() => inp?.focus({ preventScroll: true }));
 }
 
 function renderCookieStep() {
