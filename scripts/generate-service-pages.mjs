@@ -8,7 +8,8 @@ const EMAIL = 'kontakt@i-janicki.pl';
 const navigation = [
   ['', 'Strona główna'],
   ['blog', 'Blog'],
-  ['faq', 'FAQ']
+  ['faq', 'FAQ'],
+  ['cennik', 'Cennik']
 ];
 
 const offerNavigation = [
@@ -17,19 +18,21 @@ const offerNavigation = [
   ['oferta/aplikacje', 'Aplikacje'],
   ['oferta/seo', 'Pozycjonowanie i SEO'],
   ['oferta/sieci', 'Sieci LAN, Wi-Fi i VPN'],
-  ['oferta/opieka-it', 'Opieka IT'],
-  ['oferta/cennik', 'Cennik'],
-  ['oferta/wroclaw', 'Wrocław'],
-  ['oferta/sroda-slaska', 'Środa Śląska'],
-  ['oferta/miekinia-lutynia', 'Miękinia i Lutynia']
+  ['oferta/opieka-it', 'Opieka IT']
+];
+
+const locationNavigation = [
+  ['lokalizacje/wroclaw', 'Wrocław'],
+  ['lokalizacje/sroda-slaska', 'Środa Śląska'],
+  ['lokalizacje/miekinia-lutynia', 'Miękinia i Lutynia']
 ];
 
 const relatedServices = [
   ['kampanie-reklamowe', 'Kampanie reklamowe Google Ads'],
-  ['oferta/sroda-slaska', 'Strony WWW — Środa Śląska'],
-  ['oferta/miekinia-lutynia', 'Strony WWW — Miękinia i Lutynia'],
-  ['oferta/wroclaw', 'Strony WWW — Wrocław'],
-  ['oferta/cennik', 'Cennik'],
+  ['lokalizacje/sroda-slaska', 'Strony WWW — Środa Śląska'],
+  ['lokalizacje/miekinia-lutynia', 'Strony WWW — Miękinia i Lutynia'],
+  ['lokalizacje/wroclaw', 'Strony WWW — Wrocław'],
+  ['cennik', 'Cennik'],
   ['oferta/strony-www', 'Strony internetowe na zamówienie'],
   ['oferta/aplikacje', 'Aplikacje'],
   ['oferta/opieka-it', 'Opieka IT'],
@@ -39,7 +42,7 @@ const relatedServices = [
 
 const pages = [
   {
-    slug: 'oferta/sroda-slaska',
+    slug: 'lokalizacje/sroda-slaska',
     navLabel: 'Środa Śląska',
     areaServed: ['Środa Śląska', 'powiat średzki'],
     metaTitle: 'Strony internetowe Środa Śląska | i-JANICKI',
@@ -99,7 +102,7 @@ const pages = [
     ]
   },
   {
-    slug: 'oferta/cennik',
+    slug: 'cennik',
     navLabel: 'Cennik',
     areaServed: ['Środa Śląska', 'Miękinia', 'Wrocław', 'Dolny Śląsk'],
     metaTitle: 'Cennik stron internetowych i aplikacji | i-JANICKI',
@@ -534,7 +537,7 @@ const baseWebsitePage = pages[0];
 
 const miekiniaLutyniaPage = {
   ...structuredClone(baseWebsitePage),
-  slug: 'oferta/miekinia-lutynia',
+  slug: 'lokalizacje/miekinia-lutynia',
   navLabel: 'Miękinia i Lutynia',
   areaServed: ['Miękinia', 'Lutynia', 'gmina Miękinia', 'powiat średzki'],
   metaTitle: 'Strony internetowe Miękinia i Lutynia | i-JANICKI',
@@ -596,7 +599,7 @@ const miekiniaLutyniaPage = {
 
 const wroclawPage = {
   ...structuredClone(baseWebsitePage),
-  slug: 'oferta/wroclaw',
+  slug: 'lokalizacje/wroclaw',
   navLabel: 'Wrocław',
   areaServed: ['Wrocław', 'aglomeracja wrocławska', 'Dolny Śląsk'],
   metaTitle: 'Strony internetowe Wrocław | i-JANICKI',
@@ -681,12 +684,27 @@ function renderOfferNavigation(currentSlug) {
     + '<div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel>' + links + '</div></div>';
 }
 
+function renderLocationNavigation(currentSlug) {
+  const isLocationPage = currentSlug.startsWith('lokalizacje/');
+  const links = locationNavigation.map(function (item) {
+    const current = item[0] === currentSlug ? ' aria-current="page"' : '';
+    return '<a href="/' + item[0] + '/"' + current + '>' + item[1] + '</a>';
+  }).join('\n          ');
+
+  return '<div class="nav-submenu' + (isLocationPage ? ' is-open' : '') + '" data-nav-submenu>'
+    + '<button class="nav-submenu-toggle' + (isLocationPage ? ' is-active' : '') + '" type="button" aria-expanded="' + String(isLocationPage) + '" aria-controls="location-navigation" data-nav-submenu-toggle>'
+    + '<span>Lokalizacje</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button>'
+    + '<div class="nav-submenu-links" id="location-navigation" data-nav-submenu-panel>' + links + '</div></div>';
+}
+
 function renderNavigation(currentSlug) {
   return navigation.map(function (item, index) {
     const current = item[0] === currentSlug ? ' aria-current="page"' : '';
     const href = item[0] ? '/' + item[0] + '/' : '/';
     const link = '<a href="' + href + '"' + current + '>' + item[1] + '</a>';
-    return index === 0 ? link + '\n          ' + renderOfferNavigation(currentSlug) : link;
+    return index === 0
+      ? link + '\n          ' + renderOfferNavigation(currentSlug) + '\n          ' + renderLocationNavigation(currentSlug)
+      : link;
   }).join('\n          ');
 }
 
@@ -739,14 +757,30 @@ function renderStructuredData(page) {
       return { '@type': 'AdministrativeArea', name };
     })
   };
-  const breadcrumbs = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
+  let breadcrumbItems;
+  if (page.slug === 'cennik') {
+    breadcrumbItems = [
+      { '@type': 'ListItem', position: 1, name: 'Strona główna', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
+    ];
+  } else if (page.slug.startsWith('lokalizacje/')) {
+    breadcrumbItems = [
+      { '@type': 'ListItem', position: 1, name: 'Strona główna', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: 'Lokalizacje' },
+      { '@type': 'ListItem', position: 3, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
+    ];
+  } else {
+    breadcrumbItems = [
       { '@type': 'ListItem', position: 1, name: 'Strona główna', item: SITE_URL + '/' },
       { '@type': 'ListItem', position: 2, name: 'Oferta', item: SITE_URL + '/oferta/' },
       { '@type': 'ListItem', position: 3, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
-    ]
+    ];
+  }
+
+  const breadcrumbs = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbItems
   };
   const faq = {
     '@context': 'https://schema.org',
@@ -756,6 +790,16 @@ function renderStructuredData(page) {
     })
   };
   return JSON.stringify([service, breadcrumbs, faq]).replaceAll('<', '\\u003c');
+}
+
+function renderBreadcrumbs(page) {
+  if (page.slug === 'cennik') {
+    return '<li><a href="/">Strona główna</a></li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li>';
+  }
+  if (page.slug.startsWith('lokalizacje/')) {
+    return '<li><a href="/">Strona główna</a></li><li>Lokalizacje</li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li>';
+  }
+  return '<li><a href="/">Strona główna</a></li><li><a href="/oferta/">Oferta</a></li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li>';
 }
 
 function renderPage(page) {
@@ -792,10 +836,10 @@ function renderPage(page) {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=11">',
+    '  <link rel="stylesheet" href="/oferta.css?v=12">',
     '  <script type="application/ld+json">' + renderStructuredData(page) + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
-    '  <script defer src="/oferta.js?v=8"></script>',
+    '  <script defer src="/oferta.js?v=9"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
@@ -810,7 +854,7 @@ function renderPage(page) {
     '    </div>',
     '  </header>',
     '  <main id="main">',
-    '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li><a href="/oferta/">Oferta</a></li><li aria-current="page">' + escapeHtml(page.navLabel) + '</li></ol></div>',
+    '    <div class="container breadcrumbs" aria-label="Okruszki"><ol>' + renderBreadcrumbs(page) + '</ol></div>',
     '    <section class="hero">',
     '      <div class="container hero-grid">',
     '        <div>',
@@ -885,13 +929,7 @@ function renderHubCard(item) {
 }
 
 function renderOfferHub() {
-  const locations = [
-    { slug: 'oferta/wroclaw', kicker: 'Lokalnie', title: 'Wrocław', description: 'Strony internetowe dla firm działających na konkurencyjnym rynku Wrocławia.' },
-    { slug: 'oferta/sroda-slaska', kicker: 'Lokalnie', title: 'Środa Śląska', description: 'Strony internetowe dla firm ze Środy Śląskiej i powiatu średzkiego.' },
-    { slug: 'oferta/miekinia-lutynia', kicker: 'Lokalnie', title: 'Miękinia i Lutynia', description: 'Jedna mocna strona WWW dla firm obsługujących Miękinię, Lutynię i pozostałe miejscowości gminy.' }
-  ];
   const services = [
-    { slug: 'oferta/cennik', kicker: 'Wspólna oferta', title: 'Cennik', description: 'Strony od 49 zł/mies., aplikacje od 99 zł/mies. i pozostałe ceny orientacyjne.' },
     { slug: 'oferta/strony-www', kicker: 'Wspólna oferta', title: 'Strony WWW', description: 'Projektowanie i tworzenie responsywnych stron internetowych dopasowanych do celu firmy.' },
     { slug: 'oferta/aplikacje', kicker: 'Wspólna oferta', title: 'Aplikacje', description: 'Aplikacje webowe, desktopowe i mobilne dopasowane do procesu w firmie.' },
     { slug: 'kampanie-reklamowe', kicker: 'Wspólna oferta', title: 'Kampanie reklamowe', description: 'Tworzenie, prowadzenie i optymalizacja kampanii Google Ads.' },
@@ -908,7 +946,7 @@ function renderOfferHub() {
     url: canonical,
     mainEntity: {
       '@type': 'ItemList',
-      itemListElement: [...locations, ...services].map(function (item, index) {
+      itemListElement: services.map(function (item, index) {
         return { '@type': 'ListItem', position: index + 1, name: item.title, url: SITE_URL + '/' + item.slug + '/' };
       })
     }
@@ -938,10 +976,10 @@ function renderOfferHub() {
     '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     '  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel=\'stylesheet\'">',
     '  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>',
-    '  <link rel="stylesheet" href="/oferta.css?v=11">',
+    '  <link rel="stylesheet" href="/oferta.css?v=12">',
     '  <script type="application/ld+json">' + structuredData + '</script>',
     '  <script defer src="/analytics.js?v=10"></script>',
-    '  <script defer src="/oferta.js?v=8"></script>',
+    '  <script defer src="/oferta.js?v=9"></script>',
     '</head>',
     '<body>',
     '  <a class="skip-link" href="#main">Przejdź do treści</a>',
@@ -954,7 +992,6 @@ function renderOfferHub() {
     '    <div class="container breadcrumbs" aria-label="Okruszki"><ol><li><a href="/">Strona główna</a></li><li aria-current="page">Oferta</li></ol></div>',
     '    <section class="hero offer-hero"><div class="container"><p class="eyebrow">Oferta i obszar działania</p><h1 class="gradient-text">Strony, aplikacje i obsługa IT</h1><p class="hero-lead">Tworzę strony internetowe i aplikacje, prowadzę kampanie reklamowe i pomagam w codziennej obsłudze IT. Wybierz usługę, żeby poznać zakres i orientacyjne ceny.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Zapytaj o wycenę</a><a class="button button-secondary" href="#uslugi">Zobacz usługi</a></div></div></section>',
     '    <section class="section" id="uslugi"><div class="container"><div class="section-heading"><p class="section-kicker">Oferta</p><h2>W czym mogę pomóc</h2></div><div class="offer-grid">' + services.map(renderHubCard).join('') + '</div></div></section>',
-    '    <section class="section section-muted" id="lokalnie"><div class="container"><div class="section-heading"><p class="section-kicker">Lokalnie i zdalnie</p><h2>Gdzie działam</h2><p>Wrocław, Środa Śląska, Miękinia i Lutynia. Strony i aplikacje realizuję również zdalnie dla firm z całej Polski.</p></div><div class="offer-grid offer-grid-locations">' + locations.map(renderHubCard).join('') + '</div></div></section>',
     '    <section class="section"><div class="container cta"><p class="section-kicker">Porozmawiajmy</p><h2>Nie wiesz, od której strony zacząć?</h2><p>Opisz cel, obszar działania i najważniejszą usługę. Pomogę dobrać sensowny zakres.</p><div class="actions"><a class="button button-primary" href="/kontakt/">Przejdź do kontaktu</a></div></div></section>',
     '  </main>',
     '  <footer class="foot">',
@@ -980,5 +1017,14 @@ for (const page of pages) {
 
 await fs.mkdir(path.join(ROOT, 'oferta'), { recursive: true });
 await fs.writeFile(path.join(ROOT, 'oferta', 'index.html'), renderOfferHub(), 'utf8');
+
+for (const legacySlug of [
+  'oferta/cennik',
+  'oferta/wroclaw',
+  'oferta/sroda-slaska',
+  'oferta/miekinia-lutynia'
+]) {
+  await fs.rm(path.join(ROOT, legacySlug), { recursive: true, force: true });
+}
 
 console.log('Generated offer hub and ' + pages.length + ' service pages.');

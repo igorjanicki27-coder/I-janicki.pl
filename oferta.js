@@ -49,27 +49,37 @@
   }
 
   if (toggle && nav) {
-    const submenu = nav.querySelector('[data-nav-submenu]');
-    const submenuToggle = nav.querySelector('[data-nav-submenu-toggle]');
+    const submenus = Array.from(nav.querySelectorAll('[data-nav-submenu]'));
 
-    const setSubmenuOpen = function (isOpen) {
-      if (!submenu || !submenuToggle) return;
+    const setSubmenuOpen = function (submenu, isOpen) {
+      const submenuToggle = submenu && submenu.querySelector('[data-nav-submenu-toggle]');
+      if (!submenuToggle) return;
       submenu.classList.toggle('is-open', isOpen);
       submenuToggle.setAttribute('aria-expanded', String(isOpen));
+    };
+
+    const closeSubmenus = function (except) {
+      submenus.forEach(function (submenu) {
+        if (submenu !== except) setSubmenuOpen(submenu, false);
+      });
     };
 
     const closeNavigation = function () {
       nav.classList.remove('is-open');
       toggle.setAttribute('aria-expanded', 'false');
       toggle.setAttribute('aria-label', 'Otwórz menu');
-      setSubmenuOpen(false);
+      closeSubmenus();
     };
 
-    if (submenuToggle) {
+    submenus.forEach(function (submenu) {
+      const submenuToggle = submenu.querySelector('[data-nav-submenu-toggle]');
+      if (!submenuToggle) return;
       submenuToggle.addEventListener('click', function () {
-        setSubmenuOpen(!submenu.classList.contains('is-open'));
+        const willOpen = !submenu.classList.contains('is-open');
+        closeSubmenus(submenu);
+        setSubmenuOpen(submenu, willOpen);
       });
-    }
+    });
 
     toggle.addEventListener('click', function () {
       const isOpen = nav.classList.toggle('is-open');

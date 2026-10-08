@@ -46,7 +46,7 @@ const posts = [
           'W ofercie i-JANICKI prosta strona firmowa lub portfolio zaczyna się od 49 zł miesięcznie. Dokładny zakres zależy od projektu — aktualne kwoty i zasady znajdziesz w cenniku.'
         ],
         links: [
-          ['/oferta/cennik/', 'Sprawdź orientacyjny cennik'],
+          ['/cennik/', 'Sprawdź orientacyjny cennik'],
           ['/oferta/strony-www/', 'Zobacz usługę tworzenia stron WWW']
         ]
       }
@@ -87,9 +87,9 @@ const posts = [
           'Na tej stronie lokalizacje mają własny kontekst, a ogólny zakres tworzenia witryn pozostaje na jednej podstronie usługowej. Dzięki temu strony wzajemnie się uzupełniają.'
         ],
         links: [
-          ['/oferta/wroclaw/', 'Oferta lokalna: Wrocław'],
-          ['/oferta/sroda-slaska/', 'Oferta lokalna: Środa Śląska'],
-          ['/oferta/miekinia-lutynia/', 'Oferta lokalna: Miękinia i Lutynia']
+          ['/lokalizacje/wroclaw/', 'Oferta lokalna: Wrocław'],
+          ['/lokalizacje/sroda-slaska/', 'Oferta lokalna: Środa Śląska'],
+          ['/lokalizacje/miekinia-lutynia/', 'Oferta lokalna: Miękinia i Lutynia']
         ]
       }
     ]
@@ -179,7 +179,8 @@ const posts = [
 const navigation = [
   ['/', 'Strona główna'],
   ['/blog/', 'Blog'],
-  ['/faq/', 'FAQ']
+  ['/faq/', 'FAQ'],
+  ['/cennik/', 'Cennik']
 ];
 
 const offerNavigation = [
@@ -188,11 +189,13 @@ const offerNavigation = [
   ['/oferta/aplikacje/', 'Aplikacje'],
   ['/oferta/seo/', 'Pozycjonowanie i SEO'],
   ['/oferta/sieci/', 'Sieci LAN, Wi-Fi i VPN'],
-  ['/oferta/opieka-it/', 'Opieka IT'],
-  ['/oferta/cennik/', 'Cennik'],
-  ['/oferta/wroclaw/', 'Wrocław'],
-  ['/oferta/sroda-slaska/', 'Środa Śląska'],
-  ['/oferta/miekinia-lutynia/', 'Miękinia i Lutynia']
+  ['/oferta/opieka-it/', 'Opieka IT']
+];
+
+const locationNavigation = [
+  ['/lokalizacje/wroclaw/', 'Wrocław'],
+  ['/lokalizacje/sroda-slaska/', 'Środa Śląska'],
+  ['/lokalizacje/miekinia-lutynia/', 'Miękinia i Lutynia']
 ];
 
 function warsawDate() {
@@ -231,14 +234,19 @@ async function writeIfChanged(filePath, content) {
 
 function renderNavigation(currentPath) {
   const isOfferPage = currentPath === '/oferta/' || currentPath.startsWith('/oferta/');
+  const isLocationPage = currentPath.startsWith('/lokalizacje/');
   const offerLinks = offerNavigation.map(([href, label]) =>
     `<a href="${href}"${href === currentPath ? ' aria-current="page"' : ''}>${label}</a>`
   ).join('');
   const offerMenu = `<div class="nav-submenu${isOfferPage ? ' is-open' : ''}" data-nav-submenu><button class="nav-submenu-toggle${isOfferPage ? ' is-active' : ''}" type="button" aria-expanded="${String(isOfferPage)}" aria-controls="offer-navigation" data-nav-submenu-toggle><span>Oferta</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button><div class="nav-submenu-links" id="offer-navigation" data-nav-submenu-panel>${offerLinks}</div></div>`;
+  const locationLinks = locationNavigation.map(([href, label]) =>
+    `<a href="${href}"${href === currentPath ? ' aria-current="page"' : ''}>${label}</a>`
+  ).join('');
+  const locationMenu = `<div class="nav-submenu${isLocationPage ? ' is-open' : ''}" data-nav-submenu><button class="nav-submenu-toggle${isLocationPage ? ' is-active' : ''}" type="button" aria-expanded="${String(isLocationPage)}" aria-controls="location-navigation" data-nav-submenu-toggle><span>Lokalizacje</span><span class="nav-submenu-chevron" aria-hidden="true"></span></button><div class="nav-submenu-links" id="location-navigation" data-nav-submenu-panel>${locationLinks}</div></div>`;
 
   return navigation.map(([href, label], index) => {
     const link = `<a href="${href}"${href === currentPath ? ' aria-current="page"' : ''}>${label}</a>`;
-    return index === 0 ? link + offerMenu : link;
+    return index === 0 ? link + offerMenu + locationMenu : link;
   }).join('');
 }
 
@@ -274,11 +282,11 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@700&amp;family=Orbitron:wght@700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="/oferta.css?v=11">
+  <link rel="stylesheet" href="/oferta.css?v=12">
   <link rel="stylesheet" href="/blog.css?v=2">
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
   <script defer src="/analytics.js?v=10"></script>
-  <script defer src="/oferta.js?v=8"></script>`;
+  <script defer src="/oferta.js?v=9"></script>`;
 }
 
 function renderHeader(currentPath = '/blog/') {

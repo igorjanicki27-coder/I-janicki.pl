@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 
 const pages = [
   ['Strony WWW', 'oferta/strony-www/index.html'],
-  ['Wrocław', 'oferta/wroclaw/index.html'],
-  ['Środa Śląska', 'oferta/sroda-slaska/index.html'],
-  ['Miękinia i Lutynia', 'oferta/miekinia-lutynia/index.html']
+  ['Wrocław', 'lokalizacje/wroclaw/index.html'],
+  ['Środa Śląska', 'lokalizacje/sroda-slaska/index.html'],
+  ['Miękinia i Lutynia', 'lokalizacje/miekinia-lutynia/index.html']
 ];
 
 function normalizeText(html) {

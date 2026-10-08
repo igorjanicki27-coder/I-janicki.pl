@@ -150,24 +150,35 @@ function initHeaderMenu() {
   const nav = document.querySelector('[data-nav]');
   if (!toggle || !nav) return;
 
-  const submenu = nav.querySelector('[data-nav-submenu]');
-  const submenuToggle = nav.querySelector('[data-nav-submenu-toggle]');
+  const submenus = [...nav.querySelectorAll('[data-nav-submenu]')];
 
-  const setSubmenuOpen = isOpen => {
-    if (!submenu || !submenuToggle) return;
+  const setSubmenuOpen = (submenu, isOpen) => {
+    const submenuToggle = submenu?.querySelector('[data-nav-submenu-toggle]');
+    if (!submenuToggle) return;
     submenu.classList.toggle('is-open', isOpen);
     submenuToggle.setAttribute('aria-expanded', String(isOpen));
+  };
+
+  const closeSubmenus = except => {
+    submenus.forEach(submenu => {
+      if (submenu !== except) setSubmenuOpen(submenu, false);
+    });
   };
 
   const close = () => {
     nav.classList.remove('is-open');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', 'Otwórz menu');
-    setSubmenuOpen(false);
+    closeSubmenus();
   };
 
-  submenuToggle?.addEventListener('click', () => {
-    setSubmenuOpen(!submenu.classList.contains('is-open'));
+  submenus.forEach(submenu => {
+    const submenuToggle = submenu.querySelector('[data-nav-submenu-toggle]');
+    submenuToggle?.addEventListener('click', () => {
+      const willOpen = !submenu.classList.contains('is-open');
+      closeSubmenus(submenu);
+      setSubmenuOpen(submenu, willOpen);
+    });
   });
 
   toggle.addEventListener('click', event => {
@@ -1898,9 +1909,9 @@ function injectFaqBtn() {
   links.className = 'panel-quick-links';
   links.setAttribute('aria-label', currentLang === 'en' ? 'Local offers' : 'Oferty lokalne');
   links.innerHTML = `
-    <a class="panel-location-btn" href="/oferta/wroclaw/">Wrocław</a>
-    <a class="panel-location-btn" href="/oferta/sroda-slaska/">Środa Śląska</a>
-    <a class="panel-location-btn" href="/oferta/miekinia-lutynia/">Miękinia/Lutynia</a>
+    <a class="panel-location-btn" href="/lokalizacje/wroclaw/">Wrocław</a>
+    <a class="panel-location-btn" href="/lokalizacje/sroda-slaska/">Środa Śląska</a>
+    <a class="panel-location-btn" href="/lokalizacje/miekinia-lutynia/">Miękinia/Lutynia</a>
   `;
   panel.appendChild(faqLink);
   panel.appendChild(links);

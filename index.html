@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=41" />
+  <link rel="stylesheet" href="styles.min.css?v=42" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1105,14 +1105,21 @@
           <a href="/oferta/seo/">Pozycjonowanie i SEO</a>
           <a href="/oferta/sieci/">Sieci LAN, Wi-Fi i VPN</a>
           <a href="/oferta/opieka-it/">Opieka IT</a>
-          <a href="/oferta/cennik/">Cennik</a>
-          <a href="/oferta/wroclaw/">Wrocław</a>
-          <a href="/oferta/sroda-slaska/">Środa Śląska</a>
-          <a href="/oferta/miekinia-lutynia/">Miękinia i Lutynia</a>
+        </div>
+      </div>
+      <div class="nav-submenu" data-nav-submenu>
+        <button class="nav-submenu-toggle" type="button" aria-expanded="false" aria-controls="location-navigation" data-nav-submenu-toggle>
+          <span>Lokalizacje</span><span class="nav-submenu-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="nav-submenu-links" id="location-navigation" data-nav-submenu-panel>
+          <a href="/lokalizacje/wroclaw/">Wrocław</a>
+          <a href="/lokalizacje/sroda-slaska/">Środa Śląska</a>
+          <a href="/lokalizacje/miekinia-lutynia/">Miękinia i Lutynia</a>
         </div>
       </div>
       <a href="/blog/">Blog</a>
       <a href="/faq/">FAQ</a>
+      <a href="/cennik/">Cennik</a>
       <a href="/kontakt/" class="nav-cta">Kontakt</a>
     </nav>
   </header>
@@ -1443,7 +1450,7 @@
       </div>
     </div>
     <p class="price-note" data-i18n="pricing-note">Podane ceny są orientacyjne — każdy projekt wyceniam indywidualnie po wstępnej rozmowie.</p>
-    <p class="price-note"><a href="/oferta/cennik/">Zobacz pełny cennik i czynniki wpływające na wycenę →</a></p>
+    <p class="price-note"><a href="/cennik/">Zobacz pełny cennik i czynniki wpływające na wycenę →</a></p>
   </template>
 
   <template id="tpl-contact">
@@ -1488,7 +1495,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=40"></script>
+  <script defer src="script.min.js?v=41"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

@@ -195,7 +195,9 @@ html[data-theme="light"] .topbar { background: rgba(230,232,245,0.82); }
 .topbar .nav-submenu-links { display: none; gap: 2px; margin: 4px 0 6px 10px; padding-left: 8px; border-left: 1px solid var(--border-soft); }
 .topbar .nav-submenu.is-open .nav-submenu-links { display: grid; }
 .topbar .nav-submenu-links a { padding: 8px 10px; font-size: 12px; }
-.topbar .nav-links .nav-cta { color: var(--text); border-color: var(--border); background: rgba(127,64,255,.14); }
+.topbar .nav-links .nav-cta,
+.topbar .nav-links .nav-cta:hover,
+.topbar .nav-links .nav-cta[aria-current="page"] { color: var(--cyan); border-color: transparent; background: transparent; }
 html[data-theme="light"] .topbar .nav-links { background: rgba(241,245,255,.97); }
 
 /* topbar-actions removed from HTML */

@@ -22,6 +22,16 @@
       "package.json",
       "package-lock.json"
     ],
+    "redirects": [
+      { "source": "/oferta/cennik", "destination": "/cennik/", "type": 301 },
+      { "source": "/oferta/cennik/", "destination": "/cennik/", "type": 301 },
+      { "source": "/oferta/wroclaw", "destination": "/lokalizacje/wroclaw/", "type": 301 },
+      { "source": "/oferta/wroclaw/", "destination": "/lokalizacje/wroclaw/", "type": 301 },
+      { "source": "/oferta/sroda-slaska", "destination": "/lokalizacje/sroda-slaska/", "type": 301 },
+      { "source": "/oferta/sroda-slaska/", "destination": "/lokalizacje/sroda-slaska/", "type": 301 },
+      { "source": "/oferta/miekinia-lutynia", "destination": "/lokalizacje/miekinia-lutynia/", "type": 301 },
+      { "source": "/oferta/miekinia-lutynia/", "destination": "/lokalizacje/miekinia-lutynia/", "type": 301 }
+    ],
     "headers": [
       {
         "source": "firmy/**/*.@(js|css)",
