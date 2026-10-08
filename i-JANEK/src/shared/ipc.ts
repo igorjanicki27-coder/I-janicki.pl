@@ -61,6 +61,7 @@ export interface JanekApi {
     setConsent: (consent: ConsentRecord | null) => Promise<void>
     checkForUpdates: (silent: boolean) => Promise<{ status: string; message: string }>
     getUpdateStatus: () => Promise<UpdateStatusPayload>
+    acknowledgeUpdateStart?: () => Promise<void>
     onUpdateStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
     setUpdateChannel: (channel: UpdateChannel) => Promise<void>
     createDiagnosticBundle: (summary: DiagnosticBundleSummary) => Promise<{ saved: boolean; path?: string }>

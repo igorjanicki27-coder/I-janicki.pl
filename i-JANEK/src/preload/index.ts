@@ -30,6 +30,9 @@ const api: JanekApi = {
     setConsent: (consent) => ipcRenderer.invoke('system:set-consent', consent),
     checkForUpdates: (silent) => ipcRenderer.invoke('system:check-for-updates', silent),
     getUpdateStatus: () => ipcRenderer.invoke('system:get-update-status'),
+    ...(process.platform === 'win32' ? {
+      acknowledgeUpdateStart: () => ipcRenderer.invoke('system:acknowledge-update-start')
+    } : {}),
     onUpdateStatus: (callback) => {
       const listener = (_event: unknown, status: UpdateStatusPayload) => callback(status)
       ipcRenderer.on('system:update-status', listener)

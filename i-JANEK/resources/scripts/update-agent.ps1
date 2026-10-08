@@ -1,4 +1,6 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿param([switch]$FunctionsOnly)
+
+$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -11,13 +13,22 @@ $versionPath = Join-Path $root 'installed-version.txt'
 $configPath = Join-Path $root 'agent-config.json'
 $publicKeyPath = Join-Path $PSScriptRoot 'update-signing-public.json'
 $headers = @{ 'User-Agent' = 'i-JANEK-Windows-Update-Agent'; 'Accept' = 'application/vnd.github+json' }
+$script:restartPrepared = $false
+$updateLogPath = Join-Path $root 'logs\update-agent.log'
+
+function Write-UpdateLog([string]$message) {
+  try {
+    Add-Content -LiteralPath $updateLogPath -Value "[$([DateTime]::UtcNow.ToString('o'))] Request=$script:requestId $message" -Encoding UTF8
+  } catch { }
+}
 
 function Set-UpdateStatus([string]$state, [string]$version, [string]$message) {
-  $record = @{ state = $state; version = $version; requestId = $script:requestId; message = $message; updatedAt = [DateTime]::UtcNow.ToString('o') }
+  $record = @{ state = $state; version = $version; requestId = $script:requestId; message = $message; updatedAt = [DateTime]::UtcNow.ToString('o'); restartProtocol = 2; restartPrepared = $script:restartPrepared }
   $json = ConvertTo-Json $record -Compress
   $temporary = Join-Path $root 'update-status.tmp'
   [IO.File]::WriteAllText($temporary, $json, (New-Object Text.UTF8Encoding $false))
   Move-Item -LiteralPath $temporary -Destination $statusPath -Force
+  Write-UpdateLog "State=$state Version=$version $message"
 }
 
 function Set-DwServiceStatus([string]$state, [string]$configurationId, [string]$appliedCodeHash, [string]$message) {
@@ -220,6 +231,36 @@ function Assert-ProtectedInstallDir([string]$installDir) {
   }
 }
 
+function Get-RunningApplicationProcesses([string]$appExe) {
+  @(Get-CimInstance Win32_Process -Filter "Name='i-JANEK.exe'" | Where-Object {
+    $_.ExecutablePath -and [string]::Equals([IO.Path]::GetFullPath($_.ExecutablePath), [IO.Path]::GetFullPath($appExe), [StringComparison]::OrdinalIgnoreCase)
+  })
+}
+
+function Wait-ApplicationRestart($context, [bool]$startHidden, [string]$version) {
+  $ackPath = Join-Path $requestDir "restart-ack-$script:requestId.json"
+  Remove-Item -LiteralPath $ackPath -Force -ErrorAction SilentlyContinue
+  $launchedId = $context.Launch($startHidden, $script:requestId)
+  Write-UpdateLog "Native launch PID=$launchedId Session=$($context.SessionId) Hidden=$startHidden"
+  $deadline = [DateTime]::UtcNow.AddSeconds(90)
+  while ([DateTime]::UtcNow -lt $deadline) {
+    $process = Get-Process -Id $launchedId -ErrorAction SilentlyContinue
+    if (-not $process) { throw 'Aplikacja zakończyła się podczas ponownego uruchamiania.' }
+    if (Test-Path -LiteralPath $ackPath -PathType Leaf) {
+      $file = Get-Item -LiteralPath $ackPath
+      if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $file.Length -gt 4096) { throw 'Nieprawidłowe potwierdzenie restartu.' }
+      try { $ack = Get-Content -LiteralPath $ackPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $ack = $null }
+      if ($ack -and $ack.requestId -eq $script:requestId -and $ack.version -eq $version -and $ack.processId -eq $launchedId -and $process.SessionId -eq $context.SessionId) {
+        Remove-Item -LiteralPath $ackPath -Force
+        Write-UpdateLog "Application acknowledged renderer startup PID=$launchedId Version=$version"
+        return
+      }
+    }
+    Start-Sleep -Milliseconds 500
+  }
+  throw 'Nowa aplikacja nie potwierdziła uruchomienia w ciągu 90 sekund. Sprawdź logs\update-agent.log.'
+}
+
 function Invoke-Update($request, [string]$appExe) {
   $version = [string]$request.version
   $channel = [string]$request.channel
@@ -272,20 +313,55 @@ function Invoke-Update($request, [string]$appExe) {
     throw 'Suma kontrolna instalatora jest niezgodna z podpisanym manifestem.'
   }
 
-  Set-UpdateStatus 'ready' $version 'Aktualizacja zweryfikowana. Zamykam aplikację.'
-  $deadline = [DateTime]::UtcNow.AddMinutes(5)
-  while (@(Get-Process -Name 'i-JANEK' -ErrorAction SilentlyContinue).Count -gt 0) {
-    if ([DateTime]::UtcNow -ge $deadline) { throw 'Aplikacja nie zamknęła się przed aktualizacją.' }
-    Start-Sleep -Seconds 2
+  if ($request.restartProtocol -ne 2 -or $request.processId -ne [int]($script:requestId.Split('-')[0]) -or $request.startHidden -isnot [bool]) {
+    throw 'Aplikacja wymaga jednorazowej naprawy najnowszym instalatorem i-JANEK.'
   }
+  if (-not ('IJanek.Update.UserSessionRestart' -as [type])) {
+    Add-Type -Path (Join-Path $PSScriptRoot 'user-session-restart.cs')
+  }
+  $context = New-Object IJanek.Update.UserSessionRestart -ArgumentList ([int]$request.processId), $appExe
+  $applicationClosed = $false
+  $installationComplete = $false
+  try {
+    $otherSessions = @(Get-RunningApplicationProcesses $appExe | Where-Object { $_.SessionId -ne $context.SessionId })
+    if ($otherSessions.Count -gt 0) { throw 'Zamknij i-JANEK na pozostałych kontach Windows przed aktualizacją.' }
+    Write-UpdateLog "Restart prepared Session=$($context.SessionId) RequesterPID=$($context.OriginalProcessId) Hidden=$($request.startHidden)"
+    $script:restartPrepared = $true
+    Set-UpdateStatus 'ready' $version 'Aktualizacja zweryfikowana. Zamykam aplikację.'
+    $deadline = [DateTime]::UtcNow.AddMinutes(5)
+    while (@(Get-RunningApplicationProcesses $appExe).Count -gt 0) {
+      if ([DateTime]::UtcNow -ge $deadline) { throw 'Aplikacja nie zamknęła się przed aktualizacją.' }
+      Start-Sleep -Seconds 2
+    }
+    $applicationClosed = $true
 
-  Set-UpdateStatus 'installing' $version 'Instaluję aktualizację w tle.'
-  $installer = Start-Process -FilePath $trustedInstaller -ArgumentList @('/S', '--updated') -PassThru -Wait -WindowStyle Hidden
-  if ($installer.ExitCode -ne 0) { throw "Instalator zakończył się błędem $($installer.ExitCode)." }
-  [IO.File]::WriteAllText($versionPath, $version, (New-Object Text.UTF8Encoding $false))
-  Set-UpdateStatus 'installed' $version 'Aktualizacja została zainstalowana.'
-  Remove-Item -LiteralPath $trustedInstaller -Force -ErrorAction SilentlyContinue
+    Set-UpdateStatus 'installing' $version 'Instaluję aktualizację w tle.'
+    $installer = Start-Process -FilePath $trustedInstaller -ArgumentList @('/S', '--updated') -PassThru -Wait -WindowStyle Hidden
+    if ($installer.ExitCode -ne 0) { throw "Instalator zakończył się błędem $($installer.ExitCode)." }
+    # The installed package itself, not just NSIS's exit code, must have the target version.
+    if ((Get-InstalledVersion $appExe) -ne $version) { throw 'Po instalacji aplikacja ma nieprawidłową wersję.' }
+    $installationComplete = $true
+    [IO.File]::WriteAllText($versionPath, $version, (New-Object Text.UTF8Encoding $false))
+    Set-UpdateStatus 'restarting' $version 'Uruchamiam zaktualizowaną aplikację.'
+    Wait-ApplicationRestart $context ([bool]$request.startHidden) $version
+    Set-UpdateStatus 'installed' $version 'Aktualizacja została zainstalowana.'
+    Remove-Item -LiteralPath $trustedInstaller -Force -ErrorAction SilentlyContinue
+  } catch {
+    $failure = $_
+    if ($applicationClosed -and -not $installationComplete -and (Test-Path -LiteralPath $appExe -PathType Leaf)) {
+      try {
+        $recoveryId = $context.Launch([bool]$request.startHidden, $script:requestId)
+        Write-UpdateLog "Installer failed; attempted recovery PID=$recoveryId"
+      } catch { Write-UpdateLog "Recovery failed: $($_.Exception.Message)" }
+    }
+    throw $failure
+  } finally {
+    $script:restartPrepared = $false
+    $context.Dispose()
+  }
 }
+
+if ($FunctionsOnly) { return }
 
 try {
   New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null

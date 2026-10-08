@@ -246,6 +246,9 @@ async function confirmUnregister() {
 }
 
 onMounted(async () => {
+  void window.janek?.system?.acknowledgeUpdateStart?.().catch((error: unknown) => {
+    console.warn('[i-JANEK] Nie udało się potwierdzić startu po aktualizacji:', error)
+  })
   window.addEventListener('i-janek:open-unregister-dialog', openUnregisterDialog)
   if (window.janek?.system?.onUpdateStatus) {
     updateStatusCleanup = window.janek.system.onUpdateStatus(handleUpdateStatus)

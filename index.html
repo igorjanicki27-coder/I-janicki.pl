@@ -587,6 +587,12 @@
     }
 
     /* =================== Global Mobile Layout Patch =================== */
+    @media (min-width: 769px) {
+      .stage:not(.is-presenting) .stage-bot {
+        width: min(720px, 92vw);
+      }
+    }
+
     @media (max-width: 768px) {
       html,
       body {
@@ -599,7 +605,7 @@
       }
 
       body {
-        padding-bottom: var(--mobile-bottom-height, 112px);
+        padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
       }
 
       .page-bottom {
@@ -662,9 +668,12 @@
         min-width: 0;
       }
 
-      .bot {
-        width: min(132px, 38vw);
+      .stage.is-presenting .stage-bot {
+        flex-direction: column;
+        align-items: center;
       }
+
+      .bot { width: min(88px, 26vw); }
 
       /* Wyłączenie sticky robota na mobile (częste źródło "przeskoków") */
       .stage:has(#tutorialNav:not([hidden])) .bot,
@@ -673,13 +682,15 @@
         top: auto !important;
       }
 
-      .panel {
+      .stage-bot .panel {
         width: min(100%, calc(100vw - 22px));
         max-width: min(560px, calc(100vw - 22px));
         min-width: 0;
+        max-height: max(180px, calc(100dvh - 280px));
         padding: clamp(12px, 3vw, 16px);
         border-radius: 14px;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
       }
 
       /* Pseudo-border panelu potrafi generować 1-2px overflow na mobile */
@@ -757,8 +768,8 @@
         bottom: auto !important;
         margin-inline: auto;
         z-index: 12;
-        width: min(320px, calc(100vw - 32px));
-        max-width: min(320px, calc(100vw - 32px));
+        width: min(100%, calc(100vw - 22px));
+        max-width: min(560px, calc(100vw - 22px));
         padding: 0 0 8px;
         background: transparent;
         border: 0;
@@ -798,13 +809,6 @@
       .tutorial-nav:not(.has-back) .tut-next {
         flex: 1;
         max-width: none;
-      }
-
-      .tutorial-nav .tut-next {
-        color: #fff;
-        background: linear-gradient(135deg, #6932bd, #4c2f9d);
-        border-color: rgba(188, 157, 255, 0.65);
-        box-shadow: 0 6px 20px rgba(13, 7, 32, 0.35);
       }
 
       .foot {
@@ -947,17 +951,12 @@
         max-width: none !important;
       }
 
-      .tutorial-nav {
-        inline-size: min(320px, calc(100vw - 32px)) !important;
-        max-inline-size: min(320px, calc(100vw - 32px)) !important;
-      }
-
       .tut-skip {
         width: 100%;
       }
 
       .bot {
-        width: min(120px, 33vw);
+        width: min(88px, 26vw);
       }
 
       .foot {
@@ -1455,7 +1454,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=33"></script>
+  <script defer src="script.min.js?v=34"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

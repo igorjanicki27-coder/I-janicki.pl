@@ -13,7 +13,7 @@ import { executeTerminalCommand } from './services/terminal-service'
 import { applyDwServiceInstallationCode, getDwServiceAgentState } from './services/dwservice-agent-service'
 import { localStore } from './store'
 import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
-import { spawnWindowsUpdateWatcher } from './services/windows-update-watcher'
+import { canExitForWindowsUpdate, getWindowsRestartRequestId, type WindowsAgentUpdateStatus } from './services/windows-update-protocol'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -25,9 +25,8 @@ let updateInstallReminder: NodeJS.Timeout | null = null
 let windowsAgentStatusInterval: NodeJS.Timeout | null = null
 let updateCheckInFlight: Promise<{ status: string; message: string }> | null = null
 let updateInstallPromptOpen = false
-let windowsRestartSpawned = false
-let windowsRestartAttempts = 0
-let windowsRestartAttemptId: string | null = null
+let windowsUpdateExitStarted = false
+let windowsRestartAcknowledged = false
 let pendingWindowsUpdateVersion: string | null = null
 let pendingWindowsUpdateRequestId: string | null = null
 let windowsAgentRequestStartedAt = 0
@@ -95,96 +94,29 @@ function hasWindowsUpdateAgent() {
   return process.platform === 'win32' && fs.existsSync(path.join(getWindowsAgentRoot(), 'agent-config.json'))
 }
 
-function restartAfterWindowsUpdate(version: string) {
-  if (windowsRestartSpawned || windowsRestartAttempts >= 3) return
-  windowsRestartAttempts += 1
-  const attemptId = `${process.pid}-${Date.now()}-${windowsRestartAttempts}`
-  const sourceScriptPath = path.join(process.resourcesPath, 'resources', 'scripts', 'restart-after-update.ps1')
-  const restartDir = path.join(app.getPath('userData'), 'update-restart')
-  const scriptPath = path.join(restartDir, 'restart-after-update.ps1')
-  const logPath = path.join(restartDir, 'restart-after-update.log')
-  const handshakePath = path.join(restartDir, `watcher-${attemptId}.ready`)
-  const shouldRestartHidden = !mainWindow || !mainWindow.isVisible() || mainWindow.isMinimized()
+function hasWindowsAgentRestartProtocol() {
   try {
-    fs.mkdirSync(restartDir, { recursive: true })
-    fs.copyFileSync(sourceScriptPath, scriptPath)
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Przygotowano restart po aktualizacji ${version}. Próba=${attemptId}.\n`, 'utf8')
-    fs.rmSync(handshakePath, { force: true })
+    const raw = fs.readFileSync(path.join(getWindowsAgentRoot(), 'agent-config.json'), 'utf8').replace(/^\uFEFF/u, '')
+    return JSON.parse(raw).restartProtocol === 2
+  } catch { return false }
+}
+
+function acknowledgeWindowsUpdateRestart() {
+  if (process.platform !== 'win32' || !app.isPackaged || windowsRestartAcknowledged) return
+  const requestId = getWindowsRestartRequestId(process.argv)
+  if (!requestId) return
+  try {
+    const ackPath = path.join(getWindowsAgentRoot(), 'requests', `restart-ack-${requestId}.json`)
+    const temporary = `${ackPath}.tmp`
+    fs.writeFileSync(temporary, JSON.stringify({
+      requestId, version: app.getVersion(), processId: process.pid
+    }), { encoding: 'utf8', flag: 'wx' })
+    fs.renameSync(temporary, ackPath)
+    windowsRestartAcknowledged = true
+    void writeDiagnosticLog('info', 'windows_update_restart_acknowledged', { requestId, version: app.getVersion() })
   } catch (error) {
-    publishUpdateStatus({ status: 'error', message: `Nie udało się przygotować pliku ponownego uruchomienia: ${(error as Error).message}` })
-    return
+    void writeDiagnosticLog('error', 'windows_update_restart_ack_failed', { requestId, error })
   }
-  windowsRestartSpawned = true
-  windowsRestartAttemptId = attemptId
-  const watcherArgs = [
-    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
-    '-Version', version, '-AppExe', process.execPath, '-LogPath', logPath,
-    '-AttemptId', attemptId, '-HandshakePath', handshakePath
-  ]
-  if (shouldRestartHidden) watcherArgs.push('-StartHidden')
-  let watcher: ReturnType<typeof spawn>
-  try {
-    watcher = spawnWindowsUpdateWatcher(watcherArgs)
-  } catch (error) {
-    windowsRestartSpawned = false
-    publishUpdateStatus({ status: 'error', version, message: `Nie udało się uruchomić procesu ponownego startu: ${(error as Error).message}` })
-    return
-  }
-  let restartConfirmed = false
-  const failRestart = (message: string) => {
-    if (restartConfirmed || !windowsRestartSpawned || windowsRestartAttemptId !== attemptId) return
-    windowsRestartSpawned = false
-    windowsRestartAttemptId = null
-    publishUpdateStatus({ status: 'error', version, message })
-    void writeDiagnosticLog('error', 'windows_restart_watcher_failed', { version, attemptId, message, logPath, handshakePath })
-  }
-  const confirmRestart = () => {
-    if (restartConfirmed) return true
-    if (!windowsRestartSpawned || windowsRestartAttemptId !== attemptId) return false
-    try {
-      if (fs.readFileSync(handshakePath, 'utf8').trim() !== attemptId) return false
-      restartConfirmed = true
-      forceQuit = true
-      try {
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] Obserwator gotowy. Wymuszam zakończenie aplikacji przed instalacją. Próba=${attemptId}.\n`, 'utf8')
-      } catch { /* A diagnostic log failure must not block the verified update handoff. */ }
-      // The SYSTEM update agent cannot replace the application while any Electron
-      // process is still alive. app.quit() can be cancelled by a window lifecycle
-      // handler, so use the immediate exit path only after the restart watcher has
-      // confirmed that it is ready to relaunch the updated application.
-      app.exit(0)
-      return true
-    } catch {
-      return false
-    }
-  }
-  watcher.once('error', (error) => {
-    failRestart(`Nie udało się uruchomić procesu ponownego startu: ${error.message}`)
-  })
-  watcher.once('exit', (code) => {
-    if (confirmRestart()) return
-    failRestart(`Proces ponownego startu zakończył się przed uruchomieniem obserwatora (kod ${code ?? 'nieznany'}). Sprawdź restart-after-update.log.`)
-  })
-  if (!watcher.pid) {
-    failRestart('Nie udało się uruchomić procesu ponownego startu aplikacji.')
-    return
-  }
-  try {
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Uruchomiono conhost --headless. PID=${watcher.pid} Próba=${attemptId}.\n`, 'utf8')
-  } catch { /* The observer handshake remains the authoritative startup check. */ }
-  watcher.unref()
-  const deadline = Date.now() + 2 * 60_000
-  const confirmRestartWatcher = () => {
-    if (!windowsRestartSpawned || windowsRestartAttemptId !== attemptId || restartConfirmed) return
-    if (confirmRestart()) return
-    if (Date.now() >= deadline) {
-      watcher.kill()
-      failRestart('Proces ponownego startu nie uruchomił się w ciągu 2 minut. Aplikacja pozostaje otwarta; sprawdź restart-after-update.log.')
-      return
-    }
-    setTimeout(confirmRestartWatcher, 200)
-  }
-  confirmRestartWatcher()
 }
 
 function pollWindowsAgentStatus() {
@@ -198,7 +130,7 @@ function pollWindowsAgentStatus() {
   windowsAgentLastPollAt = now
   try {
     const raw = fs.readFileSync(path.join(getWindowsAgentRoot(), 'update-status.json'), 'utf8').replace(/^\uFEFF/u, '')
-    const status = JSON.parse(raw) as { state?: string; version?: string; requestId?: string; message?: string; updatedAt?: string }
+    const status = JSON.parse(raw) as WindowsAgentUpdateStatus
     const matchesPendingRequest = status.requestId === pendingWindowsUpdateRequestId
     if (status.state === 'error' && (matchesPendingRequest || !status.requestId)) {
       publishUpdateStatus({ status: 'error', message: status.message || 'Agent aktualizacji zgłosił błąd.' })
@@ -213,15 +145,19 @@ function pollWindowsAgentStatus() {
       windowsAgentTimeoutReported = false
     }
     if (status.state === 'ready') {
-      if (windowsRestartAttempts < 3) {
-        publishUpdateStatus({ status: 'downloaded', version: status.version, message: status.message || 'Aktualizacja jest gotowa.' })
-        restartAfterWindowsUpdate(pendingWindowsUpdateVersion)
+      if (!windowsUpdateExitStarted && canExitForWindowsUpdate(status, pendingWindowsUpdateRequestId, pendingWindowsUpdateVersion)) {
+        windowsUpdateExitStarted = true
+        forceQuit = true
+        // The SYSTEM agent already holds the normal user's session token and
+        // environment. It owns both installation and relaunch, independently
+        // of Electron and its window-close handlers.
+        app.exit(0)
       }
     } else if (status.state === 'installed') {
       publishUpdateStatus({ status: 'up_to_date', version: status.version, message: status.message || 'Aktualizacja została zainstalowana.' })
       pendingWindowsUpdateVersion = null
       pendingWindowsUpdateRequestId = null
-    } else if (status.state === 'verifying' || status.state === 'installing') {
+    } else if (status.state === 'verifying' || status.state === 'installing' || status.state === 'restarting') {
       publishUpdateStatus({ status: 'available', version: status.version, message: status.message || 'Przygotowuję aktualizację.' })
     }
   } catch (error) {
@@ -229,7 +165,7 @@ function pollWindowsAgentStatus() {
       console.warn('[i-JANEK] Nie udało się odczytać statusu agenta aktualizacji:', error)
     }
   } finally {
-    if (!pendingWindowsUpdateVersion || windowsRestartSpawned) return
+    if (!pendingWindowsUpdateVersion || windowsUpdateExitStarted) return
     const lastProgressAt = windowsAgentLastProgressAt || windowsAgentRequestStartedAt
     const timeout = windowsAgentLastProgressAt ? WINDOWS_AGENT_PROGRESS_TIMEOUT_MS : WINDOWS_AGENT_RESPONSE_TIMEOUT_MS
     if (windowsAgentTimeoutReported || Date.now() - lastProgressAt < timeout) return
@@ -249,6 +185,10 @@ function pollWindowsAgentStatus() {
 
 function handOffWindowsUpdate(version: string, installerPath: string) {
   if (pendingWindowsUpdateVersion === version) return
+  if (!hasWindowsAgentRestartProtocol()) {
+    publishUpdateStatus({ status: 'error', version, message: 'Agent Windows wymaga jednorazowej naprawy. Uruchom najnowszy instalator i-JANEK; następne aktualizacje będą automatyczne bez UAC.' })
+    return
+  }
   const channel = localStore.get('updateChannel') ?? 'stable'
   if (!/^\d+\.\d+\.\d+(?:-(?:alpha|beta)\.\d+)?$/u.test(version) || !['stable', 'beta', 'test'].includes(channel)) {
     throw new Error('Nieprawidłowe metadane aktualizacji Windows.')
@@ -257,17 +197,20 @@ function handOffWindowsUpdate(version: string, installerPath: string) {
   const requestId = `${process.pid}-${Date.now()}`
   const requestName = `request-${requestId}.json`
   const requestPath = path.join(requestDir, requestName)
-  fs.writeFileSync(requestPath, JSON.stringify({
+  const temporaryRequestPath = `${requestPath}.tmp`
+  fs.writeFileSync(temporaryRequestPath, JSON.stringify({
     version,
     requestId,
     channel: channel === 'stable' ? 'latest' : channel,
-    installerPath
+    installerPath,
+    restartProtocol: 2,
+    processId: process.pid,
+    startHidden: !mainWindow || !mainWindow.isVisible() || mainWindow.isMinimized() || !mainWindow.isFocused()
   }), { encoding: 'utf8', flag: 'wx' })
+  fs.renameSync(temporaryRequestPath, requestPath)
   pendingWindowsUpdateVersion = version
   pendingWindowsUpdateRequestId = requestId
-  windowsRestartSpawned = false
-  windowsRestartAttemptId = null
-  windowsRestartAttempts = 0
+  windowsUpdateExitStarted = false
   windowsAgentRequestStartedAt = Date.now()
   windowsAgentLastProgressAt = 0
   windowsAgentLastStatusTimestamp = null
@@ -775,6 +718,10 @@ function registerIpc() {
   })
   ipcMain.handle('system:check-for-updates', async (_event, silent: boolean) => checkForUpdates(silent))
   ipcMain.handle('system:get-update-status', async () => latestUpdateStatus)
+  ipcMain.handle('system:acknowledge-update-start', async (event) => {
+    if (event.sender !== mainWindow?.webContents) return
+    acknowledgeWindowsUpdateRestart()
+  })
   ipcMain.handle('system:set-update-channel', async (_event, channel: UpdateChannel) => {
     if (!['test', 'beta', 'stable'].includes(channel)) {
       throw new Error('Nieobsługiwany kanał aktualizacji.')

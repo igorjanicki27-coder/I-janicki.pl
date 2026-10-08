@@ -50,8 +50,10 @@ try {
   Write-InstallLog 'Kopiowanie plików agenta.'
   Copy-Item -LiteralPath (Join-Path $sourceDir 'update-agent.ps1') -Destination (Join-Path $agentDir 'update-agent.ps1') -Force
   Copy-Item -LiteralPath (Join-Path $sourceDir 'update-signing-public.json') -Destination (Join-Path $agentDir 'update-signing-public.json') -Force
-  $config = @{ installDir = (Resolve-Path -LiteralPath $InstallDir).Path } | ConvertTo-Json -Compress
-  [IO.File]::WriteAllText((Join-Path $root 'agent-config.json'), $config, (New-Object Text.UTF8Encoding $false))
+  Copy-Item -LiteralPath (Join-Path $sourceDir 'user-session-restart.cs') -Destination (Join-Path $agentDir 'user-session-restart.cs') -Force
+  # Check the native helper before advertising this protocol to the application.
+  Add-Type -Path (Join-Path $agentDir 'user-session-restart.cs')
+  $config = @{ installDir = (Resolve-Path -LiteralPath $InstallDir).Path; restartProtocol = 2 } | ConvertTo-Json -Compress
   Write-InstallLog 'Rejestrowanie zadania aktualizacji.'
   $powershell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
   $scriptPath = Join-Path $agentDir 'update-agent.ps1'
@@ -72,6 +74,7 @@ try {
     $registeredTask.SetSecurityDescriptor(($securityDescriptor + '(A;;GRGX;;;AU)'), 0)
   }
 
+  [IO.File]::WriteAllText((Join-Path $root 'agent-config.json'), $config, (New-Object Text.UTF8Encoding $false))
   Write-InstallLog 'Instalacja agenta zakończona powodzeniem.'
 } catch {
   $details = ($_ | Out-String).Trim()

@@ -109,6 +109,21 @@ async function readRecentLogs() {
   return entries.slice(-MAX_BUNDLE_LOG_LINES)
 }
 
+async function readWindowsUpdateDiagnostics() {
+  if (process.platform !== 'win32') return undefined
+  const root = path.join(process.env.ProgramData || 'C:\\ProgramData', 'i-JANEK')
+  const records: Record<string, unknown> = {}
+  for (const name of ['agent-config.json', 'update-status.json']) {
+    try {
+      records[name] = JSON.parse((await fs.readFile(path.join(root, name), 'utf8')).replace(/^\uFEFF/u, ''))
+    } catch { records[name] = { unavailable: true } }
+  }
+  try {
+    records.agentLog = (await fs.readFile(path.join(root, 'logs', 'update-agent.log'), 'utf8')).split('\n').slice(-200)
+  } catch { records.agentLog = { unavailable: true } }
+  return records
+}
+
 export async function createDiagnosticBundle(
   summary: DiagnosticBundleSummary,
   parentWindow?: BrowserWindow | null
@@ -137,7 +152,8 @@ export async function createDiagnosticBundle(
       node: process.versions.node
     },
     summary,
-    logs: await readRecentLogs()
+    logs: await readRecentLogs(),
+    windowsUpdate: await readWindowsUpdateDiagnostics()
   })
   const compressed = await gzipAsync(Buffer.from(JSON.stringify(payload, null, 2), 'utf8'))
   await fs.writeFile(selection.filePath, compressed, { mode: 0o600 })

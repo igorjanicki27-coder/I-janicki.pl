@@ -120,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initEyeTracking();
   initGlobalClick();
   initCookiePanel();
-  initMobileNavigation();
   initDocViewer();
   initCursor();
   registerSW();
@@ -696,45 +695,6 @@ function initGlobalClick() {
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL — STATE MACHINE
 // ─────────────────────────────────────────────────────────────────
-function initMobileNavigation() {
-  const bottom = $('pageBottom');
-  const nav = dom.tutNav;
-  const stageBot = $('stageBotArea');
-  const panel = $('panel');
-  const footer = bottom?.querySelector('.foot');
-  if (!bottom || !nav || !stageBot || !panel || !footer) return;
-
-  const mobile = window.matchMedia('(max-width: 768px)');
-  const measureBottom = () => {
-    if (mobile.matches) {
-      document.body.style.setProperty('--mobile-bottom-height', `${bottom.getBoundingClientRect().height}px`);
-    } else {
-      document.body.style.removeProperty('--mobile-bottom-height');
-    }
-  };
-  const syncLayout = () => {
-    if (!mobile.matches) {
-      stageBot.append(nav);
-    } else {
-      const viewportHeight = window.visualViewport?.height || window.innerHeight;
-      const inline = panel.querySelector('.greeting-prefs')
-        && panel.getBoundingClientRect().bottom + nav.getBoundingClientRect().height
-          + footer.getBoundingClientRect().height + 16 <= viewportHeight;
-      // Gdy panel mieści się na ekranie, przyciski stoją tuż pod nim.
-      // Na niższych ekranach pozostają widoczne nad stopką.
-      if (inline) stageBot.append(nav);
-      else bottom.prepend(nav);
-    }
-    measureBottom();
-  };
-  mobile.addEventListener('change', syncLayout);
-  new ResizeObserver(measureBottom).observe(bottom);
-  new ResizeObserver(syncLayout).observe(panel);
-  window.addEventListener('resize', syncLayout);
-  window.visualViewport?.addEventListener('resize', syncLayout);
-  syncLayout();
-}
-
 function startTutorial() {
   // Filter out cookies step if cookies decision has already been made
   if (localStorage.getItem(LS.COOKIE_DECISION) !== null) {
