@@ -700,7 +700,9 @@ function initMobileNavigation() {
   const bottom = $('pageBottom');
   const nav = dom.tutNav;
   const stageBot = $('stageBotArea');
-  if (!bottom || !nav || !stageBot) return;
+  const panel = $('panel');
+  const footer = bottom?.querySelector('.foot');
+  if (!bottom || !nav || !stageBot || !panel || !footer) return;
 
   const mobile = window.matchMedia('(max-width: 768px)');
   const measureBottom = () => {
@@ -711,13 +713,25 @@ function initMobileNavigation() {
     }
   };
   const syncLayout = () => {
-    // Na telefonie nawigacja jest poza przewijaną i przycinaną sceną.
-    if (mobile.matches) bottom.prepend(nav);
-    else stageBot.append(nav);
+    if (!mobile.matches) {
+      stageBot.append(nav);
+    } else {
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const inline = panel.querySelector('.greeting-prefs')
+        && panel.getBoundingClientRect().bottom + nav.getBoundingClientRect().height
+          + footer.getBoundingClientRect().height + 16 <= viewportHeight;
+      // Gdy panel mieści się na ekranie, przyciski stoją tuż pod nim.
+      // Na niższych ekranach pozostają widoczne nad stopką.
+      if (inline) stageBot.append(nav);
+      else bottom.prepend(nav);
+    }
     measureBottom();
   };
   mobile.addEventListener('change', syncLayout);
   new ResizeObserver(measureBottom).observe(bottom);
+  new ResizeObserver(syncLayout).observe(panel);
+  window.addEventListener('resize', syncLayout);
+  window.visualViewport?.addEventListener('resize', syncLayout);
   syncLayout();
 }
 

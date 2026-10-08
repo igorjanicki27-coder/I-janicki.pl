@@ -608,7 +608,7 @@
         inset: auto 0 0;
         z-index: 80;
         width: 100%;
-        background: var(--bg-1);
+        background: transparent;
       }
 
       /* Safari mobile: mniej skoków layoutu podczas chowania/pokazywania paska */
@@ -757,15 +757,15 @@
         bottom: auto !important;
         margin-inline: auto;
         z-index: 12;
-        width: min(100%, calc(100vw - 22px));
-        max-width: min(560px, calc(100vw - 22px));
-        border-radius: 12px 12px 0 0;
-        padding: 10px 8px;
-        background: var(--bg-1);
-        border: 1px solid var(--border);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        overflow: hidden;
+        width: min(320px, calc(100vw - 32px));
+        max-width: min(320px, calc(100vw - 32px));
+        padding: 0 0 8px;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        overflow: visible;
       }
 
       .tutorial-nav:has(#tutNext[hidden]) {
@@ -790,14 +790,21 @@
       }
 
       .tutorial-nav .tut-back {
-        flex: 0 0 48px;
-        width: 48px;
+        flex: 0 0 44px;
+        width: 44px;
       }
 
       .tutorial-nav .tut-next,
       .tutorial-nav:not(.has-back) .tut-next {
         flex: 1;
         max-width: none;
+      }
+
+      .tutorial-nav .tut-next {
+        color: #fff;
+        background: linear-gradient(135deg, #6932bd, #4c2f9d);
+        border-color: rgba(188, 157, 255, 0.65);
+        box-shadow: 0 6px 20px rgba(13, 7, 32, 0.35);
       }
 
       .foot {
@@ -938,6 +945,11 @@
       .tut-next {
         min-width: 0 !important;
         max-width: none !important;
+      }
+
+      .tutorial-nav {
+        inline-size: min(320px, calc(100vw - 32px)) !important;
+        max-inline-size: min(320px, calc(100vw - 32px)) !important;
       }
 
       .tut-skip {
@@ -1443,7 +1455,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=7"></script>
-  <script defer src="script.min.js?v=32"></script>
+  <script defer src="script.min.js?v=33"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;
