@@ -214,6 +214,8 @@ function cloneForIpc<T>(value: T): T {
 
 export const useAppStore = defineStore('app', () => {
   const ready = ref(false)
+  const startupError = ref('')
+  let startupTimeout: number | null = null
   const theme = ref<ThemeMode>('dark')
   const backend = ref<BackendClient>()
   const systemContext = ref<Awaited<ReturnType<typeof window.janek.system.getContext>> | null>(null)
@@ -572,6 +574,7 @@ export const useAppStore = defineStore('app', () => {
       try {
         user.value = nextUser
         if (!nextUser) {
+          startupError.value = ''
           teardownSession()
           devices.value = []
           archivedDevices.value = []
@@ -585,15 +588,25 @@ export const useAppStore = defineStore('app', () => {
           pendingDeviceAlias.value = ''
           pendingCompanyName.value = ''
           pendingInstallationLocation.value = ''
+          finishStartup()
           return
         }
 
         await handleSignedIn(nextUser)
       } catch (error) {
         lastError.value = error instanceof Error ? error.message : 'Nie udało się zsynchronizować sesji po logowaniu.'
+        if (!ready.value) finishStartup(lastError.value)
       }
     })
     rootCleanup.add(authUnsubscribe)
+  }
+
+  function finishStartup(error = '') {
+    if (ready.value) return
+    if (startupTimeout !== null) window.clearTimeout(startupTimeout)
+    startupTimeout = null
+    startupError.value = error
+    ready.value = true
   }
 
   function syncCompanyChatSubscriptions(ownerUids: string[]) {
@@ -711,6 +724,13 @@ export const useAppStore = defineStore('app', () => {
       applyTheme('dark')
       syncState.value = offline.value ? 'offline' : 'connected'
       lastSyncAt.value = Date.now()
+      startupTimeout = window.setTimeout(() => {
+        if (selfDevice.value || (user.value?.role === 'master' && devices.value.length)) {
+          finishStartup()
+        } else {
+          finishStartup('Nie udało się potwierdzić stanu konta i urządzenia. Sprawdź połączenie i spróbuj ponownie.')
+        }
+      }, 15_000)
       bindAuthListener()
     } catch (error) {
       lastError.value =
@@ -718,11 +738,11 @@ export const useAppStore = defineStore('app', () => {
           ? error.message
           : 'Nie udało się uruchomić aplikacji. Sprawdź konfigurację środowiska.'
       syncState.value = 'offline'
+      finishStartup(lastError.value)
     }
 
     window.addEventListener('online', handleConnectivityChange)
     window.addEventListener('offline', handleConnectivityChange)
-    ready.value = true
   }
 
   async function handleArchivedSelfDevice(device: DeviceRecord) {
@@ -816,6 +836,8 @@ export const useAppStore = defineStore('app', () => {
 
     if (nextUser.role === 'slave' && systemContext.value?.platform === 'web') {
       lastError.value = ''
+      startupError.value = ''
+      finishStartup()
       return
     }
 
@@ -890,6 +912,8 @@ export const useAppStore = defineStore('app', () => {
               lastError.value = error instanceof Error
                 ? error.message
                 : 'Nie udało się wysłać urządzenia do akceptacji administratora.'
+              if (!ready.value) finishStartup()
+              else startupError.value = ''
             } finally {
               deviceRegistrationInFlight = false
             }
@@ -928,6 +952,14 @@ export const useAppStore = defineStore('app', () => {
           }
         }
       }
+      const startupResolved = !deviceRegistrationInFlight && (
+        isAuthoritative || (!navigator.onLine && (nextUser.role === 'master' || Boolean(selfDevice.value)))
+      )
+      if (startupResolved && startupError.value) startupError.value = ''
+      if (startupResolved && !ready.value) finishStartup()
+    }, (error) => {
+      lastError.value = error instanceof Error ? error.message : 'Nie udało się odczytać stanu urządzeń.'
+      if (!ready.value) finishStartup('Nie udało się sprawdzić stanu urządzenia. Sprawdź połączenie i spróbuj ponownie.')
     })
     sessionCleanup.add(deviceCleanup)
 
@@ -2168,6 +2200,7 @@ export const useAppStore = defineStore('app', () => {
 
   return {
     ready,
+    startupError,
     theme,
     systemContext,
     user,

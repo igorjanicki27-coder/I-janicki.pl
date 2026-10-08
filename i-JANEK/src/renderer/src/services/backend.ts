@@ -84,7 +84,11 @@ export interface BackendClient {
   getOwnedDeviceCount: (ownerUid: string) => Promise<number>
   prepareAccountDeletion: (password?: string) => Promise<void>
   deleteCurrentAccount: () => Promise<void>
-  subscribeDevices: (user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void) => Unsubscribe
+  subscribeDevices: (
+    user: AppUser,
+    callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void,
+    onError?: (error: unknown) => void
+  ) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
   subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
   subscribeCompanyChatState: (ownerUid: string, callback: (state: CompanyChatState) => void) => Unsubscribe
@@ -487,7 +491,7 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
-  subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[]) => void) {
+  subscribeDevices(user: AppUser, callback: (devices: DeviceRecord[], isAuthoritative: boolean) => void, onError?: (error: unknown) => void) {
     const firestore = firebaseServices!.firestore
     const baseQuery =
       user.role === 'master'
@@ -501,7 +505,7 @@ class FirebaseBackend implements BackendClient {
       )
         .sort((a, b) => b.updatedAt - a.updatedAt)
       callback(devices, !snapshot.metadata.fromCache)
-    })
+    }, onError)
   }
 
   subscribeAlerts(user: AppUser, callback: (alerts: AlertEvent[]) => void) {

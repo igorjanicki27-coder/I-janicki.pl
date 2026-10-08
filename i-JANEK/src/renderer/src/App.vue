@@ -98,6 +98,10 @@ function openSlaveAlertModal() {
   window.dispatchEvent(new CustomEvent('i-janek:open-slave-alert-modal'))
 }
 
+function retryStartup() {
+  window.location.reload()
+}
+
 async function handleEmailAuth() {
   const email = authEmail.value.trim()
   if (!email || !email.includes('@')) {
@@ -310,7 +314,7 @@ watch(
         </button>
       </div>
     </Transition>
-    <header v-if="store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" class="px-5 pt-5">
+    <header v-if="store.ready && !store.startupError && store.user && !store.isMaster && !needsConsent && !isApprovalBlocked && !isBrowserClient && !isDeviceRegistrationMissing" class="px-5 pt-5">
       <div
         v-if="store.isMaster"
         class="grid min-h-[68px] grid-cols-[130px_130px_1fr_130px_auto] items-center gap-2 rounded-[28px] px-2 py-3"
@@ -381,16 +385,26 @@ watch(
       :class="store.user && !store.needsDeviceAlias ? 'overflow-hidden' : 'overflow-auto'"
     >
       <div
-        v-if="store.offline"
+        v-if="store.ready && !store.startupError && store.offline"
         class="mb-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 glass-panel"
       >
         Brak połączenia z internetem. Wiadomości zostaną wysłane po powrocie sieci.
       </div>
 
-      <div v-if="!store.ready" class="flex h-full items-center justify-center">
-        <div class="glass-panel rounded-[32px] px-10 py-8 text-center">
-          <div class="display-font text-xl tracking-[0.25em] text-white">Inicjalizacja i-JANEK</div>
-          <div class="mt-3 text-sm text-[var(--text-dim)]">Ładowanie środowiska aplikacji.</div>
+      <div v-if="!store.ready" class="flex h-full items-center justify-center" role="status" aria-live="polite">
+        <div class="glass-panel flex w-full max-w-md flex-col items-center rounded-[32px] px-10 py-10 text-center">
+          <LoaderCircle class="mb-5 h-10 w-10 animate-spin text-cyan-200" aria-hidden="true" />
+          <div class="display-font text-xl tracking-[0.2em] text-white">Uruchamianie i-JANEK</div>
+          <div class="mt-3 text-sm text-[var(--text-dim)]">Sprawdzamy konto i urządzenie…</div>
+        </div>
+      </div>
+
+      <div v-else-if="store.startupError" class="flex h-full items-center justify-center">
+        <div class="glass-panel w-full max-w-md rounded-[32px] px-8 py-9 text-center" role="alert">
+          <AlertCircle class="mx-auto h-9 w-9 text-amber-300" aria-hidden="true" />
+          <h2 class="mt-4 text-xl font-semibold text-white">Nie udało się uruchomić aplikacji</h2>
+          <p class="mt-3 text-sm leading-6 text-[var(--text-dim)]">{{ store.startupError }}</p>
+          <button class="glass-button mt-6" type="button" @click="retryStartup()">Spróbuj ponownie</button>
         </div>
       </div>
 
