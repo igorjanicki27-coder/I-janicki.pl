@@ -130,11 +130,14 @@ export async function createDiagnosticBundle(
 ) {
   const now = new Date()
   const suggestedName = `i-janek-diagnostyka-${now.toISOString().slice(0, 10)}.json.gz`
-  const selection = await dialog.showSaveDialog(parentWindow ?? undefined, {
+  const options = {
     title: 'Zapisz bezpieczną paczkę diagnostyczną',
     defaultPath: path.join(app.getPath('downloads'), suggestedName),
     filters: [{ name: 'Skompresowana diagnostyka JSON', extensions: ['gz'] }]
-  })
+  }
+  const selection = parentWindow
+    ? await dialog.showSaveDialog(parentWindow, options)
+    : await dialog.showSaveDialog(options)
   if (selection.canceled || !selection.filePath) return { saved: false }
 
   const payload = sanitize({

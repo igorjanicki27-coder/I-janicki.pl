@@ -102,7 +102,7 @@ export interface DeviceRecord extends DeviceIdentity {
   telemetry?: DeviceTelemetry
   inventoryCapturedAt?: number
   inventoryReportId?: string
-  approvedBy?: string
+  approvedBy?: string | null
   archivedAt?: number | null
   archivedBy?: string | null
   dwservice?: DwServiceConfiguration

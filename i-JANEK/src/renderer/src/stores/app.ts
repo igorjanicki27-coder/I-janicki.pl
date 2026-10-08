@@ -11,6 +11,7 @@ import type {
   CompanyChatState,
   ConsentRecord,
   DeviceIdentity,
+  DeviceHealthState,
   DeviceRecord,
   DwServiceAgentState,
   InventoryReport,
@@ -402,7 +403,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function evaluateTelemetryState(telemetry: DeviceTelemetry) {
+  function evaluateTelemetryState(telemetry: DeviceTelemetry): { state: DeviceHealthState; criticalCauses: TelemetryAlertCause[] } {
     const diskUsage = getMaxLocalDiskUsage(telemetry.disks)
     const cpuUsageCritical = telemetry.cpuUsagePercent >= masterSettings.value.thresholds.cpuUsage.critical
     const gpuUsageCritical = (telemetry.gpu?.usagePercent ?? 0) >= masterSettings.value.thresholds.gpuUsage.critical
@@ -809,7 +810,8 @@ export const useAppStore = defineStore('app', () => {
 
     if (
       nextUser.role === 'slave'
-      && systemContext.value?.platform !== 'web'
+      && systemContext.value
+      && systemContext.value.platform !== 'web'
       && !consent.value
       && (!pendingDeviceAlias.value || pendingDeviceAlias.value === systemContext.value?.hostname)
     ) {
@@ -819,19 +821,21 @@ export const useAppStore = defineStore('app', () => {
     const isNewAccountRegistration = pendingNewAccountEmail === nextUser.email.trim().toLowerCase()
     if (isNewAccountRegistration) {
       pendingNewAccountEmail = null
-      if (nextUser.role === 'slave' && systemContext.value?.platform !== 'web') {
+      const context = systemContext.value
+      if (nextUser.role === 'slave' && context && context.platform !== 'web') {
         const provisionalDeviceId =
           buildDeviceId(
             profile.companyName || 'KLIENT',
-            `${systemContext.value.hostname}-${systemContext.value.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
-          ) || `${systemContext.value.hostname}-${systemContext.value.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
+            `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
+          ) || `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
         consent.value = null
         await window.janek.system.setConsent(null)
         await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
-        systemContext.value = { ...systemContext.value, deviceId: provisionalDeviceId }
+        const registeredContext = { ...context, deviceId: provisionalDeviceId }
+        systemContext.value = registeredContext
         await backend.value!.ensureDeviceRecord(
           nextUser,
-          toDeviceIdentity(systemContext.value, provisionalDeviceId)
+          toDeviceIdentity(registeredContext, provisionalDeviceId)
         )
       }
     }
@@ -1324,8 +1328,9 @@ export const useAppStore = defineStore('app', () => {
   ) {
     if (approvalStatus === 'approved') {
       if (!details) throw new Error('Przed zatwierdzeniem wybierz firmę dla urządzenia.')
+      const approvalDetails = details
       const selectedCompany = masterSettings.value.companyOptions.find(
-        (company) => company.toLocaleLowerCase('pl') === details.companyName.trim().toLocaleLowerCase('pl')
+        (company) => company.toLocaleLowerCase('pl') === approvalDetails.companyName.trim().toLocaleLowerCase('pl')
       )
       if (!selectedCompany) throw new Error('Wybierz firmę z listy albo najpierw utwórz nową firmę.')
       details = { ...details, companyName: selectedCompany }
@@ -1978,7 +1983,7 @@ export const useAppStore = defineStore('app', () => {
   async function runTelemetryCycle(device: DeviceRecord) {
     const telemetry = await window.janek.telemetry.collect()
     const evaluation = evaluateTelemetryState(telemetry)
-    const normalizedTelemetry = { ...telemetry, state: evaluation.state }
+    const normalizedTelemetry: DeviceTelemetry = { ...telemetry, state: evaluation.state }
     const usageDelta = buildUsageRollupDelta(device, normalizedTelemetry)
     if (usageDelta.observedSeconds > 0) {
       queueOfflineOperation({ kind: 'usage_rollup', deviceId: device.deviceId, payload: usageDelta })

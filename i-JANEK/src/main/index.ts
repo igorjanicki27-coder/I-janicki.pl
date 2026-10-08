@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFile, spawn } from 'node:child_process'
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, shell } from 'electron'
+import type { MessageBoxOptions } from 'electron'
 import { closeDwServicePoc, closeDwServicePocPopup, goBackDwServicePoc, openDwServicePoc, setDwServicePocBounds } from './dwservice-poc'
 import electronUpdater from 'electron-updater'
 import type { CommandShell, DiagnosticBundleSummary, DiagnosticLogLevel, UpdateChannel } from '@shared/contracts'
@@ -327,13 +328,11 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      nativeWindowOpen: true,
       webviewTag: false
     }
   })
 
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault()
+  mainWindow.on('minimize', () => {
     mainWindow?.hide()
   })
 
@@ -423,12 +422,12 @@ function createTray() {
     if (mainWindow?.isVisible()) {
       mainWindow.hide()
     } else {
-      mainWindow?.show()
+      focusMainWindow()
     }
   })
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Pokaż i-JANEK', click: () => mainWindow?.show() },
+    { label: 'Pokaż i-JANEK', click: focusMainWindow },
     { type: 'separator' },
     {
       label: 'Zakończ',
@@ -566,7 +565,7 @@ async function promptInstallDownloadedUpdate(version: string) {
 
   try {
     const parentWindow = mainWindow?.isVisible() ? mainWindow : undefined
-    const response = await dialog.showMessageBox(parentWindow, {
+    const options: MessageBoxOptions = {
       type: 'info',
       title: 'Aktualizacja i-JANEK',
       message: `Aktualizacja ${version} jest gotowa do instalacji.`,
@@ -575,7 +574,10 @@ async function promptInstallDownloadedUpdate(version: string) {
       defaultId: 0,
       cancelId: 1,
       noLink: true
-    })
+    }
+    const response = parentWindow
+      ? await dialog.showMessageBox(parentWindow, options)
+      : await dialog.showMessageBox(options)
 
     if (response.response === 0) {
       clearUpdateInstallReminder()
@@ -663,7 +665,7 @@ function requestWindowsRestart() {
 }
 
 async function promptRestart(title: string, body: string, remindAfterMinutes = 30) {
-  const response = await dialog.showMessageBox(mainWindow ?? undefined, {
+  const options: MessageBoxOptions = {
     type: 'question',
     title,
     message: title,
@@ -672,7 +674,10 @@ async function promptRestart(title: string, body: string, remindAfterMinutes = 3
     defaultId: 0,
     cancelId: 2,
     noLink: true
-  })
+  }
+  const response = mainWindow
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options)
 
   if (response.response === 0) {
     requestWindowsRestart()

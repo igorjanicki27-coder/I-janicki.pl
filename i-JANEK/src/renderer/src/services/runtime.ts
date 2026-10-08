@@ -43,6 +43,7 @@ function createBrowserApi(): JanekApi {
       }),
       setAutoLaunch: async () => desktopOnly('Autostart'),
       setNotificationsEnabled: async () => undefined,
+      hideMainWindow: async () => undefined,
       notify: async (title, body) => {
         if (!('Notification' in window)) return
         if (Notification.permission === 'default') await Notification.requestPermission()
@@ -54,8 +55,10 @@ function createBrowserApi(): JanekApi {
         else localStorage.removeItem(CONSENT_KEY)
       },
       checkForUpdates: async () => ({ status: 'web', message: 'Panel webowy aktualizuje się automatycznie.' }),
+      getUpdateStatus: async () => ({ status: 'idle', message: 'Panel webowy aktualizuje się automatycznie.' }),
       getPostUpdateNotice: async () => null,
       acknowledgePostUpdateNotice: async () => undefined,
+      onUpdateStatus: () => () => undefined,
       setUpdateChannel: async () => undefined,
       createDiagnosticBundle: async (summary) => {
         const payload = JSON.stringify({

@@ -309,7 +309,6 @@ function readinessDot(status: 'ok' | 'warning' | 'error' | 'skipped') {
                 <span class="max-w-[65%] truncate text-right text-white">{{ slaveDevice?.installationLocation?.trim() || '—' }}</span>
               </div>
             </div>
-            <p class="mt-3 text-xs leading-5 text-[var(--text-dim)]">Zmiany tych danych może wprowadzić administrator.</p>
           </section>
 
           <div class="mt-4 grid gap-4 md:grid-cols-2">

@@ -93,11 +93,7 @@ function addView(isPopup: boolean, adoptedWebContents?: WebContents) {
       overrideBrowserWindowOptions: {
         webPreferences: secureWebPreferences()
       },
-      createWindow: (childOptions) => {
-        const childContents = childOptions.webContents
-        if (!childContents) throw new Error('Electron nie przekazał webContents dla nowej karty DWService.')
-        return addView(true, childContents).webContents
-      }
+      createWindow: () => addView(true).webContents
     }
   })
   return view

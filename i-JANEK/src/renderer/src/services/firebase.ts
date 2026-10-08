@@ -4,7 +4,8 @@ import {
   browserPopupRedirectResolver,
   getAuth,
   indexedDBLocalPersistence,
-  initializeAuth
+  initializeAuth,
+  type Auth
 } from 'firebase/auth'
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager } from 'firebase/firestore'
 import { getDatabase } from 'firebase/database'
@@ -41,7 +42,7 @@ const firestore = app
         localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) })
       })
   : null
-let auth = app ? null : null
+let auth: Auth | null = null
 
 if (app) {
   try {
@@ -54,7 +55,7 @@ if (app) {
   }
 }
 
-export const firebaseServices = app
+export const firebaseServices = app && auth
   ? {
       app,
       auth,
