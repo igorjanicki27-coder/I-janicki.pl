@@ -8,7 +8,7 @@ import type {
   CompanyChatMessage,
   CompanyChatParticipant,
   CompanyChatParticipantState,
-  CompanyChatState,
+  CompanyMessageThread,
   ConsentRecord,
   DeviceIdentity,
   DeviceHealthState,
@@ -227,13 +227,13 @@ export const useAppStore = defineStore('app', () => {
   const allAlerts = ref<AlertEvent[]>([])
   const usageHistory = ref<Record<string, UsageDailyRollup[]>>({})
   const inventory = ref<Record<string, InventoryReport>>({})
-  const allCompanyChats = ref<Record<string, CompanyChatMessage[]>>({})
-  const companyChatStates = ref<Record<string, CompanyChatState>>({})
+  const allCompanyMessageThreads = ref<Record<string, CompanyMessageThread[]>>({})
   const chatMessageSendStates = ref<Record<string, 'sending' | 'sent' | 'failed'>>({})
   const commandHistory = ref<Record<string, TerminalCommand[]>>({})
   const localDwServiceState = ref<DwServiceAgentState>({ status: 'unconfigured' })
   const selectedDeviceId = ref<string>('')
   const selectedConversationOwnerUid = ref<string>('')
+  const selectedMessageThreadId = ref<string>('')
   const offline = ref(!navigator.onLine)
   const lastError = ref<string>('')
   const consent = ref<ConsentRecord | null>(null)
@@ -276,11 +276,9 @@ export const useAppStore = defineStore('app', () => {
   const intervalHandles = new Set<number>()
   const handledUpdateRequests = new Set<string>()
   const handledRemoteActionRequests = new Set<string>()
-  const companyChatCleanup = new Map<string, () => void>()
-  const companyChatStateCleanup = new Map<string, () => void>()
+  const companyMessageThreadCleanup = new Map<string, () => void>()
   const commandHistoryCleanup = new Map<string, () => void>()
-  const initializedCompanyChats = new Set<string>()
-  const initializedCompanyChatStates = new Set<string>()
+  const initializedCompanyMessageThreads = new Set<string>()
   const pendingChatStateFlushes = new Set<string>()
   const seenAlertIds = new Set<string>()
   let alertsSnapshotReady = false
@@ -298,23 +296,27 @@ export const useAppStore = defineStore('app', () => {
   const archivedDeviceIds = computed(() => new Set(archivedDevices.value.map((device) => device.deviceId)))
   const activeOwnerUids = computed(() => new Set(devices.value.map((device) => device.ownerUid)))
   const alerts = computed(() => allAlerts.value.filter((alert) => !archivedDeviceIds.value.has(alert.deviceId)))
-  const companyChats = computed<Record<string, CompanyChatMessage[]>>(() => {
-    const visible: Record<string, CompanyChatMessage[]> = {}
-    for (const [ownerUid, messages] of Object.entries(allCompanyChats.value)) {
+  const companyMessageThreads = computed<Record<string, CompanyMessageThread[]>>(() => {
+    const visible: Record<string, CompanyMessageThread[]> = {}
+    for (const [ownerUid, threads] of Object.entries(allCompanyMessageThreads.value)) {
       if (user.value?.role === 'master' && !activeOwnerUids.value.has(ownerUid)) continue
-      visible[ownerUid] = messages.filter((message) => !message.deviceId || !archivedDeviceIds.value.has(message.deviceId))
+      visible[ownerUid] = threads
     }
     return visible
   })
   const selectedDevice = computed(() => devices.value.find((device) => device.deviceId === selectedDeviceId.value) ?? null)
-  const selectedConversationMessages = computed(() => companyChats.value[selectedConversationOwnerUid.value] ?? [])
+  const selectedMessageThread = computed(() => (
+    companyMessageThreads.value[selectedConversationOwnerUid.value] ?? []
+  ).find((thread) => thread.id === selectedMessageThreadId.value) ?? null)
+  const selectedConversationMessages = computed(() => selectedMessageThread.value?.messages ?? [])
   const unreadCompanyChatCount = computed(() => {
     const role = user.value?.role
     if (!role) return 0
-    return Object.entries(companyChats.value).reduce((total, [ownerUid, messages]) => {
-      if (!Object.prototype.hasOwnProperty.call(companyChatStates.value, ownerUid)) return total
-      const lastReadAt = companyChatStates.value[ownerUid]?.[role]?.lastReadAt ?? 0
-      return total + messages.filter((message) => message.senderRole !== role && message.createdAt > lastReadAt).length
+    return Object.values(companyMessageThreads.value).reduce((total, threads) => {
+      return total + threads.reduce((threadTotal, thread) => {
+        const lastReadAt = thread.states[role]?.lastReadAt ?? 0
+        return threadTotal + thread.messages.filter((message) => message.senderRole !== role && message.createdAt > lastReadAt).length
+      }, 0)
     }, 0)
   })
   const selfDevice = computed(() => {
@@ -500,11 +502,9 @@ export const useAppStore = defineStore('app', () => {
     return true
   }
 
-  function clearCompanyChatSubscriptions() {
-    companyChatCleanup.forEach((dispose) => dispose())
-    companyChatCleanup.clear()
-    companyChatStateCleanup.forEach((dispose) => dispose())
-    companyChatStateCleanup.clear()
+  function clearCompanyMessageThreadSubscriptions() {
+    companyMessageThreadCleanup.forEach((dispose) => dispose())
+    companyMessageThreadCleanup.clear()
   }
 
   function clearCommandHistorySubscriptions() {
@@ -545,13 +545,13 @@ export const useAppStore = defineStore('app', () => {
     archivedDevices.value = []
     allAlerts.value = []
     inventory.value = {}
-    allCompanyChats.value = {}
-    companyChatStates.value = {}
+    allCompanyMessageThreads.value = {}
     chatMessageSendStates.value = {}
     commandHistory.value = {}
     localDwServiceState.value = { status: 'unconfigured' }
     selectedDeviceId.value = ''
     selectedConversationOwnerUid.value = ''
+    selectedMessageThreadId.value = ''
     pendingDeviceAlias.value = ''
     pendingCompanyName.value = ''
     pendingInstallationLocation.value = ''
@@ -560,8 +560,7 @@ export const useAppStore = defineStore('app', () => {
     handledRemoteActionRequests.clear()
     handledDwServiceConfigurations.clear()
     handledDwServiceConfigurations.clear()
-    initializedCompanyChats.clear()
-    initializedCompanyChatStates.clear()
+    initializedCompanyMessageThreads.clear()
     seenAlertIds.clear()
     alertsSnapshotReady = false
     lastSelfApprovalStatus = null
@@ -583,11 +582,11 @@ export const useAppStore = defineStore('app', () => {
           archivedDevices.value = []
           allAlerts.value = []
           usageHistory.value = {}
-          allCompanyChats.value = {}
-          companyChatStates.value = {}
+          allCompanyMessageThreads.value = {}
           chatMessageSendStates.value = {}
           localDwServiceState.value = { status: 'unconfigured' }
           selectedConversationOwnerUid.value = ''
+          selectedMessageThreadId.value = ''
           pendingDeviceAlias.value = ''
           pendingCompanyName.value = ''
           pendingInstallationLocation.value = ''
@@ -612,66 +611,30 @@ export const useAppStore = defineStore('app', () => {
     ready.value = true
   }
 
-  function syncCompanyChatSubscriptions(ownerUids: string[]) {
+  function syncCompanyMessageThreadSubscriptions(ownerUids: string[]) {
     const uniqueOwnerUids = [...new Set(ownerUids.filter(Boolean))]
 
-    companyChatCleanup.forEach((dispose, ownerUid) => {
+    companyMessageThreadCleanup.forEach((dispose, ownerUid) => {
       if (uniqueOwnerUids.includes(ownerUid)) return
       dispose()
-      companyChatCleanup.delete(ownerUid)
-      delete allCompanyChats.value[ownerUid]
-      initializedCompanyChats.delete(ownerUid)
-    })
-
-    companyChatStateCleanup.forEach((dispose, ownerUid) => {
-      if (uniqueOwnerUids.includes(ownerUid)) return
-      dispose()
-      companyChatStateCleanup.delete(ownerUid)
-      delete companyChatStates.value[ownerUid]
-      initializedCompanyChatStates.delete(ownerUid)
+      companyMessageThreadCleanup.delete(ownerUid)
+      delete allCompanyMessageThreads.value[ownerUid]
+      initializedCompanyMessageThreads.delete(ownerUid)
     })
 
     uniqueOwnerUids.forEach((ownerUid) => {
-      if (companyChatCleanup.has(ownerUid)) return
-      const cleanup = backend.value!.subscribeCompanyChats(ownerUid, (messages) => {
-        const previousMessages = companyChats.value[ownerUid] ?? []
-        const previousIds = new Set(previousMessages.map((entry) => entry.id))
-        allCompanyChats.value = {
-          ...allCompanyChats.value,
-          [ownerUid]: messages
-        }
-
-        const visibleMessages = companyChats.value[ownerUid] ?? []
-
-        if (initializedCompanyChatStates.has(ownerUid)) markLatestIncomingDelivered(ownerUid)
-
-        if (!initializedCompanyChats.has(ownerUid)) {
-          visibleMessages.forEach((message) => previousIds.add(message.id))
-          initializedCompanyChats.add(ownerUid)
-          return
-        }
-
-        if (slaveSettings.value.muteChatSounds) return
-
-        const incomingMessages = visibleMessages.filter((message) => !previousIds.has(message.id) && message.senderRole !== user.value?.role)
-        for (const message of incomingMessages) {
-          void notifyUser(
-            `Wiadomość od ${message.senderEmail}`,
-            message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body,
-            'message'
-          )
-        }
-      })
-      companyChatCleanup.set(ownerUid, cleanup)
-
-      const stateCleanup = backend.value!.subscribeCompanyChatState(ownerUid, (state) => {
+      if (companyMessageThreadCleanup.has(ownerUid)) return
+      const cleanup = backend.value!.subscribeCompanyMessageThreads(ownerUid, (threads) => {
+        const wasInitialized = initializedCompanyMessageThreads.has(ownerUid)
+        const previousThreads = companyMessageThreads.value[ownerUid] ?? []
+        const previousIds = new Set(previousThreads.flatMap((thread) => thread.messages.map((message) => message.id)))
         const role = user.value?.role
         const email = user.value?.email
-        let nextState = state
-        if (role && email) {
-          const remoteParticipantState = state[role]
-          const localParticipantState = companyChatStates.value[ownerUid]?.[role]
-          const pendingParticipantState = readPendingChatParticipantState(ownerUid, role, email)
+        const mergedThreads = threads.map((thread) => {
+          if (!role || !email) return thread
+          const remoteParticipantState = thread.states[role]
+          const localParticipantState = previousThreads.find((entry) => entry.id === thread.id)?.states[role]
+          const pendingParticipantState = readPendingChatParticipantState(ownerUid, thread.id, role, email)
           const newestLocalState = localParticipantState && (
             !remoteParticipantState || localParticipantState.updatedAt > remoteParticipantState.updatedAt
           ) ? localParticipantState : remoteParticipantState
@@ -695,19 +658,43 @@ export const useAppStore = defineStore('app', () => {
               pendingParticipantState?.updatedAt ?? 0
             )
           }
-          nextState = { ...state, [role]: mergedParticipantState }
           if (pendingParticipantState && remoteParticipantState) {
-            acknowledgePendingChatParticipantState(ownerUid, role, email, remoteParticipantState)
+            acknowledgePendingChatParticipantState(ownerUid, thread.id, role, email, remoteParticipantState)
+          }
+          return { ...thread, states: { ...thread.states, [role]: mergedParticipantState } }
+        })
+        allCompanyMessageThreads.value = {
+          ...allCompanyMessageThreads.value,
+          [ownerUid]: mergedThreads
+        }
+
+        initializedCompanyMessageThreads.add(ownerUid)
+        for (const thread of mergedThreads) {
+          markLatestIncomingDelivered(ownerUid, thread.id)
+          if (role && email && readPendingChatParticipantState(ownerUid, thread.id, role, email)) {
+            void flushPendingChatParticipantState(ownerUid, thread.id, role)
           }
         }
-        companyChatStates.value = { ...companyChatStates.value, [ownerUid]: nextState }
-        if (role && email && readPendingChatParticipantState(ownerUid, role, email)) {
-          void flushPendingChatParticipantState(ownerUid, role)
+
+        if (!wasInitialized) {
+          mergedThreads.forEach((thread) => thread.messages.forEach((message) => previousIds.add(message.id)))
+          return
         }
-        initializedCompanyChatStates.add(ownerUid)
-        markLatestIncomingDelivered(ownerUid)
+
+        if (slaveSettings.value.muteChatSounds) return
+
+        const incomingMessages = mergedThreads.flatMap((thread) => thread.messages
+          .filter((message) => !previousIds.has(message.id) && message.senderRole !== role)
+          .map((message) => ({ thread, message })))
+        for (const { thread, message } of incomingMessages) {
+          void notifyUser(
+            `Nowa wiadomość: ${thread.title}`,
+            message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body,
+            'message'
+          )
+        }
       })
-      companyChatStateCleanup.set(ownerUid, stateCleanup)
+      companyMessageThreadCleanup.set(ownerUid, cleanup)
     })
   }
 
@@ -783,17 +770,16 @@ export const useAppStore = defineStore('app', () => {
     archivedDevices.value = []
     allAlerts.value = []
     usageHistory.value = {}
-    allCompanyChats.value = {}
-    companyChatStates.value = {}
+    allCompanyMessageThreads.value = {}
     chatMessageSendStates.value = {}
     commandHistory.value = {}
     selectedDeviceId.value = ''
     selectedConversationOwnerUid.value = ''
+    selectedMessageThreadId.value = ''
     workerDeviceId.value = ''
     handledUpdateRequests.clear()
     handledRemoteActionRequests.clear()
-    initializedCompanyChats.clear()
-    initializedCompanyChatStates.clear()
+    initializedCompanyMessageThreads.clear()
     seenAlertIds.clear()
     alertsSnapshotReady = false
     deviceRegistrationInFlight = false
@@ -828,8 +814,15 @@ export const useAppStore = defineStore('app', () => {
             profile.companyName || 'KLIENT',
             `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
           ) || `${context.hostname}-${context.machineId.slice(0, 8)}-${nextUser.uid.slice(0, 8)}`
-        consent.value = null
-        await window.janek.system.setConsent(null)
+        const retainedInstallerConsent = consent.value?.dwServiceConsent
+          ? {
+              ...consent.value,
+              diagnosticsConsent: false,
+              remoteCommandConsent: false
+            }
+          : null
+        consent.value = retainedInstallerConsent
+        await window.janek.system.setConsent(cloneForIpc(retainedInstallerConsent))
         await window.janek.system.setRegisteredDeviceId(provisionalDeviceId)
         const registeredContext = { ...context, deviceId: provisionalDeviceId }
         systemContext.value = registeredContext
@@ -871,7 +864,7 @@ export const useAppStore = defineStore('app', () => {
       if (selectedConversationOwnerUid.value && !nextActiveDevices.some((entry) => entry.ownerUid === selectedConversationOwnerUid.value)) {
         selectedConversationOwnerUid.value = nextActiveDevices[0]?.ownerUid ?? ''
       }
-      syncCompanyChatSubscriptions(nextActiveDevices.map((entry) => entry.ownerUid))
+      syncCompanyMessageThreadSubscriptions(nextActiveDevices.map((entry) => entry.ownerUid))
       if (nextUser.role === 'master') {
         syncCommandHistorySubscriptions(nextActiveDevices)
       }
@@ -1316,7 +1309,7 @@ export const useAppStore = defineStore('app', () => {
     if (!devices.value.some((entry) => entry.ownerUid === selectedConversationOwnerUid.value)) {
       selectedConversationOwnerUid.value = devices.value[0]?.ownerUid ?? ''
     }
-    syncCompanyChatSubscriptions(devices.value.map((entry) => entry.ownerUid))
+    syncCompanyMessageThreadSubscriptions(devices.value.map((entry) => entry.ownerUid))
     syncCommandHistorySubscriptions(devices.value)
   }
 
@@ -1348,12 +1341,15 @@ export const useAppStore = defineStore('app', () => {
 
   async function updateChatParticipantState(
     ownerUid: string,
+    threadId: string,
     participant: CompanyChatParticipant,
     patch: Partial<Pick<CompanyChatParticipantState, 'typing' | 'lastDeliveredAt' | 'lastReadAt'>>
   ) {
     if (!backend.value || !user.value || user.value.role !== participant) return
-    const current = companyChatStates.value[ownerUid]?.[participant]
-    const pending = readPendingChatParticipantState(ownerUid, participant, user.value.email)
+    const thread = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)
+    if (!thread) return
+    const current = thread.states[participant]
+    const pending = readPendingChatParticipantState(ownerUid, threadId, participant, user.value.email)
     const nextState: CompanyChatParticipantState = {
       role: participant,
       email: user.value.email,
@@ -1362,16 +1358,18 @@ export const useAppStore = defineStore('app', () => {
       lastReadAt: Math.max(current?.lastReadAt ?? 0, pending?.lastReadAt ?? 0, patch.lastReadAt ?? 0),
       updatedAt: Date.now()
     }
-    companyChatStates.value = {
-      ...companyChatStates.value,
-      [ownerUid]: { ...(companyChatStates.value[ownerUid] ?? {}), [participant]: nextState }
+    allCompanyMessageThreads.value = {
+      ...allCompanyMessageThreads.value,
+      [ownerUid]: (allCompanyMessageThreads.value[ownerUid] ?? []).map((entry) => entry.id === threadId
+        ? { ...entry, states: { ...entry.states, [participant]: nextState } }
+        : entry)
     }
     if (patch.lastDeliveredAt !== undefined || patch.lastReadAt !== undefined || pending) {
-      persistPendingChatParticipantState(ownerUid, participant, nextState)
+      persistPendingChatParticipantState(ownerUid, threadId, participant, nextState)
     }
     try {
-      await backend.value.updateCompanyChatParticipantState(ownerUid, participant, nextState)
-      acknowledgePendingChatParticipantState(ownerUid, participant, nextState.email, nextState)
+      await backend.value.updateCompanyChatParticipantState(ownerUid, threadId, participant, nextState)
+      acknowledgePendingChatParticipantState(ownerUid, threadId, participant, nextState.email, nextState)
     } catch (error) {
       console.warn('[i-JANEK] Nie udało się zaktualizować stanu rozmowy:', error)
       void window.janek.system.logEvent('warning', 'chat_participant_state_update_failed', {
@@ -1381,15 +1379,15 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function flushPendingChatParticipantState(ownerUid: string, participant: CompanyChatParticipant) {
+  async function flushPendingChatParticipantState(ownerUid: string, threadId: string, participant: CompanyChatParticipant) {
     const currentUser = user.value
     if (!backend.value || !currentUser || currentUser.role !== participant) return
-    const pending = readPendingChatParticipantState(ownerUid, participant, currentUser.email)
+    const pending = readPendingChatParticipantState(ownerUid, threadId, participant, currentUser.email)
     if (!pending) return
-    const flushKey = `${participant}:${ownerUid}`
+    const flushKey = `${participant}:${ownerUid}:${threadId}`
     if (pendingChatStateFlushes.has(flushKey)) return
     pendingChatStateFlushes.add(flushKey)
-    const current = companyChatStates.value[ownerUid]?.[participant]
+    const current = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)?.states[participant]
     const nextState: CompanyChatParticipantState = {
       role: participant,
       email: currentUser.email,
@@ -1399,8 +1397,8 @@ export const useAppStore = defineStore('app', () => {
       updatedAt: Date.now()
     }
     try {
-      await backend.value.updateCompanyChatParticipantState(ownerUid, participant, nextState)
-      acknowledgePendingChatParticipantState(ownerUid, participant, currentUser.email, nextState)
+      await backend.value.updateCompanyChatParticipantState(ownerUid, threadId, participant, nextState)
+      acknowledgePendingChatParticipantState(ownerUid, threadId, participant, currentUser.email, nextState)
     } catch (error) {
       void window.janek.system.logEvent('warning', 'pending_chat_participant_state_flush_failed', {
         participant,
@@ -1411,32 +1409,36 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function markLatestIncomingDelivered(ownerUid: string) {
+  function markLatestIncomingDelivered(ownerUid: string, threadId: string) {
     const role = user.value?.role
     if (!role) return
-    const latestIncomingAt = (companyChats.value[ownerUid] ?? []).reduce(
+    const thread = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)
+    if (!thread) return
+    const latestIncomingAt = thread.messages.reduce(
       (latest, message) => message.senderRole === role ? latest : Math.max(latest, message.createdAt),
       0
     )
-    if (latestIncomingAt > (companyChatStates.value[ownerUid]?.[role]?.lastDeliveredAt ?? 0)) {
-      void updateChatParticipantState(ownerUid, role, { lastDeliveredAt: latestIncomingAt })
+    if (latestIncomingAt > (thread.states[role]?.lastDeliveredAt ?? 0)) {
+      void updateChatParticipantState(ownerUid, threadId, role, { lastDeliveredAt: latestIncomingAt })
     }
   }
 
-  async function setChatTyping(ownerUid: string, typing: boolean) {
-    if (!ownerUid || !user.value) return
-    await updateChatParticipantState(ownerUid, user.value.role, { typing })
+  async function setChatTyping(ownerUid: string, typing: boolean, threadId = selectedMessageThreadId.value) {
+    if (!ownerUid || !threadId || !user.value) return
+    await updateChatParticipantState(ownerUid, threadId, user.value.role, { typing })
   }
 
-  async function markChatRead(ownerUid = selectedConversationOwnerUid.value) {
+  async function markChatRead(ownerUid = selectedConversationOwnerUid.value, threadId = selectedMessageThreadId.value) {
     const role = user.value?.role
-    if (!ownerUid || !role) return
-    const latestIncomingAt = (companyChats.value[ownerUid] ?? []).reduce(
+    if (!ownerUid || !threadId || !role) return
+    const thread = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)
+    if (!thread) return
+    const latestIncomingAt = thread.messages.reduce(
       (latest, message) => message.senderRole === role ? latest : Math.max(latest, message.createdAt),
       0
     )
     if (!latestIncomingAt) return
-    await updateChatParticipantState(ownerUid, role, {
+    await updateChatParticipantState(ownerUid, threadId, role, {
       lastDeliveredAt: latestIncomingAt,
       lastReadAt: latestIncomingAt
     })
@@ -1446,7 +1448,8 @@ export const useAppStore = defineStore('app', () => {
     const localState = chatMessageSendStates.value[message.id]
     if (localState === 'sending' || localState === 'failed') return localState
     const recipient: CompanyChatParticipant = message.senderRole === 'master' ? 'slave' : 'master'
-    const recipientState = companyChatStates.value[message.ownerUid]?.[recipient]
+    const recipientState = (companyMessageThreads.value[message.ownerUid] ?? [])
+      .find((thread) => thread.id === message.threadId)?.states[recipient]
     if ((recipientState?.lastReadAt ?? 0) >= message.createdAt) return 'read' as const
     if ((recipientState?.lastDeliveredAt ?? 0) >= message.createdAt) return 'delivered' as const
     return 'sent' as const
@@ -1457,7 +1460,7 @@ export const useAppStore = defineStore('app', () => {
     chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sending' }
     chatSendError.value = ''
     try {
-      await backend.value.sendCompanyChatMessage(message.ownerUid, message)
+      await backend.value.sendCompanyChatMessage(message.ownerUid, message.threadId, message)
       chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sent' }
       return true
     } catch (error) {
@@ -1469,7 +1472,9 @@ export const useAppStore = defineStore('app', () => {
 
   async function sendChatMessage(ownerUid = selectedConversationOwnerUid.value) {
     const device = selectedDevice.value
-    if (!ownerUid || !user.value || !pendingChatMessage.value.trim()) return false
+    const threadId = selectedMessageThreadId.value
+    const thread = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)
+    if (!ownerUid || !threadId || !thread || thread.status !== 'open' || !user.value || !pendingChatMessage.value.trim()) return false
 
     const ownerDevice = devices.value.find((entry) => entry.ownerUid === ownerUid) ?? device ?? selfDevice.value
     if (!ownerDevice) return false
@@ -1479,10 +1484,13 @@ export const useAppStore = defineStore('app', () => {
     const senderDevice =
       user.value.role === 'slave'
         ? selfDevice.value ?? ownerDevice
-        : device ?? ownerDevice
+        : device?.ownerUid === ownerUid ? device : ownerDevice
+    const senderDeviceId = user.value.role === 'slave' ? selfDevice.value?.deviceId : device?.ownerUid === ownerUid ? device.deviceId : undefined
+    const senderDeviceLabel = senderDevice ? formatDeviceLabelForMaster(senderDevice) : undefined
 
     const message: CompanyChatMessage = {
       id: crypto.randomUUID(),
+      threadId,
       ownerUid,
       ownerEmail: ownerDevice.ownerEmail,
       senderRole: user.value.role,
@@ -1490,8 +1498,8 @@ export const useAppStore = defineStore('app', () => {
       body,
       createdAt: Date.now(),
       delivered: !offline.value,
-      deviceId: user.value.role === 'slave' ? selfDevice.value?.deviceId : device?.deviceId,
-      deviceLabel: formatDeviceLabelForMaster(senderDevice)
+      ...(senderDeviceId ? { deviceId: senderDeviceId } : {}),
+      ...(senderDeviceLabel ? { deviceLabel: senderDeviceLabel } : {})
     }
 
     pendingChatMessage.value = ''
@@ -1500,13 +1508,109 @@ export const useAppStore = defineStore('app', () => {
     await setChatTyping(ownerUid, false)
 
     try {
-      await backend.value?.sendCompanyChatMessage(ownerUid, message)
+      await backend.value?.sendCompanyChatMessage(ownerUid, threadId, message)
       chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sent' }
       return true
     } catch (error) {
       chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'failed' }
       chatSendError.value = error instanceof Error ? error.message : 'Nie udało się wysłać wiadomości.'
       if (!pendingChatMessage.value) pendingChatMessage.value = body
+      return false
+    }
+  }
+
+  async function createMessageThread(ownerUid: string, title: string, initialBody: string) {
+    if (!backend.value || !user.value) return false
+    const normalizedTitle = title.trim()
+    const normalizedBody = initialBody.trim()
+    if (!ownerUid || !normalizedTitle || !normalizedBody) return false
+    const ownerDevice = devices.value.find((entry) => entry.ownerUid === ownerUid) ?? selfDevice.value
+    if (!ownerDevice) return false
+
+    const now = Date.now()
+    const threadId = crypto.randomUUID()
+    const relatedDevice = user.value.role === 'slave'
+      ? selfDevice.value ?? ownerDevice
+      : selectedDevice.value?.ownerUid === ownerUid ? selectedDevice.value : undefined
+    const relatedDeviceId = relatedDevice?.deviceId
+    const relatedDeviceLabel = relatedDevice ? formatDeviceLabelForMaster(relatedDevice) : undefined
+    const thread: CompanyMessageThread = {
+      id: threadId,
+      ownerUid,
+      ownerEmail: ownerDevice.ownerEmail,
+      title: normalizedTitle.slice(0, 120),
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+      createdByRole: user.value.role,
+      createdByEmail: user.value.email,
+      ...(relatedDeviceId ? { deviceId: relatedDeviceId } : {}),
+      ...(relatedDeviceLabel ? { deviceLabel: relatedDeviceLabel } : {}),
+      messages: [],
+      states: {}
+    }
+    const message: CompanyChatMessage = {
+      id: crypto.randomUUID(),
+      threadId,
+      ownerUid,
+      ownerEmail: ownerDevice.ownerEmail,
+      senderRole: user.value.role,
+      senderEmail: user.value.email,
+      body: normalizedBody,
+      createdAt: now,
+      delivered: !offline.value,
+      ...(thread.deviceId ? { deviceId: thread.deviceId } : {}),
+      ...(thread.deviceLabel ? { deviceLabel: thread.deviceLabel } : {})
+    }
+
+    chatSendError.value = ''
+    chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sending' }
+    let threadCreated = false
+    try {
+      await backend.value.createCompanyMessageThread(ownerUid, thread)
+      threadCreated = true
+      selectedConversationOwnerUid.value = ownerUid
+      selectedMessageThreadId.value = threadId
+      await backend.value.sendCompanyChatMessage(ownerUid, threadId, message)
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'sent' }
+      return true
+    } catch (error) {
+      chatMessageSendStates.value = { ...chatMessageSendStates.value, [message.id]: 'failed' }
+      if (threadCreated) {
+        selectedConversationOwnerUid.value = ownerUid
+        selectedMessageThreadId.value = threadId
+        pendingChatMessage.value = normalizedBody
+        chatSendError.value = 'Wątek został utworzony, ale pierwsza treść nie została wysłana. Spróbuj wysłać ją ponownie.'
+        return true
+      }
+      chatSendError.value = error instanceof Error ? error.message : 'Nie udało się utworzyć wiadomości.'
+      return false
+    }
+  }
+
+  async function closeMessageThread(ownerUid = selectedConversationOwnerUid.value, threadId = selectedMessageThreadId.value) {
+    if (!backend.value || !user.value || !ownerUid || !threadId) return false
+    const thread = (companyMessageThreads.value[ownerUid] ?? []).find((entry) => entry.id === threadId)
+    if (!thread || thread.status === 'closed') return false
+    const closedAt = Date.now()
+    const closedThread: CompanyMessageThread = {
+      ...thread,
+      status: 'closed',
+      updatedAt: closedAt,
+      closedAt,
+      closedByRole: user.value.role,
+      closedByEmail: user.value.email
+    }
+    await setChatTyping(ownerUid, false, threadId)
+    try {
+      await backend.value.closeCompanyMessageThread(ownerUid, closedThread)
+      allCompanyMessageThreads.value = {
+        ...allCompanyMessageThreads.value,
+        [ownerUid]: (allCompanyMessageThreads.value[ownerUid] ?? []).map((entry) => entry.id === threadId ? closedThread : entry)
+      }
+      return true
+    } catch (error) {
+      chatSendError.value = error instanceof Error ? error.message : 'Nie udało się zakończyć wiadomości.'
       return false
     }
   }
@@ -2199,7 +2303,7 @@ export const useAppStore = defineStore('app', () => {
       window.clearInterval(connectivityIntervalHandle)
       connectivityIntervalHandle = null
     }
-    clearCompanyChatSubscriptions()
+    clearCompanyMessageThreadSubscriptions()
     clearCommandHistorySubscriptions()
     sessionCleanup.forEach((dispose) => dispose())
     sessionCleanup.clear()
@@ -2214,15 +2318,16 @@ export const useAppStore = defineStore('app', () => {
     devices,
     alerts,
     usageHistory,
-    companyChats,
-    companyChatStates,
+    companyMessageThreads,
     chatMessageSendStates,
     inventory,
     commandHistory,
     localDwServiceState,
     selectedDeviceId,
     selectedConversationOwnerUid,
+    selectedMessageThreadId,
     selectedDevice,
+    selectedMessageThread,
     selectedConversationMessages,
     unreadCompanyChatCount,
     selfDevice,
@@ -2274,6 +2379,8 @@ export const useAppStore = defineStore('app', () => {
     acceptConsent,
     approveDevice,
     sendChatMessage,
+    createMessageThread,
+    closeMessageThread,
     retryChatMessage,
     setChatTyping,
     markChatRead,

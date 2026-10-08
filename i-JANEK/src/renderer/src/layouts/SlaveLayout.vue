@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Activity, Cpu, HardDrive, MemoryStick, MessageSquareText, Workflow } from 'lucide-vue-next'
+import { Activity, CheckCircle2, CirclePlus, Cpu, HardDrive, MemoryStick, MessageSquareText, Workflow } from 'lucide-vue-next'
 import LocalDiskUsage from '@/components/LocalDiskUsage.vue'
 import { getMaxLocalDiskUsage } from '@shared/disk-telemetry'
 import AppFooterLink from '@/components/AppFooterLink.vue'
@@ -12,6 +12,10 @@ import type { AlertEvent, CompanyChatMessage, MetricThreshold } from '@shared/co
 const store = useAppStore()
 const alertsModalOpen = ref(false)
 const chatViewport = ref<HTMLElement | null>(null)
+const showClosedThreads = ref(false)
+const creatingThread = ref(false)
+const newThreadTitle = ref('')
+const newThreadBody = ref('')
 let markReadTimer: number | null = null
 let typingTimer: number | null = null
 let typingActive = false
@@ -37,14 +41,25 @@ const hasActiveAlerts = computed(() => deviceAlerts.value.length > 0)
 const localDiskTelemetry = computed(() => deviceOnline.value ? device.value?.telemetry?.disks : undefined)
 const maxDiskUsage = computed(() => getMaxLocalDiskUsage(localDiskTelemetry.value))
 const messageNotificationsMuted = computed(() => store.slaveSettings.muteChatSounds)
-const conversationTimeline = computed(() => buildConversationTimeline(store.selectedConversationMessages))
+const messageThreads = computed(() => {
+  const ownerUid = device.value?.ownerUid
+  if (!ownerUid) return []
+  return [...(store.companyMessageThreads[ownerUid] ?? [])].sort((left, right) => {
+    const leftAt = left.messages.at(-1)?.createdAt ?? left.updatedAt
+    const rightAt = right.messages.at(-1)?.createdAt ?? right.updatedAt
+    return rightAt - leftAt
+  })
+})
+const visibleMessageThreads = computed(() => messageThreads.value.filter((thread) => showClosedThreads.value || thread.status === 'open'))
+const activeMessageThread = computed(() => messageThreads.value.find((thread) => thread.id === store.selectedMessageThreadId) ?? null)
+const conversationTimeline = computed(() => buildConversationTimeline(activeMessageThread.value?.messages ?? []))
 const unreadMessageIds = computed(
   () => {
     const ownerUid = store.selectedConversationOwnerUid
-    if (!ownerUid || !Object.prototype.hasOwnProperty.call(store.companyChatStates, ownerUid)) return new Set<string>()
+    if (!ownerUid || !activeMessageThread.value) return new Set<string>()
     return new Set(
-      store.selectedConversationMessages
-        .filter((message) => message.senderRole === 'master' && message.createdAt > (store.companyChatStates[message.ownerUid]?.slave?.lastReadAt ?? 0))
+      activeMessageThread.value.messages
+        .filter((message) => message.senderRole === 'master' && message.createdAt > (activeMessageThread.value?.states.slave?.lastReadAt ?? 0))
         .map((message) => message.id)
     )
   }
@@ -52,9 +67,15 @@ const unreadMessageIds = computed(
 const unreadMessagesCount = computed(() => unreadMessageIds.value.size)
 const masterIsTyping = computed(() => {
   const ownerUid = store.selectedConversationOwnerUid
-  const state = ownerUid ? store.companyChatStates[ownerUid]?.master : undefined
+  const state = ownerUid ? activeMessageThread.value?.states.master : undefined
   return Boolean(state?.typing && Date.now() - state.updatedAt < 8_000)
 })
+
+watch(messageThreads, (threads) => {
+  if (activeMessageThread.value) return
+  const next = threads.find((thread) => thread.status === 'open') ?? threads[0]
+  store.selectedMessageThreadId = next?.id ?? ''
+}, { immediate: true })
 
 watch(
   () => store.selectedConversationOwnerUid,
@@ -192,11 +213,55 @@ function handleOpenSlaveAlertModal() {
 }
 
 async function sendChatMessage() {
+  if (activeMessageThread.value?.status !== 'open') return
   stopTyping()
   await store.sendChatMessage(device.value?.ownerUid)
   await nextTick()
   scrollToLatest()
   queueMarkMessagesRead(120)
+}
+
+function selectMessageThread(threadId: string) {
+  creatingThread.value = false
+  stopTyping()
+  store.selectedMessageThreadId = threadId
+  queueMarkMessagesRead(120)
+  void nextTick(scrollToLatest)
+}
+
+function startCreatingThread() {
+  stopTyping()
+  creatingThread.value = true
+  newThreadTitle.value = ''
+  newThreadBody.value = ''
+}
+
+async function createMessageThread() {
+  const ownerUid = device.value?.ownerUid
+  if (!ownerUid) return
+  const created = await store.createMessageThread(ownerUid, newThreadTitle.value, newThreadBody.value)
+  if (!created) return
+  creatingThread.value = false
+  newThreadTitle.value = ''
+  newThreadBody.value = ''
+  await nextTick(scrollToLatest)
+}
+
+async function closeMessageThread() {
+  if (!activeMessageThread.value) return
+  if (!window.confirm('Zakończyć tę wiadomość? Po zakończeniu nie będzie można już w niej pisać ani otworzyć jej ponownie.')) return
+  await store.closeMessageThread()
+}
+
+function threadUnreadCount(threadId: string) {
+  const thread = messageThreads.value.find((entry) => entry.id === threadId)
+  if (!thread) return 0
+  const lastReadAt = thread.states.slave?.lastReadAt ?? 0
+  return thread.messages.filter((message) => message.senderRole === 'master' && message.createdAt > lastReadAt).length
+}
+
+function formatThreadDate(timestamp: number) {
+  return new Date(timestamp).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' })
 }
 
 function isNearBottom() {
@@ -220,7 +285,7 @@ function stopTyping() {
 
 function handleTyping() {
   const ownerUid = store.selectedConversationOwnerUid
-  if (!ownerUid) return
+  if (!ownerUid || activeMessageThread.value?.status !== 'open') return
   if (!store.pendingChatMessage.trim()) {
     stopTyping()
     return
@@ -313,81 +378,54 @@ onBeforeUnmount(() => {
 
     <section class="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] p-4">
       <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
-        <div class="flex items-center gap-2 text-sm font-medium text-white">
-          <MessageSquareText class="h-4 w-4 text-fuchsia-300" />
-          Rozpocznij rozmowę z administratorem
-        </div>
-        <div class="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
-          <span v-if="messageNotificationsMuted" class="rounded-full border border-white/10 px-2 py-1">mute</span>
-          <span
-            v-if="unreadMessagesCount"
-            class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-1 text-cyan-100"
-          >
-            {{ unreadMessagesCount }} nowa
-          </span>
+        <div class="flex items-center gap-2 text-sm font-medium text-white"><MessageSquareText class="h-4 w-4 text-fuchsia-300" /> Wiadomości z administratorem</div>
+        <div class="flex items-center gap-2">
+          <span v-if="messageNotificationsMuted" class="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase text-[var(--text-dim)]">mute</span>
+          <button class="glass-button inline-flex items-center gap-1.5 !rounded-xl !px-3 !py-2 !text-xs" type="button" @click="startCreatingThread"><CirclePlus class="h-3.5 w-3.5" /> Nowa</button>
         </div>
       </div>
 
-      <div
-        ref="chatViewport"
-        class="mt-3 flex-1 space-y-2 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        @mouseenter="queueMarkMessagesRead(180)"
-        @scroll="queueMarkMessagesRead(120)"
-      >
-        <template v-for="entry in conversationTimeline" :key="entry.id">
-          <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]">
-            <div class="h-px flex-1 bg-white/10" />
-            <span class="mono">{{ entry.label }}</span>
-            <div class="h-px flex-1 bg-white/10" />
-          </div>
+      <div class="mt-3 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button v-for="thread in visibleMessageThreads" :key="thread.id" class="relative max-w-56 shrink-0 rounded-xl border px-3 py-2 text-left text-xs transition" :class="store.selectedMessageThreadId === thread.id && !creatingThread ? 'border-fuchsia-300/30 bg-fuchsia-500/10 text-white' : 'border-white/10 text-[var(--text-dim)]'" type="button" @click="selectMessageThread(thread.id)">
+          <span class="block truncate font-medium">{{ thread.title }}</span>
+          <span class="mt-0.5 flex items-center gap-1 text-[10px]"><CheckCircle2 v-if="thread.status === 'closed'" class="h-3 w-3 text-emerald-300" />{{ formatThreadDate(thread.messages.at(-1)?.createdAt ?? thread.updatedAt) }}</span>
+          <span v-if="threadUnreadCount(thread.id)" class="absolute -right-1 -top-1 rounded-full bg-cyan-300 px-1.5 py-0.5 text-[9px] font-bold text-slate-950">{{ threadUnreadCount(thread.id) }}</span>
+        </button>
+        <button class="ghost-button shrink-0 !rounded-xl !px-3 !py-2 !text-xs" type="button" @click="showClosedThreads = !showClosedThreads">{{ showClosedThreads ? 'Ukryj zakończone' : 'Historia' }}</button>
+      </div>
 
-          <div
-            v-else
-            class="max-w-[78%] rounded-[18px] border px-3 py-2.5 text-sm leading-6"
-            :class="
-              entry.message.senderRole === 'slave'
-                ? 'ml-auto border-fuchsia-400/20 bg-fuchsia-500/10 text-white'
-                : isUnreadMessage(entry.message)
-                  ? 'border-cyan-300/35 bg-cyan-400/12 text-white shadow-[0_0_0_1px_rgba(125,211,252,0.08)]'
-                  : 'border-white/10 bg-white/5 text-white'
-            "
-          >
-            <div class="mb-1 flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
-              <span class="mono truncate">{{ senderLabel(entry.message) }}</span>
-              <span
-                v-if="isUnreadMessage(entry.message)"
-                class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-0.5 text-[9px] text-cyan-100"
-              >
-                Nowa
-              </span>
+      <template v-if="creatingThread">
+        <div class="mt-4 flex-1 space-y-3 overflow-auto rounded-[18px] border border-white/10 bg-white/[0.025] p-4">
+          <div><div class="text-xs uppercase tracking-[0.14em] text-fuchsia-200">Nowa wiadomość</div><h3 class="mt-1 text-base font-semibold text-white">Nadaj tytuł i opisz sprawę</h3></div>
+          <input v-model="newThreadTitle" class="soft-input" maxlength="120" placeholder="Tytuł wiadomości" />
+          <textarea v-model="newThreadBody" class="soft-input min-h-32" maxlength="4000" placeholder="Napisz, czego dotyczy sprawa..." />
+          <div class="flex justify-end gap-2"><button class="ghost-button !text-xs" type="button" @click="creatingThread = false">Anuluj</button><button class="glass-button !text-xs" type="button" :disabled="!newThreadTitle.trim() || !newThreadBody.trim()" @click="createMessageThread">Utwórz wiadomość</button></div>
+        </div>
+      </template>
+
+      <template v-else-if="activeMessageThread">
+        <div class="mt-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+          <div class="min-w-0"><h3 class="truncate text-sm font-semibold text-white">{{ activeMessageThread.title }}</h3><span class="text-[10px] uppercase tracking-[0.12em]" :class="activeMessageThread.status === 'open' ? 'text-fuchsia-200' : 'text-emerald-200'">{{ activeMessageThread.status === 'open' ? 'Aktywna' : 'Zakończona' }}</span></div>
+          <button v-if="activeMessageThread.status === 'open'" class="ghost-button inline-flex items-center gap-1.5 !px-3 !py-1.5 !text-[11px] !text-emerald-100" type="button" @click="closeMessageThread"><CheckCircle2 class="h-3.5 w-3.5" /> Zakończ</button>
+        </div>
+
+        <div ref="chatViewport" class="mt-3 flex-1 space-y-2 overflow-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" @mouseenter="queueMarkMessagesRead(180)" @scroll="queueMarkMessagesRead(120)">
+          <template v-for="entry in conversationTimeline" :key="entry.id">
+            <div v-if="entry.kind === 'day'" class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)]"><div class="h-px flex-1 bg-white/10" /><span class="mono">{{ entry.label }}</span><div class="h-px flex-1 bg-white/10" /></div>
+            <div v-else class="max-w-[78%] rounded-[18px] border px-3 py-2.5 text-sm leading-6" :class="entry.message.senderRole === 'slave' ? 'ml-auto border-fuchsia-400/20 bg-fuchsia-500/10 text-white' : isUnreadMessage(entry.message) ? 'border-cyan-300/35 bg-cyan-400/12 text-white shadow-[0_0_0_1px_rgba(125,211,252,0.08)]' : 'border-white/10 bg-white/5 text-white'">
+              <div class="mb-1 flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.14em] text-[var(--text-dim)]"><span class="mono truncate">{{ senderLabel(entry.message) }}</span><span v-if="isUnreadMessage(entry.message)" class="rounded-full border border-cyan-300/30 bg-cyan-300/15 px-2 py-0.5 text-[9px] text-cyan-100">Nowa</span></div>
+              {{ entry.message.body }}
+              <div class="mt-1.5 flex justify-end gap-2 text-[10px] text-[var(--text-dim)]"><span>{{ formatMessageTime(entry.message.createdAt) }}</span><span v-if="entry.message.senderRole === 'slave'" :class="store.getChatMessageStatus(entry.message) === 'read' ? 'text-fuchsia-200' : ''">{{ messageStatusLabel(entry.message) }}</span></div>
             </div>
-            {{ entry.message.body }}
-            <div class="mt-1.5 flex justify-end gap-2 text-[10px] text-[var(--text-dim)]">
-              <span>{{ formatMessageTime(entry.message.createdAt) }}</span>
-              <span v-if="entry.message.senderRole === 'slave'" :class="store.getChatMessageStatus(entry.message) === 'read' ? 'text-fuchsia-200' : ''">{{ messageStatusLabel(entry.message) }}</span>
-            </div>
-          </div>
-        </template>
-
-        <div v-if="masterIsTyping" class="inline-flex items-center gap-1 rounded-[18px] border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--text-dim)]"><span class="animate-pulse">●</span> Administrator pisze…</div>
-
-        <div v-if="!conversationTimeline.length" class="rounded-[18px] border border-white/10 px-3 py-3 text-sm text-[var(--text-dim)]">
-          Brak wiadomości w tej rozmowie.
+          </template>
+          <div v-if="masterIsTyping && activeMessageThread.status === 'open'" class="inline-flex items-center gap-1 rounded-[18px] border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--text-dim)]"><span class="animate-pulse">●</span> Administrator pisze…</div>
         </div>
-      </div>
 
-      <div class="mt-3 flex gap-2">
-        <input
-          v-model="store.pendingChatMessage"
-          class="soft-input !py-2.5"
-          maxlength="4000"
-          placeholder="Napisz wiadomość"
-          @focus="queueMarkMessagesRead(120)"
-          @input="handleTyping"
-          @keydown.enter.exact.prevent="sendChatMessage"
-        />
-        <button class="glass-button !rounded-xl !px-4 !py-2.5 !text-sm" type="button" :disabled="!store.pendingChatMessage.trim()" @click="sendChatMessage">Wyślij</button>
-      </div>
+        <div v-if="activeMessageThread.status === 'open'" class="mt-3 flex gap-2"><input v-model="store.pendingChatMessage" class="soft-input !py-2.5" maxlength="4000" placeholder="Napisz wiadomość" @focus="queueMarkMessagesRead(120)" @input="handleTyping" @keydown.enter.exact.prevent="sendChatMessage" /><button class="glass-button !rounded-xl !px-4 !py-2.5 !text-sm" type="button" :disabled="!store.pendingChatMessage.trim()" @click="sendChatMessage">Wyślij</button></div>
+        <div v-else class="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-500/[0.06] px-3 py-2 text-xs text-emerald-100">Ta wiadomość jest zakończona i pozostaje tylko do odczytu.</div>
+      </template>
+
+      <div v-else class="flex flex-1 items-center justify-center text-center text-sm text-[var(--text-dim)]"><div><MessageSquareText class="mx-auto h-7 w-7" /><p class="mt-3">Utwórz pierwszą wiadomość do administratora.</p></div></div>
       <p v-if="store.chatSendError" class="mt-2 text-xs text-rose-200">{{ store.chatSendError }}</p>
     </section>
 

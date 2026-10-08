@@ -14,21 +14,26 @@
         }
       }
     },
-    "ownerChats": {
+    "ownerMessageThreads": {
       "$ownerUid": {
         ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
-        "$messageId": {
-          ".write": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
-          ".validate": "newData.hasChildren(['id', 'ownerUid', 'ownerEmail', 'senderRole', 'senderEmail', 'body', 'createdAt']) && newData.child('id').val() === $messageId && newData.child('ownerUid').val() === $ownerUid && newData.child('senderEmail').val() === auth.token.email && newData.child('body').isString() && newData.child('body').val().length <= 4000 && newData.child('createdAt').isNumber()"
-        }
-      }
-    },
-    "ownerChatStates": {
-      "$ownerUid": {
-        ".read": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl')",
-        "$participant": {
-          ".write": "auth != null && (($participant === 'slave' && auth.uid === $ownerUid) || ($participant === 'master' && auth.token.email === 'kontakt@i-janicki.pl'))",
-          ".validate": "($participant === 'master' || $participant === 'slave') && newData.hasChildren(['role', 'email', 'typing', 'lastDeliveredAt', 'lastReadAt', 'updatedAt']) && newData.child('role').val() === $participant && newData.child('email').val() === auth.token.email && newData.child('typing').isBoolean() && newData.child('lastDeliveredAt').isNumber() && newData.child('lastReadAt').isNumber() && newData.child('updatedAt').isNumber() && (!data.exists() || (newData.child('lastDeliveredAt').val() >= data.child('lastDeliveredAt').val() && newData.child('lastReadAt').val() >= data.child('lastReadAt').val()))"
+        "$threadId": {
+          "meta": {
+            ".write": "auth != null && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl') && ((!data.exists() && newData.child('status').val() === 'open' && newData.child('createdByEmail').val() === auth.token.email && newData.child('createdByRole').val() === (auth.uid === $ownerUid ? 'slave' : 'master')) || (data.exists() && data.child('status').val() === 'open' && newData.child('status').val() === 'closed' && newData.child('id').val() === data.child('id').val() && newData.child('ownerUid').val() === data.child('ownerUid').val() && newData.child('ownerEmail').val() === data.child('ownerEmail').val() && newData.child('title').val() === data.child('title').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('createdByRole').val() === data.child('createdByRole').val() && newData.child('createdByEmail').val() === data.child('createdByEmail').val() && newData.child('deviceId').val() === data.child('deviceId').val() && newData.child('deviceLabel').val() === data.child('deviceLabel').val() && newData.child('closedByEmail').val() === auth.token.email && newData.child('closedByRole').val() === (auth.uid === $ownerUid ? 'slave' : 'master')))",
+            ".validate": "newData.hasChildren(['id', 'ownerUid', 'ownerEmail', 'title', 'status', 'createdAt', 'updatedAt', 'createdByRole', 'createdByEmail']) && newData.child('id').val() === $threadId && newData.child('ownerUid').val() === $ownerUid && newData.child('ownerEmail').isString() && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 120 && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber() && (newData.child('createdByRole').val() === 'master' || newData.child('createdByRole').val() === 'slave') && (newData.child('status').val() === 'open' || (newData.child('status').val() === 'closed' && newData.hasChildren(['closedAt', 'closedByRole', 'closedByEmail']) && newData.child('updatedAt').val() === newData.child('closedAt').val() && newData.child('closedAt').isNumber() && newData.child('closedAt').val() >= newData.child('createdAt').val()))"
+          },
+          "messages": {
+            "$messageId": {
+              ".write": "auth != null && !data.exists() && newData.exists() && (auth.uid === $ownerUid || auth.token.email === 'kontakt@i-janicki.pl') && root.child('ownerMessageThreads').child($ownerUid).child($threadId).child('meta').child('status').val() === 'open'",
+              ".validate": "newData.hasChildren(['id', 'threadId', 'ownerUid', 'ownerEmail', 'senderRole', 'senderEmail', 'body', 'createdAt']) && newData.child('id').val() === $messageId && newData.child('threadId').val() === $threadId && newData.child('ownerUid').val() === $ownerUid && newData.child('ownerEmail').val() === root.child('ownerMessageThreads').child($ownerUid).child($threadId).child('meta').child('ownerEmail').val() && newData.child('senderEmail').val() === auth.token.email && newData.child('senderRole').val() === (auth.uid === $ownerUid ? 'slave' : 'master') && newData.child('body').isString() && newData.child('body').val().length > 0 && newData.child('body').val().length <= 4000 && newData.child('createdAt').isNumber()"
+            }
+          },
+          "states": {
+            "$participant": {
+              ".write": "auth != null && (($participant === 'slave' && auth.uid === $ownerUid) || ($participant === 'master' && auth.token.email === 'kontakt@i-janicki.pl'))",
+              ".validate": "($participant === 'master' || $participant === 'slave') && newData.hasChildren(['role', 'email', 'typing', 'lastDeliveredAt', 'lastReadAt', 'updatedAt']) && newData.child('role').val() === $participant && newData.child('email').val() === auth.token.email && newData.child('typing').isBoolean() && newData.child('lastDeliveredAt').isNumber() && newData.child('lastReadAt').isNumber() && newData.child('updatedAt').isNumber() && (!data.exists() || (newData.child('lastDeliveredAt').val() >= data.child('lastDeliveredAt').val() && newData.child('lastReadAt').val() >= data.child('lastReadAt').val()))"
+            }
+          }
         }
       }
     },

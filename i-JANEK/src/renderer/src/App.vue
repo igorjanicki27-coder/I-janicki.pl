@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Clock3, Download, KeyRound, L
 import MasterDashboard from '@/layouts/MasterDashboard.vue'
 import SettingsDrawer from '@/layouts/SettingsDrawer.vue'
 import SlaveLayout from '@/layouts/SlaveLayout.vue'
+import AppFooterLink from '@/components/AppFooterLink.vue'
 import PostUpdateDialog from '@/components/PostUpdateDialog.vue'
 import { useAppStore } from '@/stores/app'
 import { isDeviceOnline } from '@/services/device-presence'
@@ -72,6 +73,13 @@ const needsConsent = computed(
     !store.consent.remoteCommandConsent ||
     !store.consent.dwServiceConsent
   )
+)
+watch(
+  () => store.consent?.dwServiceConsent,
+  (accepted) => {
+    if (accepted) dwServiceAccepted.value = true
+  },
+  { immediate: true }
 )
 const isApprovalBlocked = computed(() => store.isApprovalBlocked)
 const isBrowserClient = computed(() => Boolean(store.user && !store.isMaster && !store.isDesktopAgent))
@@ -505,14 +513,7 @@ watch(
           </div>
         </div>
 
-        <a
-          class="mt-auto block w-full pb-2 text-center text-xs leading-6 tracking-[0.16em] text-[var(--text-dim)] transition hover:text-white lg:pb-4"
-          href="https://i-janicki.pl"
-          rel="noreferrer noopener"
-          target="_blank"
-        >
-          Design &amp; Development by Igor Janicki | @Własność i-JANICKI.pl
-        </a>
+        <AppFooterLink class="mt-auto w-full pb-2 text-xs leading-6 tracking-[0.16em] lg:pb-4" />
       </section>
 
       <section v-else-if="isBrowserClient" class="mx-auto flex h-full max-w-3xl items-center justify-center">
@@ -576,8 +577,8 @@ watch(
             <span class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Zezwalam zaakceptowanemu administratorowi na uruchamianie poleceń diagnostycznych i naprawczych. Każde polecenie i wynik są zapisywane w historii audytowej.</span>
           </label>
           <div class="mt-2 flex items-start gap-3 rounded-[20px] border border-white/10 bg-white/5 p-3 text-[var(--text-dim)]">
-            <input id="dwservice-consent" v-model="dwServiceAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500" />
-            <label for="dwservice-consent" class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> Wyrażam zgodę na instalację komponentu zdalnego wsparcia <button class="underline underline-offset-2 hover:text-white" type="button" @click.stop.prevent="dwServiceInfoOpen = true">DWService</button> na tym urządzeniu oraz jego wykorzystanie przez i-JANICKI do świadczenia usług zdalnego wsparcia.</label>
+            <input id="dwservice-consent" v-model="dwServiceAccepted" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-fuchsia-500 disabled:opacity-60" :disabled="Boolean(store.consent?.dwServiceConsent)" />
+            <label for="dwservice-consent" class="text-[13px] leading-5"><strong class="text-white">Wymagane.</strong> {{ store.consent?.dwServiceConsent ? 'Zgoda na instalację i użycie DWService została już zapisana dla tego urządzenia.' : 'Wyrażam zgodę na instalację komponentu zdalnego wsparcia DWService na tym urządzeniu oraz jego wykorzystanie przez i-JANICKI do świadczenia usług zdalnego wsparcia.' }} <button class="underline underline-offset-2 hover:text-white" type="button" @click.stop.prevent="dwServiceInfoOpen = true">Dowiedz się więcej</button>.</label>
           </div>
           <p v-if="consentValidationMessage" class="mt-3 text-center text-sm text-amber-300">
             {{ consentValidationMessage }}

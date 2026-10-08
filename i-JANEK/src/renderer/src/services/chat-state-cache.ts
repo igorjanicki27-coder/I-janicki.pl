@@ -1,9 +1,10 @@
 import type { CompanyChatParticipant, CompanyChatParticipantState } from '@shared/contracts'
 
-const STORAGE_KEY = 'i-janek-pending-chat-state-v1'
+const STORAGE_KEY = 'i-janek-pending-message-thread-state-v1'
 
 export interface PendingChatParticipantState {
   ownerUid: string
+  threadId: string
   participant: CompanyChatParticipant
   email: string
   lastDeliveredAt: number
@@ -13,8 +14,8 @@ export interface PendingChatParticipantState {
 
 type PendingChatStateRecord = Record<string, PendingChatParticipantState>
 
-function cacheKey(ownerUid: string, participant: CompanyChatParticipant) {
-  return `${participant}:${ownerUid}`
+function cacheKey(ownerUid: string, threadId: string, participant: CompanyChatParticipant) {
+  return `${participant}:${ownerUid}:${threadId}`
 }
 
 function isPendingChatParticipantState(value: unknown): value is PendingChatParticipantState {
@@ -22,6 +23,7 @@ function isPendingChatParticipantState(value: unknown): value is PendingChatPart
   const candidate = value as Partial<PendingChatParticipantState>
   return (
     typeof candidate.ownerUid === 'string'
+    && typeof candidate.threadId === 'string'
     && (candidate.participant === 'master' || candidate.participant === 'slave')
     && typeof candidate.email === 'string'
     && typeof candidate.lastDeliveredAt === 'number'
@@ -55,23 +57,26 @@ function writeRecord(record: PendingChatStateRecord) {
 
 export function readPendingChatParticipantState(
   ownerUid: string,
+  threadId: string,
   participant: CompanyChatParticipant,
   email: string
 ) {
-  const pending = readRecord()[cacheKey(ownerUid, participant)]
+  const pending = readRecord()[cacheKey(ownerUid, threadId, participant)]
   return pending?.email.toLocaleLowerCase() === email.toLocaleLowerCase() ? pending : null
 }
 
 export function persistPendingChatParticipantState(
   ownerUid: string,
+  threadId: string,
   participant: CompanyChatParticipant,
   state: CompanyChatParticipantState
 ) {
   const record = readRecord()
-  const key = cacheKey(ownerUid, participant)
+  const key = cacheKey(ownerUid, threadId, participant)
   const current = record[key]
   const pending: PendingChatParticipantState = {
     ownerUid,
+    threadId,
     participant,
     email: state.email,
     lastDeliveredAt: Math.max(current?.lastDeliveredAt ?? 0, state.lastDeliveredAt),
@@ -85,12 +90,13 @@ export function persistPendingChatParticipantState(
 
 export function acknowledgePendingChatParticipantState(
   ownerUid: string,
+  threadId: string,
   participant: CompanyChatParticipant,
   email: string,
   confirmedState: Pick<CompanyChatParticipantState, 'lastDeliveredAt' | 'lastReadAt'>
 ) {
   const record = readRecord()
-  const key = cacheKey(ownerUid, participant)
+  const key = cacheKey(ownerUid, threadId, participant)
   const pending = record[key]
   if (!pending || pending.email.toLocaleLowerCase() !== email.toLocaleLowerCase()) return
   if (

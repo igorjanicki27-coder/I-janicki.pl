@@ -147,6 +147,7 @@ npm run test:rules
 - Po pobraniu aktualizacji aplikacja proponuje instalację od razu albo później; po odroczeniu przypomina ponownie po 4 godzinach.
 - Build beta pobiera aktualizacje beta i późniejsze stable, natomiast build stable pozostaje wyłącznie na kanale stable.
 - Dla użytkownika publikowane są instalatory `.dmg` (macOS) i `.exe` (Windows). Plik `.zip` dla macOS pozostaje wyłącznie technicznym zasobem wymaganym przez `electron-updater`.
+- Nowa instalacja Windows wymaga zgody na DWService i pozwala opcjonalnie podać kod instalacyjny. Kod jest przechowywany w postaci chronionej przez Windows DPAPI; na tym etapie DWAgent nie jest jeszcze pobierany ani uruchamiany.
 - Po akceptacji urządzenia klient odbiera przypisany kod DWService i przekazuje go do systemowego instalatora agenta. Zmiana kodu w panelu powoduje ponowną konfigurację.
 - Panel DWService działa w `WebContentsView` wewnątrz i-JANEK i używa trwałej partycji sesji `persist:dwservice`.
 - Pełny agent działa na Windows i macOS, natomiast panel Mastera można również zbudować jako aplikację webową poleceniem `npm run build:web`.

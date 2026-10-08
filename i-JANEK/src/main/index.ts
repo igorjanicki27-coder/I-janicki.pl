@@ -16,6 +16,7 @@ import { localStore } from './store'
 import { createDiagnosticBundle, writeDiagnosticLog } from './services/diagnostics-service'
 import { canExitForWindowsUpdate, getWindowsRestartRequestId, type WindowsAgentUpdateStatus } from './services/windows-update-protocol'
 import { advanceUpdateNoticeState, readPostUpdateNotice } from './services/post-update-notice'
+import { mergeInstallerDwServiceConsent } from './services/dwservice-bootstrap-service'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -741,7 +742,14 @@ function registerIpc() {
   ipcMain.handle('system:hide-main-window', async () => {
     mainWindow?.hide()
   })
-  ipcMain.handle('system:get-consent', async () => localStore.get('consent') ?? null)
+  ipcMain.handle('system:get-consent', async () => {
+    const storedConsent = localStore.get('consent') ?? null
+    const consentWithInstallerApproval = mergeInstallerDwServiceConsent(storedConsent)
+    if (consentWithInstallerApproval && !storedConsent?.dwServiceConsent) {
+      localStore.set('consent', consentWithInstallerApproval)
+    }
+    return consentWithInstallerApproval
+  })
   ipcMain.handle('system:set-consent', async (_event, consent) => {
     localStore.set('consent', consent)
   })

@@ -13,11 +13,40 @@
     consentUpdatedAt: 'ijanek_cookie_consent_updated_at',
     anonymousUserId: 'ijanek_anonymous_user_id',
   };
+  const TUTORIAL_STORAGE = {
+    activeStep: 'ijanek_tutorial_step',
+    returnPending: 'ijanek_tutorial_return',
+    done: 'ijanek_tutorial_done',
+    language: 'ijanek_lang',
+  };
 
   const toggle = document.querySelector('[data-nav-toggle]');
   const nav = document.querySelector('[data-nav]');
   const cookieOverlay = document.getElementById('cookieOverlay');
   const cookieButton = document.getElementById('cookieFootBtn');
+
+  function initTutorialReturnButton() {
+    let shouldShow = false;
+    try {
+      shouldShow = sessionStorage.getItem(TUTORIAL_STORAGE.returnPending) === 'true'
+        && Boolean(sessionStorage.getItem(TUTORIAL_STORAGE.activeStep))
+        && localStorage.getItem(TUTORIAL_STORAGE.done) !== 'true';
+    } catch (_) {
+      return;
+    }
+
+    if (!shouldShow || window.location.pathname === '/') return;
+
+    const language = readStorage(TUTORIAL_STORAGE.language);
+    const label = language === 'en' ? 'BACK' : 'WRÓĆ';
+    const accessibleLabel = language === 'en' ? 'Return to the tutorial' : 'Wróć do samouczka';
+    const button = document.createElement('a');
+    button.className = 'tutorial-return-button';
+    button.href = '/';
+    button.setAttribute('aria-label', accessibleLabel);
+    button.innerHTML = '<span aria-hidden="true">←</span><span>' + label + '</span>';
+    document.body.appendChild(button);
+  }
 
   if (toggle && nav) {
     toggle.addEventListener('click', function () {
@@ -279,4 +308,6 @@
   if (!readStorage(STORAGE.decision)) {
     showCookiePanel('banner');
   }
+
+  initTutorialReturnButton();
 })();

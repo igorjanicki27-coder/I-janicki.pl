@@ -2,7 +2,11 @@
 
 Na Windows aplikacja sprawdza aktualizacje przy starcie procesu, przy ponownym otwarciu okna (najwyżej raz na pięć minut) oraz co 12 godzin podczas działania. Zadanie agenta działa również przy zasilaniu bateryjnym.
 
-Instalator NSIS instaluje i-JANEK dla całego komputera w chronionym katalogu Program Files. Pierwsza instalacja wymaga administratora. Tworzy też zadanie `i-JANEK Update Agent`, działające jako SYSTEM co minutę i przy starcie Windows. Zadanie wykonuje uprzywilejowane operacje aktualizacji oraz instaluje lub rekonfiguruje agenta DWService po przypisaniu kodu przez Mastera. Aplikacja okienkowa działa z uprawnieniami użytkownika.
+Instalator NSIS instaluje i-JANEK dla całego komputera w chronionym katalogu Program Files. Pierwsza instalacja wymaga administratora. Podczas nowej instalacji użytkownik musi zaakceptować zgodę na instalację i użycie DWService; bez zgody instalator nie przejdzie dalej. Z tego powodu nowa instalacja w trybie całkowicie cichym jest blokowana. Na tej samej stronie można opcjonalnie wpisać kod w formacie `123-456-789`. Zgoda i zaszyfrowany przez Windows DPAPI kod są przygotowywane do późniejszej konfiguracji, a plik startowy może odczytać tylko SYSTEM lub administrator. Bieżąca wersja nie pobiera ani nie uruchamia jeszcze DWAgent z tego kroku. Automatyczne aktualizacje i ręczna naprawa istniejącej instalacji pomijają tę stronę i nie nadpisują wcześniejszego wyboru.
+
+Przy pierwszym uruchomieniu i-JANEK odczytuje z tego pliku wyłącznie fakt udzielenia aktualnej zgody. Nie odczytuje zaszyfrowanego kodu, więc użytkownik nie musi ponownie zaznaczać zgody DWService w aplikacji. Pozostałe zgody aplikacji nadal są zbierane osobno.
+
+Instalator tworzy też zadanie `i-JANEK Update Agent`, działające jako SYSTEM co minutę i przy starcie Windows. Zadanie wykonuje uprzywilejowane operacje aktualizacji oraz, po włączeniu tej części procesu, zainstaluje lub skonfiguruje agenta DWService przy użyciu zatwierdzonego kodu. Aplikacja okienkowa działa z uprawnieniami użytkownika.
 
 Po wykryciu nowej wersji `electron-updater` pobiera instalator do profilu użytkownika. Aplikacja zapisuje zgłoszenie w `ProgramData\i-JANEK\requests` i od razu uruchamia zadanie agenta. Zadanie pozwala zwykłym użytkownikom tylko na odczyt i uruchomienie; jego definicja pozostaje chroniona. Agent pobiera z wydania GitHub manifest i podpis, weryfikuje podpis publicznym kluczem zapisanym przy pierwszej instalacji, kopiuje instalator do chronionego katalogu i porównuje SHA-512.
 

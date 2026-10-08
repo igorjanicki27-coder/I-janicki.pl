@@ -198,7 +198,7 @@ function readinessDot(status: 'ok' | 'warning' | 'error' | 'skipped') {
         </div>
       </div>
 
-      <div class="scrollbar-glass min-h-0 flex-1 overflow-y-auto pr-1">
+      <div class="scrollbar-glass flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
         <template v-if="store.isMaster">
           <section class="rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div class="text-sm font-semibold text-white">Zarzadzanie kontem</div>
@@ -395,8 +395,10 @@ function readinessDot(status: 'ok' | 'warning' | 'error' | 'skipped') {
           <ChevronRight class="h-4 w-4 shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
         </button>
 
-        <AppFooterLink class="mt-4 pb-2 pt-1" />
-        <button v-if="!store.isMaster && store.isDesktopAgent" class="mt-2 w-full py-2 text-center text-[11px] text-white/30 transition hover:text-rose-200/70" type="button" @click="openUnregisterDialog()">Wyrejestruj urządzenie</button>
+        <div :class="!store.isMaster && store.isDesktopAgent ? 'mt-auto pt-6' : 'mt-4'">
+          <button v-if="!store.isMaster && store.isDesktopAgent" class="w-full py-2 text-center text-[11px] text-white/30 transition hover:text-rose-200/70" type="button" @click="openUnregisterDialog()">Wyrejestruj urządzenie</button>
+          <AppFooterLink :class="!store.isMaster && store.isDesktopAgent ? 'mt-2 pb-2 pt-1' : 'pb-2 pt-1'" />
+        </div>
       </div>
     </aside>
 

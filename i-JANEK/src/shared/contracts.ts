@@ -207,6 +207,7 @@ export interface ChatMessage {
 
 export interface CompanyChatMessage {
   id: string
+  threadId: string
   ownerUid: string
   ownerEmail: string
   senderRole: UserRole
@@ -216,6 +217,27 @@ export interface CompanyChatMessage {
   delivered: boolean
   deviceId?: string
   deviceLabel?: string
+}
+
+export type CompanyMessageThreadStatus = 'open' | 'closed'
+
+export interface CompanyMessageThread {
+  id: string
+  ownerUid: string
+  ownerEmail: string
+  title: string
+  status: CompanyMessageThreadStatus
+  createdAt: number
+  updatedAt: number
+  createdByRole: UserRole
+  createdByEmail: string
+  closedAt?: number
+  closedByRole?: UserRole
+  closedByEmail?: string
+  deviceId?: string
+  deviceLabel?: string
+  messages: CompanyChatMessage[]
+  states: CompanyChatState
 }
 
 export type CompanyChatParticipant = Extract<UserRole, 'master' | 'slave'>

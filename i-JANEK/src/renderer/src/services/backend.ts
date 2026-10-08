@@ -39,7 +39,7 @@ import type {
   CompanyChatMessage,
   CompanyChatParticipant,
   CompanyChatParticipantState,
-  CompanyChatState,
+  CompanyMessageThread,
   ConsentRecord,
   ClientProfile,
   DeviceIdentity,
@@ -90,12 +90,14 @@ export interface BackendClient {
     onError?: (error: unknown) => void
   ) => Unsubscribe
   subscribeAlerts: (user: AppUser, callback: (alerts: AlertEvent[]) => void) => Unsubscribe
-  subscribeCompanyChats: (ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) => Unsubscribe
-  subscribeCompanyChatState: (ownerUid: string, callback: (state: CompanyChatState) => void) => Unsubscribe
+  subscribeCompanyMessageThreads: (ownerUid: string, callback: (threads: CompanyMessageThread[]) => void) => Unsubscribe
   subscribeRemoteMasterSettings: (callback: (settings: Partial<RemoteMasterSettings> | null) => void) => Unsubscribe
-  sendCompanyChatMessage: (ownerUid: string, message: CompanyChatMessage) => Promise<void>
+  createCompanyMessageThread: (ownerUid: string, thread: CompanyMessageThread) => Promise<void>
+  sendCompanyChatMessage: (ownerUid: string, threadId: string, message: CompanyChatMessage) => Promise<void>
+  closeCompanyMessageThread: (ownerUid: string, thread: CompanyMessageThread) => Promise<void>
   updateCompanyChatParticipantState: (
     ownerUid: string,
+    threadId: string,
     participant: CompanyChatParticipant,
     state: CompanyChatParticipantState
   ) => Promise<void>
@@ -524,31 +526,37 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
-  subscribeCompanyChats(ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) {
+  subscribeCompanyMessageThreads(ownerUid: string, callback: (threads: CompanyMessageThread[]) => void) {
     if (!firebaseServices!.database) {
       callback([])
       return () => {}
     }
-    const messagesRef = ref(firebaseServices!.database, `ownerChats/${ownerUid}`)
-    const listener = onValue(messagesRef, (snapshot) => {
+    const threadsRef = ref(firebaseServices!.database, `ownerMessageThreads/${ownerUid}`)
+    const listener = onValue(threadsRef, (snapshot) => {
       const value = snapshot.val() ?? {}
-      const messages = Object.entries(value)
-        .map(([id, entry]) => ({ id, ...(entry as Omit<CompanyChatMessage, 'id'>) }))
-        .sort((a, b) => a.createdAt - b.createdAt)
-      callback(messages)
+      const threads = Object.entries(value)
+        .map(([id, entry]) => {
+          const raw = entry as {
+            meta?: Omit<CompanyMessageThread, 'messages' | 'states'>
+            messages?: Record<string, Omit<CompanyChatMessage, 'id'>>
+            states?: CompanyMessageThread['states']
+          }
+          if (!raw.meta) return null
+          return {
+            ...raw.meta,
+            id,
+            messages: Object.entries(raw.messages ?? {})
+              .map(([messageId, message]) => ({ id: messageId, ...message }))
+              .sort((a, b) => a.createdAt - b.createdAt),
+            states: raw.states ?? {}
+          } satisfies CompanyMessageThread
+        })
+        .filter((thread): thread is CompanyMessageThread => Boolean(thread))
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+      callback(threads)
     })
 
-    return () => off(messagesRef, 'value', listener)
-  }
-
-  subscribeCompanyChatState(ownerUid: string, callback: (state: CompanyChatState) => void) {
-    if (!firebaseServices!.database) {
-      callback({})
-      return () => {}
-    }
-    const stateRef = ref(firebaseServices!.database, `ownerChatStates/${ownerUid}`)
-    const listener = onValue(stateRef, (snapshot) => callback((snapshot.val() ?? {}) as CompanyChatState))
-    return () => off(stateRef, 'value', listener)
+    return () => off(threadsRef, 'value', listener)
   }
 
   subscribeRemoteMasterSettings(callback: (settings: Partial<RemoteMasterSettings> | null) => void) {
@@ -558,19 +566,32 @@ class FirebaseBackend implements BackendClient {
     })
   }
 
-  async sendCompanyChatMessage(ownerUid: string, message: CompanyChatMessage) {
+  async createCompanyMessageThread(ownerUid: string, thread: CompanyMessageThread) {
     if (!firebaseServices!.database) return
-    const messagesRef = ref(firebaseServices!.database, `ownerChats/${ownerUid}/${message.id}`)
+    const { messages: _messages, states: _states, ...meta } = thread
+    await set(ref(firebaseServices!.database, `ownerMessageThreads/${ownerUid}/${thread.id}/meta`), meta)
+  }
+
+  async sendCompanyChatMessage(ownerUid: string, threadId: string, message: CompanyChatMessage) {
+    if (!firebaseServices!.database) return
+    const messagesRef = ref(firebaseServices!.database, `ownerMessageThreads/${ownerUid}/${threadId}/messages/${message.id}`)
     await set(messagesRef, message)
+  }
+
+  async closeCompanyMessageThread(ownerUid: string, thread: CompanyMessageThread) {
+    if (!firebaseServices!.database) return
+    const { messages: _messages, states: _states, ...meta } = thread
+    await set(ref(firebaseServices!.database, `ownerMessageThreads/${ownerUid}/${thread.id}/meta`), meta)
   }
 
   async updateCompanyChatParticipantState(
     ownerUid: string,
+    threadId: string,
     participant: CompanyChatParticipant,
     state: CompanyChatParticipantState
   ) {
     if (!firebaseServices!.database) return
-    await set(ref(firebaseServices!.database, `ownerChatStates/${ownerUid}/${participant}`), state)
+    await set(ref(firebaseServices!.database, `ownerMessageThreads/${ownerUid}/${threadId}/states/${participant}`), state)
   }
 
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {
@@ -1028,8 +1049,7 @@ class MockBackend implements BackendClient {
   private deviceListeners = new Set<(devices: DeviceRecord[]) => void>()
   private alertListeners = new Set<(alerts: AlertEvent[]) => void>()
   private masterSettingsListeners = new Set<(settings: Partial<RemoteMasterSettings> | null) => void>()
-  private chatListeners = new Map<string, Set<(messages: CompanyChatMessage[]) => void>>()
-  private chatStateListeners = new Map<string, Set<(state: CompanyChatState) => void>>()
+  private messageThreadListeners = new Map<string, Set<(threads: CompanyMessageThread[]) => void>>()
   private commandListeners = new Map<string, Set<(commands: TerminalCommand[]) => void>>()
   private clientProfiles = new Map<string, ClientProfile>()
   private inventories = new Map<string, InventoryReport>()
@@ -1216,8 +1236,7 @@ class MockBackend implements BackendClient {
       createdAt: Date.now() - 140_000
     }
   ]
-  private chats = new Map<string, CompanyChatMessage[]>()
-  private chatStates = new Map<string, CompanyChatState>()
+  private messageThreads = new Map<string, CompanyMessageThread[]>()
   private remoteMasterSettings: RemoteMasterSettings = {
     telemetryMode: 'standard',
     companyOptions: ['i-JANEK Demo', 'Firma Klienta', 'Biuro Janicki'],
@@ -1427,20 +1446,11 @@ class MockBackend implements BackendClient {
     return () => this.alertListeners.delete(callback)
   }
 
-  subscribeCompanyChats(ownerUid: string, callback: (messages: CompanyChatMessage[]) => void) {
-    const key = ownerUid
-    const listeners = this.chatListeners.get(key) ?? new Set()
+  subscribeCompanyMessageThreads(ownerUid: string, callback: (threads: CompanyMessageThread[]) => void) {
+    const listeners = this.messageThreadListeners.get(ownerUid) ?? new Set()
     listeners.add(callback)
-    this.chatListeners.set(key, listeners)
-    callback(this.chats.get(key) ?? [])
-    return () => listeners.delete(callback)
-  }
-
-  subscribeCompanyChatState(ownerUid: string, callback: (state: CompanyChatState) => void) {
-    const listeners = this.chatStateListeners.get(ownerUid) ?? new Set()
-    listeners.add(callback)
-    this.chatStateListeners.set(ownerUid, listeners)
-    callback(this.chatStates.get(ownerUid) ?? {})
+    this.messageThreadListeners.set(ownerUid, listeners)
+    callback(this.messageThreads.get(ownerUid) ?? [])
     return () => listeners.delete(callback)
   }
 
@@ -1450,21 +1460,40 @@ class MockBackend implements BackendClient {
     return () => this.masterSettingsListeners.delete(callback)
   }
 
-  async sendCompanyChatMessage(ownerUid: string, message: CompanyChatMessage) {
-    const current = this.chats.get(ownerUid) ?? []
-    current.push(message)
-    this.chats.set(ownerUid, current)
-    this.chatListeners.get(ownerUid)?.forEach((listener) => listener(current))
+  async createCompanyMessageThread(ownerUid: string, thread: CompanyMessageThread) {
+    const current = this.messageThreads.get(ownerUid) ?? []
+    this.messageThreads.set(ownerUid, [thread, ...current])
+    this.messageThreadListeners.get(ownerUid)?.forEach((listener) => listener(this.messageThreads.get(ownerUid) ?? []))
+  }
+
+  async sendCompanyChatMessage(ownerUid: string, threadId: string, message: CompanyChatMessage) {
+    const current = this.messageThreads.get(ownerUid) ?? []
+    const next = current.map((thread) => thread.id === threadId
+      ? { ...thread, updatedAt: message.createdAt, messages: [...thread.messages, message] }
+      : thread)
+    this.messageThreads.set(ownerUid, next)
+    this.messageThreadListeners.get(ownerUid)?.forEach((listener) => listener(next))
+  }
+
+  async closeCompanyMessageThread(ownerUid: string, closedThread: CompanyMessageThread) {
+    const current = this.messageThreads.get(ownerUid) ?? []
+    const next = current.map((thread) => thread.id === closedThread.id ? closedThread : thread)
+    this.messageThreads.set(ownerUid, next)
+    this.messageThreadListeners.get(ownerUid)?.forEach((listener) => listener(next))
   }
 
   async updateCompanyChatParticipantState(
     ownerUid: string,
+    threadId: string,
     participant: CompanyChatParticipant,
     state: CompanyChatParticipantState
   ) {
-    const nextState = { ...(this.chatStates.get(ownerUid) ?? {}), [participant]: state }
-    this.chatStates.set(ownerUid, nextState)
-    this.chatStateListeners.get(ownerUid)?.forEach((listener) => listener(nextState))
+    const current = this.messageThreads.get(ownerUid) ?? []
+    const next = current.map((thread) => thread.id === threadId
+      ? { ...thread, states: { ...thread.states, [participant]: state } }
+      : thread)
+    this.messageThreads.set(ownerUid, next)
+    this.messageThreadListeners.get(ownerUid)?.forEach((listener) => listener(next))
   }
 
   async saveRemoteMasterSettings(settings: RemoteMasterSettings) {

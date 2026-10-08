@@ -155,23 +155,85 @@ test('właściciel zapisuje obecność i telemetrię, a obce konto nie', async (
   await assertFails(set(ref(strangerDb, telemetryPath), { capturedAt: Date.now() }))
 })
 
-test('czat właściciela jest prywatny, lecz dostępny dla Mastera', async () => {
+test('wątki wiadomości są prywatne, a zakończone pozostają tylko do odczytu', async () => {
   const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).database()
   const strangerDb = environment.authenticatedContext(stranger.uid, { email: stranger.email }).database()
   const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).database()
+  const threadId = 'thread-1'
   const messageId = 'message-1'
-  const chatPath = `ownerChats/${owner.uid}/${messageId}`
-  await assertSucceeds(set(ref(ownerDb, chatPath), {
+  const now = Date.now()
+  const metaPath = `ownerMessageThreads/${owner.uid}/${threadId}/meta`
+  const messagePath = `ownerMessageThreads/${owner.uid}/${threadId}/messages/${messageId}`
+  const meta = {
+    id: threadId,
+    ownerUid: owner.uid,
+    ownerEmail: owner.email,
+    title: 'Problem z drukarką',
+    status: 'open',
+    createdAt: now,
+    updatedAt: now,
+    createdByRole: 'slave',
+    createdByEmail: owner.email
+  }
+
+  await assertSucceeds(set(ref(ownerDb, metaPath), meta))
+  await assertSucceeds(set(ref(ownerDb, messagePath), {
     id: messageId,
+    threadId,
     ownerUid: owner.uid,
     ownerEmail: owner.email,
     senderRole: 'slave',
     senderEmail: owner.email,
     body: 'Proszę o kontakt.',
-    createdAt: Date.now()
+    createdAt: now
   }))
-  await assertFails(get(ref(strangerDb, `ownerChats/${owner.uid}`)))
-  await assertSucceeds(get(ref(masterDb, `ownerChats/${owner.uid}`)))
+  await assertFails(get(ref(strangerDb, `ownerMessageThreads/${owner.uid}`)))
+  await assertSucceeds(get(ref(masterDb, `ownerMessageThreads/${owner.uid}`)))
+
+  const closedMeta = {
+    ...meta,
+    status: 'closed',
+    updatedAt: now + 100,
+    closedAt: now + 100,
+    closedByRole: 'master',
+    closedByEmail: master.email
+  }
+  await assertSucceeds(set(ref(masterDb, metaPath), closedMeta))
+  await assertFails(set(ref(ownerDb, metaPath), meta))
+  await assertFails(set(ref(ownerDb, `ownerMessageThreads/${owner.uid}/${threadId}/messages/message-2`), {
+    id: 'message-2',
+    threadId,
+    ownerUid: owner.uid,
+    ownerEmail: owner.email,
+    senderRole: 'slave',
+    senderEmail: owner.email,
+    body: 'Nie powinno się zapisać.',
+    createdAt: now + 200
+  }))
+
+  const masterThreadId = 'thread-from-master'
+  const masterMetaPath = `ownerMessageThreads/${owner.uid}/${masterThreadId}/meta`
+  const masterMeta = {
+    id: masterThreadId,
+    ownerUid: owner.uid,
+    ownerEmail: owner.email,
+    title: 'Wiadomość od administratora',
+    status: 'open',
+    createdAt: now + 300,
+    updatedAt: now + 300,
+    createdByRole: 'master',
+    createdByEmail: master.email
+  }
+  await assertSucceeds(set(ref(masterDb, masterMetaPath), masterMeta))
+  await assertFails(set(ref(strangerDb, masterMetaPath), { ...masterMeta, createdByEmail: stranger.email }))
+  await assertSucceeds(set(ref(ownerDb, masterMetaPath), {
+    ...masterMeta,
+    status: 'closed',
+    updatedAt: now + 400,
+    closedAt: now + 400,
+    closedByRole: 'slave',
+    closedByEmail: owner.email
+  }))
 })
 
 test('snapshot opinii Google jest publiczny do odczytu i zablokowany do zapisu', async () => {
@@ -193,7 +255,7 @@ test('snapshot opinii Google jest publiczny do odczytu i zablokowany do zapisu',
   }))
 })
 
-test('stan komunikatora może aktualizować wyłącznie właściwy uczestnik rozmowy', async () => {
+test('stan wątku może aktualizować wyłącznie właściwy uczestnik rozmowy', async () => {
   const ownerDb = environment.authenticatedContext(owner.uid, { email: owner.email }).database()
   const strangerDb = environment.authenticatedContext(stranger.uid, { email: stranger.email }).database()
   const masterDb = environment.authenticatedContext(master.uid, { email: master.email }).database()
@@ -211,14 +273,30 @@ test('stan komunikatora może aktualizować wyłącznie właściwy uczestnik roz
     email: master.email,
     typing: false
   }
+  const threadId = 'thread-state'
 
-  await assertSucceeds(set(ref(ownerDb, `ownerChatStates/${owner.uid}/slave`), slaveState))
-  await assertFails(set(ref(ownerDb, `ownerChatStates/${owner.uid}/slave`), { ...slaveState, lastReadAt: 1 }))
-  await assertFails(set(ref(ownerDb, `ownerChatStates/${owner.uid}/master`), masterState))
-  await assertSucceeds(set(ref(masterDb, `ownerChatStates/${owner.uid}/master`), masterState))
-  await assertFails(set(ref(strangerDb, `ownerChatStates/${owner.uid}/slave`), { ...slaveState, email: stranger.email }))
-  await assertSucceeds(get(ref(masterDb, `ownerChatStates/${owner.uid}`)))
-  await assertFails(get(ref(strangerDb, `ownerChatStates/${owner.uid}`)))
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `ownerMessageThreads/${owner.uid}/${threadId}/meta`), {
+      id: threadId,
+      ownerUid: owner.uid,
+      ownerEmail: owner.email,
+      title: 'Test stanu',
+      status: 'open',
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_000_000,
+      createdByRole: 'slave',
+      createdByEmail: owner.email
+    })
+  })
+
+  const statePath = `ownerMessageThreads/${owner.uid}/${threadId}/states`
+  await assertSucceeds(set(ref(ownerDb, `${statePath}/slave`), slaveState))
+  await assertFails(set(ref(ownerDb, `${statePath}/slave`), { ...slaveState, lastReadAt: 1 }))
+  await assertFails(set(ref(ownerDb, `${statePath}/master`), masterState))
+  await assertSucceeds(set(ref(masterDb, `${statePath}/master`), masterState))
+  await assertFails(set(ref(strangerDb, `${statePath}/slave`), { ...slaveState, email: stranger.email }))
+  await assertSucceeds(get(ref(masterDb, statePath)))
+  await assertFails(get(ref(strangerDb, statePath)))
 })
 
 test('właściciel zapisuje dzienny agregat obciążenia, Master go odczytuje, a obce konto nie', async () => {

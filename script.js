@@ -32,6 +32,7 @@ const LS = {
 const SS = {
   SECTION: 'ijanek_active_section',
   TUTORIAL_STEP: 'ijanek_tutorial_step',
+  TUTORIAL_RETURN: 'ijanek_tutorial_return',
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCookiePanel();
   initDocViewer();
   initCursor();
+  initTutorialReturnLinks();
   registerSW();
   // Opóźnij tutorial do następnej klatki (requestAnimationFrame)
   // Tutorial zawiera 1000+ DOM mutacji - nie blokuj initial render
@@ -141,6 +143,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // Nie wysyłaj home_visit event - oszczędza 102KB Firebase SDK na initial load
   // Firebase załaduje się dopiero gdy user wyśle inny event (tutorial_complete, review, itp)
 });
+
+function initTutorialReturnLinks() {
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[href]');
+    if (!link || !document.documentElement.classList.contains('tutorial-active')) return;
+    if (link.hasAttribute('download')) return;
+
+    let targetUrl;
+    try {
+      targetUrl = new URL(link.href, window.location.href);
+    } catch (_) {
+      return;
+    }
+
+    const leavesCurrentPage = targetUrl.origin === window.location.origin
+      && targetUrl.pathname !== window.location.pathname;
+
+    if (leavesCurrentPage) {
+      sessionStorage.setItem(SS.TUTORIAL_RETURN, 'true');
+    }
+  }, true);
+}
 
 // ─────────────────────────────────────────────────────────────────
 // THEME
@@ -1100,6 +1124,7 @@ function markTutorialDone() {
   document.documentElement.classList.remove('tutorial-active');
   localStorage.setItem(LS.TUTORIAL_DONE, 'true');
   sessionStorage.removeItem(SS.TUTORIAL_STEP);
+  sessionStorage.removeItem(SS.TUTORIAL_RETURN);
   tutDone = true;
   // reviewsWrap was shown in step 9; finish step doesn't repeat it
   // sectionNav removed from topbar — section access via panel buttons

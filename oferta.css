@@ -51,6 +51,34 @@ h3 { font-size: 1.05rem; line-height: 1.5; }
 .container, .nav-shell { width: min(calc(100% - 48px), var(--content)); margin-inline: auto; }
 .skip-link { position: fixed; z-index: 100; top: 12px; left: 12px; padding: 10px 14px; color: var(--bg); background: var(--cyan); border-radius: 8px; transform: translateY(-180%); }
 .skip-link:focus { transform: none; }
+.tutorial-return-button {
+  position: fixed;
+  z-index: 80;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(127, 64, 255, .96), rgba(64, 86, 255, .96));
+  border: 1px solid rgba(186, 234, 255, .55);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .42), 0 0 24px rgba(127, 64, 255, .24);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.tutorial-return-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .48), 0 0 28px rgba(64, 201, 255, .22);
+}
+.tutorial-return-button > span:first-child { font-size: 1rem; line-height: 1; }
 .site-header { position: sticky; z-index: 50; top: 0; background: rgba(5, 6, 12, .94); border-bottom: 1px solid var(--border); backdrop-filter: blur(16px); }
 .nav-shell { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: Orbitron, Inter, sans-serif; font-size: .88rem; font-weight: 700; letter-spacing: .12em; }

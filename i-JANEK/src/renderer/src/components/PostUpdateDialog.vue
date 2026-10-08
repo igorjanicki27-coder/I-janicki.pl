@@ -43,13 +43,11 @@ async function acknowledge() {
         <CheckCircle2 class="h-7 w-7 shrink-0 text-emerald-300" />
         <h2 id="post-update-title" class="text-xl font-semibold">i-JANEK został zaktualizowany</h2>
       </div>
-      <p class="mt-2 text-sm text-[var(--text-dim)]">Wersja {{ notice.version }}</p>
-      <p id="post-update-description" class="mt-5 text-sm font-semibold">Co się zmieniło:</p>
+      <p id="post-update-description" class="mt-5 text-sm font-semibold">Co się zmieniło w wersji {{ notice.version }}:</p>
       <div class="mt-3 min-h-0 overflow-y-auto whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-[var(--text-dim)]">{{ notice.notes }}</div>
-      <p class="mt-4 text-xs leading-5 text-[var(--text-dim)]">Aplikacja działa w tle. Kliknij OK, aby przejść dalej.</p>
       <p v-if="errorMessage" class="mt-3 text-sm text-rose-200" role="alert">{{ errorMessage }}</p>
-      <div class="mt-5 flex justify-end">
-        <button class="glass-button min-w-28 justify-center" type="button" :disabled="busy" autofocus @click="acknowledge">{{ busy ? 'Zapisywanie…' : 'OK' }}</button>
+      <div class="mt-5 flex justify-center">
+        <button class="glass-button w-full max-w-64 justify-center" type="button" :disabled="busy" autofocus @click="acknowledge">{{ busy ? 'Zapisywanie…' : 'OK' }}</button>
       </div>
     </section>
   </dialog>

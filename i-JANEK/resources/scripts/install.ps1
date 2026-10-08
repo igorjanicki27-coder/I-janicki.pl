@@ -1,4 +1,9 @@
-﻿param([Parameter(Mandatory=$true)][string]$InstallDir)
+﻿param(
+  [Parameter(Mandatory=$true)][string]$InstallDir,
+  [switch]$IsUpdate,
+  [ValidateSet('true', 'false')][string]$DwServiceConsentAccepted = 'false',
+  [string]$DwServiceInstallationCode = ''
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $env:ProgramData 'i-JANEK'
@@ -7,6 +12,7 @@ $requestsDir = Join-Path $root 'requests'
 $cacheDir = Join-Path $root 'cache'
 $logsDir = Join-Path $root 'logs'
 $logPath = Join-Path $logsDir 'install.log'
+$dwServiceBootstrapPath = Join-Path $root 'dwservice-bootstrap.json'
 $sourceDir = Join-Path $InstallDir 'resources\resources\scripts'
 $taskName = 'i-JANEK Update Agent'
 
@@ -20,6 +26,15 @@ function Write-InstallLog {
 
 try {
   Write-InstallLog "Start instalacji agenta. InstallDir=$InstallDir"
+
+  if (-not $IsUpdate) {
+    if ($DwServiceConsentAccepted -ne 'true') {
+      throw 'Instalacja i-JANEK wymaga zaakceptowania zgody na instalację i użycie DWService.'
+    }
+    if ($DwServiceInstallationCode -and $DwServiceInstallationCode -notmatch '^\d{3}-\d{3}-\d{3}$') {
+      throw 'Kod instalacyjny DWService musi mieć format 123-456-789 albo pozostać pusty.'
+    }
+  }
 
   if (-not (Test-Path -LiteralPath (Join-Path $sourceDir 'update-agent.ps1'))) {
     throw 'Brakuje plików agenta aktualizacji w instalatorze.'
@@ -46,6 +61,36 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Nie udało się zabezpieczyć katalogu pobranych aktualizacji.' }
   & icacls.exe $requestsDir /grant:r '*S-1-5-32-545:(OI)(CI)M' | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Nie udało się nadać uprawnień do zgłoszeń aktualizacji.' }
+
+  if (-not $IsUpdate) {
+    $protectedCode = $null
+    if ($DwServiceInstallationCode) {
+      $plainBytes = [Text.Encoding]::UTF8.GetBytes($DwServiceInstallationCode)
+      try {
+        $encryptedBytes = [Security.Cryptography.ProtectedData]::Protect(
+          $plainBytes,
+          $null,
+          [Security.Cryptography.DataProtectionScope]::LocalMachine
+        )
+        $protectedCode = [Convert]::ToBase64String($encryptedBytes)
+      } finally {
+        [Array]::Clear($plainBytes, 0, $plainBytes.Length)
+      }
+    }
+    $bootstrap = @{
+      schemaVersion = 1
+      consentPolicyVersion = '2026-10-06'
+      consentAccepted = $true
+      consentAcceptedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+      hasInstallationCode = [bool]$DwServiceInstallationCode
+      installationCodeProtected = $protectedCode
+      provisioningEnabled = $false
+    } | ConvertTo-Json -Compress
+    [IO.File]::WriteAllText($dwServiceBootstrapPath, $bootstrap, (New-Object Text.UTF8Encoding $false))
+    & icacls.exe $dwServiceBootstrapPath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Nie udało się zabezpieczyć ustawień startowych DWService.' }
+    Write-InstallLog "Zapisano zgodę DWService. KodPodany=$([bool]$DwServiceInstallationCode) ProvisioningEnabled=False"
+  }
 
   Write-InstallLog 'Kopiowanie plików agenta.'
   Copy-Item -LiteralPath (Join-Path $sourceDir 'update-agent.ps1') -Destination (Join-Path $agentDir 'update-agent.ps1') -Force
