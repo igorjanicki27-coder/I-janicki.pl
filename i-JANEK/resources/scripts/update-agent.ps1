@@ -348,6 +348,7 @@ function Invoke-Update($request, [string]$appExe) {
     Remove-Item -LiteralPath $trustedInstaller -Force -ErrorAction SilentlyContinue
   } catch {
     $failure = $_
+    if (-not (Get-Process -Id $context.OriginalProcessId -ErrorAction SilentlyContinue)) { $applicationClosed = $true }
     if ($applicationClosed -and -not $installationComplete -and (Test-Path -LiteralPath $appExe -PathType Leaf)) {
       try {
         $recoveryId = $context.Launch([bool]$request.startHidden, $script:requestId)

@@ -1757,6 +1757,42 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   .stage.is-presenting .bot { width: min(100px, 22vw); }
   .stage-content { max-height: 60dvh; width: 100%; max-width: none; padding: 16px; }
   .stage-content-close { display: grid; }
+
+  /* Treść kroków samouczka mieści się w panelu również na wąskich ekranach. */
+  .section-step-content,
+  .section-step-content > *,
+  .section-step-content .project-content,
+  .section-step-content .steps li > div {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .section-step-content .about-list,
+  .section-step-content .svc-grid,
+  .section-step-content .price-grid,
+  .section-step-content .card-grid,
+  .section-step-content .reviews-carousel.modal-carousel {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  }
+  .section-step-content .modal-reviews-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .section-step-content .reviews-modal-header > * {
+    min-width: 0;
+  }
+  .section-step-content .review-card,
+  .section-step-content .review-card:nth-child(4),
+  .section-step-content .review-card:nth-child(5) {
+    grid-column: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .section-step-content .project-strip,
+  .section-step-content .steps li,
+  .section-step-content .form-container {
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 480px) {

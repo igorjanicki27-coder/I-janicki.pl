@@ -153,7 +153,7 @@ export async function createDiagnosticBundle(
     },
     summary,
     logs: await readRecentLogs(),
-    windowsUpdate: await readWindowsUpdateDiagnostics()
+    ...(process.platform === 'win32' ? { windowsUpdate: await readWindowsUpdateDiagnostics() } : {})
   })
   const compressed = await gzipAsync(Buffer.from(JSON.stringify(payload, null, 2), 'utf8'))
   await fs.writeFile(selection.filePath, compressed, { mode: 0o600 })
