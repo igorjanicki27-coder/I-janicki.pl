@@ -1162,34 +1162,7 @@ function renderReviewStep() {
 }
 
 function renderFinish() {
-  currentView = 'finished';
-  dom.bot.classList.remove('is-pointing');
-  dom.tutProgress.hidden = true;
-  dom.tutNav.hidden      = false;
-  closeModal();
-  $('panel')?.classList.remove('has-section');
-
-  // Show full brand name after tutorial
-  const brandName = document.querySelector('.brand-name');
-  if (brandName) {
-    brandName.textContent = 'i-JANICKI';
-  }
-
-  const n = userName ? escHtml(userName) : (currentLang === 'en' ? 'friend' : 'Przyjacielu');
-  setPanel(t('tutorial-summary-title'), `
-    <div class="tut-message">
-      <p><strong>${t('tutorial-complete-title')}</strong></p>
-      <p>${tf('tutorial-summary-message', { name: n })}</p>
-    </div>
-    <div class="tut-options">
-      ${renderTopicButtons('snav-item')}
-      ${renderTutorialButton('snav-item')}
-    </div>
-    ${renderTutorialContactButtons()}
-  `, true);
-
-  markTutorialDone();
-  injectFaqBtn();
+  finishTutorial();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -1235,8 +1208,14 @@ function renderTutorialContactButtons() {
 function finishTutorial() {
   currentView = 'finished';
   markTutorialDone();
-  dom.tutProgress.hidden = true;
-  dom.tutNav.hidden      = true;
+  renderCompletedPanel();
+}
+
+function renderCompletedPanel() {
+  dom.bot.classList.remove('is-pointing');
+  if (dom.tutProgress) dom.tutProgress.hidden = true;
+  if (dom.tutNav) dom.tutNav.hidden = true;
+  $('panel')?.classList.remove('has-section');
   const brandName = document.querySelector('.brand-name');
   if (brandName) {
     brandName.textContent = 'i-JANICKI';
@@ -1304,25 +1283,7 @@ function hideStageContent() {
 // ─────────────────────────────────────────────────────────────────
 function showReturning() {
   currentView = 'returning';
-  if (dom.tutProgress) dom.tutProgress.hidden = true;
-  if (dom.tutNav) dom.tutNav.hidden = true;
-  const brandName = document.querySelector('.brand-name');
-  if (brandName) {
-    brandName.textContent = 'i-JANICKI';
-    brandName.style.display = '';
-  }
-
-  setPanel(t('returning-title'), `
-    <div class="tut-message">
-      <p>${userName ? tf('returning-message', { name: escHtml(userName) }) : t('returning-message-no-name')}</p>
-    </div>
-    <div class="options">
-      ${renderTopicButtons('opt')}
-      ${renderTutorialButton('opt opt-tutorial')}
-    </div>
-  `, false);
-
-  injectFaqBtn();
+  renderCompletedPanel();
 }
 
 // ─────────────────────────────────────────────────────────────────
