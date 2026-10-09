@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=49" />
+  <link rel="stylesheet" href="styles.min.css?v=50" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1230,6 +1230,8 @@
       <div id="panelContent" class="panel-content"></div>
     </section>
 
+    <div class="panel tut-contact-panel" id="tutorialContactPanel" role="group" aria-label="Kontakt" data-i18n-aria-label="btn-contact" hidden></div>
+
     <!-- Przyciski nawigacji tutoriala -->
     <div class="tutorial-nav" id="tutorialNav" hidden>
       <div class="tut-main-row">
@@ -1535,7 +1537,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=15"></script>
-  <script defer src="script.min.js?v=51"></script>
+  <script defer src="script.min.js?v=52"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

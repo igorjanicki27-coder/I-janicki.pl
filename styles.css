@@ -785,6 +785,7 @@ html[data-theme="light"] .opt { background: rgba(255,255,255,0.5); }
 .tut-message p em { color: var(--accent-4); font-style: normal; }
 
 /* Opcje na ekranie finałowym tutoriala */
+.tut-contact-panel .tut-contact-actions { margin-top: 0; }
 .tut-contact-actions {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px; width: 100%; margin-top: 16px;

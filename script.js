@@ -1212,6 +1212,7 @@ function finishTutorial() {
 }
 
 function renderCompletedPanel() {
+  const returning = currentView === 'returning';
   dom.bot.classList.remove('is-pointing');
   if (dom.tutProgress) dom.tutProgress.hidden = true;
   if (dom.tutNav) dom.tutNav.hidden = true;
@@ -1222,20 +1223,24 @@ function renderCompletedPanel() {
     brandName.style.display = '';
   }
   const n = userName ? escHtml(userName) : '';
-  const intro = n
-    ? tf('tutorial-complete-message-with-name', { name: n })
-    : t('tutorial-complete-message-no-name');
-  setPanel(t('tutorial-complete-title'), `
+  const intro = returning
+    ? (n ? tf('returning-message', { name: n }) : t('returning-message-no-name'))
+    : (n ? tf('tutorial-complete-message-with-name', { name: n }) : t('tutorial-complete-message-no-name'));
+  setPanel(t(returning ? 'returning-title' : 'tutorial-complete-title'), `
     <div class="tut-message">
-      <p>${intro} ${t('tutorial-complete-next')}</p>
+      <p>${intro}${returning ? '' : ` ${t('tutorial-complete-next')}`}</p>
     </div>
     <div class="options">
       ${renderTopicButtons('opt')}
       ${renderTutorialButton('opt')}
     </div>
-    ${renderTutorialContactButtons()}
   `, false);
 
+  const contactPanel = $('tutorialContactPanel');
+  if (contactPanel) {
+    contactPanel.innerHTML = renderTutorialContactButtons();
+    contactPanel.hidden = false;
+  }
   injectFaqBtn();
 }
 
@@ -1771,6 +1776,8 @@ function openReviewPreview(r, filled, empty, date) {
 // PANEL HELPER
 // ─────────────────────────────────────────────────────────────────
 function setPanel(title, html, showLogo = false, showHeader = true) {
+  const contactPanel = $('tutorialContactPanel');
+  if (contactPanel) contactPanel.hidden = true;
   removeFaqBtn();
   if (dom.panelTitle) dom.panelTitle.textContent = title;
   if (dom.panelHeader) dom.panelHeader.hidden = !showHeader;
