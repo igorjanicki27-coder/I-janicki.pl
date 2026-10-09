@@ -451,6 +451,10 @@ html.tutorial-active body {
   overflow-y: auto;
   overscroll-behavior-y: contain;
 }
+.tutorial-active .stage-bot .panel::before {
+  /* Dekoracyjna ramka przewijałaby się z treścią; panel ma własne obramowanie. */
+  display: none;
+}
 .tutorial-active .stage-bot .bot,
 .tutorial-active .tutorial-nav {
   flex-shrink: 0;
@@ -684,6 +688,15 @@ html[data-theme="light"] .panel {
 .tutorial-nav:not(.has-back) .tut-next { max-width: 280px; }
 .tut-next:hover { background: linear-gradient(135deg, rgba(98, 50, 190, 0.48), rgba(197, 22, 164, 0.42)); box-shadow: 0 0 20px rgba(255,0,212,0.26); }
 .tut-next.is-send { background: linear-gradient(135deg,rgba(64,201,255,0.3),rgba(127,64,255,0.35)); border-color: var(--accent-4); }
+
+@media (min-width: 769px) {
+  .tutorial-nav.has-back .tut-main-row { align-items: stretch; }
+  .tutorial-nav.has-back .tut-back {
+    flex: 0 0 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+}
 
 /* Theme choice buttons (krok wyboru motywu) */
 .theme-choice-btns { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }

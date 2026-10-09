@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=42" />
+  <link rel="stylesheet" href="styles.min.css?v=45" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -160,6 +160,10 @@
   <style>
     body.intro-active {
       overflow: hidden;
+    }
+
+    html.intro-skipped .intro-overlay {
+      display: none;
     }
 
     body.intro-active > :not(#introOverlay) {
@@ -1046,7 +1050,23 @@
     }
   </style>
 </head>
-<body class="intro-active">
+<body>
+  <script>
+    (function () {
+      var skipIntro = false;
+      try {
+        var navigation = performance.getEntriesByType('navigation')[0];
+        skipIntro = sessionStorage.getItem('ijanek_intro_seen') === 'true'
+          || sessionStorage.getItem('ijanek_tutorial_return') === 'true'
+          || localStorage.getItem('ijanek_tutorial_done') === 'true'
+          || (navigation && navigation.type === 'back_forward')
+          || (document.referrer && new URL(document.referrer).origin === location.origin);
+        sessionStorage.setItem('ijanek_intro_seen', 'true');
+      } catch (_) {}
+      document.documentElement.classList.toggle('intro-skipped', Boolean(skipIntro));
+      document.body.classList.toggle('intro-active', !skipIntro);
+    })();
+  </script>
   <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-label="Wprowadzenie do strony">
     <div class="intro-video-layer" id="introVideoLayer" hidden aria-hidden="true">
       <video class="intro-video" id="introVideo" muted playsinline preload="none"></video>
@@ -1509,6 +1529,7 @@
       var INTRO_INTERACTIVE_MS = 3300;
       var INTRO_VIDEO_VERSION = "20260908-1825";
       var introStartedAt = performance.now();
+      var skipIntro = document.documentElement.classList.contains("intro-skipped");
       var realViewReady = false;
       var unlockScheduled = false;
 
@@ -1542,6 +1563,10 @@
       function scheduleUnlockWhenReady() {
         if (!realViewReady || unlockScheduled) return;
         unlockScheduled = true;
+        if (skipIntro) {
+          unlockPage();
+          return;
+        }
         var elapsed = performance.now() - introStartedAt;
         window.setTimeout(unlockPage, Math.max(0, INTRO_INTERACTIVE_MS - elapsed));
       }
@@ -1596,9 +1621,22 @@
           } catch (_err) {}
         }
 
-        document.body.classList.add("intro-active", "intro-media-active");
+        document.body.classList.add("intro-media-active");
         video.style.opacity = "0";
         frozenLayer.style.opacity = "0";
+
+        window.addEventListener("pageshow", function (event) {
+          if (!event.persisted) return;
+          skipIntro = true;
+          document.documentElement.classList.add("intro-skipped");
+          document.body.classList.remove("intro-active");
+          showStaticFallback();
+        });
+
+        if (skipIntro) {
+          showStaticFallback();
+          return;
+        }
 
         window.setTimeout(function () {
           document.body.classList.add("intro-revealing");
