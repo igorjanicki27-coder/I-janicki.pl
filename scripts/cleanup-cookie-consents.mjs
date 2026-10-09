@@ -12,6 +12,22 @@ export function isExpired(record, now) {
   return expiresAt !== null && Date.parse(expiresAt) <= now;
 }
 
+export function evidenceExpiresAt(record) {
+  if (!record || typeof record !== 'object') return null;
+  let date = expiresAfter12Months(record.updated_at || record.created_at);
+  for (let year = 0; year < 3 && date; year++) date = expiresAfter12Months(date);
+  return date;
+}
+
+const EVIDENCE_FIELDS = new Set([
+  'consent_id', 'anonymous_user_id', 'created_at', 'updated_at', 'expires_at',
+  'policy_version', 'essential', 'analytics', 'marketing', 'external_media', 'action',
+]);
+
+function limitedEvidence(record) {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => EVIDENCE_FIELDS.has(key)));
+}
+
 const STATS_FIELDS = new Set(['type', 'path', 'timestamp', 'durationSeconds', 'channel', 'retentionUntil', 'retentionReason']);
 const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1/projects/i-janicki/databases/(default)/documents/analytics_events';
 
@@ -80,28 +96,39 @@ export async function cleanupCookieConsents({ accessToken, now = Date.now(), fet
   }
 
   const snapshot = await (await request('')).json();
-  const summary = { expired: 0, deleted: 0, changed: 0, invalid: 0, dryRun };
+  const summary = { expired: 0, minimized: 0, deleted: 0, changed: 0, invalid: 0, dryRun };
   for (const [userId, records] of Object.entries(snapshot || {})) {
     for (const [consentId, record] of Object.entries(records || {})) {
-      if (!expiresAfter12Months(record?.updated_at || record?.created_at)) {
+      if (!evidenceExpiresAt(record)) {
         summary.invalid++;
         continue;
       }
       if (!isExpired(record, now)) continue;
       summary.expired++;
       if (dryRun) continue;
+      const deleteEvidence = Date.parse(evidenceExpiresAt(record)) <= now;
+      if (!deleteEvidence && Object.keys(record).every(key => EVIDENCE_FIELDS.has(key))) continue;
       const path = `/${encodeURIComponent(userId)}/${encodeURIComponent(consentId)}`;
-      // Re-read and conditionally delete so a concurrently renewed choice survives.
+      // Re-read before changing evidence; the ETag protects concurrent changes.
       const current = await request(path, { headers: { 'X-Firebase-ETag': 'true' } });
-      if (!isExpired(await current.json(), now)) {
+      const currentRecord = await current.json();
+      if (!isExpired(currentRecord, now)) {
         summary.changed++;
         continue;
       }
       const etag = current.headers.get('etag');
       if (!etag) throw new Error('Firebase did not return an ETag; cleanup stopped safely.');
-      const removed = await request(path, { method: 'DELETE', headers: { 'if-match': etag } });
-      if (removed.status === 412) summary.changed++;
-      else summary.deleted++;
+      const deadline = evidenceExpiresAt(currentRecord);
+      if (!deadline) { summary.invalid++; continue; }
+      const shouldDelete = Date.parse(deadline) <= now;
+      const result = await request(path, {
+        method: shouldDelete ? 'DELETE' : 'PUT',
+        headers: { 'if-match': etag, 'Content-Type': 'application/json' },
+        ...(shouldDelete ? {} : { body: JSON.stringify(limitedEvidence(currentRecord)) }),
+      });
+      if (result.status === 412) summary.changed++;
+      else if (shouldDelete) summary.deleted++;
+      else summary.minimized++;
     }
   }
   return summary;

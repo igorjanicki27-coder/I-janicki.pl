@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
 const GOOGLE_REVIEWS_ENDPOINT = `${FIREBASE_RTDB_BASE}/publicGoogleReviews.json`;
-const COOKIE_POLICY_VERSION = '1.3';
+const COOKIE_POLICY_VERSION = '1.4';
 
 // ─────────────────────────────────────────────────────────────────
 // STORAGE KEYS
@@ -1433,8 +1433,10 @@ function buildGoogleConsentMode(categories) {
 
 function buildCookieConsentRecord(action) {
   const now = new Date().toISOString();
-  const consentId = getOrCreateStoredValue(LS.COOKIE_CONSENT_ID, createUuid);
-  const createdAt = getOrCreateStoredValue(LS.COOKIE_CONSENT_CREATED_AT, () => now);
+  const consentId = createUuid();
+  const createdAt = now;
+  localStorage.setItem(LS.COOKIE_CONSENT_ID, consentId);
+  localStorage.setItem(LS.COOKIE_CONSENT_CREATED_AT, createdAt);
   const anonymousUserId = getOrCreateStoredValue(LS.ANONYMOUS_USER_ID, () => `anon_${createUuid()}`);
   const categories = getCookieConsentCategories();
   const googleConsent = buildGoogleConsentMode(categories);

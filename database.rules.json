@@ -9,8 +9,56 @@
     "cookie_consents": {
       "$anonymous_user_id": {
         "$consent_id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['consent_id', 'created_at', 'updated_at', 'policy_version', 'essential', 'analytics', 'marketing', 'external_media', 'action', 'anonymous_user_id', 'analytics_storage', 'ad_storage', 'ad_user_data', 'ad_personalization']) && newData.child('consent_id').val() === $consent_id && newData.child('anonymous_user_id').val() === $anonymous_user_id && newData.child('essential').val() === true && newData.child('analytics').isBoolean() && newData.child('marketing').isBoolean() && newData.child('external_media').isBoolean() && newData.child('policy_version').isString() && newData.child('created_at').isString() && newData.child('updated_at').isString() && newData.child('action').isString() && newData.child('analytics_storage').isString() && newData.child('ad_storage').isString() && newData.child('ad_user_data').isString() && newData.child('ad_personalization').isString()"
+          ".write": "!data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['consent_id', 'created_at', 'updated_at', 'policy_version', 'essential', 'analytics', 'marketing', 'external_media', 'action', 'anonymous_user_id', 'analytics_storage', 'ad_storage', 'ad_user_data', 'ad_personalization']) && newData.child('consent_id').val() === $consent_id && newData.child('anonymous_user_id').val() === $anonymous_user_id && newData.child('essential').val() === true && newData.child('analytics').isBoolean() && newData.child('marketing').isBoolean() && newData.child('external_media').isBoolean() && newData.child('policy_version').isString() && newData.child('created_at').isString() && newData.child('updated_at').isString() && newData.child('action').isString() && newData.child('analytics_storage').isString() && newData.child('ad_storage').isString() && newData.child('ad_user_data').isString() && newData.child('ad_personalization').isString()",
+          "consent_id": {
+            ".validate": true
+          },
+          "created_at": {
+            ".validate": true
+          },
+          "updated_at": {
+            ".validate": true
+          },
+          "expires_at": {
+            ".validate": "newData.isString()"
+          },
+          "policy_version": {
+            ".validate": true
+          },
+          "essential": {
+            ".validate": true
+          },
+          "analytics": {
+            ".validate": true
+          },
+          "marketing": {
+            ".validate": true
+          },
+          "external_media": {
+            ".validate": true
+          },
+          "action": {
+            ".validate": true
+          },
+          "anonymous_user_id": {
+            ".validate": true
+          },
+          "analytics_storage": {
+            ".validate": true
+          },
+          "ad_storage": {
+            ".validate": true
+          },
+          "ad_user_data": {
+            ".validate": true
+          },
+          "ad_personalization": {
+            ".validate": true
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },

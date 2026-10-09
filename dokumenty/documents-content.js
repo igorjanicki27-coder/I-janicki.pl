@@ -384,7 +384,7 @@ const DOCUMENTS_CONTENT = {
       <tr><td>Dane i treść formularzy kontaktowych zapisane w bazie Serwisu</td><td>12 miesięcy kalendarzowych od otrzymania zgłoszenia; po usunięciu zostaje wyłącznie zbiorczy licznik zgłoszeń</td></tr>
       <tr><td>Dane związane z umowami</td><td>Przez okres współpracy oraz uzasadniony okres przedawnienia roszczeń</td></tr>
       <tr><td>Dokumentacja księgowa i podatkowa</td><td>Przez okres wymagany przepisami prawa</td></tr>
-      <tr><td>Rejestr zgód cookies</td><td>Do 12 miesięcy od ostatniej decyzji użytkownika</td></tr>
+      <tr><td>Wybór cookies i dowody decyzji</td><td>Wybór w przeglądarce: 12 miesięcy od zapisania; ograniczony dowód w Firebase: dodatkowe 3 lata od wygaśnięcia tego wyboru</td></tr>
       <tr><td>Dane analityczne i marketingowe</td><td>Zgodnie z ustawieniami retencji wykorzystywanych usług, nie dłużej niż jest to niezbędne do realizacji celu</td></tr>
       <tr><td>Logi techniczne</td><td>Przez okres niezbędny do zapewnienia bezpieczeństwa i diagnostyki</td></tr>
       <tr><td>Anonimowe dane statystyczne</td><td>Bez ograniczenia czasowego</td></tr>
@@ -508,14 +508,15 @@ const DOCUMENTS_CONTENT = {
   </li>
   <li>Rejestr nie zawiera imienia, nazwiska ani adresu e-mail użytkownika, chyba że informacje te zostaną powiązane z identyfikatorem na podstawie innych danych.</li>
   <li>Zarówno udzielenie, jak i odmowa zgody mogą być rejestrowane w celu udokumentowania decyzji użytkownika.</li>
-  <li>Decyzja dotycząca cookies, wybrane kategorie, identyfikatory oraz daty i wersja informacji o cookies są przechowywane przez <strong>12 miesięcy kalendarzowych od ostatniego zapisania wyboru</strong>. Dotyczy to zarówno akceptacji, jak i odmowy. Ponowne zapisanie wyboru rozpoczyna nowy okres; samo odwiedzenie strony go nie przedłuża. Po wygaśnięciu strona usuwa lokalny zapis przy najbliższym otwarciu lub wznowieniu strony i ponownie pyta o wybór. Wygasłe wpisy w Firebase są automatycznie usuwane podczas codziennego czyszczenia.</li>
+  <li>Wybór cookies w przeglądarce obowiązuje przez <strong>12 miesięcy kalendarzowych od jego zapisania</strong>. Dotyczy to zarówno akceptacji, jak i odmowy. Zapisanie kolejnej decyzji rozpoczyna nowy okres ważności tego wyboru; samo odwiedzenie strony go nie przedłuża. Po wygaśnięciu strona usuwa lokalny zapis przy najbliższym otwarciu lub wznowieniu strony i ponownie pyta o wybór.</li>
+  <li>W celu wykazania uzyskania zgody i realizacji zasady rozliczalności, zgodnie z art. 7 ust. 1 RODO, ograniczony dowód decyzji jest przechowywany w Firebase przez <strong>dodatkowe 3 lata od wygaśnięcia danego wyboru cookies</strong>. Obejmuje wyłącznie pseudonimowy identyfikator użytkownika, identyfikator decyzji, daty, wersję informacji o cookies, rodzaj decyzji i wybrane kategorie. Dowód nie zawiera adresu IP, danych przeglądarki, imienia, nazwiska ani adresu e-mail. Każda nowa decyzja jest zapisywana osobno, bez nadpisywania wcześniejszej. Przechowywanie dowodu nie uprawnia do dalszego korzystania z wygasłej lub wycofanej zgody. Po upływie okresu dowód jest automatycznie usuwany podczas codziennego czyszczenia.</li>
   <li>Rejestr zgód nie jest wykorzystywany do celów marketingowych.</li>
 </ol>
 
 <p>Po wygaśnięciu usuwane są również zapisane przez witrynę imię, język, motyw i stan samouczka oraz dostępne dla witryny opcjonalne cookies Google. Zachowywane są dane statystyczne potrzebne do panelu /stats: rodzaj i data zdarzenia, ścieżka strony, kanał kontaktu lub czas sesji. Dane te nie zawierają identyfikatora zgody, imienia ani adresu e-mail. Google Analytics pozostaje wykorzystywany do statystyk, a dane przechowywane po stronie Google podlegają odrębnym ustawieniom retencji tej usługi. Cookies Google ustawiane przez witrynę mają maksymalną ważność 12 miesięcy i nie są automatycznie przedłużane przy kolejnych odwiedzinach.</p>
 
 <h4>Wykaz technologii</h4>
-<ol start="14" style="list-style-type:decimal;padding-left:1.2rem">
+<ol start="15" style="list-style-type:decimal;padding-left:1.2rem">
   <li>Szczegółowe informacje o stosowanych plikach cookies, ich dostawcach, celach i okresach ważności są udostępniane w panelu zarządzania zgodami lub w wykazie cookies dostępnym w Serwisie.</li>
 </ol>
 
@@ -736,7 +737,7 @@ const DOCUMENTS_CONTENT = {
       <li>Dane związane z umowami: przez okres współpracy oraz okres niezbędny do ustalenia, dochodzenia lub obrony przed roszczeniami.</li>
       <li>Dane księgowe i podatkowe: przez okres wymagany obowiązującymi przepisami prawa.</li>
       <li>Dane techniczne i logi: co do zasady nie dłużej niż 90 dni, z uwzględnieniem rzeczywistych okresów retencji stosowanych przez dostawców infrastruktury.</li>
-      <li>Rejestr zgód cookies: maksymalnie 12 miesięcy od ostatniej decyzji użytkownika, chyba że dalsze przechowywanie określonych danych jest niezbędne na odrębnej podstawie prawnej.</li>
+      <li>Wybór cookies w przeglądarce: 12 miesięcy od zapisania. Ograniczony dowód każdej decyzji w Firebase: dodatkowe 3 lata od wygaśnięcia tego wyboru, w celu wykazania uzyskania zgody i realizacji zasady rozliczalności, zgodnie z art. 7 ust. 1 RODO; po upływie okresu dowód jest automatycznie usuwany.</li>
       <li>Dane przetwarzane na podstawie zgody: do czasu jej wycofania lub ustania celu przetwarzania, z uwzględnieniem właściwych okresów retencji.</li>
     </ul>
   </li>

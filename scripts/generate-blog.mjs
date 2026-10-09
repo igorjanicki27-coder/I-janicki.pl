@@ -287,7 +287,7 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
   <script defer src="/cookie-consent.js?v=2"></script>
   <script defer src="/analytics.js?v=11"></script>
-  <script defer src="/oferta.js?v=10"></script>`;
+  <script defer src="/oferta.js?v=11"></script>`;
 }
 
 function renderHeader(currentPath = '/blog/') {

@@ -67,6 +67,44 @@ after(async () => {
   await environment.cleanup()
 })
 
+function cookieDecision(consentId = 'choice-1') {
+  return {
+    consent_id: consentId,
+    anonymous_user_id: 'anon-test',
+    created_at: '2026-10-09T12:00:00.000Z',
+    updated_at: '2026-10-09T12:00:00.000Z',
+    expires_at: '2027-10-09T12:00:00.000Z',
+    policy_version: '1.4',
+    essential: true,
+    analytics: true,
+    marketing: false,
+    external_media: false,
+    action: 'save_preferences',
+    analytics_storage: 'granted',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied'
+  }
+}
+
+test('dowód zgody jest prywatny i nie może zostać nadpisany ani usunięty przez klienta', async () => {
+  const db = environment.unauthenticatedContext().database()
+  const record = ref(db, 'cookie_consents/anon-test/choice-1')
+  await assertSucceeds(set(record, cookieDecision()))
+  await assertFails(get(record))
+  await assertFails(set(record, { ...cookieDecision(), analytics: false }))
+  await assertFails(set(record, null))
+  await assertSucceeds(set(ref(db, 'cookie_consents/anon-test/choice-2'), cookieDecision('choice-2')))
+})
+
+test('rejestr dowodów odrzuca nadmiarowe dane i błędne identyfikatory', async () => {
+  const db = environment.unauthenticatedContext().database()
+  const record = ref(db, 'cookie_consents/anon-test/choice-1')
+  await assertFails(set(record, { ...cookieDecision(), ip: '203.0.113.1' }))
+  await assertFails(set(record, { ...cookieDecision(), anonymous_user_id: 'other-user' }))
+  await assertFails(set(record, { ...cookieDecision(), expires_at: { ip: '203.0.113.1' } }))
+})
+
 test('właściciel zatwierdzonego urządzenia może utworzyć raport inwentaryzacji', async () => {
   const db = environment.authenticatedContext(owner.uid, { email: owner.email }).firestore()
   await assertSucceeds(setDoc(doc(db, 'inventoryReports', deviceId), inventoryMetadata()))

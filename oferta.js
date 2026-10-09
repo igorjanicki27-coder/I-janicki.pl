@@ -2,7 +2,7 @@
   'use strict';
 
   const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
-  const COOKIE_POLICY_VERSION = '1.3';
+  const COOKIE_POLICY_VERSION = '1.4';
   const STORAGE = {
     decision: 'ijanek_cookie_decision',
     analytics: 'ijanek_cookie_analytics',
@@ -178,8 +178,10 @@
   function buildConsentRecord(action) {
     const now = new Date().toISOString();
     const categories = consentCategories();
-    const consentId = getOrCreateStoredValue(STORAGE.consentId, createUuid);
-    const createdAt = getOrCreateStoredValue(STORAGE.consentCreatedAt, function () { return now; });
+    const consentId = createUuid();
+    const createdAt = now;
+    localStorage.setItem(STORAGE.consentId, consentId);
+    localStorage.setItem(STORAGE.consentCreatedAt, createdAt);
     const anonymousUserId = getOrCreateStoredValue(STORAGE.anonymousUserId, function () {
       return 'anon_' + createUuid();
     });
@@ -214,6 +216,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record),
       keepalive: true,
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Cookie consent RTDB write failed: ' + response.status);
     }).catch(function (error) {
       console.warn('Cookie consent RTDB write failed:', error);
     });
