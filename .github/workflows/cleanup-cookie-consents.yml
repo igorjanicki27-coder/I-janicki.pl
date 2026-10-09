@@ -1,0 +1,59 @@
+name: Clean up expired cookie consents and contact forms
+
+on:
+  schedule:
+    - cron: '43 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only count expired records without deleting them'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-cookie-consents
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Test cookie consent retention
+        run: npm run test:cookie-consent
+      - name: Test contact form retention
+        run: npm run test:contact-retention
+      - name: Prepare Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}
+          FIREBASE_PROJECT_ID: i-janicki
+        run: node scripts/prepare-firebase-credentials.mjs
+      - name: Remove consent records older than twelve months
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            node scripts/cleanup-cookie-consents.mjs --dry-run
+          else
+            node scripts/cleanup-cookie-consents.mjs --delete
+          fi
+      - name: Remove contact data older than twelve months and preserve the counter
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            npm run cleanup:contact-forms -- --dry-run
+          else
+            npm run cleanup:contact-forms -- --delete
+          fi

@@ -12,7 +12,6 @@
   };
 
   // Storage keys — jedna decyzja + osobne zgody per kategoria
-  const KEY_DECISION   = 'ijanek_cookie_decision';   // 'all' | 'essential' | 'custom' | null (brak)
   const KEY_ANALYTICS  = 'ijanek_cookie_analytics';  // 'true' | 'false'
   const KEY_MARKETING  = 'ijanek_cookie_marketing';  // 'true' | 'false'
   const KEY_EXTERNAL   = 'ijanek_cookie_external';   // 'true' | 'false'
@@ -53,11 +52,11 @@
   // Consent helpers
   // ════════════════════════════════════════════════════════════════
   function hasDecision() {
-    try { return localStorage.getItem(KEY_DECISION) !== null; } catch (_) { return false; }
+    try { return window.IJanickiCookieConsent?.ensureCurrent() === true; } catch (_) { return false; }
   }
 
   function isConsentTrue(key) {
-    try { return localStorage.getItem(key) === 'true'; } catch (_) { return false; }
+    try { return hasDecision() && localStorage.getItem(key) === 'true'; } catch (_) { return false; }
   }
 
   function hasAnalyticsConsent() { return isConsentTrue(KEY_ANALYTICS); }
@@ -154,7 +153,10 @@
     document.head.appendChild(gaScript);
 
     window.gtag('js', new Date());
-    window.gtag('config', MEASUREMENT_ID);
+    window.gtag('config', MEASUREMENT_ID, {
+      cookie_expires: 31536000,
+      cookie_update: false,
+    });
     return true;
   }
 
@@ -162,6 +164,7 @@
     if (!hasAnalyticsConsent()) return false;
     try {
       const app = await ensureFirebaseApp();
+      if (!hasAnalyticsConsent()) return false;
       const firestore = window.firebase.firestore(app);
       const payload = {
         type,
@@ -193,7 +196,10 @@
 
     try {
       const result = await writer();
-      try { sessionStorage.setItem(storageKey, 'true'); } catch (_) { /* ignore */ }
+      try {
+        if (hasAnalyticsConsent()) sessionStorage.setItem(storageKey, 'true');
+        else sessionStorage.removeItem(storageKey);
+      } catch (_) { /* ignore */ }
       return result;
     } catch (err) {
       try { sessionStorage.removeItem(storageKey); } catch (_) { /* ignore */ }
@@ -206,9 +212,8 @@
     if (!hasAnalyticsConsent() || !shouldTrackCurrentPage()) return Promise.resolve(false);
 
     const pathname = normalizedPath();
-    const page = pathname === '/' ? 'home' : pathname;
     return oncePerSession(PAGE_VISIT_KEY_PREFIX + pathname, () =>
-      writeAnalyticsEvent('page_visit', { page, source: 'page_entry', path: pathname })
+      writeAnalyticsEvent('page_visit', { path: pathname })
     );
   }
 
@@ -247,8 +252,6 @@
 
     return writeAnalyticsEvent('contact_click', {
       channel,
-      page: normalizedPath() === '/' ? 'home' : normalizedPath(),
-      source: 'contact_link',
       path: normalizedPath(),
     });
   }
@@ -262,7 +265,7 @@
     }
 
     return oncePerSession(TUTORIAL_COMPLETE_KEY, () =>
-      writeAnalyticsEvent('tutorial_complete', { page: 'home', source: 'finish_button' })
+      writeAnalyticsEvent('tutorial_complete')
     );
   }
 
@@ -306,6 +309,10 @@
     trackAnalyticsEvent,
     maybeTrackSessionDuration,
   };
+
+  window.addEventListener('ijanicki:consent-expired', () => {
+    window.gtag('consent', 'update', buildConsentUpdate());
+  });
 
   // Legacy exports
   window.hasAnalyticsConsent = hasAnalyticsConsent;

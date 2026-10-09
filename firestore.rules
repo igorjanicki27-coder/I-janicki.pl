@@ -257,6 +257,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /contact_form_stats/total {
+      allow get: if hasActiveStatsSession();
+      // Counters are written only by the authenticated retention worker.
+      allow list, create, update, delete: if false;
+    }
+
     match /contact_leads/{leadId} {
       allow get, list: if isMaster();
       allow create: if request.resource.data.keys().hasOnly([

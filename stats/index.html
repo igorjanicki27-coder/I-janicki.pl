@@ -14,7 +14,8 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="../analytics.js?v=10"></script>
+  <script src="/cookie-consent.js?v=2"></script>
+<script src="../analytics.js?v=11"></script>
   <style>
     :root {
       --bg-0: #000000;
@@ -140,7 +141,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 18px;
       margin-bottom: 18px;
     }
@@ -396,6 +397,11 @@
           <div class="metric" id="avgTimeValue">-</div>
           <p>Sredni czas spedzony na stronie glownej dla zapisanych sesji.</p>
         </article>
+        <article class="card">
+          <div class="eyebrow">04 · Formularze</div>
+          <div class="metric" id="contactFormsValue">-</div>
+          <p>Łączna liczba zarejestrowanych zgłoszeń, również po usunięciu ich danych. Licznik aktualizowany raz dziennie.</p>
+        </article>
       </section>
 
       <section class="period-grid" aria-label="Statystyki okresowe">
@@ -574,6 +580,16 @@
 
           return { type, timestampMs, durationSeconds, path, channel };
         }).filter((entry) => Number.isFinite(entry.timestampMs));
+      }
+
+      async function loadContactFormCount() {
+        try {
+          const snapshot = await getFirestore().collection('contact_form_stats').doc('total').get();
+          const count = snapshot.exists ? snapshot.get('totalCount') : null;
+          setValue('contactFormsValue', Number.isSafeInteger(count) && count >= 0 ? formatCount(count) : 'Niedost.');
+        } catch (_) {
+          setValue('contactFormsValue', 'Niedost.');
+        }
       }
 
       async function fetchGoogleReviews() {
@@ -874,6 +890,7 @@
       async function loadStats() {
         try {
           ensureFirebaseApp();
+          await loadContactFormCount();
           const analyticsEvents = await fetchAnalyticsEvents();
           let googleReviews = [];
           let googleReviewsAvailable = true;

@@ -2,7 +2,7 @@
   'use strict';
 
   const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
-  const COOKIE_POLICY_VERSION = '1.2';
+  const COOKIE_POLICY_VERSION = '1.3';
   const STORAGE = {
     decision: 'ijanek_cookie_decision',
     analytics: 'ijanek_cookie_analytics',
@@ -184,12 +184,13 @@
       return 'anon_' + createUuid();
     });
 
-    writeStorage(STORAGE.consentUpdatedAt, now);
+    const expiresAt = window.IJanickiCookieConsent.markSaved(now);
 
     return {
       consent_id: consentId,
       created_at: createdAt,
       updated_at: now,
+      expires_at: expiresAt,
       policy_version: COOKIE_POLICY_VERSION,
       essential: true,
       analytics: categories.analytics,
@@ -248,7 +249,7 @@
     return '<div class="cookie-panel" data-cookie-view="settings">' +
       '<div class="cookie-header"><span class="cookie-icon" aria-hidden="true">🍪</span><h2>Ustawienia plików cookie</h2></div>' +
       '<div class="cookie-categories">' +
-        categoryRow('essential', 'Niezbędne', 'Techniczne cookies potrzebne do działania strony, bezpieczeństwa i zapamiętania zgód.', true, true) +
+        categoryRow('essential', 'Niezbędne', 'Techniczne cookies potrzebne do działania strony, bezpieczeństwa i zapamiętania zgód przez 12 miesięcy od ostatniego zapisania wyboru.', true, true) +
         categoryRow('analytics', 'Analityczne', 'Statystyki odwiedzin, źródła wejść i zachowanie na stronie.', readStorage(STORAGE.analytics) === 'true', false) +
         categoryRow('marketing', 'Marketingowe', 'Reklamy, remarketing i piksele reklamowe.', readStorage(STORAGE.marketing) === 'true', false) +
         categoryRow('external', 'Zewnętrzne / multimedialne', 'Osadzone filmy, mapy i treści społecznościowe.', readStorage(STORAGE.external) === 'true', false) +
@@ -287,13 +288,14 @@
   }
 
   function decideAll(accept) {
+    window.IJanickiCookieConsent.ensureCurrent();
     const value = accept ? 'true' : 'false';
     writeStorage(STORAGE.decision, accept ? 'all' : 'essential');
     writeStorage(STORAGE.analytics, value);
     writeStorage(STORAGE.marketing, value);
     writeStorage(STORAGE.external, value);
-    applyConsentToAnalytics();
     persistConsent(accept ? 'accept_all' : 'reject_all');
+    applyConsentToAnalytics();
     if (accept && window.IJanickiAnalytics) {
       window.IJanickiAnalytics.loadGA();
       window.IJanickiAnalytics.maybeTrackPageVisit?.();
@@ -305,12 +307,13 @@
     const analytics = document.getElementById('analytics');
     const marketing = document.getElementById('marketing');
     const external = document.getElementById('external');
+    window.IJanickiCookieConsent.ensureCurrent();
     writeStorage(STORAGE.decision, 'custom');
     writeStorage(STORAGE.analytics, analytics && analytics.checked ? 'true' : 'false');
     writeStorage(STORAGE.marketing, marketing && marketing.checked ? 'true' : 'false');
     writeStorage(STORAGE.external, external && external.checked ? 'true' : 'false');
-    applyConsentToAnalytics();
     persistConsent('save_preferences');
+    applyConsentToAnalytics();
     if (analytics && analytics.checked && window.IJanickiAnalytics) {
       window.IJanickiAnalytics.loadGA();
       window.IJanickiAnalytics.maybeTrackPageVisit?.();
@@ -342,6 +345,8 @@
       closeCookiePanel();
     }
   });
+
+  window.addEventListener('ijanicki:consent-expired', function () { showCookiePanel('banner'); });
 
   if (!readStorage(STORAGE.decision)) {
     showCookiePanel('banner');

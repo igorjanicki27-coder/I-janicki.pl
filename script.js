@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
 const GOOGLE_REVIEWS_ENDPOINT = `${FIREBASE_RTDB_BASE}/publicGoogleReviews.json`;
-const COOKIE_POLICY_VERSION = '1.2';
+const COOKIE_POLICY_VERSION = '1.3';
 
 // ─────────────────────────────────────────────────────────────────
 // STORAGE KEYS
@@ -37,7 +37,7 @@ const SS = {
 
 // ─────────────────────────────────────────────────────────────────
 // TUTORIAL STEPS
-// 0:cookies(only 1st-visit)  1:greeting  2:name  3-8:sections  9:reviews
+// 0:cookies(only 1st-visit)  1:greeting  2:name  3-7:sections  8:reviews  9:contact
 // ─────────────────────────────────────────────────────────────────
 const STEPS = [
   { id: 'cookies'                                             },  // 0 — pierwszy krok tylko przy pierwszej wizycie
@@ -48,13 +48,13 @@ const STEPS = [
   { id: 'projects', topic: 'projects', label: 'Projekty'     },  // 5
   { id: 'process',  topic: 'process',  label: 'Współpraca'   },  // 6
   { id: 'pricing',  topic: 'pricing',  label: 'Cennik'       },  // 7
-  { id: 'contact',  topic: 'contact',  label: 'Kontakt'      },  // 8
-  { id: 'reviews'                                             },  // 9
+  { id: 'reviews'                                             },  // 8
+  { id: 'contact',  topic: 'contact',  label: 'Kontakt'      },  // 9
 ];
 
 const FIRST_SECTION = 3;
-const LAST_SECTION  = 8;
-const REVIEWS_STEP  = 9;
+const LAST_SECTION  = 9;
+const REVIEWS_STEP  = 8;
 
 // Helper function to get the effective steps array (filtered if cookies decided)
 function getSteps() {
@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDocViewer();
   initCursor();
   initTutorialReturnLinks();
+  initTutorialScroll();
   registerSW();
   // Opóźnij tutorial do następnej klatki (requestAnimationFrame)
   // Tutorial zawiera 1000+ DOM mutacji - nie blokuj initial render
@@ -220,6 +221,76 @@ function initTutorialReturnLinks() {
   }, true);
 }
 
+function initTutorialScroll() {
+  const getScrollPanel = target => {
+    if (!document.documentElement.classList.contains('tutorial-active')) return null;
+    if (document.body.classList.contains('intro-active')) return null;
+
+    const overlayOpen = [dom.cookieOverlay, dom.docOverlay].some(overlay => overlay && !overlay.hidden)
+      || dom.modalRoot?.getAttribute('aria-hidden') === 'false'
+      || document.querySelector('.faq-modal-overlay, .review-preview-overlay');
+    if (overlayOpen) return null;
+
+    const panel = $('panel');
+    // W panelu zachowaj natywne przewijanie, również jego zagnieżdżonych elementów.
+    if (!panel || panel.contains(target) || panel.scrollHeight <= panel.clientHeight) return null;
+    return panel;
+  };
+
+  document.addEventListener('wheel', event => {
+    if (event.defaultPrevented || event.ctrlKey || event.shiftKey || !event.cancelable) return;
+    if (!event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+    const panel = getScrollPanel(event.target);
+    if (!panel) return;
+
+    let delta = event.deltaY;
+    if (event.deltaMode === 1) {
+      delta *= parseFloat(getComputedStyle(panel).lineHeight) || 16;
+    } else if (event.deltaMode === 2) {
+      delta *= panel.clientHeight;
+    }
+
+    event.preventDefault();
+    panel.scrollTop += delta;
+  }, { passive: false });
+
+  let touchScroll = null;
+  document.addEventListener('touchstart', event => {
+    touchScroll = null;
+    if (event.defaultPrevented || event.touches.length !== 1 || !getScrollPanel(event.target)) return;
+    const touch = event.touches[0];
+    touchScroll = { id: touch.identifier, x: touch.clientX, y: touch.clientY, lastY: touch.clientY, vertical: false };
+  }, { passive: true });
+
+  document.addEventListener('touchmove', event => {
+    if (!touchScroll) return;
+    const panel = getScrollPanel(event.target);
+    if (!panel || event.defaultPrevented || !event.cancelable || event.touches.length !== 1) {
+      touchScroll = null;
+      return;
+    }
+    const touch = event.touches[0];
+    if (touch.identifier !== touchScroll.id) return;
+    if (!touchScroll.vertical) {
+      const dx = Math.abs(touch.clientX - touchScroll.x);
+      const dy = Math.abs(touch.clientY - touchScroll.y);
+      if (Math.max(dx, dy) < 8) return;
+      if (dx > dy) {
+        touchScroll = null;
+        return;
+      }
+      touchScroll.vertical = true;
+    }
+    event.preventDefault();
+    panel.scrollTop += touchScroll.lastY - touch.clientY;
+    touchScroll.lastY = touch.clientY;
+  }, { passive: false });
+
+  const resetTouchScroll = () => { touchScroll = null; };
+  document.addEventListener('touchend', resetTouchScroll, { passive: true });
+  document.addEventListener('touchcancel', resetTouchScroll, { passive: true });
+}
+
 // ─────────────────────────────────────────────────────────────────
 // THEME
 // ─────────────────────────────────────────────────────────────────
@@ -281,7 +352,7 @@ const TRANSLATIONS = {
     'cookie-settings-btn': 'Ustawienia',
     'cookie-save-settings': 'Zapisz ustawienia',
     'cookie-essential-title': 'Niezbędne',
-    'cookie-essential-desc': 'Zawsze aktywne. Techniczne cookies potrzebne do działania strony, bezpieczeństwa, formularzy i zapamiętania zgód.',
+    'cookie-essential-desc': 'Zawsze aktywne. Techniczne cookies potrzebne do działania strony, bezpieczeństwa, formularzy i zapamiętania zgód przez 12 miesięcy od ostatniego zapisania wyboru.',
     'cookie-analytics-title': 'Analityczne',
     'cookie-analytics-desc': 'Opcjonalne. Np. Google Analytics, statystyki odwiedzin, źródła wejść, zachowanie na stronie.',
     'cookie-marketing-title': 'Marketingowe',
@@ -369,6 +440,8 @@ const TRANSLATIONS = {
     'returning-message': 'Witaj ponownie, <strong>{name}</strong>! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
     'returning-message-no-name': 'Witaj ponownie! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
     'tutorial-complete-title': 'To już jest koniec!',
+    'tutorial-call': 'Zadzwoń',
+    'tutorial-email': 'Napisz',
     'tutorial-complete-message-with-name': 'Świetnie! Masz już ogólny pogląd na to, czym się zajmuję, <strong>{name}</strong>.',
     'tutorial-complete-message-no-name': 'Masz już ogólny pogląd na to, czym się zajmuję.',
     'tutorial-complete-next': 'Klikając w sekcje poniżej, możesz wrócić do interesujących Cię informacji albo jeszcze raz przejść samouczek.',
@@ -423,7 +496,7 @@ const TRANSLATIONS = {
     'cookie-settings-btn': 'Settings',
     'cookie-save-settings': 'Save settings',
     'cookie-essential-title': 'Essential',
-    'cookie-essential-desc': 'Always active. Technical cookies needed for site operation, security, forms and consent storage.',
+    'cookie-essential-desc': 'Always active. Technical cookies needed for site operation, security, forms and consent storage for 12 months from the last saved choice.',
     'cookie-analytics-title': 'Analytics',
     'cookie-analytics-desc': 'Optional. E.g. Google Analytics, visit statistics, traffic sources, on-site behavior.',
     'cookie-marketing-title': 'Marketing',
@@ -511,6 +584,8 @@ const TRANSLATIONS = {
     'returning-message': 'Welcome back, <strong>{name}</strong>! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
     'returning-message-no-name': 'Welcome back! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
     'tutorial-complete-title': 'That\'s the end!',
+    'tutorial-call': 'Call',
+    'tutorial-email': 'Email',
     'tutorial-complete-message-with-name': 'Great! You already have a good overview of what I do, <strong>{name}</strong>.',
     'tutorial-complete-message-no-name': 'You already have a good overview of what I do.',
     'tutorial-complete-next': 'Use the sections below to return to the details you need or go through the tutorial again.',
@@ -761,7 +836,7 @@ function initGlobalClick() {
     // Name step: save before advancing
     if (step.id === 'name') captureName();
 
-    // Last step (reviews): finish tutorial
+    // Last step (contact): finish tutorial
     if (tutStep === steps.length - 1) {
       window.trackTutorialComplete?.();
       finishTutorial();
@@ -1110,6 +1185,7 @@ function renderFinish() {
       ${renderTopicButtons('snav-item')}
       ${renderTutorialButton('snav-item')}
     </div>
+    ${renderTutorialContactButtons()}
   `, true);
 
   markTutorialDone();
@@ -1138,7 +1214,7 @@ const TOPIC_ICONS = {
 };
 
 function renderTopicButtons(buttonClass) {
-  return ['about', 'services', 'projects', 'process', 'pricing', 'contact', 'reviews']
+  return ['about', 'services', 'projects', 'process', 'pricing', 'reviews', 'contact']
     .map(topic => topic === 'contact'
       ? `<a class="${buttonClass}" href="/kontakt/">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</a>`
       : `<button class="${buttonClass}" data-topic="${topic}">${TOPIC_ICONS[topic]} ${t(`btn-${topic}`)}</button>`)
@@ -1147,6 +1223,13 @@ function renderTopicButtons(buttonClass) {
 
 function renderTutorialButton(buttonClass) {
   return `<button class="${buttonClass}" data-topic="tutorial"><span class="opt-icon opt-icon-tutorial" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span> ${t('btn-tutorial')}</button>`;
+}
+
+function renderTutorialContactButtons() {
+  return `<div class="tut-contact-actions">
+    <a class="tut-btn tut-next" href="tel:+48575757817">${t('tutorial-call')}</a>
+    <a class="tut-btn tut-next" href="mailto:kontakt@i-janicki.pl">${t('tutorial-email')}</a>
+  </div>`;
 }
 
 function finishTutorial() {
@@ -1171,6 +1254,7 @@ function finishTutorial() {
       ${renderTopicButtons('opt')}
       ${renderTutorialButton('opt')}
     </div>
+    ${renderTutorialContactButtons()}
   `, false);
 
   injectFaqBtn();
@@ -1182,7 +1266,7 @@ function markTutorialDone() {
   sessionStorage.removeItem(SS.TUTORIAL_STEP);
   sessionStorage.removeItem(SS.TUTORIAL_RETURN);
   tutDone = true;
-  // reviewsWrap was shown in step 9; finish step doesn't repeat it
+  // Reviews were shown in step 8; finish step doesn't repeat them
   // sectionNav removed from topbar — section access via panel buttons
 }
 
@@ -1317,6 +1401,10 @@ function closeModal() {
 // COOKIE PANEL
 // ─────────────────────────────────────────────────────────────────
 function initCookiePanel() {
+  window.addEventListener('ijanicki:consent-expired', () => {
+    userName = '';
+    showCookieBanner();
+  });
   // Jeśli brak decyzji i tutorial już zakończony — pokaż baner
   // (jeśli tutorial się zaraz zacznie, to krok cookies w tutorialu przejmie obsługę)
   if (!localStorage.getItem(LS.COOKIE_DECISION) && tutDone) {
@@ -1390,12 +1478,13 @@ function buildCookieConsentRecord(action) {
   const categories = getCookieConsentCategories();
   const googleConsent = buildGoogleConsentMode(categories);
 
-  localStorage.setItem(LS.COOKIE_CONSENT_UPDATED_AT, now);
+  const expiresAt = window.IJanickiCookieConsent.markSaved(now);
 
   return {
     consent_id: consentId,
     created_at: createdAt,
     updated_at: now,
+    expires_at: expiresAt,
     policy_version: COOKIE_POLICY_VERSION,
     essential: true,
     analytics: categories.analytics,
@@ -1435,14 +1524,15 @@ function persistCookieConsent(action) {
 
 // Akceptuje/odrzuca wszystkie opcjonalne kategorie
 function cookieDecideAll(accept) {
+  window.IJanickiCookieConsent.ensureCurrent();
   const val = accept ? 'true' : 'false';
   localStorage.setItem(LS.COOKIE_DECISION,  accept ? 'all' : 'essential');
   localStorage.setItem(LS.COOKIE_ANALYTICS, val);
   localStorage.setItem(LS.COOKIE_MARKETING, val);
   localStorage.setItem(LS.COOKIE_EXTERNAL,  val);
 
-  applyConsentToGtag();
   persistCookieConsent(accept ? 'accept_all' : 'reject_all');
+  applyConsentToGtag();
 
   if (accept) {
     window.loadGA?.();
@@ -1460,14 +1550,15 @@ function saveCookieSettings() {
   const analytics = getCheck('analytics');
   const marketing = getCheck('marketing');
   const external  = getCheck('external');
+  window.IJanickiCookieConsent.ensureCurrent();
 
   localStorage.setItem(LS.COOKIE_DECISION,  'custom');
   localStorage.setItem(LS.COOKIE_ANALYTICS, analytics ? 'true' : 'false');
   localStorage.setItem(LS.COOKIE_MARKETING, marketing ? 'true' : 'false');
   localStorage.setItem(LS.COOKIE_EXTERNAL,  external  ? 'true' : 'false');
 
-  applyConsentToGtag();
   persistCookieConsent('save_preferences');
+  applyConsentToGtag();
 
   if (analytics) {
     window.loadGA?.();
@@ -1531,13 +1622,15 @@ const DOC_TITLES = {
     'regulamin': 'Regulamin witryny',
     'polityka-prywatnosci': 'Polityka prywatności',
     'polityka-rodo': 'Polityka RODO',
-    'polityka-wspolpracy': 'Polityka współpracy',
+    'polityka-wspolpracy': 'Przetwarzanie danych w usługach IT',
+    'wykaz-podwykonawcow': 'Wykaz podwykonawców i transfery danych',
   },
   en: {
     'regulamin': 'Website rules',
     'polityka-prywatnosci': 'Privacy policy',
     'polityka-rodo': 'GDPR policy',
-    'polityka-wspolpracy': 'Cooperation policy',
+    'polityka-wspolpracy': 'Data processing in IT services',
+    'wykaz-podwykonawcow': 'Subprocessors and data transfers',
   },
 };
 

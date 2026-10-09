@@ -9,6 +9,11 @@
 .document-page ul, .document-page ol { padding-left: 1.4rem; }
 .document-page li { margin-bottom: 8px; }
 .document-page hr { margin: 28px 0; border: 0; border-top: 1px solid var(--border); }
+.document-table-wrap { margin: 20px 0 28px; overflow-x: auto; }
+.document-table { width: 100%; border-collapse: collapse; color: var(--text-soft); font-size: .9rem; line-height: 1.6; }
+.document-table th, .document-table td { padding: 12px 14px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.document-table th { color: var(--text); background: var(--surface); font-weight: 700; }
+.document-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, .02); }
 .document-list { margin-bottom: 24px; }
 .document-entry { padding: 20px 0; border-bottom: 1px solid var(--border); }
 .document-entry:first-child { border-top: 1px solid var(--border); }

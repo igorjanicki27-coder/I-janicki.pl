@@ -285,8 +285,9 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <link rel="stylesheet" href="/oferta.css?v=13">
   <link rel="stylesheet" href="/blog.css?v=2">
   <script type="application/ld+json">${JSON.stringify(structuredData).replaceAll('<', '\\u003c')}</script>
-  <script defer src="/analytics.js?v=10"></script>
-  <script defer src="/oferta.js?v=9"></script>`;
+  <script defer src="/cookie-consent.js?v=2"></script>
+  <script defer src="/analytics.js?v=11"></script>
+  <script defer src="/oferta.js?v=10"></script>`;
 }
 
 function renderHeader(currentPath = '/blog/') {

@@ -11,10 +11,17 @@
     "build:js": "terser script.js -o script.min.js -c -m",
     "seo": "node scripts/generate-seo-files.mjs",
     "audit:seo": "node scripts/audit-seo-content.mjs",
-    "test:google-reviews": "node --test scripts/google-business-reviews.test.mjs"
+    "test:google-reviews": "node --test scripts/google-business-reviews.test.mjs",
+    "test:cookie-consent": "node --test scripts/cookie-consent.test.mjs",
+    "cleanup:cookie-consent": "node scripts/cleanup-cookie-consents.mjs",
+    "test:technical-retention": "node --test scripts/technical-retention.test.mjs",
+    "cleanup:technical-data": "node scripts/cleanup-technical-data.mjs",
+    "test:contact-retention": "node --test scripts/contact-retention.test.mjs",
+    "cleanup:contact-forms": "node scripts/cleanup-contact-forms.mjs"
   },
   "devDependencies": {
     "cssnano": "^7.0.0",
+    "google-auth-library": "^11.2.0",
     "postcss": "^8.5.13",
     "postcss-cli": "^11.0.0",
     "terser": "^5.39.0"

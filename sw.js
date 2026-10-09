@@ -5,7 +5,7 @@
 
 'use strict';
 
-const CACHE_NAME    = 'ijanecki-v6';
+const CACHE_NAME    = 'ijanecki-v8';
 const CACHE_FOREVER = 'ijanecki-static-v6';   // fonts, icons — very long-lived
 
 // Assets to pre-cache on install
@@ -23,6 +23,7 @@ const PRECACHE = [
   './dokumenty/polityka-prywatnosci.html',
   './dokumenty/polityka-rodo.html',
   './dokumenty/polityka-wspolpracy.html',
+  './dokumenty/wykaz-podwykonawcow-i-zasady-transferow-danych.html',
 ];
 
 // ── Install: pre-cache shell ──────────────────────────────────────

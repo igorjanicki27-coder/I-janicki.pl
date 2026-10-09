@@ -751,6 +751,13 @@ html[data-theme="light"] .opt { background: rgba(255,255,255,0.5); }
 .tut-message p em { color: var(--accent-4); font-style: normal; }
 
 /* Opcje na ekranie finałowym tutoriala */
+.tut-contact-actions {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 16px;
+}
+.tut-contact-actions .tut-btn {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px; max-width: 280px; text-decoration: none;
+}
 .tut-options { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
 .tut-options .snav-item {
   background: linear-gradient(135deg,rgba(127,64,255,0.2),rgba(64,201,255,0.15));
@@ -1573,6 +1580,11 @@ html[data-theme="light"] .doc-panel { background: #fff; }
 .doc-content a { color: var(--accent-4); text-decoration: underline; transition: color 0.2s; }
 .doc-content a:hover { color: var(--accent-3); }
 .doc-content small { font-size: 0.85em; color: var(--muted); }
+.doc-content .document-table-wrap { margin: 1.2em 0 1.6em; overflow-x: auto; }
+.doc-content .document-table { width: 100%; border-collapse: collapse; font-size: .9em; line-height: 1.55; }
+.doc-content .document-table th, .doc-content .document-table td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.doc-content .document-table th { color: var(--text); background: var(--surface); font-weight: 700; }
+.doc-content .document-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, .02); }
 .doc-loading { color: var(--muted); padding: 20px 0; font-size: 14px; }
 
 /* =================== FAQ i lokalne skróty w panelu =================== */
