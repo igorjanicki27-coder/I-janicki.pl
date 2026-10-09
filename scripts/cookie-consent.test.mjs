@@ -241,6 +241,29 @@ test('expired choice leaves only limited evidence and is not deleted before its 
   assert.deepEqual(methods, ['GET']);
 });
 
+test('concurrent changes and missing ETags cannot destroy evidence during minimization', async () => {
+  const record = { updated_at: '2025-10-09T12:00:00.000Z', analytics_storage: 'granted' };
+  let step = 0;
+  const result = await cleanupCookieConsents({ accessToken: 'test-token', now: currentTime,
+    fetchImpl: async (_, options) => {
+      step++;
+      if (step === 1) return new Response(JSON.stringify({ anon: { choice: record } }));
+      if (step === 2) return new Response(JSON.stringify(record), { headers: { etag: 'old' } });
+      assert.equal(options.method, 'PUT');
+      return new Response('null', { status: 412 });
+    },
+  });
+  assert.equal(result.changed, 1);
+  assert.equal(result.minimized, 0);
+  step = 0;
+  await assert.rejects(cleanupCookieConsents({ accessToken: 'test-token', now: currentTime,
+    fetchImpl: async (_, options) => {
+      assert.equal(options.method, undefined);
+      return new Response(JSON.stringify(++step === 1 ? { anon: { choice: record } } : record));
+    },
+  }), /ETag/);
+});
+
 test('dry run never mutates Firebase and errors stop cleanup', async () => {
   const result = await cleanupCookieConsents({ accessToken: 'test-token', now: currentTime, dryRun: true,
     fetchImpl: async (_, options) => {
