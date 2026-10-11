@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
   <title>Arkusze | i-janicki.pl</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./arkusze.css?v=13">
-  <script type="module" src="./app.mjs?v=13"></script>
+  <link rel="stylesheet" href="./arkusze.css?v=18">
+  <script type="module" src="./app.mjs?v=17"></script>
 </head>
 <body>
   <main id="gate" class="gate">
@@ -24,11 +24,22 @@
     </div>
   </main>
   <main id="workspace" class="workspace" hidden>
-    <header class="topbar"><div class="brand"><a href="/" aria-label="Strona główna">i-janicki<span>.pl</span></a><span>/</span><h1>Arkusze</h1></div><button id="logout" class="quiet">Zablokuj</button></header>
-    <div class="workspace-tools">
-      <div class="search-field"><label for="search" class="sr-only">Szukaj we wszystkich zakładkach</label><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Szukaj we wszystkich zakładkach…" autocomplete="off"><button id="clear-search" class="quiet" aria-label="Wyczyść wyszukiwanie" hidden>Wyczyść</button></div>
-      <nav id="tabs" class="tabs" aria-label="Zakładki arkuszy"></nav>
-      <div class="mobile-tab-picker"><select id="tab-select" aria-label="Wybierz zakładkę"></select></div>
+    <div class="workspace-header">
+      <header class="topbar">
+        <div class="brand"><a href="/" aria-label="Strona główna">i-janicki<span>.pl</span></a><span>/</span><h1>Arkusze</h1></div>
+        <div class="table-zoom" role="group" aria-label="Skala tabeli">
+          <button id="zoom-out" type="button" aria-label="Oddal tabelę">−</button>
+          <button id="zoom-reset" type="button" aria-label="Przywróć skalę 100%" title="Przywróć skalę 100%" aria-live="polite">100%</button>
+          <button id="zoom-in" type="button" aria-label="Przybliż tabelę">+</button>
+          <button id="zoom-fit" type="button" aria-pressed="false">Dopasuj</button>
+        </div>
+        <button id="logout" class="quiet">Zablokuj</button>
+      </header>
+      <div class="workspace-tools">
+        <div class="search-field"><label for="search" class="sr-only">Szukaj we wszystkich zakładkach</label><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Szukaj we wszystkich zakładkach…" autocomplete="off"><button id="clear-search" class="quiet" aria-label="Wyczyść wyszukiwanie" hidden>Wyczyść</button></div>
+        <nav id="tabs" class="tabs" aria-label="Zakładki arkuszy"></nav>
+        <div class="mobile-tab-picker"><select id="tab-select" aria-label="Wybierz zakładkę"></select></div>
+      </div>
     </div>
     <div id="table-wrapper" class="table-wrapper" tabindex="0" role="region" aria-label="Tabela produktów"><table id="grid" aria-label="Kolumny i wiersze produktów"></table></div>
     <div id="search-results" hidden></div>

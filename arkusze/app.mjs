@@ -1,4 +1,5 @@
 import { keepActiveTab, SyncConflict } from './sync-model.mjs?v=9';
+import { MIN_ZOOM, MAX_ZOOM, ZOOM_STEP, clampZoom, fitZoom, readZoomPreferences, tabZoom, rememberTabZoom } from './zoom.mjs?v=3';
 import { columnName } from './model.mjs?v=2';
 import { FIELD_TYPES, MAX_FIELDS, MAX_ITEMS, MAX_TABS, uid, blankWorkbook, createLayoutDraft, validateWorkbook, parseDate, coerceValue, formatValue, itemTitle, dateExpiry, visibleItems, migrateLegacy, searchWorkbook, todayInPoland, migrateCompactLayout } from './workbook.mjs?v=9';
 
@@ -7,6 +8,10 @@ const DATA_KEY = 'ijanicki_arkusze_v2';
 const LEGACY_KEY = 'ijanicki_arkusze_v1';
 const SESSION_KEY = 'ijanicki_arkusze_session';
 const LOCK_KEY = 'ijanicki_arkusze_pin';
+const ZOOM_KEY = 'ijanicki_arkusze_zoom';
+let zoomMode = 'manual', zoomPercent = 100, zoomFrame, zoomTabId = null;
+let zoomPreferences = readZoomPreferences(null);
+try { zoomPreferences = readZoomPreferences(localStorage.getItem(ZOOM_KEY)); } catch {}
 const digits = [...document.querySelectorAll('.pin-digits input')];
 let unlockedUntil = 0;
 let verifying = false;
@@ -187,6 +192,84 @@ function render() {
 function editButton(tab, item) {
   return button('✎', 'edit-icon', () => openItem(item.id, tab.id), `Edytuj pozycję: ${itemTitle(tab, item)}`);
 }
+function restoreTabZoom() {
+  if (zoomTabId === book.activeTabId) return;
+  zoomTabId = book.activeTabId;
+  // Keep the old shared setting for the first opened tab only.
+  if (zoomPreferences.legacy) {
+    const {mode, percent} = zoomPreferences.legacy;
+    zoomPreferences = rememberTabZoom(zoomPreferences, zoomTabId, mode, percent);
+    try { localStorage.setItem(ZOOM_KEY, JSON.stringify(zoomPreferences)); } catch {}
+  }
+  const setting = tabZoom(zoomPreferences, zoomTabId);
+  zoomMode = setting.mode; zoomPercent = setting.percent;
+}
+function rememberCurrentZoom() {
+  const setting = zoomPreferences.tabs[zoomTabId];
+  if (setting?.mode === zoomMode && setting.percent === zoomPercent) return;
+  zoomPreferences = rememberTabZoom(zoomPreferences, zoomTabId, zoomMode, zoomPercent);
+  try { localStorage.setItem(ZOOM_KEY, JSON.stringify(zoomPreferences)); } catch {}
+}
+function fitTableZoom(table, availableWidth) {
+  // Always measure at 100% so repeated fitting cannot drift with the previous scale.
+  table.style.setProperty('--table-scale', '1');
+  let percent = fitZoom(availableWidth(), [table.getBoundingClientRect().width]);
+  // Font rounding and the page scrollbar can slightly change the final available width.
+  for (let pass = 0; pass < 3; pass++) {
+    table.style.setProperty('--table-scale', String(percent / 100));
+    const next = fitZoom(availableWidth(), [table.getBoundingClientRect().width / (percent / 100)]);
+    if (next === percent) break;
+    percent = next;
+  }
+  table.style.setProperty('--table-scale', String(percent / 100));
+  return percent;
+}
+function fitSearchTab(tab, availableWidth) {
+  // Use the full tab, so filtering out its longest values does not enlarge the results.
+  const wrapper = node('div', 'table-wrapper zoom-measurement');
+  wrapper.setAttribute('aria-hidden', 'true'); wrapper.inert = true;
+  const table = node('table'); renderTable(table, tab, visibleItems(tab));
+  wrapper.append(table); $('workspace').append(wrapper);
+  try { return fitTableZoom(table, availableWidth); }
+  finally { wrapper.remove(); }
+}
+function applyTableZoom() {
+  restoreTabZoom();
+  const workspace = $('workspace'), style = getComputedStyle(workspace);
+  const availableWidth = () => workspace.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2;
+  const searching = !$('search-results').hidden;
+  const views = searching
+    ? [...$('search-results').querySelectorAll('.search-result')].map(section => ({
+      tab: book.tabs.find(tab => tab.id === section.dataset.tabId), table: section.querySelector('table')
+    }))
+    : [{tab: activeTab(), table: $('grid')}];
+  for (const {tab, table} of views) {
+    const setting = tab.id === zoomTabId ? {mode: zoomMode, percent: zoomPercent} : tabZoom(zoomPreferences, tab.id);
+    const percent = setting.mode === 'fit'
+      ? (searching ? fitSearchTab(tab, availableWidth) : fitTableZoom(table, availableWidth))
+      : setting.percent;
+    table.style.setProperty('--table-scale', String(percent / 100));
+    if (tab.id === zoomTabId) zoomPercent = percent;
+  }
+  $('zoom-reset').textContent = `${zoomPercent}%`;
+  $('zoom-out').disabled = zoomPercent <= MIN_ZOOM;
+  $('zoom-in').disabled = zoomPercent >= MAX_ZOOM;
+  $('zoom-fit').setAttribute('aria-pressed', String(zoomMode === 'fit'));
+  rememberCurrentZoom();
+}
+function setTableZoom(percent, mode = 'manual') {
+  restoreTabZoom();
+  zoomMode = mode; zoomPercent = clampZoom(percent);
+  applyTableZoom();
+}
+$('zoom-out').addEventListener('click', () => setTableZoom(zoomPercent - ZOOM_STEP));
+$('zoom-in').addEventListener('click', () => setTableZoom(zoomPercent + ZOOM_STEP));
+$('zoom-reset').addEventListener('click', () => setTableZoom(100));
+$('zoom-fit').addEventListener('click', () => setTableZoom(100, 'fit'));
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(zoomFrame);
+  zoomFrame = requestAnimationFrame(() => { if (!$('workspace').hidden) applyTableZoom(); });
+});
 function renderTable(table, tab, items) {
   table.setAttribute('aria-label', `Arkusz: ${tab.name}`);
   const today = todayInPoland();
@@ -244,6 +327,7 @@ function renderContent() {
   $('empty-title').textContent = searching ? 'Brak pasujących pozycji' : 'Twój arkusz jest gotowy';
   $('empty-text').textContent = searching ? 'Nie znaleziono pozycji w żadnej zakładce.' : 'Dodaj pierwszą pozycję przyciskiem +.';
   $('empty-add').hidden = searching;
+  applyTableZoom();
 }
 $('tab-select').addEventListener('change', () => setActive($('tab-select').value));
 $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderContent, 100); });
