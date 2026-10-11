@@ -1,197 +1,7 @@
 {
   "version": 2,
-  "activeTabId": "c70fee33-4c56-4f57-ba99-6df594545147",
+  "activeTabId": "c1472d8c-48f4-4048-834e-e2b9f661e313",
   "tabs": [
-    {
-      "id": "c70fee33-4c56-4f57-ba99-6df594545147",
-      "name": "Produkty przemysłowe",
-      "fields": [
-        {
-          "id": "18968674-ee5e-4bfa-be9e-703a3c28b60a",
-          "label": "Nazwa",
-          "type": "name"
-        },
-        {
-          "id": "c37cb693-e993-4176-8404-ba22dec9f211",
-          "label": "Nr indeksu",
-          "type": "other"
-        },
-        {
-          "id": "ec0a25d3-24c6-4ddf-9004-0780fd0acf32",
-          "label": "Ilość",
-          "type": "other"
-        },
-        {
-          "id": "f559b3d6-b58e-4fe9-a993-ab7d537b2ec5",
-          "label": "Zamiennik",
-          "type": "other"
-        },
-        {
-          "id": "e24ea8cb-58a9-4c9e-b34b-c897185bacb7",
-          "label": "Data",
-          "type": "date"
-        }
-      ],
-      "items": [
-        {
-          "id": "6305b51c-52f0-4ccc-ad4d-aa69deee975d",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Farba GK 128 jasnoszara",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "150 kg",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Farba przemysłowa; dokładny typ i karta techniczna do potwierdzenia",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2020-12-01",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 3000,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 7500,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Cena bardzo orientacyjna; duże opakowanie przemysłowe"
-          }
-        },
-        {
-          "id": "9a11c9dc-9ec7-4f37-923b-64a1282ec4e1",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 640",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "250 ml",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Klej/środek do mocowania elementów cylindrycznych",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2023-06-20",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 180,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 350,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
-          }
-        },
-        {
-          "id": "ab2dee6e-aa62-42dd-ad49-4a47a51221d2",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 573",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Uszczelniacz do połączeń kołnierzowych",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 80,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 180,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Cena zależy od pojemności i stanu opakowania"
-          }
-        },
-        {
-          "id": "7c876d0c-5391-430c-8c5f-df1e07b58d7e",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 7649",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Aktywator do klejów i uszczelniaczy anaerobowych",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-01-31",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 50,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 120,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
-          }
-        },
-        {
-          "id": "31281f3f-d256-45d0-b767-8fb0e7fa2140",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 7200",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Preparat do usuwania uszczelek",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2023-11-04",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 40,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 100,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
-          }
-        },
-        {
-          "id": "669c156b-47a9-4f56-a3be-117217b31f30",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Klej Loctite 406",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "1,2 kg (z listy)",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Klej cyjanoakrylowy do tworzyw sztucznych i gumy",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 900,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 1800,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Ilość odczytana z widocznej listy; do potwierdzenia"
-          }
-        },
-        {
-          "id": "88b60760-9c77-41da-9d7d-33659967f490",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Utwardzacz 103",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "0,12 kg (z listy)",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Utwardzacz do systemu lakierniczego — dokładny system do potwierdzenia",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 20,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 60,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Ilość odczytana z widocznej listy; do potwierdzenia"
-          }
-        },
-        {
-          "id": "99934dbc-4c49-40f8-b6c8-ba0b593d79c6",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Rozcieńczalnik uniwersalny 3",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "100 kg; etykieta: opak. 20 kg",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Rozcieńczalnik do systemu lakierniczego",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2030-06-05",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 800,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 1800,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Łączna ilość 100 kg; etykieta wskazuje opakowanie 20 kg"
-          }
-        },
-        {
-          "id": "84dd9ea4-7377-407c-a841-5ec378c2fbca",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Utwardzacz GK 128",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "30 kg",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Utwardzacz do farby GK 128",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-10-01",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 900,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 2400,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
-          }
-        },
-        {
-          "id": "93440424-f295-417d-9846-9a3843b0c682",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Farba GK 128 jasnoszara",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "150 kg (na etykiecie)",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Farba przemysłowa GK 128, kolor jasnoszary",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-10-01",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 3000,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 7500,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Osobna etykieta; możliwe, że pozycja powiązana z farbą 150 kg wyżej"
-          }
-        },
-        {
-          "id": "0cc9b8a8-c308-4d6f-9fad-10100b648bb3",
-          "values": {
-            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Molykote DX Paste",
-            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "1 kg",
-            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Pasta smarna do elementów metalowych i połączeń",
-            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Niepodana",
-            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 250,
-            "77e3103a-9296-4d10-8745-72c900fc009c": 500,
-            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data ważności nieczytelna/niepodana"
-          }
-        }
-      ],
-      "sortDateFieldId": "e24ea8cb-58a9-4c9e-b34b-c897185bacb7",
-      "sourceFile": "tabela_produkty_przemyslowe.xlsx",
-      "note": "Produkt: SUMA ORIENTACYJNA · Zastosowanie: Szacunkowa wartość wszystkich pozycji; nie jest wyceną ofertową · Cena min. (zł): 9220 · Cena max. (zł): 22310 · Uwagi: Ceny zależą od pojemności, stanu opakowania i terminu przydatności",
-      "archivedFields": [
-        {
-          "id": "4735cbe6-24be-41da-aa9d-3cd3f4785c9b",
-          "label": "Zastosowanie",
-          "type": "other"
-        },
-        {
-          "id": "b08e8e37-f722-4f35-83f5-345a0c0aac19",
-          "label": "Cena min. (zł)",
-          "type": "price"
-        },
-        {
-          "id": "77e3103a-9296-4d10-8745-72c900fc009c",
-          "label": "Cena max. (zł)",
-          "type": "price"
-        },
-        {
-          "id": "06d93dde-56e4-4113-a13b-a3312bb4541f",
-          "label": "Uwagi",
-          "type": "other"
-        }
-      ]
-    },
     {
       "id": "c1472d8c-48f4-4048-834e-e2b9f661e313",
       "name": "Produkty i indeksy",
@@ -217,7 +27,7 @@
           "type": "other"
         },
         {
-          "id": "61c343e5-9926-4481-8488-0eee9898ee05",
+          "id": "ecb8164e-a92d-42d1-bcc7-5f58fecda53e",
           "label": "Data",
           "type": "date"
         }
@@ -359,238 +169,300 @@
           }
         }
       ],
-      "sortDateFieldId": "61c343e5-9926-4481-8488-0eee9898ee05",
+      "sortDateFieldId": "ecb8164e-a92d-42d1-bcc7-5f58fecda53e",
       "sourceFile": "tabela_produktow_finalna.xlsx",
       "note": "Zamienniki nie były podane na widocznych etykietach, dlatego wpisano „Nie podano na etykiecie”.\nNumery indeksów częściowo zasłonięte lub niewidoczne oznaczono wprost jako niepewne/brak danych.\nFarba GK 128 występuje na dwóch zdjęciach/etykietach; pozostawiono osobne wiersze, ponieważ etykiety mogą dotyczyć oddzielnych opakowań lub partii.",
       "archivedFields": []
     },
     {
-      "id": "239bcae8-f834-431d-97fa-ee3041387e90",
-      "name": "Loctite / Teroson",
+      "id": "b8a18749-e4a5-46a8-a877-555b8c97edf1",
+      "name": "Tekstolity i HM",
       "fields": [
         {
-          "id": "ed5b9f71-8740-428f-8aac-e6c2b5af1199",
+          "id": "70810b00-06e9-49f6-84be-68e8a15b8b39",
           "label": "Nazwa",
           "type": "name"
         },
         {
-          "id": "1e6a25ba-48db-4809-b418-33f6a0e7d35e",
+          "id": "cb3908af-8611-411a-ae5c-e95cb5781680",
           "label": "Nr indeksu",
           "type": "other"
         },
         {
-          "id": "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25",
+          "id": "9f08d98c-badd-44d5-b937-b46a22ffec45",
           "label": "Ilość",
           "type": "other"
         },
         {
-          "id": "306ce300-bb57-4fc7-b67d-c25754d6417f",
+          "id": "86c0a857-7edf-4e7d-b2ef-0a6b726355b7",
           "label": "Zamiennik",
           "type": "other"
         },
         {
-          "id": "a3b2a2ba-be69-4e1d-89c5-3ed771d34c4a",
+          "id": "9e60ad55-8ae7-4847-808c-ffe96459ecc7",
           "label": "Data",
           "type": "date"
         }
       ],
       "items": [
         {
-          "id": "c0c29688-4f0c-4e32-ac24-9be38e6eb746",
+          "id": "92f64782-3164-42b7-ad1e-da36edc9f205",
           "values": {
-            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Loctite 262",
-            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "10 ml",
-            "4b66892e-df8e-4291-b809-ece5671635da": "Zabezpieczanie gwintów, wysoka wytrzymałość",
-            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 40,
-            "293a56db-297e-4c9c-bb4f-af037fdac243": 70
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJA FI 21/26X22",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-310003P0007",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "18 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
           }
         },
         {
-          "id": "0eaa5124-1ef4-4d57-a640-f649da9f97a3",
+          "id": "e0ee8c11-7f8c-41d5-9b24-6049d77e1ff7",
           "values": {
-            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Loctite 406",
-            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "20 g",
-            "4b66892e-df8e-4291-b809-ece5671635da": "Klejenie tworzyw sztucznych i gumy",
-            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 50,
-            "293a56db-297e-4c9c-bb4f-af037fdac243": 90
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA TH 16 X 88X 54",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "RDL.EPGM203/025A",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "4 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
           }
         },
         {
-          "id": "80e95cc6-a030-4ce9-acfc-0eac4e0444b0",
+          "id": "8f7a881c-1cc5-414c-a4e4-694b3428289d",
           "values": {
-            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Teroson SB 2444",
-            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "Nieczytelna na zdjęciu",
-            "4b66892e-df8e-4291-b809-ece5671635da": "Klej do profili gumowych",
-            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 40,
-            "293a56db-297e-4c9c-bb4f-af037fdac243": 80
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA EP10 X 64X 34",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "RDL.EPGM203/051A",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "8 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "dc08b36f-e803-4517-b523-92042381147e",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA FI 13X17X32",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-310003P0039",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "36 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "3e86b785-b336-4092-92b5-db0a4b73fbf5",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA IZOLAC. 18/45X4",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-310003P0052",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "44 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "fb4af82e-77f9-4f13-aa19-05fd57aac9ae",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA FI 17/22X22",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-310003P0054",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "48 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "016fe53a-880c-473b-9bf7-c3caedd82d07",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA IZOLACYJNA 12/17X14",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT4-711008P1",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "12 szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "36359b7f-fd5f-48db-909b-e729fdf61c77",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA 17X22 X21",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "48szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "81ce1741-ec4c-403a-b574-c5bff6c7cda0",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA 17X22X31",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "48szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "c843b807-1c7b-43b6-9076-54471869f50c",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA 12X17X12",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-852030P0058",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "48szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "26ecbc42-4a19-453f-b4cf-9ca7320229c8",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA 24X39X3",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "120szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "3229eb73-3976-4f34-8c11-13ec01a206b8",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA 32x26x133",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "20szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "15573a2f-4b26-4d4e-83f0-33c21fd38726",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKłADKA IZOLACYJNA 35X56X4",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "WT1-310003P0026",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "30szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "8594624b-5406-4d98-a1c7-b752612dd602",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJA 65X53X44",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "2szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "317f7b81-f0ac-45ad-8270-2d84c7ac973b",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "TULEJKA 26X21X124",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "32szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "e73dd526-8296-4faa-a76e-da014bb5956e",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA 24X17X3",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "40szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
+          }
+        },
+        {
+          "id": "962b888f-5d6f-4d5d-87eb-14fbe7902973",
+          "values": {
+            "70810b00-06e9-49f6-84be-68e8a15b8b39": "PODKŁADKA 64X34X5",
+            "cb3908af-8611-411a-ae5c-e95cb5781680": "",
+            "9f08d98c-badd-44d5-b937-b46a22ffec45": "40szt.",
+            "86c0a857-7edf-4e7d-b2ef-0a6b726355b7": "",
+            "9e60ad55-8ae7-4847-808c-ffe96459ecc7": ""
           }
         }
       ],
-      "sortDateFieldId": "a3b2a2ba-be69-4e1d-89c5-3ed771d34c4a",
-      "sourceFile": "tabela_produkty_loctite_teroson.xlsx",
-      "note": "Produkt: ŁĄCZNIE · Zastosowanie: Orientacyjna wartość nowych produktów · Cena min. (zł): 130 · Cena max. (zł): 240",
-      "archivedFields": [
-        {
-          "id": "4b66892e-df8e-4291-b809-ece5671635da",
-          "label": "Zastosowanie",
-          "type": "other"
-        },
-        {
-          "id": "39f309af-c4ac-4c1a-8343-7dcab1f98fc3",
-          "label": "Cena min. (zł)",
-          "type": "price"
-        },
-        {
-          "id": "293a56db-297e-4c9c-bb4f-af037fdac243",
-          "label": "Cena max. (zł)",
-          "type": "price"
-        }
-      ]
+      "sortDateFieldId": "9e60ad55-8ae7-4847-808c-ffe96459ecc7",
+      "sourceFile": "tabela_produkty_partia_2.xlsx"
     },
     {
-      "id": "dec63ad9-8f36-4640-bd27-ffc0207e3318",
-      "name": "Produkty — tabela_produktow",
+      "id": "ce984d64-dab8-43b7-9c9f-e2b74a7ba64b",
+      "name": "Oringi i sznury gumowe",
       "fields": [
         {
-          "id": "907a79e7-d416-48e6-9201-ff0259cdef11",
+          "id": "7f23c115-6bd3-4973-bc36-27fa333df9b1",
           "label": "Nazwa",
           "type": "name"
         },
         {
-          "id": "a36c5b52-58de-4bd8-9979-3daa8a56ffe1",
+          "id": "0c2c585d-f41f-4885-b140-d86a86d0a965",
           "label": "Nr indeksu",
           "type": "other"
         },
         {
-          "id": "7f2a27e7-9841-4bd3-857c-b2320f4ed843",
+          "id": "f32e10b6-3fab-4efa-bf9e-d5c8b1605556",
           "label": "Ilość",
           "type": "other"
         },
         {
-          "id": "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109",
+          "id": "638e6048-3b4b-492f-830d-1dfc621f4c4d",
           "label": "Zamiennik",
           "type": "other"
         },
         {
-          "id": "eb47e33a-de29-40ec-abd5-da1bc9b48247",
+          "id": "8f692b64-50f0-4b5c-ad64-cab58a2fb437",
           "label": "Data",
           "type": "date"
         }
       ],
       "items": [
         {
-          "id": "0a1dc08c-e92d-4a48-9229-40ac3e87b4b4",
+          "id": "5e6856d1-3154-4ca6-a9ac-1a9b38b478c0",
           "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Farba GK 128 jasnoszara",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HAQN400004P0008A",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "150 kg",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+            "7f23c115-6bd3-4973-bc36-27fa333df9b1": "SZNUR GUMOWY 6,2 G70-034",
+            "0c2c585d-f41f-4885-b140-d86a86d0a965": "GMN 592004P1360A",
+            "f32e10b6-3fab-4efa-bf9e-d5c8b1605556": "150 m",
+            "638e6048-3b4b-492f-830d-1dfc621f4c4d": "",
+            "8f692b64-50f0-4b5c-ad64-cab58a2fb437": ""
           }
         },
         {
-          "id": "cfde3aa5-1926-4def-b7f3-63938b35494a",
+          "id": "e99a0eee-4e83-4d33-850a-5784c746d224",
           "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 640 USZ (L-44B), 250 ml",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "IMR-007448-ETGE00120… (częściowo zasłonięty)",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "5 szt. (EA)",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+            "7f23c115-6bd3-4973-bc36-27fa333df9b1": "SZNUR GUMOWY 12X12 FKM",
+            "0c2c585d-f41f-4885-b140-d86a86d0a965": "41642",
+            "f32e10b6-3fab-4efa-bf9e-d5c8b1605556": "125 m",
+            "638e6048-3b4b-492f-830d-1dfc621f4c4d": "",
+            "8f692b64-50f0-4b5c-ad64-cab58a2fb437": ""
           }
         },
         {
-          "id": "842845ce-9ebd-4cbc-bad0-18464e976124",
+          "id": "720f5672-7f26-4ea1-b3ec-f4f764e9dd97",
           "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 573 – uszczelniacz",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Nieczytelny / brak na widocznej etykiecie",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "Nie podano",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+            "7f23c115-6bd3-4973-bc36-27fa333df9b1": "SZNUR GUMOWY 12X12 OLEJOODPORNY",
+            "0c2c585d-f41f-4885-b140-d86a86d0a965": "277362",
+            "f32e10b6-3fab-4efa-bf9e-d5c8b1605556": "50 m",
+            "638e6048-3b4b-492f-830d-1dfc621f4c4d": "",
+            "8f692b64-50f0-4b5c-ad64-cab58a2fb437": ""
           }
         },
         {
-          "id": "5ff7331b-56f7-43d2-ad71-d18dabf99a77",
+          "id": "516a3217-3ecc-48a6-9a0b-910374302eda",
           "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 7649 – aktywator",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "0659A911P0104",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "8 szt. (EA)",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+            "7f23c115-6bd3-4973-bc36-27fa333df9b1": "SZNUR GUMOWY 10C70-034",
+            "0c2c585d-f41f-4885-b140-d86a86d0a965": "GMN 592004P1310A",
+            "f32e10b6-3fab-4efa-bf9e-d5c8b1605556": "20 m",
+            "638e6048-3b4b-492f-830d-1dfc621f4c4d": "",
+            "8f692b64-50f0-4b5c-ad64-cab58a2fb437": ""
           }
         },
         {
-          "id": "2f7eb712-d6aa-453e-8682-789c4f6bbd62",
+          "id": "3ab709bd-556b-4ef2-b99b-c07ad817e1d9",
           "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 7200",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "41084",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. (EA)",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "76345b2c-9cfc-45f9-9cdc-29b1bd19a5bc",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Rozcieńczalnik uniwersalny 3 (opak. 20 kg)",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HZN453289P0003A",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "100 kg",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "f6fd7b99-d572-4aa6-a7bc-4832d45ccf9c",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Utwardzacz GK 128 (opak. 30 kg)",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HAQN400004P0009A",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "30 kg",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "bdf7e4d7-7729-4890-b0c1-1f225bccfd9c",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Molykote DX Paste (opak. 1 kg)",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HTGG408752P0143",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "3 kg",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "87d2a0d0-3dbc-40a4-8dfd-400cc96d6850",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 262 – środek do zabezpieczania gwintów",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na opakowaniu",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; opak. 10 ml",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "0298510e-8e2e-47fd-b3b4-1e8366eff8e9",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 406 – klej cyjanoakrylowy",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na opakowaniu",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; opak. 20 g",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
-          }
-        },
-        {
-          "id": "ed84a222-1f8a-45d6-b243-d673afa7eb28",
-          "values": {
-            "907a79e7-d416-48e6-9201-ff0259cdef11": "Teroson SB 244 – klej do profili gumowych",
-            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na widocznej stronie",
-            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; ilość/opakowanie nieczytelna",
-            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
-            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+            "7f23c115-6bd3-4973-bc36-27fa333df9b1": "sznury gumowy fi 12",
+            "0c2c585d-f41f-4885-b140-d86a86d0a965": "WBA-067452",
+            "f32e10b6-3fab-4efa-bf9e-d5c8b1605556": "16 m",
+            "638e6048-3b4b-492f-830d-1dfc621f4c4d": "",
+            "8f692b64-50f0-4b5c-ad64-cab58a2fb437": ""
           }
         }
       ],
-      "sortDateFieldId": "eb47e33a-de29-40ec-abd5-da1bc9b48247",
-      "sourceFile": "tabela_produktow.xlsx"
+      "sortDateFieldId": "8f692b64-50f0-4b5c-ad64-cab58a2fb437",
+      "sourceFile": "tabela_produkty_z_etykiet.xlsx"
     }
   ],
   "layoutRevision": 1

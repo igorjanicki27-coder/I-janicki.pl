@@ -85,7 +85,7 @@ function receiveRemote(remote) {
 async function initialWorkbook() {
   const stored = localStorage.getItem(DATA_KEY);
   if (stored) return migrateCompactLayout(validateWorkbook(JSON.parse(stored)));
-  const response = await fetch('./initial-data.json?v=10');
+  const response = await fetch('./initial-data.json?v=11');
   if (!response.ok) throw new Error('Nie udało się wczytać tabel początkowych.');
   const initial = validateWorkbook(await response.json());
   const legacy = localStorage.getItem(LEGACY_KEY);

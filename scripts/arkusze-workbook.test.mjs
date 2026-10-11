@@ -5,18 +5,19 @@ import { blankSheet, exportCsv, parseDelimited } from '../arkusze/model.mjs';
 import { createTab, createLayoutDraft, validateWorkbook, parseDate, todayInPoland, coerceValue, formatValue, visibleItems, expiry, dateExpiry, migrateLegacy, csvToTab, tabToCsvRows, migrateCompactLayout, searchWorkbook } from '../arkusze/workbook.mjs';
 
 const seed = JSON.parse(fs.readFileSync(new URL('../arkusze/initial-data.json', import.meta.url), 'utf8'));
-test('wczytane 4 tabele: 40 produktów, podsumowania i uwagi pozostają osobno', () => {
+test('wczytane 3 wskazane tabele: 37 produktów i zachowane uwagi źródłowe', () => {
   validateWorkbook(seed);
-  assert.deepEqual(seed.tabs.map(tab => tab.items.length), [11, 15, 3, 11]);
-  assert.deepEqual(seed.tabs.map(tab => tab.sourceFile), ['tabela_produkty_przemyslowe.xlsx', 'tabela_produktow_finalna.xlsx', 'tabela_produkty_loctite_teroson.xlsx', 'tabela_produktow.xlsx']);
-  const added = seed.tabs[3];
-  assert.deepEqual(added.fields.map(field => field.label), ['Nazwa', 'Nr indeksu', 'Ilość', 'Zamiennik', 'Data']);
-  assert.equal(added.items[0].values[added.fields[1].id], 'HAQN400004P0008A');
-  assert.equal(added.items[1].values[added.fields[1].id], 'IMR-007448-ETGE00120… (częściowo zasłonięty)');
-  assert.equal(added.items.every(item => item.values[added.fields[4].id] === ''), true);
-  assert.equal(seed.tabs[0].note.includes('9220'), true);
-  assert.equal(seed.tabs[1].note.includes('oddzielnych opakowań'), true);
-  assert.equal(seed.tabs[2].note.includes('130'), true);
+  assert.deepEqual(seed.tabs.map(tab => tab.items.length), [15, 17, 5]);
+  assert.deepEqual(seed.tabs.map(tab => tab.sourceFile), ['tabela_produktow_finalna.xlsx', 'tabela_produkty_partia_2.xlsx', 'tabela_produkty_z_etykiet.xlsx']);
+  for (const tab of seed.tabs) assert.deepEqual(tab.fields.map(field => field.label), ['Nazwa', 'Nr indeksu', 'Ilość', 'Zamiennik', 'Data']);
+  const batch = seed.tabs[1], rubber = seed.tabs[2];
+  assert.equal(batch.items[0].values[batch.fields[1].id], 'WT1-310003P0007');
+  assert.equal(batch.items[0].values[batch.fields[2].id], '18 szt.');
+  assert.equal(batch.items[7].values[batch.fields[1].id], '');
+  assert.equal(rubber.items[0].values[rubber.fields[1].id], 'GMN 592004P1360A');
+  assert.equal(rubber.items[0].values[rubber.fields[2].id], '150 m');
+  assert.equal([batch,rubber].every(tab=>tab.items.every(item=>item.values[tab.fields[4].id]==='')), true);
+  assert.equal(seed.tabs[0].note.includes('oddzielnych opakowań'), true);
   assert.equal(seed.tabs.some(tab => tab.items.some(item => Object.values(item.values).some(value => value === 'SUMA ORIENTACYJNA'))), false);
 });
 test('daty polskie, ISO, dni przestępne i granica dnia w Polsce', () => {
@@ -54,8 +55,9 @@ test('ceny są liczbami, daty normalizowane, brak daty nie staje się datą', ()
 test('wyszukiwanie obejmuje widoczne rubryki, indeksy i polskie daty', () => {
   const tab=seed.tabs[0];
   assert.equal(visibleItems(tab,'7500').length,0);
-  assert.equal(visibleItems(seed.tabs[1],'HAQN400004P0008A').length,2);
-  assert.equal(visibleItems(tab,'01.12.2020').length,1);
+  assert.equal(visibleItems(tab,'HAQN400004P0008A').length,2);
+  const dated=createTab(); dated.items=[{id:'dated',values:{[dated.fields[4].id]:'2020-12-01'}}];
+  assert.equal(visibleItems(dated,'01.12.2020').length,1);
   assert.equal(visibleItems(tab,'opak.').length > 0,true);
   assert.equal(visibleItems(tab,'nieczytelna').length > 0,true);
 });
@@ -104,9 +106,11 @@ test('uproszczenie istniejącego zapisu zachowuje produkty, dane i ustawienia po
 test('wyszukiwanie przeszukuje wszystkie zakładki i zachowuje źródło wyniku', () => {
   const book = {...seed, activeTabId:seed.tabs[2].id};
   const groups = searchWorkbook(book,'640');
-  assert.deepEqual(groups.map(group=>group.tab.id),[seed.tabs[0].id,seed.tabs[1].id,seed.tabs[3].id]);
-  assert.deepEqual(groups.map(group=>group.items.length),[1,1,1]);
+  assert.deepEqual(groups.map(group=>group.tab.id),[seed.tabs[0].id]);
+  assert.deepEqual(groups.map(group=>group.items.length),[1]);
   assert.equal(groups[0].items[0],seed.tabs[0].items[1]);
+  assert.deepEqual(searchWorkbook(book,'WT1-').map(group=>group.tab.id),[seed.tabs[1].id]);
+  assert.deepEqual(searchWorkbook(book,'GMN').map(group=>group.tab.id),[seed.tabs[2].id]);
   assert.equal(searchWorkbook(book,'haqn400004p0008a')[0].items.length,2);
   assert.deepEqual(searchWorkbook(book,'produkt nieistniejący'),[]);
   assert.equal(book.activeTabId,seed.tabs[2].id);

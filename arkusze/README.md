@@ -12,16 +12,15 @@ Pływający plus w prawym dolnym rogu otwiera „Dodaj zakładkę” i „Dodaj 
 
 ## Dane początkowe
 
-`initial-data.json` zawiera cztery tabele z plików użytkownika:
+`initial-data.json` zawiera trzy tabele z zestawu plików wskazanego 11.10.2026:
 
-- `tabela_produkty_przemyslowe.xlsx`: 11 produktów;
-- `tabela_produktow_finalna.xlsx`: 15 produktów;
-- `tabela_produkty_loctite_teroson.xlsx`: 3 produkty;
-- `tabela_produktow.xlsx`: 11 produktów w osobnej zakładce „Produkty — tabela_produktow”.
+- `tabela_produktow_finalna.xlsx`: 15 produktów w zakładce „Produkty i indeksy”;
+- `tabela_produkty_partia_2.xlsx`: 17 produktów w zakładce „Tekstolity i HM”;
+- `tabela_produkty_z_etykiet.xlsx`: 5 produktów w zakładce „Oringi i sznury gumowe”.
 
-Łącznie 40 pozycji. Obie wersje tabeli produktów są zachowane osobno i mogą zawierać te same produkty. Brakująca tabela `tabela_produktow.xlsx` została dodana również do istniejącego wspólnego zapisu w Firebase, bez modyfikacji poprzednich zakładek. W tym pliku nie ma dat; ich kolumna pozostaje pusta.
+Łącznie 37 pozycji. Zestaw zapisano również w Firebase. Istniejącą zakładkę „Produkty i indeksy” zachowano bez zmian; usunięto zakładki pochodzące z plików spoza nowego zestawu. Nowe tabele mają kolumny Nazwa, Nr indeksu, Ilość, Zamiennik i Data. Brakujące wartości pozostają puste; pliki nowych tabel nie zawierają dat.
 
-Podsumowania cen i uwagi z arkusza „Uwagi” zachowano jako notatki zakładek. Oddzielne partie produktów pozostają osobnymi pozycjami. Opisowe wartości dat takie jak „Nieczytelna” i „Niepodana” są zachowane, a nie zastępowane datą. Ceny liczbowe zapisano jako liczby, prawidłowe daty jako ISO.
+Uwagi z arkusza „Uwagi” pliku końcowego zachowano jako notatkę zakładki. Oddzielne partie produktów pozostają osobnymi pozycjami. Niepewne i nieczytelne odczyty etykiet zachowano zgodnie ze źródłem.
 
 ## Sortowanie i zapis
 
