@@ -215,6 +215,7 @@ function renderTable(table, tab, items) {
       if (field.type === 'date') {
         const status = dateExpiry(item.values[field.id], today);
         if (status.kind === 'expired' || status.kind === 'soon') cell.classList.add(`date-${status.kind}`);
+        if (status.kind === 'expired') row.classList.add('item-expired');
         cell.title = status.label;
       }
       row.append(cell);

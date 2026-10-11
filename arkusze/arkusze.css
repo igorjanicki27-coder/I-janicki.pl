@@ -57,7 +57,7 @@ thead .row-number { z-index: 3; }
 .cell-value { display: block; max-width: var(--cell-max-width); overflow-wrap: anywhere; font-size: 14px; line-height: 1.4; color: #f2f5f9; white-space: pre-wrap; }
 .type-name .cell-value { max-width: var(--name-max-width); font-weight: 600; }
 td.type-price { text-align: right; font-variant-numeric: tabular-nums; }
-.date-expired .cell-value { color: #ff727d; }
+.date-expired .cell-value, .item-expired .type-name .cell-value { color: #ff727d; }
 .date-soon .cell-value { color: #ffb454; }
 .edit-icon { min-height: 36px; width: 38px; padding: 5px; font-size: 19px; }
 .empty-state { text-align: center; padding: 50px 20px; border: 1px dashed #415165; border-radius: 12px; margin-top: 20px; }
