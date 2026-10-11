@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
   <title>Arkusze | i-janicki.pl</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./arkusze.css?v=19">
-  <script type="module" src="./app.mjs?v=19"></script>
+  <link rel="stylesheet" href="./arkusze.css?v=21">
+  <script type="module" src="./app.mjs?v=20"></script>
 </head>
 <body>
   <main id="gate" class="gate">
@@ -26,21 +26,20 @@
   <main id="workspace" class="workspace" hidden>
     <div class="workspace-header">
       <header class="topbar">
-        <div class="brand"><a href="/" aria-label="Strona główna">i-janicki<span>.pl</span></a><span>/</span><h1>Arkusze</h1></div>
         <div class="table-zoom" role="group" aria-label="Skala tabeli">
           <button id="zoom-out" type="button" aria-label="Oddal tabelę">−</button>
           <button id="zoom-reset" type="button" aria-label="Przywróć skalę 100%" title="Przywróć skalę 100%" aria-live="polite">100%</button>
           <button id="zoom-in" type="button" aria-label="Przybliż tabelę">+</button>
           <button id="zoom-fit" type="button" aria-pressed="false">Dopasuj</button>
         </div>
-        <button id="logout" class="quiet">Zablokuj</button>
       </header>
       <div class="workspace-tools">
         <div class="search-field"><label for="search" class="sr-only">Szukaj we wszystkich zakładkach</label><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Szukaj we wszystkich zakładkach…" autocomplete="off"><button id="clear-search" class="quiet" aria-label="Wyczyść wyszukiwanie" hidden>Wyczyść</button></div>
+        <hr class="header-separator">
         <nav id="tabs" class="tabs" aria-label="Zakładki arkuszy"></nav>
-        <div class="mobile-tab-picker"><select id="tab-select" aria-label="Wybierz zakładkę"></select></div>
       </div>
     </div>
+    <div class="mobile-tab-picker"><select id="tab-select" aria-label="Wybierz zakładkę"></select></div>
     <div id="table-wrapper" class="table-wrapper" tabindex="0" role="region" aria-label="Tabela produktów"><table id="grid" aria-label="Kolumny i wiersze produktów"></table></div>
     <div id="search-results" hidden></div>
     <section id="empty-state" class="empty-state" hidden><h3 id="empty-title">Twój arkusz jest gotowy</h3><p id="empty-text">Dodaj pierwszy wiersz przyciskiem +.</p><button id="empty-add" class="primary">Dodaj pierwszą pozycję</button></section>

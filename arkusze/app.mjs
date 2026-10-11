@@ -10,7 +10,7 @@ const SESSION_KEY = 'ijanicki_arkusze_session';
 const LOCK_KEY = 'ijanicki_arkusze_pin';
 const ZOOM_KEY = 'ijanicki_arkusze_zoom';
 const ALL_TABS_VIEW = 'all-tabs';
-let showingAllTabs = false;
+let showingAllTabs = true;
 let zoomMode = 'manual', zoomPercent = 100, zoomFrame, zoomTabId = null;
 let zoomPreferences = readZoomPreferences(null);
 try { zoomPreferences = readZoomPreferences(localStorage.getItem(ZOOM_KEY)); } catch {}
@@ -110,6 +110,7 @@ async function openSheet() {
     let remote = await connection.read();
     if (!remote) remote = await connection.initialize(await initialWorkbook());
     if (!unlockedUntil || Date.now() >= unlockedUntil) return;
+    showingAllTabs = true;
     receiveRemote(remote); cloudReady = true;
     $('gate').hidden = true; $('workspace').hidden = false;
     connection.watch(receiveRemote, () => {
@@ -138,7 +139,6 @@ function closeSheet() {
   $('item-fields').replaceChildren(); $('field-editor').replaceChildren(); $('tab-name').value = '';
   closeAddMenu(); digits[0].focus();
 }
-$('logout').addEventListener('click', closeSheet);
 setInterval(() => {
   pinStatus();
   if (unlockedUntil && Date.now() >= unlockedUntil) closeSheet();
