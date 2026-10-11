@@ -52,10 +52,10 @@ input, select, textarea { min-width: 0; color: inherit; }
 .search-field > span { color: var(--accent); font-size: 30px; }
 .search-field input { flex: 1; width: 100%; background: transparent; border: 0; outline: none; font-size: 17px; padding: 10px 0; }
 .search-field input::placeholder { color: #a2b0c1; }
-.table-wrapper { width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid #34404e; border-radius: 12px; scrollbar-color: #4c5969 #131a22; }
+.table-wrapper { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid #34404e; border-radius: 12px; scrollbar-color: #4c5969 #131a22; }
 table { border-spacing: 0; border-collapse: separate; table-layout: auto; width: auto; background: #0f151d; }
 .table-wrapper table { zoom: var(--table-scale, 1); }
-.zoom-measurement { position: fixed; top: 0; left: 0; visibility: hidden; pointer-events: none; }
+.zoom-measurement { width: fit-content; position: fixed; top: 0; left: 0; visibility: hidden; pointer-events: none; }
 th, td { padding: 10px 6px; border-right: 1px solid #ffffff0c; border-bottom: 1px solid var(--line); vertical-align: top; }
 thead th { position: sticky; top: 0; background: #202a36; z-index: 2; text-align: left; }
 .column-letter { display: block; font-size: 11px; color: #a8b7c9; margin-bottom: 6px; }
