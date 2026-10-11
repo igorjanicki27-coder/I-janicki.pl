@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <title>Arkusze | i-janicki.pl</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./arkusze.css?v=12">
+  <script type="module" src="./app.mjs?v=11"></script>
+</head>
+<body>
+  <main id="gate" class="gate">
+    <div class="pin-card">
+      <form id="pin-form" aria-label="Odblokuj arkusz kodem PIN">
+        <div class="pin-digits">
+          <input type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="4" aria-label="Cyfra PIN 1">
+          <input type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="Cyfra PIN 2">
+          <input type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="Cyfra PIN 3">
+          <input type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="Cyfra PIN 4">
+        </div>
+        <p id="pin-message" class="pin-message" role="status">Wpisz pin, aby odblokować.</p>
+      </form>
+    </div>
+  </main>
+  <main id="workspace" class="workspace" hidden>
+    <header class="topbar"><div class="brand"><a href="/" aria-label="Strona główna">i-janicki<span>.pl</span></a><span>/</span><h1>Arkusze</h1></div><button id="logout" class="quiet">Zablokuj</button></header>
+    <div class="workspace-tools">
+      <div class="search-field"><label for="search" class="sr-only">Szukaj we wszystkich zakładkach</label><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Szukaj we wszystkich zakładkach…" autocomplete="off"><button id="clear-search" class="quiet" aria-label="Wyczyść wyszukiwanie" hidden>Wyczyść</button></div>
+      <nav id="tabs" class="tabs" aria-label="Zakładki arkuszy"></nav>
+      <div class="mobile-tab-picker"><select id="tab-select" aria-label="Wybierz zakładkę"></select></div>
+    </div>
+    <div id="table-wrapper" class="table-wrapper" tabindex="0" role="region" aria-label="Tabela produktów"><table id="grid" aria-label="Kolumny i wiersze produktów"></table></div>
+    <div id="search-results" hidden></div>
+    <section id="empty-state" class="empty-state" hidden><h3 id="empty-title">Twój arkusz jest gotowy</h3><p id="empty-text">Dodaj pierwszy wiersz przyciskiem +.</p><button id="empty-add" class="primary">Dodaj pierwszą pozycję</button></section>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <div id="add-menu" class="add-menu" hidden><button id="new-tab">Dodaj zakładkę</button><button id="new-item">Dodaj pozycję</button></div>
+    <button id="floating-add" class="floating-add" aria-label="Dodaj" aria-expanded="false" aria-controls="add-menu"><span aria-hidden="true"></span></button>
+  </main>
+  <dialog id="tab-dialog" class="editor-dialog">
+    <form id="tab-form">
+      <div class="dialog-heading"><h2 id="tab-dialog-title">Nowa zakładka</h2><button type="button" class="close-dialog quiet" aria-label="Zamknij edycję zakładki">×</button></div>
+      <p id="tab-step" class="form-hint"></p>
+      <section id="layout-step">
+        <label>Układ kolumn<select id="template" aria-describedby="layout-description"></select></label>
+        <p id="layout-description" class="form-hint">Pusty układ zaczyna się od jednej kolumny. Możesz też skopiować kolumny z dowolnej zakładki, bez jej wierszy.</p>
+      </section>
+      <fieldset id="tab-details" hidden disabled>
+        <label>Nazwa zakładki<input id="tab-name" required maxlength="100" autocomplete="off" placeholder="Np. Produkty przemysłowe"></label>
+        <label>Liczba kolumn<input id="field-count" type="number" min="1" max="32" value="1" required></label>
+        <p class="form-hint">Każda kolumna opisuje jedną cechę produktu. Wiersze pojawią się po dodaniu pozycji.</p>
+        <div id="field-editor" class="field-editor"></div>
+        <div id="sort-date-choice" hidden>
+          <label>Która data ustala kolejność wierszy?<select id="sort-date-field" aria-describedby="sort-date-help"></select></label>
+          <p id="sort-date-help" class="form-hint">Masz kilka kolumn z datą. Wybierz termin ważności produktu — najstarsze daty będą na początku.</p>
+        </div>
+        <p id="schema-warning" class="form-hint" hidden>Zmniejszenie liczby kolumn ukryje ich wartości. Zwiększenie liczby kolumn przywróci je wraz z zapisanymi danymi.</p>
+      </fieldset>
+      <p id="tab-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="layout-back" type="button" hidden>Wstecz</button><button type="button" class="close-dialog">Anuluj</button><button id="layout-next" type="button" class="primary">Dalej</button><button id="tab-save" type="submit" class="primary" hidden>Zapisz zakładkę</button></div>
+    </form>
+  </dialog>
+  <dialog id="item-dialog" class="editor-dialog">
+    <form id="item-form">
+      <div class="dialog-heading"><h2 id="item-dialog-title">Nowa pozycja</h2><button type="button" class="close-dialog quiet" aria-label="Zamknij edycję pozycji">×</button></div>
+      <div id="item-fields"></div>
+      <p id="item-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="close-dialog">Anuluj</button><button type="submit" class="primary">Zapisz pozycję</button></div>
+    </form>
+  </dialog>
+  <noscript><p class="noscript">Włącz JavaScript, aby odblokować i edytować arkusze.</p></noscript>
+</body>
+</html>

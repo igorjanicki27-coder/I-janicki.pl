@@ -297,6 +297,77 @@ service cloud.firestore {
         && request.resource.data.consentAcceptedDates.size() >= resource.data.consentAcceptedDates.size();
     }
 
+    // Shared sheets: server-checked PIN sessions, separate from other panels.
+    function arkuszePinHash() {
+      return '074e22e09c85430d0083c55108ab4e74eb65143e3ccd95ef15eef3f9ae1f6b27';
+    }
+    function hasArkuszeSession() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/arkusze_sessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/arkusze_sessions/$(request.auth.uid)).data.unlockUntil > request.time;
+    }
+    function validArkuszeAttempt() {
+      return request.resource.data.keys().hasOnly(['uid', 'pinHash', 'failedAttempts', 'lockUntil', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.pinHash is string
+        && request.resource.data.failedAttempts is int
+        && request.resource.data.lockUntil is timestamp
+        && request.resource.data.updatedAt == request.time;
+    }
+    function successfulArkuszeAttempt() {
+      return request.resource.data.pinHash == arkuszePinHash()
+        && request.resource.data.failedAttempts == 0
+        && request.resource.data.lockUntil <= request.time;
+    }
+    match /arkusze_pin_attempts/{uid} {
+      allow get: if isOwner(uid);
+      allow list, delete: if false;
+      allow create: if isOwner(uid) && validArkuszeAttempt()
+        && (successfulArkuszeAttempt()
+          || (request.resource.data.pinHash != arkuszePinHash()
+            && request.resource.data.failedAttempts == 1
+            && request.resource.data.lockUntil <= request.time));
+      allow update: if isOwner(uid) && validArkuszeAttempt()
+        && resource.data.lockUntil <= request.time
+        && (successfulArkuszeAttempt()
+          || (request.resource.data.pinHash != arkuszePinHash()
+            && request.resource.data.failedAttempts == (resource.data.failedAttempts >= 5 ? 1 : resource.data.failedAttempts + 1)
+            && (request.resource.data.failedAttempts == 5
+              ? request.resource.data.lockUntil >= request.time + duration.value(4, 'm')
+                && request.resource.data.lockUntil <= request.time + duration.value(6, 'm')
+              : request.resource.data.lockUntil <= request.time)));
+    }
+    match /arkusze_sessions/{uid} {
+      allow get, delete: if isOwner(uid);
+      allow list: if false;
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid', 'unlockUntil', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.unlockUntil is timestamp
+        && request.resource.data.unlockUntil > request.time
+        && request.resource.data.unlockUntil <= request.time + duration.value(725, 'm')
+        && existsAfter(/databases/$(database)/documents/arkusze_pin_attempts/$(uid))
+        && getAfter(/databases/$(database)/documents/arkusze_pin_attempts/$(uid)).data.pinHash == arkuszePinHash()
+        && getAfter(/databases/$(database)/documents/arkusze_pin_attempts/$(uid)).data.failedAttempts == 0
+        && getAfter(/databases/$(database)/documents/arkusze_pin_attempts/$(uid)).data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/arkusze_pin_attempts/$(uid)).data.lockUntil <= request.time;
+    }
+    match /arkusze_workbooks/shared {
+      function validSharedWorkbook() {
+        return request.resource.data.keys().hasOnly(['payload', 'revision', 'updatedAt', 'updatedBy'])
+          && request.resource.data.payload is string
+          && request.resource.data.payload.size() <= 700000
+          && request.resource.data.revision is int
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid;
+      }
+      allow get: if hasArkuszeSession();
+      allow list, delete: if false;
+      allow create: if hasArkuszeSession() && validSharedWorkbook() && request.resource.data.revision == 1;
+      allow update: if hasArkuszeSession() && validSharedWorkbook() && request.resource.data.revision == resource.data.revision + 1;
+    }
+
     match /calculator_orders/{orderId} {
       allow read, write: if true;
     }

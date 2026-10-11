@@ -1,0 +1,597 @@
+{
+  "version": 2,
+  "activeTabId": "c70fee33-4c56-4f57-ba99-6df594545147",
+  "tabs": [
+    {
+      "id": "c70fee33-4c56-4f57-ba99-6df594545147",
+      "name": "Produkty przemysłowe",
+      "fields": [
+        {
+          "id": "18968674-ee5e-4bfa-be9e-703a3c28b60a",
+          "label": "Nazwa",
+          "type": "name"
+        },
+        {
+          "id": "c37cb693-e993-4176-8404-ba22dec9f211",
+          "label": "Nr indeksu",
+          "type": "other"
+        },
+        {
+          "id": "ec0a25d3-24c6-4ddf-9004-0780fd0acf32",
+          "label": "Ilość",
+          "type": "other"
+        },
+        {
+          "id": "f559b3d6-b58e-4fe9-a993-ab7d537b2ec5",
+          "label": "Zamiennik",
+          "type": "other"
+        },
+        {
+          "id": "e24ea8cb-58a9-4c9e-b34b-c897185bacb7",
+          "label": "Data",
+          "type": "date"
+        }
+      ],
+      "items": [
+        {
+          "id": "6305b51c-52f0-4ccc-ad4d-aa69deee975d",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Farba GK 128 jasnoszara",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "150 kg",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Farba przemysłowa; dokładny typ i karta techniczna do potwierdzenia",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2020-12-01",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 3000,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 7500,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Cena bardzo orientacyjna; duże opakowanie przemysłowe"
+          }
+        },
+        {
+          "id": "9a11c9dc-9ec7-4f37-923b-64a1282ec4e1",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 640",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "250 ml",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Klej/środek do mocowania elementów cylindrycznych",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2023-06-20",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 180,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 350,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
+          }
+        },
+        {
+          "id": "ab2dee6e-aa62-42dd-ad49-4a47a51221d2",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 573",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Uszczelniacz do połączeń kołnierzowych",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 80,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 180,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Cena zależy od pojemności i stanu opakowania"
+          }
+        },
+        {
+          "id": "7c876d0c-5391-430c-8c5f-df1e07b58d7e",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 7649",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Aktywator do klejów i uszczelniaczy anaerobowych",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-01-31",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 50,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 120,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
+          }
+        },
+        {
+          "id": "31281f3f-d256-45d0-b767-8fb0e7fa2140",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Loctite 7200",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "Pojemność nieczytelna",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Preparat do usuwania uszczelek",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2023-11-04",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 40,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 100,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
+          }
+        },
+        {
+          "id": "669c156b-47a9-4f56-a3be-117217b31f30",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Klej Loctite 406",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "1,2 kg (z listy)",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Klej cyjanoakrylowy do tworzyw sztucznych i gumy",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 900,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 1800,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Ilość odczytana z widocznej listy; do potwierdzenia"
+          }
+        },
+        {
+          "id": "88b60760-9c77-41da-9d7d-33659967f490",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Utwardzacz 103",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "0,12 kg (z listy)",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Utwardzacz do systemu lakierniczego — dokładny system do potwierdzenia",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Nieczytelna",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 20,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 60,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Ilość odczytana z widocznej listy; do potwierdzenia"
+          }
+        },
+        {
+          "id": "99934dbc-4c49-40f8-b6c8-ba0b593d79c6",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Rozcieńczalnik uniwersalny 3",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "100 kg; etykieta: opak. 20 kg",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Rozcieńczalnik do systemu lakierniczego",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2030-06-05",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 800,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 1800,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Łączna ilość 100 kg; etykieta wskazuje opakowanie 20 kg"
+          }
+        },
+        {
+          "id": "84dd9ea4-7377-407c-a841-5ec378c2fbca",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Utwardzacz GK 128",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "30 kg",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Utwardzacz do farby GK 128",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-10-01",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 900,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 2400,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data SLED z etykiety"
+          }
+        },
+        {
+          "id": "93440424-f295-417d-9846-9a3843b0c682",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Farba GK 128 jasnoszara",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "150 kg (na etykiecie)",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Farba przemysłowa GK 128, kolor jasnoszary",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "2025-10-01",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 3000,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 7500,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Osobna etykieta; możliwe, że pozycja powiązana z farbą 150 kg wyżej"
+          }
+        },
+        {
+          "id": "0cc9b8a8-c308-4d6f-9fad-10100b648bb3",
+          "values": {
+            "18968674-ee5e-4bfa-be9e-703a3c28b60a": "Molykote DX Paste",
+            "ec0a25d3-24c6-4ddf-9004-0780fd0acf32": "1 kg",
+            "4735cbe6-24be-41da-aa9d-3cd3f4785c9b": "Pasta smarna do elementów metalowych i połączeń",
+            "e24ea8cb-58a9-4c9e-b34b-c897185bacb7": "Niepodana",
+            "b08e8e37-f722-4f35-83f5-345a0c0aac19": 250,
+            "77e3103a-9296-4d10-8745-72c900fc009c": 500,
+            "06d93dde-56e4-4113-a13b-a3312bb4541f": "Data ważności nieczytelna/niepodana"
+          }
+        }
+      ],
+      "sortDateFieldId": "e24ea8cb-58a9-4c9e-b34b-c897185bacb7",
+      "sourceFile": "tabela_produkty_przemyslowe.xlsx",
+      "note": "Produkt: SUMA ORIENTACYJNA · Zastosowanie: Szacunkowa wartość wszystkich pozycji; nie jest wyceną ofertową · Cena min. (zł): 9220 · Cena max. (zł): 22310 · Uwagi: Ceny zależą od pojemności, stanu opakowania i terminu przydatności",
+      "archivedFields": [
+        {
+          "id": "4735cbe6-24be-41da-aa9d-3cd3f4785c9b",
+          "label": "Zastosowanie",
+          "type": "other"
+        },
+        {
+          "id": "b08e8e37-f722-4f35-83f5-345a0c0aac19",
+          "label": "Cena min. (zł)",
+          "type": "price"
+        },
+        {
+          "id": "77e3103a-9296-4d10-8745-72c900fc009c",
+          "label": "Cena max. (zł)",
+          "type": "price"
+        },
+        {
+          "id": "06d93dde-56e4-4113-a13b-a3312bb4541f",
+          "label": "Uwagi",
+          "type": "other"
+        }
+      ]
+    },
+    {
+      "id": "c1472d8c-48f4-4048-834e-e2b9f661e313",
+      "name": "Produkty i indeksy",
+      "fields": [
+        {
+          "id": "ba115948-4ed2-447a-b102-1638257869de",
+          "label": "Nazwa",
+          "type": "name"
+        },
+        {
+          "id": "f28ebfaf-c7b8-4398-bca0-118ef1f49208",
+          "label": "Nr indeksu",
+          "type": "other"
+        },
+        {
+          "id": "1306734c-6f2e-4a52-9ff0-88bb2c2365a4",
+          "label": "Ilość",
+          "type": "other"
+        },
+        {
+          "id": "eec7d125-14d2-4698-91f5-8199950c7e58",
+          "label": "Zamiennik",
+          "type": "other"
+        },
+        {
+          "id": "61c343e5-9926-4481-8488-0eee9898ee05",
+          "label": "Data",
+          "type": "date"
+        }
+      ],
+      "items": [
+        {
+          "id": "58c8553b-63af-4f3d-ac71-e6f9e957657c",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Farba GK 128 jasnoszara",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HAQN400004P0008A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "150 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "d038a6c8-f841-4633-8ca3-fe08cab1f114",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 640 USZ (L-44B), 250 ml",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "IMR-007448-ETGE00120… (końcówka zasłonięta)",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "5 szt. (EA)",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "d3c4ada2-cd35-47fd-ad87-1abbcb01529e",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 573 – uszczelniacz do połączeń kołnierzowych",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "Nie widoczny na zdjęciu",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "Nie podano na etykiecie",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "16a96867-9583-4c68-ac6f-7807f6a8012e",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 7649 – aktywator",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "0659A911P0104",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "8 szt. (EA)",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "b6648f0b-6a8b-4fea-bb16-f2c0e85e4731",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 7200",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "41084",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1 szt. (EA)",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "4478ad91-71de-44c8-b226-c9d734cdb7e4",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Pozycja „ADHESIVE LOCTITE …” (etykieta częściowo zasłonięta)",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "41137 (powiązanie z nazwą niepewne)",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1,2 kg? (niepewne przypisanie)",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "9019d83c-d4a3-499d-b7a6-d9bfac5a7076",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Lakier LL16",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HIFE450018P0001A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1,2 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "0ea68c76-8009-47ce-ad33-205b591d305e",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Utwardzacz 103",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HIFE450021P0001A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "0,12 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "d30b57ab-ebea-47c3-addb-ce61f9f12d69",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Rozcieńczalnik uniwersalny 3 (opak. 20 kg)",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HZN453289P0003A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "100 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "f74b1da4-54fd-4f4c-9f64-2fcf0dcd8502",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Utwardzacz GK 128 (opak. 30 kg)",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HAQN400004P0009A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "30 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "1c112cf3-eda3-49d2-9466-f37a4dc47c44",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Farba GK 128 jasnoszara (druga etykieta / partia)",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HAQN400004P0008A",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "150 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "dd3ea319-d1db-4fdb-a2bf-fa9aa6f8dc39",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Molykote DX Paste (opak. 1 kg)",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "HTGG408752P0143",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "3 kg",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "dabfc6f6-f8dc-4e15-a892-62dfc25322b2",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 262 – środek do zabezpieczania gwintów, 10 ml",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "Brak numeru indeksu na opakowaniu",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1 szt. widoczna",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "87e9025c-822e-478d-898f-c520a39fb52e",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Loctite 406 – klej cyjanoakrylowy, 20 g",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "Brak numeru indeksu na opakowaniu",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1 szt. widoczna",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        },
+        {
+          "id": "e2009508-61d1-4d68-9bc4-84d0e278ff0f",
+          "values": {
+            "ba115948-4ed2-447a-b102-1638257869de": "Teroson SB 244 – klej do profili gumowych",
+            "f28ebfaf-c7b8-4398-bca0-118ef1f49208": "Brak numeru indeksu na widocznej stronie",
+            "1306734c-6f2e-4a52-9ff0-88bb2c2365a4": "1 szt. widoczna; ilość opakowania nieczytelna",
+            "eec7d125-14d2-4698-91f5-8199950c7e58": "Nie podano na etykiecie"
+          }
+        }
+      ],
+      "sortDateFieldId": "61c343e5-9926-4481-8488-0eee9898ee05",
+      "sourceFile": "tabela_produktow_finalna.xlsx",
+      "note": "Zamienniki nie były podane na widocznych etykietach, dlatego wpisano „Nie podano na etykiecie”.\nNumery indeksów częściowo zasłonięte lub niewidoczne oznaczono wprost jako niepewne/brak danych.\nFarba GK 128 występuje na dwóch zdjęciach/etykietach; pozostawiono osobne wiersze, ponieważ etykiety mogą dotyczyć oddzielnych opakowań lub partii.",
+      "archivedFields": []
+    },
+    {
+      "id": "239bcae8-f834-431d-97fa-ee3041387e90",
+      "name": "Loctite / Teroson",
+      "fields": [
+        {
+          "id": "ed5b9f71-8740-428f-8aac-e6c2b5af1199",
+          "label": "Nazwa",
+          "type": "name"
+        },
+        {
+          "id": "1e6a25ba-48db-4809-b418-33f6a0e7d35e",
+          "label": "Nr indeksu",
+          "type": "other"
+        },
+        {
+          "id": "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25",
+          "label": "Ilość",
+          "type": "other"
+        },
+        {
+          "id": "306ce300-bb57-4fc7-b67d-c25754d6417f",
+          "label": "Zamiennik",
+          "type": "other"
+        },
+        {
+          "id": "a3b2a2ba-be69-4e1d-89c5-3ed771d34c4a",
+          "label": "Data",
+          "type": "date"
+        }
+      ],
+      "items": [
+        {
+          "id": "c0c29688-4f0c-4e32-ac24-9be38e6eb746",
+          "values": {
+            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Loctite 262",
+            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "10 ml",
+            "4b66892e-df8e-4291-b809-ece5671635da": "Zabezpieczanie gwintów, wysoka wytrzymałość",
+            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 40,
+            "293a56db-297e-4c9c-bb4f-af037fdac243": 70
+          }
+        },
+        {
+          "id": "0eaa5124-1ef4-4d57-a640-f649da9f97a3",
+          "values": {
+            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Loctite 406",
+            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "20 g",
+            "4b66892e-df8e-4291-b809-ece5671635da": "Klejenie tworzyw sztucznych i gumy",
+            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 50,
+            "293a56db-297e-4c9c-bb4f-af037fdac243": 90
+          }
+        },
+        {
+          "id": "80e95cc6-a030-4ce9-acfc-0eac4e0444b0",
+          "values": {
+            "ed5b9f71-8740-428f-8aac-e6c2b5af1199": "Teroson SB 2444",
+            "4c1fbc82-4583-46b5-8c2a-7c94f29f9e25": "Nieczytelna na zdjęciu",
+            "4b66892e-df8e-4291-b809-ece5671635da": "Klej do profili gumowych",
+            "39f309af-c4ac-4c1a-8343-7dcab1f98fc3": 40,
+            "293a56db-297e-4c9c-bb4f-af037fdac243": 80
+          }
+        }
+      ],
+      "sortDateFieldId": "a3b2a2ba-be69-4e1d-89c5-3ed771d34c4a",
+      "sourceFile": "tabela_produkty_loctite_teroson.xlsx",
+      "note": "Produkt: ŁĄCZNIE · Zastosowanie: Orientacyjna wartość nowych produktów · Cena min. (zł): 130 · Cena max. (zł): 240",
+      "archivedFields": [
+        {
+          "id": "4b66892e-df8e-4291-b809-ece5671635da",
+          "label": "Zastosowanie",
+          "type": "other"
+        },
+        {
+          "id": "39f309af-c4ac-4c1a-8343-7dcab1f98fc3",
+          "label": "Cena min. (zł)",
+          "type": "price"
+        },
+        {
+          "id": "293a56db-297e-4c9c-bb4f-af037fdac243",
+          "label": "Cena max. (zł)",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "dec63ad9-8f36-4640-bd27-ffc0207e3318",
+      "name": "Produkty — tabela_produktow",
+      "fields": [
+        {
+          "id": "907a79e7-d416-48e6-9201-ff0259cdef11",
+          "label": "Nazwa",
+          "type": "name"
+        },
+        {
+          "id": "a36c5b52-58de-4bd8-9979-3daa8a56ffe1",
+          "label": "Nr indeksu",
+          "type": "other"
+        },
+        {
+          "id": "7f2a27e7-9841-4bd3-857c-b2320f4ed843",
+          "label": "Ilość",
+          "type": "other"
+        },
+        {
+          "id": "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109",
+          "label": "Zamiennik",
+          "type": "other"
+        },
+        {
+          "id": "eb47e33a-de29-40ec-abd5-da1bc9b48247",
+          "label": "Data",
+          "type": "date"
+        }
+      ],
+      "items": [
+        {
+          "id": "0a1dc08c-e92d-4a48-9229-40ac3e87b4b4",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Farba GK 128 jasnoszara",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HAQN400004P0008A",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "150 kg",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "cfde3aa5-1926-4def-b7f3-63938b35494a",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 640 USZ (L-44B), 250 ml",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "IMR-007448-ETGE00120… (częściowo zasłonięty)",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "5 szt. (EA)",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "842845ce-9ebd-4cbc-bad0-18464e976124",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 573 – uszczelniacz",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Nieczytelny / brak na widocznej etykiecie",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "Nie podano",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "5ff7331b-56f7-43d2-ad71-d18dabf99a77",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 7649 – aktywator",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "0659A911P0104",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "8 szt. (EA)",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "2f7eb712-d6aa-453e-8682-789c4f6bbd62",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 7200",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "41084",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. (EA)",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "76345b2c-9cfc-45f9-9cdc-29b1bd19a5bc",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Rozcieńczalnik uniwersalny 3 (opak. 20 kg)",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HZN453289P0003A",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "100 kg",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "f6fd7b99-d572-4aa6-a7bc-4832d45ccf9c",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Utwardzacz GK 128 (opak. 30 kg)",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HAQN400004P0009A",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "30 kg",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "bdf7e4d7-7729-4890-b0c1-1f225bccfd9c",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Molykote DX Paste (opak. 1 kg)",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "HTGG408752P0143",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "3 kg",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "87d2a0d0-3dbc-40a4-8dfd-400cc96d6850",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 262 – środek do zabezpieczania gwintów",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na opakowaniu",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; opak. 10 ml",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "0298510e-8e2e-47fd-b3b4-1e8366eff8e9",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Loctite 406 – klej cyjanoakrylowy",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na opakowaniu",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; opak. 20 g",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        },
+        {
+          "id": "ed84a222-1f8a-45d6-b243-d673afa7eb28",
+          "values": {
+            "907a79e7-d416-48e6-9201-ff0259cdef11": "Teroson SB 244 – klej do profili gumowych",
+            "a36c5b52-58de-4bd8-9979-3daa8a56ffe1": "Brak numeru indeksu na widocznej stronie",
+            "7f2a27e7-9841-4bd3-857c-b2320f4ed843": "1 szt. widoczna; ilość/opakowanie nieczytelna",
+            "c04a7e72-6c2c-4f15-8e0a-24a4ae1d9109": "Nie podano na etykiecie",
+            "eb47e33a-de29-40ec-abd5-da1bc9b48247": ""
+          }
+        }
+      ],
+      "sortDateFieldId": "eb47e33a-de29-40ec-abd5-da1bc9b48247",
+      "sourceFile": "tabela_produktow.xlsx"
+    }
+  ],
+  "layoutRevision": 1
+}

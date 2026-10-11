@@ -23,6 +23,7 @@ const EXCLUDED_DIRS = new Set([
   'firmy',
   'stats',
   'kalkulator',
+  'arkusze',
   'kalkulator/_app',
   'kalkulator/stare'
 ]);
