@@ -949,6 +949,7 @@ function goStep(idx) {
   tutStep = targetIdx;
   const step = steps[tutStep];
   sessionStorage.setItem(SS.TUTORIAL_STEP, step.id);
+  $('stageBotArea')?.classList.toggle('is-bot-hidden', tutStep > getStepIndex('name'));
 
   // Mark current step as visited
   visitedSteps.add(tutStep);
@@ -1213,6 +1214,7 @@ function finishTutorial() {
 
 function renderCompletedPanel() {
   const returning = currentView === 'returning';
+  $('stageBotArea')?.classList.remove('is-bot-hidden');
   dom.bot.classList.remove('is-pointing');
   if (dom.tutProgress) dom.tutProgress.hidden = true;
   if (dom.tutNav) dom.tutNav.hidden = true;

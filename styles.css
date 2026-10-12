@@ -459,6 +459,9 @@ html.tutorial-active body {
 .tutorial-active .tutorial-nav {
   flex-shrink: 0;
 }
+.tutorial-active .stage-bot.is-bot-hidden .bot {
+  display: none;
+}
 
 /* Prawa kolumna (treść sekcji) */
 .stage-content {
@@ -699,6 +702,15 @@ html[data-theme="light"] .panel {
     max-width: calc(100vw - 140px);
   }
   .tutorial-active .stage-bot .bot { grid-area: 1 / 1; }
+  .tutorial-active .stage-bot.is-bot-hidden {
+    grid-template-rows: minmax(0, auto) auto;
+  }
+  .tutorial-active .stage-bot.is-bot-hidden .panel {
+    grid-area: 1 / 1;
+  }
+  .tutorial-active .stage-bot.is-bot-hidden .tutorial-nav {
+    grid-area: 1 / 1 / 3 / 2;
+  }
   .tutorial-active .stage-bot .panel {
     grid-area: 2 / 1;
     width: 100%;
