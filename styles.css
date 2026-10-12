@@ -451,6 +451,9 @@ html.tutorial-active body {
   overflow-y: auto;
   overscroll-behavior-y: contain;
 }
+.tutorial-active .stage-bot .panel.is-content-fitting {
+  overflow-y: hidden;
+}
 .tutorial-active .stage-bot .panel::before {
   /* Dekoracyjna ramka przewijałaby się z treścią; panel ma własne obramowanie. */
   display: none;
@@ -1052,14 +1055,6 @@ html[data-theme="light"] .modal { background: linear-gradient(#fff,#fff) padding
   height: 58px;
   max-width: 58px;
   max-height: 58px;
-}
-.trusted-logo--wordmark span {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--text);
-  text-shadow: 0 0 14px rgba(64,201,255,0.35);
 }
 @keyframes trusted-logos-scroll {
   to { transform: translateX(-50%); }
@@ -1972,7 +1967,6 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   .btn { width: 11rem; }
   .review-card { min-width: unset; max-width: none; width: 100%; }
   .trusted-logo { width: 124px; height: 76px; flex-basis: 124px; padding: 8px 12px; }
-  .trusted-logo--wordmark span { font-size: 16px; }
   .trusted-logo .trusted-logo-image--yogi { width: 52px; height: 52px; max-width: 52px; max-height: 52px; }
 }
 

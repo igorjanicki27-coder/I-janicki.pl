@@ -45,7 +45,7 @@
   <title>i-JANICKI — Strony internetowe i usługi IT | Dolny Śląsk</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <!-- CSS krytyczny — ładowany przed skryptami, nie blokuje przez Firebase -->
-  <link rel="stylesheet" href="styles.min.css?v=51" />
+  <link rel="stylesheet" href="styles.min.css?v=53" />
 
   <!-- Google Fonts — niebokujące: preload + zamiana na stylesheet po załadowaniu -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1353,6 +1353,55 @@
   <template id="tpl-projects">
     <h2 id="modalTitle" class="modal-section-title" data-i18n="btn-projects">Projekty</h2>
 
+    <!-- Firmy, które mi zaufały -->
+    <section class="trusted-companies" aria-labelledby="trustedCompaniesTitle">
+      <h3 class="section-sub" id="trustedCompaniesTitle" data-i18n="projects-trusted-title">Firmy, które mi zaufały</h3>
+      <div class="trusted-marquee" role="region" data-i18n-aria-label="projects-trusted-aria">
+        <div class="trusted-track">
+          <div class="trusted-group">
+            <div class="trusted-logo" aria-label="Strzelca.pl">
+              <img src="/loga-firm/strzelca.webp" alt="Strzelca.pl" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="get-dmg.com">
+              <img src="/loga-firm/logo.webp" alt="get-dmg.com" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="Średzka Korona">
+              <img src="/loga-firm/Sredzka-Korona.webp" alt="Średzka Korona" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="ELMET">
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.webp" alt="ELMET" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="Cukiernia YOGI">
+              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="Cukiernia YOGI" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo" aria-label="EL-TECH">
+              <img src="/loga-firm/el-tech-logo.webp" alt="EL-TECH" loading="lazy" decoding="async" />
+            </div>
+          </div>
+          <div class="trusted-group" aria-hidden="true">
+            <div class="trusted-logo">
+              <img src="/loga-firm/strzelca.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img src="/loga-firm/logo.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img src="/loga-firm/Sredzka-Korona.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+            <div class="trusted-logo">
+              <img src="/loga-firm/el-tech-logo.webp" alt="" loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Sekcja stron -->
     <h3 class="section-sub" data-i18n="projects-web-title">Strony internetowe</h3>
     <div class="projects-list">
@@ -1405,54 +1454,6 @@
       </div>
     </div>
 
-    <!-- Firmy, które mi zaufały -->
-    <section class="trusted-companies" aria-labelledby="trustedCompaniesTitle">
-      <h3 class="section-sub" id="trustedCompaniesTitle" data-i18n="projects-trusted-title">Firmy, które mi zaufały</h3>
-      <div class="trusted-marquee" role="region" data-i18n-aria-label="projects-trusted-aria">
-        <div class="trusted-track">
-          <div class="trusted-group">
-            <div class="trusted-logo" aria-label="Strzelca.pl">
-              <img src="/loga-firm/strzelca.webp" alt="Strzelca.pl" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo" aria-label="get-dmg.com">
-              <img src="/loga-firm/logo.webp" alt="get-dmg.com" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo" aria-label="Średzka Korona">
-              <img src="/loga-firm/Sredzka-Korona.webp" alt="Średzka Korona" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo" aria-label="ELMET">
-              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.webp" alt="ELMET" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo" aria-label="Cukiernia YOGI">
-              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="Cukiernia YOGI" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo trusted-logo--wordmark" aria-label="EL-TECH">
-              <span>EL-TECH</span>
-            </div>
-          </div>
-          <div class="trusted-group" aria-hidden="true">
-            <div class="trusted-logo">
-              <img src="/loga-firm/strzelca.webp" alt="" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo">
-              <img src="/loga-firm/logo.webp" alt="" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo">
-              <img src="/loga-firm/Sredzka-Korona.webp" alt="" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo">
-              <img class="trusted-logo-image--elmet" src="/loga-firm/ELMET-cropped.webp" alt="" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo">
-              <img class="trusted-logo-image--yogi" src="/loga-firm/YOGI.webp" alt="" loading="lazy" decoding="async" />
-            </div>
-            <div class="trusted-logo trusted-logo--wordmark">
-              <span>EL-TECH</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   </template>
 
   <template id="tpl-process">
@@ -1537,7 +1538,7 @@
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 
   <script defer src="dokumenty/documents-content.js?v=15"></script>
-  <script defer src="script.min.js?v=53"></script>
+  <script defer src="script.min.js?v=54"></script>
   <script>
     (function () {
       var INTRO_REVEAL_START_MS = 1650;

@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursor();
   initTutorialReturnLinks();
   initTutorialScroll();
+  initTutorialPanelOverflow();
   registerSW();
   // Opóźnij tutorial do następnej klatki (requestAnimationFrame)
   // Tutorial zawiera 1000+ DOM mutacji - nie blokuj initial render
@@ -233,7 +234,8 @@ function initTutorialScroll() {
 
     const panel = $('panel');
     // W panelu zachowaj natywne przewijanie, również jego zagnieżdżonych elementów.
-    if (!panel || panel.contains(target) || panel.scrollHeight <= panel.clientHeight) return null;
+    if (!panel || panel.classList.contains('is-content-fitting')
+      || panel.contains(target) || panel.scrollHeight <= panel.clientHeight) return null;
     return panel;
   };
 
@@ -950,6 +952,7 @@ function goStep(idx) {
   const step = steps[tutStep];
   sessionStorage.setItem(SS.TUTORIAL_STEP, step.id);
   $('stageBotArea')?.classList.toggle('is-bot-hidden', tutStep > getStepIndex('name'));
+  $('panel')?.classList.remove('is-content-fitting');
 
   // Mark current step as visited
   visitedSteps.add(tutStep);
@@ -975,7 +978,36 @@ function goStep(idx) {
     document.getElementById('panel')?.scrollTo(scrollStart);
     document.getElementById('stage')?.scrollTo(scrollStart);
     window.scrollTo(scrollStart);
+    updateTutorialPanelOverflow();
   });
+}
+
+function initTutorialPanelOverflow() {
+  const panel = $('panel');
+  if (!panel || !dom.panelContent) return;
+
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(() => requestAnimationFrame(updateTutorialPanelOverflow));
+    observer.observe(panel);
+    observer.observe(dom.panelContent);
+  }
+  document.fonts?.ready.then(() => requestAnimationFrame(updateTutorialPanelOverflow));
+}
+
+function updateTutorialPanelOverflow() {
+  const panel = $('panel');
+  if (!panel || !document.documentElement.classList.contains('tutorial-active')) return;
+
+  panel.classList.remove('is-content-fitting');
+  const lastContent = dom.panelContent?.lastElementChild;
+  if (!lastContent) return;
+
+  const contentBottom = lastContent.getBoundingClientRect().bottom + panel.scrollTop;
+  const panelBottom = panel.getBoundingClientRect().bottom;
+  // Ukryj przewijanie tylko wtedy, gdy cała treść mieści się w panelu.
+  const fits = contentBottom <= panelBottom - 8;
+  panel.classList.toggle('is-content-fitting', fits);
+  if (fits) panel.scrollTop = 0;
 }
 
 // ─── Step renders ─────────────────────────────────────────────────
@@ -1136,7 +1168,7 @@ function renderSectionStep(step) {
   const tpl = document.getElementById(`tpl-${step.topic}`);
   if (tpl) $('secContent').appendChild(tpl.content.cloneNode(true));
 
-  // Dodaj klasę do panelu żeby był scrollable
+  // Oznacz panel zawierający treść sekcji.
   $('panel')?.classList.add('has-section');
   dom.bot.classList.add('is-pointing');
 
@@ -1215,6 +1247,7 @@ function finishTutorial() {
 function renderCompletedPanel() {
   const returning = currentView === 'returning';
   $('stageBotArea')?.classList.remove('is-bot-hidden');
+  $('panel')?.classList.remove('is-content-fitting');
   dom.bot.classList.remove('is-pointing');
   if (dom.tutProgress) dom.tutProgress.hidden = true;
   if (dom.tutNav) dom.tutNav.hidden = true;
