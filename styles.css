@@ -1056,6 +1056,11 @@ html[data-theme="light"] .modal { background: linear-gradient(#fff,#fff) padding
   max-width: 58px;
   max-height: 58px;
 }
+.trusted-logo .trusted-logo-image--eltech {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+}
 @keyframes trusted-logos-scroll {
   to { transform: translateX(-50%); }
 }
@@ -1968,6 +1973,7 @@ html[data-theme="light"] .doc-panel { background: #fff; }
   .review-card { min-width: unset; max-width: none; width: 100%; }
   .trusted-logo { width: 124px; height: 76px; flex-basis: 124px; padding: 8px 12px; }
   .trusted-logo .trusted-logo-image--yogi { width: 52px; height: 52px; max-width: 52px; max-height: 52px; }
+  .trusted-logo .trusted-logo-image--eltech { width: 54px; height: 54px; }
 }
 
 @media (max-width: 360px) {
