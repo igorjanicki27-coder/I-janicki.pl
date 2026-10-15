@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-janicki.pl/</loc>
-    <lastmod>2026-10-13</lastmod>
+    <lastmod>2026-10-15</lastmod>
   </url>
   <url>
     <loc>https://i-janicki.pl/blog/</loc>
@@ -118,6 +118,10 @@
   </url>
   <url>
     <loc>https://i-janicki.pl/projekty/</loc>
+    <lastmod>2026-10-15</lastmod>
+  </url>
+  <url>
+    <loc>https://i-janicki.pl/projekty/suszycka/</loc>
     <lastmod>2026-10-15</lastmod>
   </url>
 </urlset>
