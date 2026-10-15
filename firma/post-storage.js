@@ -4,11 +4,13 @@ import {
   collection,
   setDoc,
   getDocs,
+  getDoc,
   deleteDoc,
   writeBatch,
   ensureFirmyAdminSession,
 } from './firebase.js?v=20';
 import { normalizePostFrequency } from './post-frequency.mjs?v=1';
+import { filterDeletedPostCollections, mergeDeletedPostTabs } from './post-state.mjs?v=1';
 
 function currentIso() {
   return new Date().toISOString();
@@ -80,10 +82,13 @@ async function ensureFirmPostDoc(firm) {
 }
 
 function fallbackPostCollections(firm) {
-  const tabs = ensureArray(firm.postTabs);
-  const posts = ensureArray(firm.posts);
+  const { postTabs: tabs, posts, deletedPostTabs } = filterDeletedPostCollections({
+    ...firm,
+    postTabs: Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(),
+  });
   return {
-    tabs: (tabs.length ? tabs : defaultPostTabs()).map((tab) => normalizeTab({ ...tab, firmId: firm.id })),
+    deletedPostTabs,
+    tabs: tabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id })),
     posts: posts.map((post) => normalizePost({ ...post, firmId: firm.id })),
     fallback: true,
   };
@@ -115,7 +120,10 @@ export async function loadFirmPostCollections(firm) {
 
   let tabs;
   let posts;
+  let deletedPostTabs = mergeDeletedPostTabs(firm);
   try {
+    const firmDoc = await getDoc(doc(db, 'firmy_clients', firm.id));
+    deletedPostTabs = mergeDeletedPostTabs(firm, firmDoc.data());
     tabs = (await loadCollection(['firmy_clients', firm.id, 'post_tabs']))
       .map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
     posts = (await loadCollection(['firmy_clients', firm.id, 'posts']))
@@ -123,13 +131,18 @@ export async function loadFirmPostCollections(firm) {
   } catch (error) {
     if (isPermissionError(error)) {
       console.info('Brak uprawnień do subkolekcji postów. Używam danych lokalnych.', error);
-      return fallbackPostCollections(firm);
+      return fallbackPostCollections({ ...firm, deletedPostTabs });
     }
     throw error;
   }
 
-  const legacyTabs = ensureArray(firm.postTabs);
-  const legacyPosts = ensureArray(firm.posts);
+  const filtered = filterDeletedPostCollections({ deletedPostTabs, postTabs: tabs, posts });
+  tabs = filtered.postTabs;
+  posts = filtered.posts;
+  firm = { ...firm, deletedPostTabs };
+  const legacy = filterDeletedPostCollections(firm);
+  const legacyTabs = legacy.postTabs;
+  const legacyPosts = legacy.posts;
   const normalizedLegacyTabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
   const normalizedLegacyPosts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
 
@@ -153,12 +166,13 @@ export async function loadFirmPostCollections(firm) {
     } catch (error) {
       if (!isPermissionError(error)) throw error;
       console.info('Brak uprawnień do synchronizacji lokalnych postów z Firestore. Zachowuję je lokalnie.', error);
-      return { tabs, posts, fallback: true };
+      return { tabs, posts, deletedPostTabs, fallback: true };
     }
   }
 
-  if (!tabs.length) {
-    tabs = defaultPostTabs().map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
+  if (!tabs.length && !Array.isArray(firm.postTabs)) {
+    tabs = filterDeletedPostCollections({ deletedPostTabs, postTabs: defaultPostTabs() })
+      .postTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
     try {
       await savePostTabs(firm, tabs);
     } catch (error) {
@@ -167,7 +181,7 @@ export async function loadFirmPostCollections(firm) {
     }
   }
 
-  return { tabs, posts };
+  return { tabs, posts, deletedPostTabs };
 }
 
 export async function savePostTabs(firm, tabs) {
@@ -189,6 +203,9 @@ export async function savePostTab(firm, tab) {
 export async function deletePostTab(firm, tabId) {
   await ensureFirmPostDoc(firm);
   const batch = writeBatch(db);
+  batch.set(doc(db, 'firmy_clients', firm.id), {
+    deletedPostTabs: { [tabId]: true },
+  }, { merge: true });
   batch.delete(doc(db, 'firmy_clients', firm.id, 'post_tabs', tabId));
   const posts = await loadCollection(['firmy_clients', firm.id, 'posts']);
   for (const post of posts) {

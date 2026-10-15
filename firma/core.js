@@ -20,10 +20,10 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=33';
+} from './storage.js?v=34';
 import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
 import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
-import { loadFirmPostCollections } from './post-storage.js?v=10';
+import { loadFirmPostCollections } from './post-storage.js?v=11';
 
 // --- Icons ---
 export function icon(name) {
@@ -284,11 +284,12 @@ function refreshPostAlertFromFirestore(state, firmId) {
   if (!firm) return;
 
   const refresh = loadFirmPostCollections(firm)
-    .then(({ tabs, posts, fallback }) => {
+    .then(({ tabs, posts, deletedPostTabs, fallback }) => {
       const currentFirm = state.firms.find((item) => item.id === firmId);
       if (!currentFirm) return;
       currentFirm.postTabs = tabs;
       currentFirm.posts = posts;
+      currentFirm.deletedPostTabs = deletedPostTabs;
       if (fallback) currentFirm.postStorageFallback = true;
       else delete currentFirm.postStorageFallback;
       refreshedPostAlertFirms.add(firmId);

@@ -13,7 +13,7 @@ const EXCLUDED_DIRS = new Set([
   '.github',
   '.claude',
   'i-JANEK',
-  'Szablony',
+  'projekty/autokomis',
   'assets',
   'icons',
   'scripts',

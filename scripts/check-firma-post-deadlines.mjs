@@ -3,6 +3,7 @@ import {
   getCompensationReminderStatus,
 } from '../firma/compensation-reminders.mjs';
 import { isIrregularPostFrequency, normalizePostFrequency } from '../firma/post-frequency.mjs';
+import { filterDeletedPostCollections, mergeDeletedPostTabs } from '../firma/post-state.mjs';
 
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
 const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || 'i-janicki').trim();
@@ -425,8 +426,11 @@ async function loadFirmPostCollections(idToken, firm) {
     compensationReminderKeys: Array.isArray(firmDoc.compensationReminderKeys)
       ? firmDoc.compensationReminderKeys
       : (firm.compensationReminderKeys || []),
-    postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
-    posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
+    ...filterDeletedPostCollections({
+      deletedPostTabs: mergeDeletedPostTabs(firm, firmDoc),
+      postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
+      posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
+    }),
   };
 }
 

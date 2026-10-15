@@ -1,6 +1,7 @@
 import { ensureFirmyAdminSession, getSetting, setSetting, db, doc, collection, setDoc, getDoc, getDocs, deleteDoc, writeBatch } from './firebase.js?v=20';
 import { normalizeCompensationReminder } from './compensation-reminders.mjs?v=2';
 import { normalizePostFrequency } from './post-frequency.mjs?v=1';
+import { filterDeletedPostCollections, mergeDeletedPostTabs } from './post-state.mjs?v=1';
 
 const STORAGE_KEY = 'ijanicki_firma_state_v1';
 const FIRESTORE_STATE_DOC = 'firmy_settings/state';
@@ -161,6 +162,13 @@ function ensureArray(value) {
 
 function normalizeFirm(firm) {
   const now = currentIso();
+  firm = {
+    ...firm,
+    ...filterDeletedPostCollections({
+      ...firm,
+      postTabs: Array.isArray(firm.postTabs) ? firm.postTabs : defaultPostTabs(now),
+    }),
+  };
   const months = Array.isArray(firm.months)
     ? firm.months
     : ensureArray(firm.budgetEntries).map((entry) => ({
@@ -317,6 +325,7 @@ function normalizeFirm(firm) {
     domainReminderKeys: ensureArray(firm.domainReminderKeys),
     compensationReminderKeys: ensureArray(firm.compensationReminderKeys),
     postStorageFallback: firm.postStorageFallback === true,
+    deletedPostTabs: firm.deletedPostTabs,
     createdAt: firm.createdAt || now,
     updatedAt: firm.updatedAt || now,
   };
@@ -385,8 +394,11 @@ function mergeListById(primary = [], backup = []) {
 function mergePostBackups(preferredFirm, fallbackFirm) {
   return {
     ...preferredFirm,
-    postTabs: mergeListById(preferredFirm.postTabs, fallbackFirm.postTabs),
-    posts: mergeListById(preferredFirm.posts, fallbackFirm.posts),
+    ...filterDeletedPostCollections({
+      deletedPostTabs: mergeDeletedPostTabs(preferredFirm, fallbackFirm),
+      postTabs: mergeListById(preferredFirm.postTabs, fallbackFirm.postTabs),
+      posts: mergeListById(preferredFirm.posts, fallbackFirm.posts),
+    }),
     postReminderKeys: [...new Set([
       ...ensureArray(preferredFirm.postReminderKeys),
       ...ensureArray(fallbackFirm.postReminderKeys),

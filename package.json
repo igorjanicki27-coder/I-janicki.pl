@@ -12,6 +12,7 @@
     "seo": "node scripts/generate-seo-files.mjs",
     "audit:seo": "node scripts/audit-seo-content.mjs",
     "test:google-reviews": "node --test scripts/google-business-reviews.test.mjs",
+    "test:firma-posts": "node --experimental-vm-modules --test scripts/firma-post-storage.test.mjs",
     "test:cookie-consent": "node --test scripts/cookie-consent.test.mjs",
     "cleanup:cookie-consent": "node scripts/cleanup-cookie-consents.mjs",
     "test:technical-retention": "node --test scripts/technical-retention.test.mjs",

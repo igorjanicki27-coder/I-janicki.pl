@@ -25,7 +25,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=33';
+} from './storage.js?v=34';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -34,7 +34,7 @@ import {
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=10';
+} from './post-storage.js?v=11';
 import {
   icon,
   escapeHtml,
@@ -61,7 +61,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=40';
+} from './core.js?v=41';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -70,6 +70,7 @@ import {
 } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
+import { markPostTabDeleted } from './post-state.mjs?v=1';
 
 // --- State ---
 let state = initializeState();
@@ -217,9 +218,10 @@ function ensureFirmPostCollectionsLoaded(firm) {
 
   postCollectionStatus.set(firm.id, 'loading');
   loadFirmPostCollections(firm)
-    .then(({ tabs, posts, fallback }) => {
+    .then(({ tabs, posts, deletedPostTabs, fallback }) => {
       firm.postTabs = tabs;
       firm.posts = posts;
+      firm.deletedPostTabs = deletedPostTabs;
       firm.postReminderKeys = [];
       postCollectionStatus.set(firm.id, 'loaded');
       if (fallback) {
@@ -232,7 +234,7 @@ function ensureFirmPostCollectionsLoaded(firm) {
     })
     .catch((error) => {
       console.error('Nie udało się wczytać postów z Firestore:', error);
-      firm.postTabs = (firm.postTabs || []).length ? firm.postTabs : [
+      firm.postTabs = Array.isArray(firm.postTabs) ? firm.postTabs : [
         { id: 'google-posts', name: 'Wpisy Google', frequency: 'monthly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'google-articles', name: 'Artykuly w Google', frequency: 'monthly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'social-media', name: 'Media spolecznosciowe', frequency: 'weekly', startDate: todayKey(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
@@ -1782,8 +1784,7 @@ function openPostTabModal(existing = null) {
     if (!existing) return;
     if (!confirm(`Usunac podzakladke "${existing.name}" razem ze wszystkimi wpisami?`)) return;
     await tryPostCloudWrite(firm, () => deletePostTabDoc(firm, existing.id), 'Usuwanie podzakładki postów');
-    firm.postTabs = (firm.postTabs || []).filter((tab) => tab.id !== existing.id);
-    firm.posts = (firm.posts || []).filter((post) => post.tabId !== existing.id);
+    markPostTabDeleted(firm, existing.id);
     firm.updatedAt = new Date().toISOString();
     state.ui.activePostTabId = firm.postTabs[0]?.id || null;
     persistAndFlush();
@@ -3464,8 +3465,7 @@ async function handleClick(event) {
     if (!firm || !tab) return;
     if (!confirm(`Usunac podzakladke "${tab.name}" razem ze wszystkimi wpisami?`)) return;
     await tryPostCloudWrite(firm, () => deletePostTabDoc(firm, tab.id), 'Usuwanie podzakładki postów');
-    firm.postTabs = (firm.postTabs || []).filter((item) => item.id !== tab.id);
-    firm.posts = (firm.posts || []).filter((post) => post.tabId !== tab.id);
+    markPostTabDeleted(firm, tab.id);
     firm.updatedAt = new Date().toISOString();
     state.ui.activePostTabId = firm.postTabs[0]?.id || null;
     persistAndFlush();

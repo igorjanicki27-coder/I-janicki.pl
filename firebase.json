@@ -113,7 +113,7 @@
         ]
       },
       {
-        "source": "Szablony/**",
+        "source": "projekty/autokomis/**",
         "headers": [
           { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive, nosnippet, noimageindex" }
         ]
