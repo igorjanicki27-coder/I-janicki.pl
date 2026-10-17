@@ -764,10 +764,10 @@ function renderStructuredData(page) {
       { '@type': 'ListItem', position: 2, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
     ];
   } else if (page.slug.startsWith('lokalizacje/')) {
+    // "Lokalizacje" is a menu group without its own page URL.
     breadcrumbItems = [
       { '@type': 'ListItem', position: 1, name: 'Strona główna', item: SITE_URL + '/' },
-      { '@type': 'ListItem', position: 2, name: 'Lokalizacje' },
-      { '@type': 'ListItem', position: 3, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
+      { '@type': 'ListItem', position: 2, name: page.navLabel, item: SITE_URL + '/' + page.slug + '/' }
     ];
   } else {
     breadcrumbItems = [
