@@ -4,6 +4,7 @@ import {
 } from '../firma/compensation-reminders.mjs';
 import { isIrregularPostFrequency, normalizePostFrequency } from '../firma/post-frequency.mjs';
 import { filterDeletedPostCollections, mergeDeletedPostTabs } from '../firma/post-state.mjs';
+import { requestJson } from './firma-reminder-request.mjs';
 
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
 const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || 'i-janicki').trim();
@@ -257,15 +258,6 @@ function findCompensationReminders(state) {
   return reminders;
 }
 
-async function requestJson(url, options = {}) {
-  const response = await fetch(url, options);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(`${options.method || 'GET'} ${url} failed: ${response.status} ${JSON.stringify(data)}`);
-  }
-  return data;
-}
-
 function base64Url(input) {
   return Buffer.from(input)
     .toString('base64')
@@ -319,7 +311,7 @@ async function getServiceAccountToken() {
       mode: 'service-account',
     };
   } catch (error) {
-    throw new Error(`Invalid Firebase service account secret: ${error.message}`);
+    throw new Error(`Firebase service-account authentication failed: ${error.message}`);
   }
 }
 
