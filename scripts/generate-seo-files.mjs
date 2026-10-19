@@ -14,6 +14,7 @@ const EXCLUDED_DIRS = new Set([
   '.claude',
   'i-JANEK',
   'projekty/autokomis',
+  'projekty/suszycka',
   'assets',
   'icons',
   'scripts',

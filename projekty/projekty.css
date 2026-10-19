@@ -1,6 +1,6 @@
 .projects-hero { padding-bottom: 32px; }
 .projects-section { padding-top: 0; border: 0; background: transparent; }
-.projects-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.projects-grid { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 640px; gap: 24px; }
 .project-card { display: flex; min-width: 0; flex-direction: column; overflow: hidden; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; text-decoration: none; transition: border-color 180ms ease, transform 180ms ease; }
 .project-card:hover { border-color: var(--cyan); transform: translateY(-4px); }
 .project-preview { position: relative; overflow: hidden; aspect-ratio: 16 / 10; background: #10131c; border-bottom: 1px solid var(--border); }
