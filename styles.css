@@ -1061,13 +1061,11 @@ html[data-theme="light"] .modal { background: linear-gradient(#fff,#fff) padding
   height: 62px;
   object-fit: contain;
 }
-.trusted-logo--suszycka {
-  background: #f5f0e7;
-}
 .trusted-logo--suszycka img {
   width: 100%;
   height: 62px;
   object-fit: contain;
+  transform: scale(1.15);
 }
 @keyframes trusted-logos-scroll {
   to { transform: translateX(-50%); }
