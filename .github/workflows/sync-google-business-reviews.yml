@@ -76,4 +76,4 @@ jobs:
 
       - name: Publish the snapshot to Firebase RTDB
         if: steps.configuration.outputs.ready == 'true'
-        run: npx --yes firebase-tools@15.11.0 database:set /publicGoogleReviews "$RUNNER_TEMP/google-business-reviews.json" --confirm --project i-janicki --non-interactive
+        run: npx --yes firebase-tools@15.11.0 database:set /publicGoogleReviews "$RUNNER_TEMP/google-business-reviews.json" --force --project i-janicki --non-interactive
