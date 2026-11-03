@@ -56,7 +56,7 @@
     .shell {
       width: min(980px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 28px 0 48px;
+      padding: 28px 0 112px;
     }
 
     .topbar {
@@ -336,6 +336,37 @@
       color: var(--muted);
     }
 
+    .refresh-button {
+      position: fixed;
+      right: max(20px, env(safe-area-inset-right));
+      bottom: max(20px, env(safe-area-inset-bottom));
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 52px;
+      padding: 14px 20px;
+      border: 1px solid rgba(64, 201, 255, 0.55);
+      border-radius: 999px;
+      background: linear-gradient(135deg, #133355, #352067);
+      color: var(--text);
+      font: 600 0.95rem 'Inter', sans-serif;
+      box-shadow: var(--shadow-neon);
+      cursor: pointer;
+    }
+
+    .refresh-button[hidden] { display: none; }
+    .refresh-button:hover:not(:disabled) { border-color: var(--accent-4); }
+    .refresh-button:focus-visible { outline: 2px solid var(--accent-4); outline-offset: 4px; }
+    .refresh-button:disabled { opacity: 0.7; cursor: wait; }
+    .refresh-button[aria-busy="true"] svg { animation: refresh-spin 1s linear infinite; }
+
+    @keyframes refresh-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .refresh-button[aria-busy="true"] svg { animation: none; }
+    }
+
     @media (max-width: 860px) {
       .grid { grid-template-columns: 1fr; }
       .period-grid { grid-template-columns: 1fr; }
@@ -376,7 +407,7 @@
       <section class="hero">
         <h1>Statystyki aktywnosci</h1>
         <p>Dane sa podzielone na: dzisiaj, ostatnie 7 dni, biezacy miesiac, biezacy rok oraz caly okres.</p>
-        <div class="status" id="statsStatus">Ladowanie danych z Firestore...</div>
+        <div class="status" id="statsStatus" role="status" aria-live="polite">Ladowanie danych z Firestore...</div>
       </section>
 
       <section class="grid" aria-label="Kluczowe statystyki">
@@ -484,10 +515,13 @@
             </table>
           </div>
         </article>
+      </section>
+
+      <section class="breakdown-grid" id="stopki" aria-labelledby="stopki-title">
         <article class="card breakdown-card">
           <div class="breakdown-heading">
-            <div class="eyebrow">08 · Stopki firm</div>
-            <h2>Wejścia ze stopek</h2>
+            <div class="eyebrow">08 · Źródła wejść</div>
+            <h2 id="stopki-title">Stopki</h2>
             <p>Każde otwarcie adresu /stopka/ przekierowującego na stronę główną. Licznik zapisuje wyłącznie ścieżkę i czas, bez identyfikatorów użytkownika, cookies i sesji, niezależnie od zgody analitycznej. Nie zwiększa dodatkowo ogólnego licznika wejść.</p>
           </div>
           <div class="table-scroll">
@@ -506,9 +540,19 @@
     </main>
   </div>
 
+  <button class="refresh-button" id="refreshStats" type="button" aria-label="Odśwież dane statystyk" aria-busy="false" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M20 7v5h-5M4 17v-5h5" />
+      <path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17" />
+    </svg>
+    <span id="refreshStatsLabel">Odśwież</span>
+  </button>
+
   <script>
     (function () {
       const GOOGLE_REVIEWS_ENDPOINT = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app/publicGoogleReviews.json';
+      const refreshButton = document.getElementById('refreshStats');
+      let statsLoading = false;
       const firebaseConfig =
         window.IJanickiAnalytics?.config?.firebaseConfig || {
           apiKey: 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc',
@@ -582,7 +626,7 @@
       async function fetchAnalyticsEvents() {
         const snapshot = await getFirestore()
           .collection('analytics_events')
-          .get();
+          .get({ source: 'server' });
 
         return snapshot.docs.map((doc) => {
           const type = doc.get('type');
@@ -597,7 +641,7 @@
 
       async function loadContactFormCount() {
         try {
-          const snapshot = await getFirestore().collection('contact_form_stats').doc('total').get();
+          const snapshot = await getFirestore().collection('contact_form_stats').doc('total').get({ source: 'server' });
           const count = snapshot.exists ? snapshot.get('totalCount') : null;
           setValue('contactFormsValue', Number.isSafeInteger(count) && count >= 0 ? formatCount(count) : 'Niedost.');
         } catch (_) {
@@ -608,6 +652,7 @@
       async function fetchGoogleReviews() {
         const response = await fetch(GOOGLE_REVIEWS_ENDPOINT, {
           headers: { Accept: 'application/json' },
+          cache: 'no-store',
         });
         if (!response.ok) throw new Error(`Google reviews HTTP ${response.status}`);
         const data = await response.json();
@@ -879,6 +924,7 @@
             try {
               await tryOpenSessionWithHash(user.uid, pinHash);
               gate.style.display = 'none';
+              refreshButton.hidden = false;
               await loadStats();
               return;
             } catch (error) {
@@ -915,6 +961,12 @@
       }
 
       async function loadStats() {
+        if (statsLoading) return;
+        statsLoading = true;
+        refreshButton.disabled = true;
+        refreshButton.setAttribute('aria-busy', 'true');
+        setValue('refreshStatsLabel', 'Odświeżanie…');
+        setStatus('Odświeżanie danych…');
         try {
           ensureFirebaseApp();
           await loadContactFormCount();
@@ -971,9 +1023,15 @@
           if (contactRows) contactRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
           if (footerRows) footerRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
           setStatus('Nie udalo sie pobrac danych z Firestore. Sprawdz reguly kolekcji analytics_events.');
+        } finally {
+          statsLoading = false;
+          refreshButton.disabled = false;
+          refreshButton.setAttribute('aria-busy', 'false');
+          setValue('refreshStatsLabel', 'Odśwież');
         }
       }
 
+      refreshButton.addEventListener('click', loadStats);
       initPinGate();
     })();
   </script>

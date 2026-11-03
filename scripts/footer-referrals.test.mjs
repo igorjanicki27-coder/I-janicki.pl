@@ -152,7 +152,7 @@ test('failed counter requests leave the visitor on the clean home URL', async ()
   assert.equal(page.requests.length, 1);
 });
 
-test('Stats separates footer attribution from page totals and applies date periods', async () => {
+test('Stats separates footer data and refreshes it without reopening the PIN session', async () => {
   const now = Date.now();
   const events = [
     { type: 'page_visit', path: '/', timestamp: new Date(now - 1000) },
@@ -165,18 +165,33 @@ test('Stats separates footer attribution from page totals and applies date perio
   ];
   const nodes = new Map();
   const document = { getElementById(id) {
-    if (!nodes.has(id)) nodes.set(id, { style: {}, value: 'test', focus() {}, handlers: {},
+    if (!nodes.has(id)) nodes.set(id, { style: {}, value: 'test', hidden: true, focus() {}, handlers: {}, attributes: {},
       addEventListener(name, handler) { this.handlers[name] = handler; },
+      setAttribute(name, value) { this.attributes[name] = value; },
     });
     return nodes.get(id);
   } };
+  let eventReads = 0;
+  let formReads = 0;
+  let reviewReads = 0;
+  let sessionCommits = 0;
+  let failNextRead = false;
   const db = {
     collection: name => ({
-      get: async () => ({ docs: events.map(event => ({ get: key => event[key] })) }),
-      doc: () => ({ get: async () => name === 'contact_form_stats'
-        ? { exists: true, get: () => 0 } : { exists: false } }),
+      get: async options => {
+        assert.equal(options.source, 'server');
+        eventReads++;
+        if (failNextRead) { failNextRead = false; throw new Error('Offline'); }
+        return { docs: events.map(event => ({ get: key => event[key] })) };
+      },
+      doc: () => ({ get: async options => {
+        if (name !== 'contact_form_stats') return { exists: false };
+        assert.equal(options.source, 'server');
+        formReads++;
+        return { exists: true, get: () => formReads };
+      } }),
     }),
-    batch: () => ({ set() {}, commit: async () => {} }),
+    batch: () => ({ set() {}, commit: async () => { sessionCommits++; } }),
   };
   const firestore = () => db;
   firestore.Timestamp = { fromMillis: value => value };
@@ -187,11 +202,18 @@ test('Stats separates footer attribution from page totals and applies date perio
   } };
   const html = source('stats/index.html');
   const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
-  vm.runInNewContext(script, { window, document, crypto: webcrypto, TextEncoder, URL, console,
-    fetch: async () => ({ ok: true, json: async () => ({ reviews: [] }) }),
+  vm.runInNewContext(script, { window, document, crypto: webcrypto, TextEncoder, URL, console: { warn() {} },
+    fetch: async (_, options) => {
+      assert.equal(options.cache, 'no-store');
+      reviewReads++;
+      return { ok: true, json: async () => ({ reviews: [] }) };
+    },
   });
+  const refreshButton = nodes.get('refreshStats');
+  assert.equal(refreshButton.hidden, true);
   await nodes.get('pinSubmit').handlers.click();
   assert.equal(nodes.get('pinGate').style.display, 'none');
+  assert.equal(refreshButton.hidden, false);
   assert.equal(nodes.get('visitsValue').textContent, '1');
   assert.equal(nodes.get('todayVisits').textContent, '1');
   assert.ok(!nodes.get('pageVisitsRows').innerHTML.includes('/stopka/'));
@@ -202,4 +224,31 @@ test('Stats separates footer attribution from page totals and applies date perio
   assert.match(footerRows, /<td>i-JANEK<\/td><td>1<\/td><td>1<\/td><td>1<\/td><td>1<\/td>/);
   assert.match(footerRows, /<td>strzelca\.pl<\/td><td>1<\/td><td>1<\/td><td>1<\/td><td>1<\/td>/);
   assert.equal((footerRows.match(/<tr>/g) || []).length, companies.length);
+
+  events.push({ type: 'page_visit', path: '/stopka/elmet/', timestamp: new Date(now - 500) });
+  events.push({ type: 'page_visit', path: '/', timestamp: new Date(now - 500) });
+  const refreshing = refreshButton.handlers.click();
+  assert.equal(refreshButton.disabled, true);
+  assert.equal(refreshButton.attributes['aria-busy'], 'true');
+  assert.equal(nodes.get('refreshStatsLabel').textContent, 'Odświeżanie…');
+  await Promise.all([refreshing, refreshButton.handlers.click()]);
+  assert.equal(eventReads, 2);
+  assert.equal(formReads, 2);
+  assert.equal(reviewReads, 2);
+  assert.equal(sessionCommits, 1);
+  assert.equal(nodes.get('visitsValue').textContent, '2');
+  assert.equal(nodes.get('contactFormsValue').textContent, '2');
+  assert.match(nodes.get('footerVisitsRows').innerHTML, /<td>ELMET<\/td><td>2<\/td><td>2<\/td><td>2<\/td><td>3<\/td>/);
+  assert.equal(refreshButton.disabled, false);
+  assert.equal(refreshButton.attributes['aria-busy'], 'false');
+  assert.equal(nodes.get('refreshStatsLabel').textContent, 'Odśwież');
+
+  failNextRead = true;
+  await refreshButton.handlers.click();
+  assert.equal(refreshButton.disabled, false);
+  assert.equal(refreshButton.attributes['aria-busy'], 'false');
+  assert.match(nodes.get('statsStatus').textContent, /Nie udalo sie/);
+  await refreshButton.handlers.click();
+  assert.equal(nodes.get('visitsValue').textContent, '2');
+  assert.equal(sessionCommits, 1);
 });
