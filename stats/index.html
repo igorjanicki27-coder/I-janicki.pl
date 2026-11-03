@@ -15,7 +15,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="/cookie-consent.js?v=2"></script>
-<script src="../analytics.js?v=11"></script>
+<script src="../analytics.js?v=12"></script>
   <style>
     :root {
       --bg-0: #000000;
@@ -484,10 +484,23 @@
             </table>
           </div>
         </article>
+        <article class="card breakdown-card">
+          <div class="breakdown-heading">
+            <div class="eyebrow">08 · Stopki firm</div>
+            <h2>Wejścia ze stopek</h2>
+            <p>Każde otwarcie adresu /stopka/ przekierowującego na stronę główną. Licznik zapisuje wyłącznie ścieżkę i czas, bez identyfikatorów użytkownika, cookies i sesji, niezależnie od zgody analitycznej. Nie zwiększa dodatkowo ogólnego licznika wejść.</p>
+          </div>
+          <div class="table-scroll">
+            <table class="stats-table">
+              <thead><tr><th>Firma</th><th>Dziś</th><th>7 dni</th><th>Miesiąc</th><th>Łącznie</th></tr></thead>
+              <tbody id="footerVisitsRows"><tr><td colspan="5">Ładowanie…</td></tr></tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section class="footnote">
-        <p><strong>Jak czytać dane:</strong> zakres <strong>miesiąc</strong> i <strong>rok</strong> dotyczy bieżącego miesiąca i bieżącego roku. Zdarzenia są zapisywane wyłącznie po zgodzie na analitykę, więc nie obejmują wszystkich odwiedzających. Opinie pochodzą z Profilu Firmy w Google.</p>
+        <p><strong>Jak czytać dane:</strong> zakres <strong>miesiąc</strong> i <strong>rok</strong> dotyczy bieżącego miesiąca i bieżącego roku. Analityka odwiedzin i działań wymaga zgody, więc nie obejmuje wszystkich odwiedzających. Osobna tabela wejść ze stopek korzysta z licznika bez cookies i sesji, niezależnego od tej zgody. Opinie pochodzą z Profilu Firmy w Google.</p>
       </section>
 
     </main>
@@ -631,7 +644,7 @@
           isInPeriod(event.timestampMs, periodKey, nowMs, startMs)
         );
 
-        const visits = periodEvents.filter((event) => event.type === 'page_visit').length;
+        const visits = periodEvents.filter((event) => event.type === 'page_visit' && !isFooterVisit(event)).length;
         const tutorialCompletions = periodEvents.filter((event) => event.type === 'tutorial_complete').length;
         const durations = periodEvents
           .filter((event) => event.type === 'session_duration')
@@ -674,6 +687,15 @@
       };
 
       const PAGE_ORDER = Object.keys(PAGE_LABELS);
+      const FOOTER_PAGES = [
+        ['/stopka/elmet/', 'ELMET'],
+        ['/stopka/el-tech/', 'EL-TECH'],
+        ['/stopka/suszycka/', 'Suszycka'],
+        ['/stopka/sredzka-korona/', 'Średzka Korona'],
+        ['/stopka/centrum-przyjec/', 'Centrum Przyjęć'],
+        ['/stopka/i-janek/', 'i-JANEK'],
+        ['/stopka/strzelca/', 'strzelca.pl'],
+      ];
       const CONTACT_CHANNELS = [
         ['phone', 'Telefon'],
         ['whatsapp', 'WhatsApp'],
@@ -685,7 +707,7 @@
       function normalizeEventPath(value) {
         const path = String(value || '/').split('?')[0].split('#')[0];
         if (path === '/' || path === '/index.html') return '/';
-        return path.replace(/\/index\.html$/, '/').replace(/\/+$/, '/') || '/';
+        return path.replace(/\/index\.html$/, '/').replace(/\/*$/, '/') || '/';
       }
 
       function escapeHtml(value) {
@@ -695,6 +717,10 @@
           .replaceAll('>', '&gt;')
           .replaceAll('"', '&quot;')
           .replaceAll("'", '&#039;');
+      }
+
+      function isFooterVisit(event) {
+        return normalizeEventPath(event.path).startsWith('/stopka/');
       }
 
       function countEvents(events, type, field, value, periodKey, now) {
@@ -721,7 +747,7 @@
 
       function renderDetailedStats(analyticsEvents, now) {
         const discoveredPaths = analyticsEvents
-          .filter((event) => event.type === 'page_visit')
+          .filter((event) => event.type === 'page_visit' && !isFooterVisit(event))
           .map((event) => normalizeEventPath(event.path));
         const extraPaths = [...new Set(discoveredPaths)]
           .filter((path) => !PAGE_ORDER.includes(path))
@@ -730,6 +756,7 @@
 
         renderBreakdownRows('pageVisitsRows', pageRows, analyticsEvents, 'page_visit', 'path', now);
         renderBreakdownRows('contactClicksRows', CONTACT_CHANNELS, analyticsEvents, 'contact_click', 'channel', now);
+        renderBreakdownRows('footerVisitsRows', FOOTER_PAGES, analyticsEvents, 'page_visit', 'path', now);
       }
 
       function formatLockTime(msLeft) {
@@ -939,8 +966,10 @@
           });
           const pageRows = document.getElementById('pageVisitsRows');
           const contactRows = document.getElementById('contactClicksRows');
+          const footerRows = document.getElementById('footerVisitsRows');
           if (pageRows) pageRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
           if (contactRows) contactRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
+          if (footerRows) footerRows.innerHTML = '<tr><td colspan="5">Błąd pobierania danych</td></tr>';
           setStatus('Nie udalo sie pobrac danych z Firestore. Sprawdz reguly kolekcji analytics_events.');
         }
       }

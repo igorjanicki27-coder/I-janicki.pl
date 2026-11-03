@@ -19,6 +19,53 @@
   const PAGE_VISIT_KEY_PREFIX = 'ijanek_metric_page_visit_logged:';
   const TUTORIAL_COMPLETE_KEY = 'ijanek_metric_tutorial_complete_logged';
   const HOME_PATHS = new Set(['/', '/index.html']);
+  const FOOTER_SOURCES = new Set([
+    'elmet', 'el-tech', 'suszycka', 'sredzka-korona', 'centrum-przyjec',
+    'i-janek', 'strzelca',
+  ]);
+
+  // Footer entries are plain counters: no cookies, user IDs or session deduplication.
+  const footerSource = readFooterSource();
+  if (footerSource) recordFooterVisit();
+
+  function readFooterSource() {
+    if (!isHomePath()) return null;
+    try {
+      const url = new URL(window.location.href);
+      const source = url.searchParams.get('stopka');
+      if (!FOOTER_SOURCES.has(source)) return null;
+      url.searchParams.delete('stopka');
+      try {
+        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+      } catch (_) { /* Attribution still works if history changes are unavailable. */ }
+      return source;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function recordFooterVisit() {
+    const endpoint = 'https://firestore.googleapis.com/v1/projects/i-janicki/databases/(default)/documents/analytics_events';
+    const fields = {
+      type: { stringValue: 'page_visit' },
+      path: { stringValue: '/stopka/' + footerSource + '/' },
+      timestamp: { timestampValue: new Date().toISOString() },
+    };
+    try {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        keepalive: true,
+        body: JSON.stringify({ fields }),
+      }).then((response) => {
+        if (!response.ok) console.warn('Footer counter write failed:', response.status);
+      }).catch((error) => console.warn('Footer counter write failed:', error));
+    } catch (error) {
+      console.warn('Footer counter unavailable:', error);
+    }
+  }
 
   const EXCLUDED_ANALYTICS_PREFIXES = [
     '/stats',
