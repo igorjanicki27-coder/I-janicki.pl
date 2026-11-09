@@ -4647,7 +4647,7 @@ body {
   }
 }
 
-.post-schedule-form,
+.post-schedule,
 .post-months {
   display: grid;
   gap: 12px;
@@ -4655,11 +4655,12 @@ body {
 
 .post-months {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
-  align-items: start;
+  align-items: stretch;
 }
 
 .post-month {
   display: grid;
+  align-content: start;
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--border);
@@ -4700,4 +4701,33 @@ body {
 .posts-header .post-tab-card {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+}
+
+.post-slot-error {
+  color: var(--danger);
+}
+
+.post-slot-error:empty {
+  display: none;
+}
+
+.irregular-post-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.irregular-post-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(145px, 24%);
+  gap: 8px 12px;
+}
+
+.irregular-post-row .post-slot-error {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 540px) {
+  .irregular-post-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -84,8 +84,17 @@ export function postSlots(tab, posts, from, through) {
   }));
 }
 
+export function isOpenIrregularPost(post) {
+  return post.status === 'scheduled' && !String(post.title || '').trim() && isPostDate(post.publishDate);
+}
+
 export function overduePostTabs(firm, today = postTodayKey()) {
-  return (firm.postTabs || []).filter((tab) =>
-    isPostDate(tab.startDate) && tab.startDate < today &&
-    postSlots(tab, firm.posts || [], tab.startDate, today).some((slot) => slot.date < today && !slot.title));
+  const posts = firm.posts || [];
+  return (firm.postTabs || []).filter((tab) => {
+    if (normalizePostFrequency(tab.frequency) === 'irregular') {
+      return posts.some((post) => post.tabId === tab.id && isOpenIrregularPost(post) && post.publishDate < today);
+    }
+    return isPostDate(tab.startDate) && tab.startDate < today &&
+      postSlots(tab, posts, tab.startDate, today).some((slot) => slot.date < today && !slot.title);
+  });
 }

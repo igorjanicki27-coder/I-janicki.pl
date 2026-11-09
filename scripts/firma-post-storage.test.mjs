@@ -197,3 +197,21 @@ test('the explicit slot survives a cloud reload even after its title is cleared'
   f.storage.saveState({ firms: [{ ...current, posts: loaded.posts }] });
   assert.equal(f.storage.loadState().firms[0].posts[0].slotDate, post.slotDate);
 });
+
+test('undated posts keep their selected year through Firestore and local state', async () => {
+  const f = await fixture();
+  const current = firm();
+  const post = {
+    id: 'undated', tabId: 'custom', title: 'Artykuł bez daty',
+    status: 'published', publishDate: '', publicationYear: '2027', date: '2026-11-09',
+  };
+  await f.posts.savePosts(current, [post]);
+  const loaded = await f.posts.loadFirmPostCollections(current);
+  const stored = loaded.posts.find(({ id }) => id === post.id);
+  assert.equal(stored.publishDate, '');
+  assert.equal(stored.publicationYear, '2027');
+  f.storage.saveState({ firms: [{ ...current, posts: [post] }] });
+  const local = f.storage.loadState().firms[0].posts[0];
+  assert.equal(local.publishDate, '');
+  assert.equal(local.publicationYear, '2027');
+});

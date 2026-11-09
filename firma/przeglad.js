@@ -24,16 +24,15 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=35';
+} from './storage.js?v=36';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
   loadFirmPostCollections,
   savePost as savePostDoc,
-  savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
   savePostCollections,
-} from './post-storage.js?v=12';
+} from './post-storage.js?v=13';
 import {
   icon,
   escapeHtml,
@@ -54,13 +53,14 @@ import {
   textareaField,
   modalActions,
   updateTopbar,
+  applyPostAlertState,
   renderFirmList,
   renderFabMenu,
   navigateTo,
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=43';
+} from './core.js?v=46';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -69,7 +69,7 @@ import {
 } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
-import { isPostDate, overduePostTabs, postSlots, postTodayKey } from './post-schedule.mjs?v=2';
+import { isOpenIrregularPost, isPostDate, overduePostTabs, postSlots, postTodayKey } from './post-schedule.mjs?v=3';
 import { markPostTabDeleted } from './post-state.mjs?v=1';
 
 // --- State ---
@@ -91,6 +91,8 @@ const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
 let postYear = null;
 const postCollectionStatus = new Map();
+const postTitleSaves = new Map();
+const requestedPostTitles = new WeakMap();
 
 function shouldRestoreOverviewContext() {
   const navEntry = performance.getEntriesByType('navigation')[0];
@@ -1519,17 +1521,37 @@ function renderPostMonths(slots, today) {
   return groups.map(({ month, items, filled }) => {
     const complete = filled === items.length;
     return `
-      <section class="post-month ${complete ? 'is-complete' : ''}">
-        <h4>${monthLabel(month)} <span>${complete ? 'Wykonany' : `${filled}/${items.length}`}</span></h4>
+      <section data-month="${month}" class="post-month ${complete ? 'is-complete' : ''}">
+        <h4>${monthLabel(month)} <span data-post-month-status>${complete ? 'Wykonany' : `${filled}/${items.length}`}</span></h4>
         ${items.map(({ date, title }) => `
           <label class="field post-slot ${!title && date < today ? 'is-overdue' : ''}">
             <span>${formatDate(date)}${!title && date < today ? ' · po terminie' : ''}</span>
             <input type="text" name="${date}" value="${escapeHtml(title)}" placeholder="Tytuł publikacji">
+            <small class="post-slot-error" role="status"></small>
           </label>
         `).join('')}
       </section>
     `;
   }).join('');
+}
+
+function renderIrregularPostRow(post) {
+  return `
+    <div class="irregular-post-row" data-id="${escapeHtml(post?.id || uid())}" ${post ? '' : 'data-draft'}>
+      <label class="field">
+        <span>Tytuł publikacji</span>
+        <input type="text" name="title" value="${escapeHtml(post?.title || '')}" placeholder="Wpisz tytuł">
+      </label>
+      <label class="field">
+        <span>Data (opcjonalnie)</span>
+        <input type="date" name="publishDate" min="1000-01-01" max="9999-12-31" value="${escapeHtml(post?.publishDate || '')}">
+      </label>
+      ${post?.content || post?.link || post?.keywords?.length ? `
+        <div><button class="ghost-button" type="button" data-action="preview-post" data-id="${escapeHtml(post.id)}">${icon('eye')}Podgląd</button></div>
+      ` : ''}
+      <small class="post-slot-error" role="status"></small>
+    </div>
+  `;
 }
 
 function renderPostsPage(firm) {
@@ -1546,9 +1568,14 @@ function renderPostsPage(firm) {
   const year = postYear ?? currentYear;
   const posts = activeTab ? postsForTab(firm, activeTab.id) : [];
   const slots = activeTab ? postSlots(activeTab, posts, `${year}-01-01`, `${year}-12-31`) : [];
-  const assignedPosts = new Set(slots.map((slot) => slot.post));
+  const irregular = activeTab && isIrregularPostTab(activeTab);
+  const irregularPosts = irregular ? posts.filter((post) =>
+    (String(post.title || '').trim() || isOpenIrregularPost(post)) && String(post.publishDate || post.publicationYear).slice(0, 4) === String(year)) : [];
+  const assignedPosts = new Set([...slots.map((slot) => slot.post), ...irregularPosts]);
   const archive = posts.filter((post) =>
-    (post.slotDate || post.publishDate).startsWith(`${year}-`) && !assignedPosts.has(post));
+    String(post.slotDate || post.publishDate || post.publicationYear).slice(0, 4) === String(year)
+    && !assignedPosts.has(post)
+    && (!irregular || post.content || post.link || post.keywords?.length));
 
   return `
     <div class="firm-detail-page posts-page">
@@ -1585,13 +1612,20 @@ function renderPostsPage(firm) {
                 ${year !== currentYear ? `<button class="ghost-button" type="button" data-action="post-year" data-year="${currentYear}">Bieżący rok</button>` : ''}
               </div>
             </div>
-            ${slots.length ? `
-              <form class="post-schedule-form" id="postScheduleForm" data-tab-id="${escapeHtml(activeTab.id)}" data-year="${year}">
-                <p>Po publikacji wpisz tytuł przy terminie i zapisz zmiany. Puste pole oznacza brak publikacji.</p>
+            ${irregular ? `
+              <div class="post-schedule" id="irregularPosts" data-tab-id="${escapeHtml(activeTab.id)}" data-year="${year}">
+                <p>Wpisz tytuł lub ustaw datę. O terminie bez tytułu przypomnimy e-mailem.</p>
+                <div class="irregular-post-rows">
+                  ${irregularPosts.map(renderIrregularPostRow).join('')}
+                  ${renderIrregularPostRow()}
+                </div>
+              </div>
+            ` : slots.length ? `
+              <div class="post-schedule" id="postSchedule" data-tab-id="${escapeHtml(activeTab.id)}" data-year="${year}">
+                <p>Tytuł zapisuje się automatycznie po opuszczeniu pola. Puste pole oznacza brak publikacji.</p>
                 <div class="post-months">${renderPostMonths(slots, today)}</div>
-                <div class="posts-actions"><button class="primary-button" type="submit">Zapisz tytuły</button></div>
-              </form>
-            ` : `<p>${isIrregularPostTab(activeTab) ? 'Ta podzakładka nie ma stałych terminów.' : 'Brak terminów w tym roku.'}</p>`}
+              </div>
+            ` : '<p>Brak terminów w tym roku.</p>'}
             ${archive.length ? `
               <details>
                 <summary>Wpisy poza harmonogramem (${archive.length})</summary>
@@ -1605,49 +1639,177 @@ function renderPostsPage(firm) {
   `;
 }
 
-async function savePostSchedule(form, firm) {
-  const tab = firm?.postTabs.find((item) => item.id === form.dataset.tabId);
-  if (!tab) return;
-  const { year } = form.dataset;
-  const inputs = [...form.querySelectorAll('input')];
-  const editedTitles = new Map(inputs.filter((input) => input.value !== input.defaultValue)
-    .map((input) => [input.name, input.value.trim()]));
-  const now = new Date().toISOString();
-  const changes = postSlots(tab, firm.posts || [], `${year}-01-01`, `${year}-12-31`).flatMap((slot) => {
-    const title = editedTitles.get(slot.date);
-    if (title === undefined || title === slot.title) return [];
-    return [{
-      ...slot.post,
-      id: slot.post?.id || `slot-${tab.id}-${slot.date}`,
-      tabId: tab.id,
-      slotDate: slot.date,
-      publishDate: slot.post?.publishDate || slot.date,
-      status: 'published',
-      isCreated: false,
-      title,
-      createdAt: slot.post?.createdAt || now,
-      updatedAt: now,
-    }];
-  });
-  if (!changes.length) return;
+function refreshPostMonth(input) {
+  const month = input.closest('.post-month');
+  const months = month.parentElement;
+  const fields = [...month.querySelectorAll('input')];
+  const filled = fields.filter((field) => field.defaultValue).length;
+  const complete = filled === fields.length;
+  const overdue = !input.defaultValue && input.name < postTodayKey();
+  const slot = input.closest('.post-slot');
+  slot.classList.toggle('is-overdue', overdue);
+  slot.querySelector('span').textContent = `${formatDate(input.name)}${overdue ? ' · po terminie' : ''}`;
+  month.classList.toggle('is-complete', complete);
+  month.querySelector('[data-post-month-status]').textContent = complete ? 'Wykonany' : `${filled}/${fields.length}`;
 
-  const submit = form.querySelector('button[type="submit"]');
-  submit.disabled = true;
-  inputs.forEach((input) => { input.readOnly = true; });
-  try {
-    await tryPostCloudWrite(firm, () => savePostDocs(firm, changes), 'Zapis harmonogramu postów');
-    const changedIds = new Set(changes.map((post) => post.id));
-    firm.posts = [...(firm.posts || []).filter((post) => !changedIds.has(post.id)), ...changes];
-    firm.updatedAt = now;
-    persistAndFlush();
-    if (form.isConnected) render();
-  } catch (error) {
-    console.error(error);
-    alert('Nie udało się zapisać tytułów. Spróbuj ponownie.');
-  } finally {
-    submit.disabled = false;
-    inputs.forEach((input) => { input.readOnly = false; });
+  const ordered = [...months.children].sort((a, b) =>
+    Number(a.classList.contains('is-complete')) - Number(b.classList.contains('is-complete'))
+    || a.dataset.month.localeCompare(b.dataset.month));
+  const focusedMonth = document.activeElement?.closest('.post-month');
+  // Keep the focused field in the DOM while moving the surrounding months.
+  const anchor = ordered.indexOf(focusedMonth);
+  if (anchor === -1) {
+    months.append(...ordered);
+  } else {
+    for (const item of ordered.slice(0, anchor)) months.insertBefore(item, focusedMonth);
+    for (const item of ordered.slice(anchor + 1).reverse()) months.insertBefore(item, focusedMonth.nextSibling);
   }
+}
+
+async function savePostTitle(firmId, tabId, date, title) {
+  const firm = state.firms.find((item) => item.id === firmId);
+  const tab = firm?.postTabs.find((item) => item.id === tabId);
+  if (!tab) return;
+  const slot = postSlots(tab, firm.posts || [], date, date)[0];
+  if (!slot || title === slot.title) return;
+  const now = new Date().toISOString();
+  const post = {
+    ...slot.post,
+    id: slot.post?.id || `slot-${tabId}-${date}`,
+    tabId,
+    slotDate: date,
+    publishDate: slot.post?.publishDate || date,
+    publicationYear: '',
+    status: 'published',
+    isCreated: false,
+    title,
+    createdAt: slot.post?.createdAt || now,
+    updatedAt: now,
+  };
+
+  await persistPostEdit(firm, post);
+}
+
+async function persistPostEdit(firm, post) {
+  await tryPostCloudWrite(firm, () => savePostDoc(firm, post), 'Zapis publikacji');
+  const currentFirm = state.firms.find((item) => item.id === firm.id);
+  if (!currentFirm?.postTabs.some((item) => item.id === post.tabId)) return;
+  currentFirm.posts = [...(currentFirm.posts || []).filter((item) => item.id !== post.id), post];
+  currentFirm.updatedAt = post.updatedAt;
+  if (firm.postStorageFallback) currentFirm.postStorageFallback = true;
+  persist();
+}
+
+function enqueuePostWrite(firmId, write) {
+  const save = (postTitleSaves.get(firmId) || Promise.resolve()).then(write);
+  postTitleSaves.set(firmId, save);
+  void save.finally(() => {
+    if (postTitleSaves.get(firmId) === save) postTitleSaves.delete(firmId);
+  });
+}
+
+function queueIrregularPostSave(row, firmId) {
+  const titleField = row.querySelector('[name="title"]');
+  const dateField = row.querySelector('[name="publishDate"]');
+  const title = titleField.value.trim();
+  const publishDate = dateField.value;
+  const error = row.querySelector('.post-slot-error');
+  if (!dateField.validity.valid) {
+    error.textContent = 'Podaj prawidłową datę publikacji.';
+    return;
+  }
+  error.textContent = '';
+  if (!title && !publishDate && row.hasAttribute('data-draft')) return;
+  const { tabId, year } = row.closest('#irregularPosts').dataset;
+  const { id } = row.dataset;
+  const previous = requestedPostTitles.get(row);
+  if (title === (previous?.title ?? titleField.defaultValue) &&
+      publishDate === (previous?.publishDate ?? dateField.defaultValue)) return;
+  const request = { title, publishDate };
+  requestedPostTitles.set(row, request);
+  if (row.hasAttribute('data-draft')) {
+    row.removeAttribute('data-draft');
+    row.parentElement.insertAdjacentHTML('beforeend', renderIrregularPostRow());
+  }
+
+  enqueuePostWrite(firmId, async () => {
+    try {
+      const firm = state.firms.find((item) => item.id === firmId);
+      if (!firm?.postTabs.some((tab) => tab.id === tabId && isIrregularPostTab(tab))) return;
+      const existing = firm.posts.find((post) => post.id === id);
+      const now = new Date().toISOString();
+      await persistPostEdit(firm, {
+        ...existing,
+        id,
+        tabId,
+        title,
+        publishDate,
+        publicationYear: publishDate ? '' : year,
+        status: title ? 'published' : 'scheduled',
+        isCreated: false,
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
+      });
+      refreshPostAlerts(firmId);
+      titleField.defaultValue = title;
+      dateField.defaultValue = publishDate;
+      if (requestedPostTitles.get(row) === request && !row.contains(document.activeElement) &&
+          ((!title && !publishDate) || (publishDate && publishDate.slice(0, 4) !== year))) row.remove();
+    } catch (err) {
+      console.error(err);
+      error.textContent = 'Zapis się nie udał. Wejdź w pole i opuść je, aby ponowić próbę.';
+    } finally {
+      if (requestedPostTitles.get(row) === request) requestedPostTitles.delete(row);
+    }
+  });
+}
+
+function refreshPostAlerts(firmId) {
+  const currentFirm = getSelectedFirm(state);
+  if (currentFirm?.id !== firmId) return;
+  const topbarButton = document.querySelector('[data-action="switch-firm-tab"][data-tab="posts"]');
+  applyPostAlertState(topbarButton, currentFirm);
+  const overdueIds = new Set(overduePostTabs(currentFirm).map((tab) => tab.id));
+  for (const button of document.querySelectorAll('[data-action="select-post-tab"]')) {
+    button.closest('.post-tab-card').classList.toggle('is-overdue', overdueIds.has(button.dataset.id));
+  }
+  return true;
+}
+
+function queuePostTitleSave(input, schedule, firm) {
+  const title = input.value.trim();
+  const date = input.name;
+  const { tabId, year } = schedule.dataset;
+  if (title === (requestedPostTitles.get(input)?.title ?? input.defaultValue)) return;
+  const request = { title };
+  requestedPostTitles.set(input, request);
+  const error = input.closest('.post-slot').querySelector('.post-slot-error');
+  input.setAttribute('aria-busy', 'true');
+
+  enqueuePostWrite(firm.id, async () => {
+    try {
+      await savePostTitle(firm.id, tabId, date, title);
+      if (!refreshPostAlerts(firm.id)) return;
+      const currentSchedule = document.getElementById('postSchedule');
+      if (currentSchedule?.dataset.tabId !== tabId || currentSchedule.dataset.year !== year) return;
+      const field = currentSchedule.querySelector(`input[name="${date}"]`);
+      if (!field) return;
+      if (field.value === field.defaultValue || field.value.trim() === title) field.value = title;
+      field.defaultValue = title;
+      field.removeAttribute('aria-invalid');
+      field.closest('.post-slot').querySelector('.post-slot-error').textContent = '';
+      refreshPostMonth(field);
+    } catch (err) {
+      console.error(err);
+      error.textContent = 'Zapis się nie udał. Wejdź w pole i opuść je, aby ponowić próbę.';
+      input.setAttribute('aria-invalid', 'true');
+    } finally {
+      if (requestedPostTitles.get(input) === request) {
+        requestedPostTitles.delete(input);
+        input.removeAttribute('aria-busy');
+      }
+    }
+  });
 }
 
 // --- Modals ---
@@ -1827,6 +1989,7 @@ function postExportRows(firm) {
         status: '',
         utworzone: '',
         data: '',
+        rok: '',
         termin: '',
         tytul: '',
         id: '',
@@ -1848,6 +2011,7 @@ function postExportRows(firm) {
         status: post.status,
         utworzone: post.status !== 'published' && post.isCreated ? 'tak' : '',
         data: post.publishDate,
+        rok: post.publicationYear || '',
         termin: post.slotDate || '',
         tytul: post.title,
         id: post.id || '',
@@ -1880,7 +2044,7 @@ function csvEscape(value) {
 function exportPostsCsv() {
   const firm = getSelectedFirm(state);
   if (!firm) return;
-  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'rok', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const csv = '\ufeff' + [
     headers.join(','),
@@ -1890,8 +2054,8 @@ function exportPostsCsv() {
 }
 
 function exportPostsExcelFallback(firm) {
-  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Podzakladka_id', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Utworzone', 'Data', 'Termin', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
-  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Podzakladka_id', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Utworzone', 'Data', 'Rok', 'Termin', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
+  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'rok', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const html = `
     <html><head><meta charset="utf-8"></head><body>
@@ -2129,6 +2293,7 @@ function postImportChanges(before, after) {
     ['status', 'status', before.status, after.status],
     ['isCreated', 'utworzone', before.isCreated ? 'tak' : 'nie', after.isCreated ? 'tak' : 'nie'],
     ['publishDate', 'data', before.publishDate, after.publishDate],
+    ['publicationYear', 'rok wpisu bez daty', before.publicationYear, after.publicationYear],
     ['slotDate', 'termin', before.slotDate, after.slotDate],
     ['title', 'tytuł', before.title, after.title],
     ['link', 'link', before.link, after.link],
@@ -2274,15 +2439,19 @@ async function importPostRows(importRows) {
     if (importedLink && !safePostLink(importedLink)) continue;
     const importedContent = String(importTextValue(row, ['tresc', 'treść']) || '').trim();
     const importedDate = String(importRowValue(row, ['data', 'date']) || '').slice(0, 10);
+    const importedYear = String(importRowValue(row, ['rok'])).trim();
+    if (importedYear && !/^[1-9]\d{3}$/.test(importedYear)) throw new Error('Nieprawidłowy rok w pliku importu.');
     const importedKeywords = splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords']));
-    if (!slotDate && !rowPostId && !importedTitle && !importedContent && !importedLink) continue;
+    const rowStatus = String(importRowValue(row, ['status'])).toLowerCase();
+    const dateOnly = isIrregularPostTab(tab) && isPostDate(importedDate) && !importedTitle
+      && (!rowStatus || rowStatus === 'scheduled' || rowStatus === 'zaplanowane');
+    if (!dateOnly && !slotDate && !rowPostId && !importedTitle && !importedContent && !importedLink) continue;
     const existingPost = slotDate
       ? (draft.posts || []).find((post) => post.tabId === tab.id && post.slotDate === slotDate)
         || (draft.posts || []).find((post) => rowPostId && post.id === rowPostId)
       : findImportedPostMatches(draft, tab.id, rowPostId, importedDate || postTodayKey(), importedContent, importedKeywords)[0];
-    if (!slotDate && !existingPost && !importedTitle && !importedContent && !importedLink) continue;
-    const rowStatus = String(importRowValue(row, ['status'])).toLowerCase();
-    const status = slotDate || rowStatus === 'published' || rowStatus === 'opublikowane'
+    if (!dateOnly && !slotDate && !existingPost && !importedTitle && !importedContent && !importedLink) continue;
+    const status = dateOnly ? 'scheduled' : slotDate || rowStatus === 'published' || rowStatus === 'opublikowane'
       ? 'published'
       : rowStatus === 'scheduled' || rowStatus === 'zaplanowane'
         ? 'scheduled'
@@ -2296,8 +2465,9 @@ async function importPostRows(importRows) {
       status,
       isCreated,
       slotDate: slotDate || existingPost?.slotDate || '',
-      publishDate: importedDate || existingPost?.publishDate || slotDate || postTodayKey(),
-      title: slotDate ? importedTitle : importedTitle || existingPost?.title || '',
+      publicationYear: importedDate ? '' : importedYear || existingPost?.publicationYear || '',
+      publishDate: importedDate || (importedYear ? '' : existingPost?.publishDate ?? (slotDate || postTodayKey())),
+      title: dateOnly || slotDate || importedYear ? importedTitle : importedTitle || existingPost?.title || '',
       link: importedLink || existingPost?.link || '',
       content: importedContent || existingPost?.content || '',
       keywords: importedKeywords.length ? importedKeywords : (existingPost?.keywords || []),
@@ -2363,6 +2533,7 @@ async function importPostsFile() {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     try {
+      await postTitleSaves.get(getSelectedFirm(state)?.id);
       if (ext === 'csv') {
         await importPostRows(rowsToPostImport(parseCsv(await file.text())));
         return;
@@ -3453,10 +3624,10 @@ async function handleClick(event) {
     persistAndFlush();
     return render();
   }
-  if (action === 'export-posts-csv') return exportPostsCsv();
-  if (action === 'export-posts-excel') {
-    void exportPostsExcel();
-    return;
+  if (action === 'export-posts-csv' || action === 'export-posts-excel') {
+    await postTitleSaves.get(firm?.id);
+    if (firm?.id !== getSelectedFirm(state)?.id) return;
+    return action === 'export-posts-csv' ? exportPostsCsv() : exportPostsExcel();
   }
   if (action === 'import-posts') {
     void importPostsFile();
@@ -3504,6 +3675,12 @@ document.body.addEventListener('click', function(event) {
 });
 
 document.body.addEventListener('change', (event) => {
+  const dateField = event.target.closest('#irregularPosts input[type="date"]');
+  if (dateField) {
+    const firm = getSelectedFirm(state);
+    if (firm) queueIrregularPostSave(dateField.closest('.irregular-post-row'), firm.id);
+    return;
+  }
   const firmTarget = event.target.closest('[data-action="select-firm-dropdown"]');
   if (firmTarget) {
     if (!state.firms.some((item) => item.id === firmTarget.value)) return;
@@ -3526,13 +3703,19 @@ document.body.addEventListener('change', (event) => {
   render();
 });
 
-document.body.addEventListener('submit', (event) => {
-  const target = event.target.closest('#postScheduleForm');
-  if (!target) return;
+document.body.addEventListener('focusout', (event) => {
+  const input = event.target.closest('#postSchedule input, #irregularPosts input');
+  const firm = getSelectedFirm(state);
+  if (!input || !firm) return;
+  const row = input.closest('.irregular-post-row');
+  if (row) queueIrregularPostSave(row, firm.id);
+  else queuePostTitleSave(input, input.closest('#postSchedule'), firm);
+});
+
+document.body.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.isComposing || !event.target.matches('#postSchedule input, #irregularPosts input[type="text"]')) return;
   event.preventDefault();
-  if (!target.querySelector('button[type="submit"]').disabled) {
-    void savePostSchedule(target, getSelectedFirm(state));
-  }
+  event.target.blur();
 });
 
 // Sprawdz czy zalogowany

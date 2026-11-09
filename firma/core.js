@@ -20,10 +20,10 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=35';
+} from './storage.js?v=36';
 import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
-import { overduePostTabs as findOverduePostTabs } from './post-schedule.mjs?v=2';
-import { loadFirmPostCollections } from './post-storage.js?v=12';
+import { overduePostTabs as findOverduePostTabs } from './post-schedule.mjs?v=3';
+import { loadFirmPostCollections } from './post-storage.js?v=13';
 
 // --- Icons ---
 export function icon(name) {
@@ -197,7 +197,7 @@ function postAlertTitle(overdueTabs) {
   return `Po terminie: ${overdueTabs.map((tab) => tab.name || 'Podzakładka bez nazwy').join(', ')}`;
 }
 
-function applyPostAlertState(button, firm) {
+export function applyPostAlertState(button, firm) {
   if (!button) return;
   const overdueTabs = findOverduePostTabs(firm);
   const title = postAlertTitle(overdueTabs);

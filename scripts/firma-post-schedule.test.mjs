@@ -57,3 +57,23 @@ test('Monday summary gives the next empty slot for every firm, and excludes over
   assert.equal(scan('2026-11-30').allClear, null);
   assert.equal(scan('2026-11-30').reminders[0].days, -7);
 });
+
+test('dated irregular entries with no title use the same reminder windows', () => {
+  const tab = { ...monthly, frequency: 'irregular', startDate: '2026-12-01' };
+  const dateOnly = (id) => publication(id, '2026-11-23', '', { status: 'scheduled' });
+  const client = firm(tab, [dateOnly('one'), dateOnly('two'), publication('filled', '2026-11-23', 'Gotowe')]);
+  const scan = (today) => getPostReminderDigest([client], today);
+  assert.equal(scan('2026-11-02').allClear.statuses[0].next.date, '2026-11-23');
+  const first = scan('2026-11-09');
+  assert.equal(first.allClear, null);
+  assert.deepEqual(first.reminders.map(({ days }) => days), [14, 14]);
+  assert.notEqual(first.reminders[0].reminderKey, first.reminders[1].reminderKey);
+  client.postReminderKeys = first.reminders.map(({ reminderKey }) => reminderKey);
+  assert.equal(scan('2026-11-10').reminders.length, 0);
+  assert.deepEqual(scan('2026-11-16').reminders.map(({ days }) => days), [7, 7]);
+  assert.equal(overduePostTabs(client, '2026-11-24').length, 1);
+  client.posts[0].title = 'Uzupełniono';
+  client.posts[1].publishDate = '';
+  assert.equal(scan('2026-11-16').reminders.length, 0);
+  assert.equal(overduePostTabs(client, '2026-11-24').length, 0);
+});
