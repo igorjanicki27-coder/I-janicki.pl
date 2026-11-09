@@ -17,3 +17,13 @@ export function markPostTabDeleted(firm, tabId) {
   firm.deletedPostTabs = { ...mergeDeletedPostTabs(firm), [tabId]: true };
   Object.assign(firm, filterDeletedPostCollections(firm));
 }
+
+export function mergePostRecords(...lists) {
+  const records = new Map();
+  for (const list of lists) {
+    for (const item of Array.isArray(list) ? list : []) {
+      if (item?.id && !records.has(item.id)) records.set(item.id, item);
+    }
+  }
+  return [...records.values()];
+}

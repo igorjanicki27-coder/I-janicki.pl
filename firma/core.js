@@ -20,10 +20,10 @@ import {
   onSyncChange,
   setSyncFirm,
   flushSync,
-} from './storage.js?v=34';
+} from './storage.js?v=35';
 import { getCompensationReminderStatus } from './compensation-reminders.mjs?v=2';
-import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
-import { loadFirmPostCollections } from './post-storage.js?v=11';
+import { overduePostTabs as findOverduePostTabs } from './post-schedule.mjs?v=2';
+import { loadFirmPostCollections } from './post-storage.js?v=12';
 
 // --- Icons ---
 export function icon(name) {
@@ -192,70 +192,6 @@ function countUnpaidInvoices(firm) {
   return (firm.invoices || []).filter((invoice) => invoice.status !== 'cancelled' && !invoice.paidBy).length;
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function parseDateKey(value) {
-  if (!value) return null;
-  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function dateKey(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addDaysKey(value, days) {
-  const date = parseDateKey(value);
-  if (!date) return value;
-  date.setDate(date.getDate() + Number(days || 0));
-  return dateKey(date);
-}
-
-function addMonthsKey(value, months) {
-  const date = parseDateKey(value);
-  if (!date) return value;
-  const day = date.getDate();
-  date.setMonth(date.getMonth() + Number(months || 0));
-  if (date.getDate() !== day) {
-    date.setDate(0);
-  }
-  return dateKey(date);
-}
-
-function addPostFrequencyKey(value, frequency) {
-  const normalizedFrequency = normalizePostFrequency(frequency);
-  if (normalizedFrequency === 'weekly') return addDaysKey(value, 7);
-  if (normalizedFrequency === 'biweekly') return addDaysKey(value, 14);
-  return addMonthsKey(value, 1);
-}
-
-function latestPublishedPost(firm, tabId) {
-  return (firm.posts || [])
-    .filter((post) => post.tabId === tabId && post.status === 'published')
-    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
-}
-
-function isPostTabOverdue(firm, tab) {
-  if (!tab || isIrregularPostFrequency(tab.frequency)) return false;
-  const today = todayKey();
-  const lastPost = latestPublishedPost(firm, tab.id);
-  let dueDate = tab.startDate || today;
-
-  if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
-    while (dueDate <= lastPost.publishDate) {
-      dueDate = addPostFrequencyKey(dueDate, tab.frequency);
-    }
-  }
-
-  return today >= dueDate;
-}
-
-function getOverduePostTabs(firm) {
-  return (firm.postTabs || []).filter((tab) => isPostTabOverdue(firm, tab));
-}
-
 function postAlertTitle(overdueTabs) {
   if (!overdueTabs.length) return 'Posty';
   return `Po terminie: ${overdueTabs.map((tab) => tab.name || 'Podzakładka bez nazwy').join(', ')}`;
@@ -263,7 +199,7 @@ function postAlertTitle(overdueTabs) {
 
 function applyPostAlertState(button, firm) {
   if (!button) return;
-  const overdueTabs = getOverduePostTabs(firm);
+  const overdueTabs = findOverduePostTabs(firm);
   const title = postAlertTitle(overdueTabs);
   const badge = button.querySelector('.tab-alert-count');
   button.classList.toggle('has-alert', overdueTabs.length > 0);
@@ -283,10 +219,11 @@ function refreshPostAlertFromFirestore(state, firmId) {
   const firm = state.firms.find((item) => item.id === firmId);
   if (!firm) return;
 
+  const { postTabs, posts: previousPosts } = firm;
   const refresh = loadFirmPostCollections(firm)
     .then(({ tabs, posts, deletedPostTabs, fallback }) => {
       const currentFirm = state.firms.find((item) => item.id === firmId);
-      if (!currentFirm) return;
+      if (!currentFirm || currentFirm.postTabs !== postTabs || currentFirm.posts !== previousPosts) return;
       currentFirm.postTabs = tabs;
       currentFirm.posts = posts;
       currentFirm.deletedPostTabs = deletedPostTabs;
@@ -296,7 +233,7 @@ function refreshPostAlertFromFirestore(state, firmId) {
       persistState(state);
 
       if (state.ui.selectedFirmId !== firmId) return;
-      if (document.querySelector('[data-post-overdue-count]')) return;
+      if (state.ui.activeTab === 'posts') return;
       applyPostAlertState(
         document.querySelector('[data-action="switch-firm-tab"][data-tab="posts"]'),
         currentFirm,
@@ -529,21 +466,7 @@ export function updateTopbar(state, activeTab) {
   const financeValue = activeTab === 'invoices' || activeTab === 'balance' || activeTab === 'compensation'
     ? activeTab
     : '';
-  let overduePostTabs = getOverduePostTabs(firm);
-  const postsPageAlert = activeTab === 'posts'
-    ? document.querySelector('[data-post-overdue-count]')
-    : null;
-  if (postsPageAlert) {
-    try {
-      const names = JSON.parse(postsPageAlert.dataset.postOverdueNames || '[]');
-      overduePostTabs = names.map((name) => ({ name }));
-    } catch (_) {
-      overduePostTabs = Array.from(
-        { length: Number(postsPageAlert.dataset.postOverdueCount || 0) },
-        () => ({ name: 'Podzakładka po terminie' }),
-      );
-    }
-  }
+  const overduePostTabs = findOverduePostTabs(firm);
   const postAlertText = postAlertTitle(overduePostTabs);
   const hasCompensationAlert = getCompensationReminderStatus(firm).hasAlert;
   const firmOptions = state.firms.map((item) => `

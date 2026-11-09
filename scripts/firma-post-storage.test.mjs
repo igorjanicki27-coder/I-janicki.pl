@@ -175,3 +175,25 @@ test('reminder data filtering preserves unrelated tabs and posts', () => {
   assert.deepEqual(filtered.postTabs.map((tab) => tab.id), ['custom']);
   assert.deepEqual(filtered.posts.map((post) => post.id), ['retained-post']);
 });
+
+test('the explicit slot survives a cloud reload even after its title is cleared', async () => {
+  const f = await fixture();
+  const current = firm();
+  const post = {
+    id: 'slot-custom-2026-11-09',
+    tabId: 'custom',
+    status: 'published',
+    publishDate: '2026-11-09',
+    slotDate: '2026-11-09',
+    title: 'Artykuł',
+  };
+  await f.posts.savePosts(current, [post]);
+  await f.posts.savePosts(current, [{ ...post, title: '' }]);
+  current.posts = [post];
+  const loaded = await f.posts.loadFirmPostCollections(current);
+  const stored = loaded.posts.find(({ id }) => id === post.id);
+  assert.equal(stored.slotDate, post.slotDate);
+  assert.equal(stored.title, '');
+  f.storage.saveState({ firms: [{ ...current, posts: loaded.posts }] });
+  assert.equal(f.storage.loadState().firms[0].posts[0].slotDate, post.slotDate);
+});

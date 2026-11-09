@@ -4646,3 +4646,58 @@ body {
     flex-direction: column;
   }
 }
+
+.post-schedule-form,
+.post-months {
+  display: grid;
+  gap: 12px;
+}
+
+.post-months {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  align-items: start;
+}
+
+.post-month {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.post-month.is-complete {
+  border-color: #439567;
+  background: rgba(41, 160, 91, 0.13);
+}
+
+.post-month h4 {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.post-month h4 span,
+.post-slot span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.post-slot {
+  display: grid;
+  gap: 4px;
+}
+
+.post-slot input {
+  width: 100%;
+}
+
+.post-slot.is-overdue span {
+  color: var(--danger);
+}
+
+.posts-header .post-tab-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}

@@ -17,7 +17,6 @@ import {
   roundCurrency,
   uid,
   VAT_OPTIONS,
-  addDays,
 } from './logic.js?v=22';
 import {
   deleteAttachment,
@@ -25,7 +24,7 @@ import {
   loadState,
   syncFromCloud,
   flushSync,
-} from './storage.js?v=34';
+} from './storage.js?v=35';
 import {
   deletePost as deletePostDoc,
   deletePostTab as deletePostTabDoc,
@@ -33,8 +32,8 @@ import {
   savePost as savePostDoc,
   savePosts as savePostDocs,
   savePostTab as savePostTabDoc,
-  savePostTabs as savePostTabDocs,
-} from './post-storage.js?v=11';
+  savePostCollections,
+} from './post-storage.js?v=12';
 import {
   icon,
   escapeHtml,
@@ -61,7 +60,7 @@ import {
   restoreContext,
   initSyncIndicator,
   appendFirmHistory,
-} from './core.js?v=41';
+} from './core.js?v=43';
 import {
   COMPENSATION_FREQUENCY_OPTIONS,
   compensationFrequencyLabel,
@@ -70,6 +69,7 @@ import {
 } from './compensation-reminders.mjs?v=2';
 import { openInvoicePreview } from './invoice.js?v=26';
 import { isIrregularPostFrequency, normalizePostFrequency } from './post-frequency.mjs?v=1';
+import { isPostDate, overduePostTabs, postSlots, postTodayKey } from './post-schedule.mjs?v=2';
 import { markPostTabDeleted } from './post-state.mjs?v=1';
 
 // --- State ---
@@ -89,7 +89,7 @@ if (!state.ui.selectedFirmId) {
 const root = document.getElementById('app');
 const modalRoot = document.getElementById('modalRoot');
 setModalRoot(modalRoot);
-let postSearchTimer = null;
+let postYear = null;
 const postCollectionStatus = new Map();
 
 function shouldRestoreOverviewContext() {
@@ -250,7 +250,7 @@ function ensureFirmPostCollectionsLoaded(firm) {
 const POST_FREQUENCY_OPTIONS = [
   { value: 'weekly', label: 'Raz w tygodniu' },
   { value: 'biweekly', label: 'Raz na 2 tygodnie' },
-  { value: 'monthly', label: 'Raz w miesiacu' },
+  { value: 'monthly', label: 'Raz w miesiącu' },
   { value: 'irregular', label: 'Nieregularnie' },
 ];
 
@@ -265,37 +265,9 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function parseDateKey(value) {
-  if (!value) return null;
-  const date = new Date(String(value) + 'T00:00:00');
-  return isNaN(date.getTime()) ? null : date;
-}
-
-function dateKey(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addMonthsKey(value, months) {
-  const date = parseDateKey(value);
-  if (!date) return value;
-  const day = date.getDate();
-  date.setMonth(date.getMonth() + months);
-  if (date.getDate() !== day) {
-    date.setDate(0);
-  }
-  return dateKey(date);
-}
-
-function addFrequencyKey(value, frequency) {
-  const normalizedFrequency = normalizePostFrequency(frequency);
-  if (normalizedFrequency === 'weekly') return addDays(value, 7);
-  if (normalizedFrequency === 'biweekly') return addDays(value, 14);
-  return addMonthsKey(value, 1);
-}
-
 function postFrequencyLabel(value) {
   const frequency = normalizePostFrequency(value);
-  return POST_FREQUENCY_OPTIONS.find((item) => item.value === frequency)?.label || 'Raz w miesiacu';
+  return POST_FREQUENCY_OPTIONS.find((item) => item.value === frequency)?.label || 'Raz w miesiącu';
 }
 
 function isIrregularPostTab(tab) {
@@ -323,48 +295,6 @@ function postsForTab(firm, tabId) {
       if (statusDiff !== 0) return statusDiff;
       return String(b.publishDate || '').localeCompare(String(a.publishDate || ''));
     });
-}
-
-function latestPublishedPost(firm, tabId) {
-  return postsForTab(firm, tabId)
-    .filter((post) => post.status === 'published')
-    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
-}
-
-function daysBetween(fromKey, toKey) {
-  const from = parseDateKey(fromKey);
-  const to = parseDateKey(toKey);
-  if (!from || !to) return null;
-  return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86400000));
-}
-
-function getPostTabStatus(firm, tab) {
-  const startDate = tab.startDate || todayKey();
-  const lastPost = latestPublishedPost(firm, tab.id);
-  const today = todayKey();
-  if (isIrregularPostTab(tab)) {
-    return {
-      dueDate: null,
-      isOverdue: false,
-      lastPost,
-      daysSinceLast: lastPost ? daysBetween(lastPost.publishDate, today) : null,
-      isSkipped: true,
-    };
-  }
-  let dueDate = startDate;
-
-  if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
-    while (dueDate <= lastPost.publishDate) {
-      dueDate = addFrequencyKey(dueDate, tab.frequency);
-    }
-  }
-
-  return {
-    dueDate,
-    isOverdue: today >= dueDate,
-    lastPost,
-    daysSinceLast: lastPost ? daysBetween(lastPost.publishDate, today) : null,
-  };
 }
 
 function splitKeywords(value) {
@@ -1531,89 +1461,21 @@ function renderFirmDetail() {
   `;
 }
 
-function renderPostTabButton(firm, tab) {
-  const tabStatus = getPostTabStatus(firm, tab);
-  const lastLabel = tabStatus.lastPost
-    ? `Ostatnia publikacja ${tabStatus.daysSinceLast === 0 ? 'dzisiaj' : `${tabStatus.daysSinceLast} dni temu`}`
-    : 'Brak opublikowanych materialow';
-  const frequencyMeta = isIrregularPostTab(tab)
-    ? postFrequencyLabel(tab.frequency)
-    : `${postFrequencyLabel(tab.frequency)} od ${formatDate(tab.startDate)}`;
-  const dueLabel = tabStatus.isSkipped ? 'Bez terminu' : `Termin: ${formatDate(tabStatus.dueDate)}`;
+function renderPostTabButton(tab, isOverdue) {
+  const frequency = postFrequencyLabel(tab.frequency);
+  const meta = isIrregularPostTab(tab) ? frequency : `${frequency} od ${formatDate(tab.startDate)}`;
   return `
-    <article class="post-tab-card ${state.ui.activePostTabId === tab.id ? 'is-active' : ''} ${tabStatus.isOverdue ? 'is-overdue' : ''}">
-      <button class="post-tab-main" type="button" data-action="select-post-tab" data-id="${tab.id}">
+    <article class="post-tab-card ${state.ui.activePostTabId === tab.id ? 'is-active' : ''} ${isOverdue ? 'is-overdue' : ''}">
+      <button class="post-tab-main" type="button" data-action="select-post-tab" data-id="${escapeHtml(tab.id)}" aria-pressed="${state.ui.activePostTabId === tab.id}">
         <span class="post-tab-title">${escapeHtml(tab.name)}</span>
-        <span class="post-tab-meta">${frequencyMeta}</span>
-        <span class="post-tab-note">${escapeHtml(lastLabel)}</span>
+        <span class="post-tab-meta">${escapeHtml(meta)}</span>
       </button>
-      <div class="post-tab-actions">
-        <span class="post-due-pill ${tabStatus.isOverdue ? 'is-overdue' : ''}">${dueLabel}</span>
-        <span class="post-tab-icon-actions">
-          <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${tab.id}" aria-label="Edytuj podzakładkę">${icon('edit')}</button>
-          <button class="icon-button tone-danger" type="button" data-action="delete-post-tab" data-id="${tab.id}" aria-label="Usuń podzakładkę">${icon('trash')}</button>
-        </span>
-      </div>
+      <button class="icon-button" type="button" data-action="edit-post-tab" data-id="${escapeHtml(tab.id)}" aria-label="Ustawienia podzakładki ${escapeHtml(tab.name)}">${icon('edit')}</button>
     </article>
   `;
 }
 
-function postMatchesSearch(post, query) {
-  if (!query) return true;
-  const haystack = `${post.title || ''} ${post.link || ''} ${post.content || ''} ${postKeywordText(post)}`.toLowerCase();
-  return haystack.includes(query.toLowerCase());
-}
-
-function postMatchesStatusFilter(post, filter) {
-  if (!filter || filter === 'all') return true;
-  return post.status === filter;
-}
-
-function sortPostsByPublishDate(posts, direction = 'nearest') {
-  const multiplier = direction === 'farthest' ? -1 : 1;
-  return [...posts].sort((a, b) => {
-    const aDate = String(a.publishDate || '');
-    const bDate = String(b.publishDate || '');
-    const dateCompare = aDate.localeCompare(bDate) * multiplier;
-    if (dateCompare) return dateCompare;
-    return String(a.title || '').localeCompare(String(b.title || ''), 'pl');
-  });
-}
-
-function renderPostStatusFilter(activeFilter) {
-  const filters = [
-    { value: 'all', label: 'Wszystkie' },
-    { value: 'scheduled', label: 'Zaplanowane' },
-    { value: 'published', label: 'Opublikowane' },
-  ];
-  return `
-    <div class="post-status-filter" role="group" aria-label="Filtr statusu wpisów">
-      ${filters.map((filter) => `
-        <button class="post-status-filter-button ${activeFilter === filter.value ? 'is-active' : ''}" type="button" data-action="set-post-status-filter" data-filter="${filter.value}">
-          ${escapeHtml(filter.label)}
-        </button>
-      `).join('')}
-    </div>
-  `;
-}
-
-function renderPostSortControl(activeSort) {
-  const options = [
-    { value: 'nearest', label: 'Najbliższe' },
-    { value: 'farthest', label: 'Najdalsze' },
-  ];
-  return `
-    <div class="post-sort-filter" role="group" aria-label="Sortowanie wpisów">
-      ${options.map((option) => `
-        <button class="post-status-filter-button ${activeSort === option.value ? 'is-active' : ''}" type="button" data-action="set-post-sort" data-sort="${option.value}">
-          ${escapeHtml(option.label)}
-        </button>
-      `).join('')}
-    </div>
-  `;
-}
-
-function renderPostCard(firm, post) {
+function renderPostCard(post) {
   const preview = String(post.content || '').trim();
   const shortPreview = preview.length > 80 ? `${preview.slice(0, 80)}...` : preview;
   const postLink = safePostLink(post.link);
@@ -1643,112 +1505,149 @@ function renderPostCard(firm, post) {
   `;
 }
 
+function renderPostMonths(slots, today) {
+  const months = new Map();
+  for (const slot of slots) {
+    const month = slot.date.slice(0, 7);
+    if (!months.has(month)) months.set(month, []);
+    months.get(month).push(slot);
+  }
+  const groups = [...months].map(([month, items]) => ({
+    month, items, filled: items.filter((slot) => slot.title).length,
+  }));
+  groups.sort((a, b) => Number(a.filled === a.items.length) - Number(b.filled === b.items.length));
+  return groups.map(({ month, items, filled }) => {
+    const complete = filled === items.length;
+    return `
+      <section class="post-month ${complete ? 'is-complete' : ''}">
+        <h4>${monthLabel(month)} <span>${complete ? 'Wykonany' : `${filled}/${items.length}`}</span></h4>
+        ${items.map(({ date, title }) => `
+          <label class="field post-slot ${!title && date < today ? 'is-overdue' : ''}">
+            <span>${formatDate(date)}${!title && date < today ? ' · po terminie' : ''}</span>
+            <input type="text" name="${date}" value="${escapeHtml(title)}" placeholder="Tytuł publikacji">
+          </label>
+        `).join('')}
+      </section>
+    `;
+  }).join('');
+}
+
 function renderPostsPage(firm) {
   if (!ensureFirmPostCollectionsLoaded(firm)) {
-    const status = postCollectionStatus.get(firm.id);
-    return `
-      <div class="firm-detail-page posts-page" data-post-overdue-count="0" data-post-overdue-names="[]">
-        <section class="section-band posts-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Posty</p>
-              <h3>${status === 'error' ? 'Nie udało się wczytać danych' : 'Ładowanie danych postów'}</h3>
-            </div>
-          </div>
-          <div class="empty-block">
-            <p>${status === 'error' ? 'Sprawdź połączenie z Firestore i uprawnienia.' : 'Pobieram podzakładki i wpisy z osobnych kolekcji Firestore.'}</p>
-          </div>
-        </section>
-      </div>
-    `;
+    return '<section class="section-band posts-panel"><p>Ładowanie danych postów…</p></section>';
   }
 
+  const today = postTodayKey();
   const activeTabId = ensurePostTabSelection(firm);
   const tabs = firm.postTabs || [];
-  const activeTab = tabs.find((tab) => tab.id === activeTabId) || null;
-  const query = state.ui.postSearch || '';
-  const statusFilter = ['all', 'scheduled', 'published'].includes(state.ui.postStatusFilter) ? state.ui.postStatusFilter : 'all';
-  const postSort = ['nearest', 'farthest'].includes(state.ui.postSort) ? state.ui.postSort : 'nearest';
-  const posts = activeTab
-    ? sortPostsByPublishDate(
-      postsForTab(firm, activeTab.id)
-        .filter((post) => postMatchesStatusFilter(post, statusFilter))
-        .filter((post) => postMatchesSearch(post, query)),
-      postSort,
-    )
-    : [];
-  const overduePostTabs = tabs.filter((tab) => getPostTabStatus(firm, tab).isOverdue);
-  const overdueTabs = overduePostTabs.length;
-  const overdueNote = overdueTabs
-    ? `Po terminie: ${overduePostTabs.map((tab) => escapeHtml(tab.name || 'Bez nazwy')).join(', ')}`
-    : 'Brak zaległych podzakładek';
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const overdue = overduePostTabs(firm, today);
+  const currentYear = Number(today.slice(0, 4));
+  const year = postYear ?? currentYear;
+  const posts = activeTab ? postsForTab(firm, activeTab.id) : [];
+  const slots = activeTab ? postSlots(activeTab, posts, `${year}-01-01`, `${year}-12-31`) : [];
+  const assignedPosts = new Set(slots.map((slot) => slot.post));
+  const archive = posts.filter((post) =>
+    (post.slotDate || post.publishDate).startsWith(`${year}-`) && !assignedPosts.has(post));
 
   return `
-    <div class="firm-detail-page posts-page" data-post-overdue-count="${overdueTabs}" data-post-overdue-names="${escapeHtml(JSON.stringify(overduePostTabs.map((tab) => tab.name || 'Bez nazwy')))}">
-      <section class="main-area">
+    <div class="firm-detail-page posts-page">
+      <div class="main-area">
         ${firm.postStorageFallback ? `
           <section class="section-band posts-panel post-storage-warning">
             <strong>Posty działają w trybie lokalnym</strong>
-            <span>Firestore odmówił dostępu do subkolekcji postów. Widok korzysta z danych zapisanych w stanie klienta.</span>
+            <span>Dane w Firestore są niedostępne. Widok korzysta z danych zapisanych w stanie klienta.</span>
           </section>
         ` : ''}
         <section class="section-band posts-header">
-          <div class="panel-head space-between">
+          <div class="section-head">
             <div>
               <p class="eyebrow">Posty</p>
-              <h3>${escapeHtml(firmDisplayName(firm))}</h3>
+              <h3>Harmonogram publikacji</h3>
             </div>
             <div class="posts-actions">
-              <button class="ghost-button" type="button" data-action="import-posts">${icon('upload')}Import CSV/Excel</button>
+              <button class="ghost-button" type="button" data-action="import-posts">${icon('upload')}Import CSV / Excel</button>
               <button class="ghost-button" type="button" data-action="export-posts-csv">${icon('download')}CSV</button>
-              <button class="primary-button" type="button" data-action="export-posts-excel">${icon('download')}Excel</button>
+              <button class="ghost-button" type="button" data-action="export-posts-excel">${icon('download')}Excel</button>
+              <button class="primary-button" type="button" data-action="add-post-tab">${icon('plus')}Dodaj podzakładkę</button>
             </div>
           </div>
-          <div class="posts-summary-grid">
-            ${statCard('Podzakladki', String(tabs.length), 'default', 'Osobne dla tej firmy')}
-            ${statCard('Wpisy', String((firm.posts || []).length), 'cyan', 'Opublikowane i zaplanowane')}
-            ${statCard('Po terminie', String(overdueTabs), overdueTabs ? 'rose' : 'emerald', overdueNote)}
-          </div>
+          <div class="post-tabs-grid">${tabs.map((tab) => renderPostTabButton(tab, overdue.includes(tab))).join('')}</div>
         </section>
-
-        <section class="section-band posts-panel">
-          <div class="panel-head space-between">
-            <div>
-              <p class="eyebrow">Podzakladki</p>
-              <h3>Kalendarz publikacji</h3>
+        ${activeTab ? `
+          <section class="section-band posts-panel">
+            <div class="section-head">
+              <h3>${escapeHtml(activeTab.name)}</h3>
+              <div class="posts-actions" role="group" aria-label="Rok harmonogramu">
+                <button class="ghost-button" type="button" data-action="post-year" data-year="${year - 1}" aria-label="Poprzedni rok" ${year <= 1000 ? 'disabled' : ''}>‹</button>
+                <strong>${year}</strong>
+                <button class="ghost-button" type="button" data-action="post-year" data-year="${year + 1}" aria-label="Następny rok" ${year >= 9999 ? 'disabled' : ''}>›</button>
+                ${year !== currentYear ? `<button class="ghost-button" type="button" data-action="post-year" data-year="${currentYear}">Bieżący rok</button>` : ''}
+              </div>
             </div>
-            <button class="primary-button" type="button" data-action="add-post-tab">${icon('plus')}Dodaj podzakładkę</button>
-          </div>
-          ${tabs.length ? `<div class="post-tabs-grid">${tabs.map((tab) => renderPostTabButton(firm, tab)).join('')}</div>` : `
-            <div class="empty-block"><p>Brak podzakładek. Dodaj pierwszą kategorię publikacji.</p></div>
-          `}
-        </section>
-
-        <section class="section-band posts-panel">
-          <div class="panel-head space-between">
-            <div>
-              <p class="eyebrow">${activeTab ? escapeHtml(activeTab.name) : 'Wpisy'}</p>
-              <h3>Materiały publikacyjne</h3>
-            </div>
-            <div class="post-material-actions">
-              ${renderPostStatusFilter(statusFilter)}
-              ${renderPostSortControl(postSort)}
-              <button class="primary-button" type="button" data-action="add-post" ${activeTab ? '' : 'disabled'}>${icon('plus')}Dodaj wpis</button>
-            </div>
-          </div>
-          <div class="post-search-row">
-            <input class="post-search-input" type="search" data-action="filter-post-search" value="${escapeHtml(query)}" placeholder="Szukaj po tytule, treści lub słowach kluczowych..." />
-          </div>
-          ${activeTab ? `
-            ${posts.length ? `<div class="post-list">${posts.map((post) => renderPostCard(firm, post)).join('')}</div>` : `
-              <div class="empty-block"><p>Brak wpisów dla tej podzakładki lub filtra.</p></div>
-            `}
-          ` : `<div class="empty-block"><p>Dodaj podzakładkę, aby zapisywać publikacje.</p></div>`}
-        </section>
-      </section>
-      ${renderFabMenu(activeTab ? 'add-post' : 'add-post-tab')}
+            ${slots.length ? `
+              <form class="post-schedule-form" id="postScheduleForm" data-tab-id="${escapeHtml(activeTab.id)}" data-year="${year}">
+                <p>Po publikacji wpisz tytuł przy terminie i zapisz zmiany. Puste pole oznacza brak publikacji.</p>
+                <div class="post-months">${renderPostMonths(slots, today)}</div>
+                <div class="posts-actions"><button class="primary-button" type="submit">Zapisz tytuły</button></div>
+              </form>
+            ` : `<p>${isIrregularPostTab(activeTab) ? 'Ta podzakładka nie ma stałych terminów.' : 'Brak terminów w tym roku.'}</p>`}
+            ${archive.length ? `
+              <details>
+                <summary>Wpisy poza harmonogramem (${archive.length})</summary>
+                <div class="post-list">${archive.map((post) => renderPostCard(post)).join('')}</div>
+              </details>
+            ` : ''}
+          </section>
+        ` : '<p>Dodaj podzakładkę, aby ustawić harmonogram.</p>'}
+      </div>
     </div>
   `;
+}
+
+async function savePostSchedule(form, firm) {
+  const tab = firm?.postTabs.find((item) => item.id === form.dataset.tabId);
+  if (!tab) return;
+  const { year } = form.dataset;
+  const inputs = [...form.querySelectorAll('input')];
+  const editedTitles = new Map(inputs.filter((input) => input.value !== input.defaultValue)
+    .map((input) => [input.name, input.value.trim()]));
+  const now = new Date().toISOString();
+  const changes = postSlots(tab, firm.posts || [], `${year}-01-01`, `${year}-12-31`).flatMap((slot) => {
+    const title = editedTitles.get(slot.date);
+    if (title === undefined || title === slot.title) return [];
+    return [{
+      ...slot.post,
+      id: slot.post?.id || `slot-${tab.id}-${slot.date}`,
+      tabId: tab.id,
+      slotDate: slot.date,
+      publishDate: slot.post?.publishDate || slot.date,
+      status: 'published',
+      isCreated: false,
+      title,
+      createdAt: slot.post?.createdAt || now,
+      updatedAt: now,
+    }];
+  });
+  if (!changes.length) return;
+
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  inputs.forEach((input) => { input.readOnly = true; });
+  try {
+    await tryPostCloudWrite(firm, () => savePostDocs(firm, changes), 'Zapis harmonogramu postów');
+    const changedIds = new Set(changes.map((post) => post.id));
+    firm.posts = [...(firm.posts || []).filter((post) => !changedIds.has(post.id)), ...changes];
+    firm.updatedAt = now;
+    persistAndFlush();
+    if (form.isConnected) render();
+  } catch (error) {
+    console.error(error);
+    alert('Nie udało się zapisać tytułów. Spróbuj ponownie.');
+  } finally {
+    submit.disabled = false;
+    inputs.forEach((input) => { input.readOnly = false; });
+  }
 }
 
 // --- Modals ---
@@ -1768,8 +1667,8 @@ function openPostTabModal(existing = null) {
   openModal(existing ? 'Edytuj podzakladke' : 'Dodaj podzakladke', `
     <form id="postTabForm" class="form-grid">
       ${labeledInput({ name: 'name', label: 'Nazwa', value: existing?.name || '', placeholder: 'Np. Wpisy Google', required: true })}
-      ${labeledInput({ name: 'frequency', label: 'Czestotliwosc', type: 'select', value: normalizePostFrequency(existing?.frequency), options: POST_FREQUENCY_OPTIONS })}
-      ${labeledInput({ name: 'startDate', label: 'Data poczatkowa', type: 'date', value: existing?.startDate || todayKey(), required: true })}
+      ${labeledInput({ name: 'frequency', label: 'Częstotliwość', type: 'select', value: normalizePostFrequency(existing?.frequency), options: POST_FREQUENCY_OPTIONS })}
+      ${labeledInput({ name: 'startDate', label: 'Data pierwszego terminu', type: 'date', value: existing?.startDate || postTodayKey(), required: true })}
       <div class="modal-actions ${existing ? 'is-split' : ''}">
         ${existing ? '<button class="ghost-button tone-danger" type="button" id="deletePostTabButton">Usun z wpisami</button>' : '<span></span>'}
         <div class="modal-actions-group">
@@ -1800,10 +1699,14 @@ function openPostTabModal(existing = null) {
       id: existing?.id || uid(),
       name: String(data.get('name') || '').trim(),
       frequency: normalizePostFrequency(data.get('frequency')),
-      startDate: String(data.get('startDate') || todayKey()),
+      startDate: String(data.get('startDate') || postTodayKey()),
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
+    if (!tab.name || !isPostDate(tab.startDate)) {
+      alert('Podaj nazwę i prawidłową datę pierwszego terminu.');
+      return;
+    }
     await tryPostCloudWrite(firm, () => savePostTabDoc(firm, tab), 'Zapis podzakładki postów');
     firm.postTabs = existing
       ? (firm.postTabs || []).map((item) => item.id === tab.id ? tab : item)
@@ -1858,6 +1761,7 @@ function openPostModal(existing = null, template = null) {
       tabId: String(data.get('tabId') || activeTabId),
       status: String(data.get('status') || 'scheduled') === 'published' ? 'published' : 'scheduled',
       isCreated: String(data.get('status') || 'scheduled') === 'published' ? false : Boolean(existing?.isCreated),
+      slotDate: existing?.slotDate || '',
       publishDate: String(data.get('publishDate') || todayKey()),
       title: String(data.get('title') || '').trim(),
       link,
@@ -1916,12 +1820,14 @@ function postExportRows(firm) {
       rows.push({
         firma_id: firm.id || '',
         firma_nazwa: stripEmoji(firmDisplayName(firm)),
-        podzakladka: stripEmoji(tab.name),
+        podzakladka: tab.name,
+        podzakladka_id: tab.id,
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: '',
         utworzone: '',
         data: '',
+        termin: '',
         tytul: '',
         id: '',
         link: '',
@@ -1935,13 +1841,15 @@ function postExportRows(firm) {
       rows.push({
         firma_id: firm.id || '',
         firma_nazwa: stripEmoji(firmDisplayName(firm)),
-        podzakladka: stripEmoji(tab.name),
+        podzakladka: tab.name,
+        podzakladka_id: tab.id,
         czestotliwosc: tab.frequency,
         data_poczatkowa: tab.startDate,
         status: post.status,
         utworzone: post.status !== 'published' && post.isCreated ? 'tak' : '',
         data: post.publishDate,
-        tytul: stripEmoji(post.title),
+        termin: post.slotDate || '',
+        tytul: post.title,
         id: post.id || '',
         link: stripEmoji(post.link || ''),
         tresc: stripEmoji(post.content),
@@ -1972,7 +1880,7 @@ function csvEscape(value) {
 function exportPostsCsv() {
   const firm = getSelectedFirm(state);
   if (!firm) return;
-  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const csv = '\ufeff' + [
     headers.join(','),
@@ -1982,8 +1890,8 @@ function exportPostsCsv() {
 }
 
 function exportPostsExcelFallback(firm) {
-  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Utworzone', 'Data', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
-  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
+  const headers = ['Firma ID', 'Firma nazwa', 'Podzakladka', 'Podzakladka_id', 'Czestotliwosc', 'Data poczatkowa', 'Status', 'Utworzone', 'Data', 'Termin', 'Tytul', 'ID', 'Link', 'Tresc', 'Slowa kluczowe', 'Pominiete podobienstwa'];
+  const keys = ['firma_id', 'firma_nazwa', 'podzakladka', 'podzakladka_id', 'czestotliwosc', 'data_poczatkowa', 'status', 'utworzone', 'data', 'termin', 'tytul', 'id', 'link', 'tresc', 'slowa_kluczowe', 'pominiete_podobienstwa'];
   const rows = postExportRows(firm);
   const html = `
     <html><head><meta charset="utf-8"></head><body>
@@ -2217,9 +2125,11 @@ function importKeywordChangeDetail(oldKeywords, newKeywords) {
 function postImportChanges(before, after) {
   if (!before) return [];
   const checks = [
+    ['tabId', 'podzakładka', before.tabId, after.tabId],
     ['status', 'status', before.status, after.status],
     ['isCreated', 'utworzone', before.isCreated ? 'tak' : 'nie', after.isCreated ? 'tak' : 'nie'],
     ['publishDate', 'data', before.publishDate, after.publishDate],
+    ['slotDate', 'termin', before.slotDate, after.slotDate],
     ['title', 'tytuł', before.title, after.title],
     ['link', 'link', before.link, after.link],
     ['content', 'treść', before.content, after.content],
@@ -2308,55 +2218,71 @@ async function importPostRows(importRows) {
   if (!importRows.length) return;
   if (!validatePostImportOwner(firm, importRows)) return;
   const now = new Date().toISOString();
+  const draft = { ...firm };
+  const tabsById = new Map((firm.postTabs || []).map((tab) => [tab.id, tab]));
   const tabByName = new Map((firm.postTabs || []).map((tab) => [normalizeImportName(tab.name), tab]));
+  const changedTabs = new Map();
+  const changedPosts = new Map();
   let imported = 0;
   let updated = 0;
   let unchanged = 0;
   const importedItems = [];
   const updatedItems = [];
-  let hasChanges = false;
   let createdTabs = 0;
 
   for (const row of importRows) {
-    const tabName = String(importTextValue(row, ['podzakladka', 'podzakładka', 'category']) || '').trim();
+    const tabName = String(importRowValue(row, ['podzakladka', 'podzakładka', 'category'])).trim();
     if (!tabName) continue;
-    let tab = tabByName.get(normalizeImportName(tabName));
-    if (!tab) {
-      tab = {
-        id: uid(),
-        name: tabName,
-        frequency: normalizePostFrequency(importRowValue(row, ['czestotliwosc', 'częstotliwość'])),
-        startDate: String(importRowValue(row, ['data_poczatkowa', 'data poczatkowa', 'data początkowa']) || todayKey()),
-        createdAt: now,
-        updatedAt: now,
-      };
-      firm.postTabs = [...(firm.postTabs || []), tab];
-      tabByName.set(normalizeImportName(tab.name), tab);
-      createdTabs += 1;
-      hasChanges = true;
+    const tabId = String(importRowValue(row, ['podzakladka_id'])).trim();
+    const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu'])).trim();
+    if ([tabId, rowPostId].some((id) => id === '.' || id === '..' || id.includes('/'))) {
+      throw new Error('Nieprawidłowy identyfikator w pliku importu.');
+    }
+    const startDate = String(importRowValue(row, ['data_poczatkowa', 'data poczatkowa', 'data początkowa'])).trim();
+    const slotDate = String(importRowValue(row, ['termin'])).trim();
+    if ((startDate && !isPostDate(startDate)) || (slotDate && !isPostDate(slotDate))) {
+      throw new Error('Nieprawidłowa data w pliku importu.');
     }
 
-    const rowPostId = String(importRowValue(row, ['id', 'post_id', 'id_wpisu', 'id wpisu']) || '').trim();
-    const importedTitle = String(importTextValue(row, ['tytul', 'tytuł']) || '').trim();
+    let restoredId = tabId;
+    while (firm.deletedPostTabs?.[restoredId] === true) restoredId = `restored-${restoredId}`;
+    let tab = tabId ? tabsById.get(restoredId) : tabByName.get(normalizeImportName(tabName));
+    if (!tab || tabId) {
+      // Restore a deleted tab under a new ID so its deletion marker remains effective.
+      const id = tab?.id || restoredId || uid();
+      const frequency = normalizePostFrequency(importRowValue(row, ['czestotliwosc', 'częstotliwość']), tab?.frequency);
+      const nextTab = {
+        id,
+        name: tabName,
+        frequency,
+        startDate: startDate || tab?.startDate || postTodayKey(),
+        createdAt: tab?.createdAt || now,
+        updatedAt: now,
+      };
+      if (!tab || tab.name !== nextTab.name || tab.frequency !== nextTab.frequency || tab.startDate !== nextTab.startDate) {
+        if (!tab) createdTabs += 1;
+        tab = nextTab;
+        changedTabs.set(id, tab);
+      }
+      if (tabId) tabsById.set(restoredId, tab);
+      tabByName.set(normalizeImportName(tab.name), tab);
+    }
+
+    const importedTitle = String(importRowValue(row, ['tytul', 'tytuł'])).trim();
     const importedLinkRaw = importTextValue(row, ['link', 'url', 'adres url', 'link do publikacji']);
     const importedLink = importedLinkRaw ? normalizePostLink(importedLinkRaw) : '';
     if (importedLink && !safePostLink(importedLink)) continue;
     const importedContent = String(importTextValue(row, ['tresc', 'treść']) || '').trim();
     const importedDate = String(importRowValue(row, ['data', 'date']) || '').slice(0, 10);
     const importedKeywords = splitKeywords(importTextValue(row, ['slowa_kluczowe', 'slowa kluczowe', 'słowa kluczowe', 'keywords']));
-    if (!rowPostId && !importedTitle && !importedContent && !importedLink) continue;
-    const existingMatches = findImportedPostMatches(
-      firm,
-      tab.id,
-      rowPostId,
-      importedDate || todayKey(),
-      importedContent,
-      importedKeywords,
-    );
-    const existingPost = existingMatches[0] || null;
-    if (!existingPost && !importedTitle && !importedContent && !importedLink) continue;
-    const rowStatus = String(importRowValue(row, ['status']) || '').toLowerCase();
-    const status = rowStatus === 'published' || rowStatus === 'opublikowane'
+    if (!slotDate && !rowPostId && !importedTitle && !importedContent && !importedLink) continue;
+    const existingPost = slotDate
+      ? (draft.posts || []).find((post) => post.tabId === tab.id && post.slotDate === slotDate)
+        || (draft.posts || []).find((post) => rowPostId && post.id === rowPostId)
+      : findImportedPostMatches(draft, tab.id, rowPostId, importedDate || postTodayKey(), importedContent, importedKeywords)[0];
+    if (!slotDate && !existingPost && !importedTitle && !importedContent && !importedLink) continue;
+    const rowStatus = String(importRowValue(row, ['status'])).toLowerCase();
+    const status = slotDate || rowStatus === 'published' || rowStatus === 'opublikowane'
       ? 'published'
       : rowStatus === 'scheduled' || rowStatus === 'zaplanowane'
         ? 'scheduled'
@@ -2365,12 +2291,13 @@ async function importPostRows(importRows) {
       ? false
       : importBooleanValue(importRowValue(row, ['utworzone', 'utworzony', 'created', 'isCreated']), existingPost?.isCreated);
     const post = {
-      id: existingPost?.id || rowPostId || uid(),
+      id: existingPost?.id || rowPostId || (slotDate ? `slot-${tab.id}-${slotDate}` : uid()),
       tabId: tab.id,
       status,
       isCreated,
-      publishDate: importedDate || existingPost?.publishDate || todayKey(),
-      title: importedTitle || existingPost?.title || '',
+      slotDate: slotDate || existingPost?.slotDate || '',
+      publishDate: importedDate || existingPost?.publishDate || slotDate || postTodayKey(),
+      title: slotDate ? importedTitle : importedTitle || existingPost?.title || '',
       link: importedLink || existingPost?.link || '',
       content: importedContent || existingPost?.content || '',
       keywords: importedKeywords.length ? importedKeywords : (existingPost?.keywords || []),
@@ -2386,11 +2313,11 @@ async function importPostRows(importRows) {
       unchanged += 1;
       continue;
     }
-    firm.posts = [
-      ...(firm.posts || []).filter((item) => item.id !== post.id),
+    draft.posts = [
+      ...(draft.posts || []).filter((item) => item.id !== post.id),
       post,
     ];
-    hasChanges = true;
+    changedPosts.set(post.id, post);
     if (existingPost) {
       updated += 1;
       updatedItems.push({
@@ -2405,12 +2332,15 @@ async function importPostRows(importRows) {
     }
   }
 
-  if (hasChanges) {
+  if (changedTabs.size || changedPosts.size) {
+    await tryPostCloudWrite(firm, () => savePostCollections(firm, changedTabs.values(), changedPosts.values()), 'Import postów');
+    const tabIds = new Set((firm.postTabs || []).map((tab) => tab.id));
+    firm.postTabs = [
+      ...(firm.postTabs || []).map((tab) => changedTabs.get(tab.id) || tab),
+      ...[...changedTabs.values()].filter((tab) => !tabIds.has(tab.id)),
+    ];
+    firm.posts = [...(firm.posts || []).filter((post) => !changedPosts.has(post.id)), ...changedPosts.values()];
     firm.updatedAt = now;
-    await tryPostCloudWrite(firm, async () => {
-      await savePostTabDocs(firm, firm.postTabs || []);
-      await savePostDocs(firm, firm.posts || []);
-    }, 'Import postów');
     persistAndFlush();
     render();
   }
@@ -3200,6 +3130,7 @@ async function handleClick(event) {
   }
   if (action === 'switch-firm-tab') {
     state.ui.activeTab = target.dataset.tab || 'overview';
+    postYear = null;
     persist();
     render();
     return;
@@ -3242,6 +3173,7 @@ async function handleClick(event) {
     state.ui.selectedMonth = '__all__';
     state.ui.activeTab = 'overview';
     state.ui.activePostTabId = null;
+    postYear = null;
     state.ui.activeMonthTab = 'overview';
     state.ui.activeGlobalTab = 'firms';
     persist();
@@ -3444,34 +3376,12 @@ async function handleClick(event) {
     persist();
     return render();
   }
-  if (action === 'set-post-status-filter') {
-    state.ui.postStatusFilter = ['all', 'scheduled', 'published'].includes(target.dataset.filter)
-      ? target.dataset.filter
-      : 'all';
-    persist();
-    return render();
-  }
-  if (action === 'set-post-sort') {
-    state.ui.postSort = ['nearest', 'farthest'].includes(target.dataset.sort)
-      ? target.dataset.sort
-      : 'nearest';
-    persist();
+  if (action === 'post-year') {
+    postYear = Number(target.dataset.year);
     return render();
   }
   if (action === 'add-post-tab') return openPostTabModal();
   if (action === 'edit-post-tab') return openPostTabModal(findPostTab(target.dataset.id));
-  if (action === 'delete-post-tab') {
-    const tab = findPostTab(target.dataset.id);
-    if (!firm || !tab) return;
-    if (!confirm(`Usunac podzakladke "${tab.name}" razem ze wszystkimi wpisami?`)) return;
-    await tryPostCloudWrite(firm, () => deletePostTabDoc(firm, tab.id), 'Usuwanie podzakładki postów');
-    markPostTabDeleted(firm, tab.id);
-    firm.updatedAt = new Date().toISOString();
-    state.ui.activePostTabId = firm.postTabs[0]?.id || null;
-    persistAndFlush();
-    return render();
-  }
-  if (action === 'add-post') return openPostModal();
   if (action === 'edit-post') return openPostModal(findPost(target.dataset.id));
   if (action === 'preview-post') return openPostPreview(findPost(target.dataset.id));
   if (action === 'copy-post-preview-field') {
@@ -3598,6 +3508,7 @@ document.body.addEventListener('change', (event) => {
   if (firmTarget) {
     if (!state.firms.some((item) => item.id === firmTarget.value)) return;
     state.ui.selectedFirmId = firmTarget.value;
+    postYear = null;
     state.ui.selectedMonth = '__all__';
     state.ui.activeMonthTab = 'overview';
     persist();
@@ -3615,21 +3526,13 @@ document.body.addEventListener('change', (event) => {
   render();
 });
 
-document.body.addEventListener('input', (event) => {
-  const target = event.target.closest('[data-action="filter-post-search"]');
+document.body.addEventListener('submit', (event) => {
+  const target = event.target.closest('#postScheduleForm');
   if (!target) return;
-  state.ui.postSearch = target.value || '';
-  if (postSearchTimer) clearTimeout(postSearchTimer);
-  postSearchTimer = setTimeout(() => {
-    postSearchTimer = null;
-    render();
-    const input = document.querySelector('[data-action="filter-post-search"]');
-    if (input) {
-      input.focus();
-      const end = String(input.value || '').length;
-      input.setSelectionRange(end, end);
-    }
-  }, 180);
+  event.preventDefault();
+  if (!target.querySelector('button[type="submit"]').disabled) {
+    void savePostSchedule(target, getSelectedFirm(state));
+  }
 });
 
 // Sprawdz czy zalogowany

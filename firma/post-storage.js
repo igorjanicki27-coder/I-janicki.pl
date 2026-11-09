@@ -10,7 +10,7 @@ import {
   ensureFirmyAdminSession,
 } from './firebase.js?v=20';
 import { normalizePostFrequency } from './post-frequency.mjs?v=1';
-import { filterDeletedPostCollections, mergeDeletedPostTabs } from './post-state.mjs?v=1';
+import { filterDeletedPostCollections, mergeDeletedPostTabs, mergePostRecords } from './post-state.mjs?v=2';
 
 function currentIso() {
   return new Date().toISOString();
@@ -23,10 +23,6 @@ function defaultPostTabs(now = currentIso()) {
     { id: 'google-articles', name: 'Artykuly w Google', frequency: 'monthly', startDate: today, createdAt: now, updatedAt: now },
     { id: 'social-media', name: 'Media spolecznosciowe', frequency: 'weekly', startDate: today, createdAt: now, updatedAt: now },
   ];
-}
-
-function ensureArray(value) {
-  return Array.isArray(value) ? value : [];
 }
 
 function isPermissionError(error) {
@@ -55,6 +51,7 @@ function normalizePost(post, now = currentIso()) {
     status: post.status === 'published' ? 'published' : 'scheduled',
     isCreated: post.status === 'published' ? false : Boolean(post.isCreated),
     publishDate: post.publishDate || post.date || now.slice(0, 10),
+    slotDate: typeof post.slotDate === 'string' ? post.slotDate : '',
     title: post.title || '',
     link: post.link || post.url || '',
     content: post.content || '',
@@ -94,22 +91,6 @@ function fallbackPostCollections(firm) {
   };
 }
 
-function mergeById(primary, backup) {
-  const merged = [];
-  const seen = new Set();
-  for (const item of ensureArray(primary)) {
-    if (!item?.id || seen.has(item.id)) continue;
-    merged.push(item);
-    seen.add(item.id);
-  }
-  for (const item of ensureArray(backup)) {
-    if (!item?.id || seen.has(item.id)) continue;
-    merged.push(item);
-    seen.add(item.id);
-  }
-  return merged;
-}
-
 async function loadCollection(pathSegments) {
   const snap = await getDocs(collection(db, ...pathSegments));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -146,23 +127,15 @@ export async function loadFirmPostCollections(firm) {
   const normalizedLegacyTabs = legacyTabs.map((tab) => normalizeTab({ ...tab, firmId: firm.id }));
   const normalizedLegacyPosts = legacyPosts.map((post) => normalizePost({ ...post, firmId: firm.id }));
 
-  if ((!tabs.length && normalizedLegacyTabs.length) || (!posts.length && normalizedLegacyPosts.length)) {
+  const tabIds = new Set(tabs.map(({ id }) => id));
+  const postIds = new Set(posts.map(({ id }) => id));
+  const addedTabs = normalizedLegacyTabs.filter(({ id }) => id && !tabIds.has(id));
+  const addedPosts = normalizedLegacyPosts.filter(({ id }) => id && !postIds.has(id));
+  tabs = mergePostRecords(tabs, addedTabs);
+  posts = mergePostRecords(posts, addedPosts);
+  if (addedTabs.length || addedPosts.length) {
     try {
-      await migrateLegacyPosts(firm, normalizedLegacyTabs, normalizedLegacyPosts);
-    } catch (error) {
-      if (!isPermissionError(error)) throw error;
-      console.info('Brak uprawnień do migracji postów. Używam danych lokalnych.', error);
-    }
-  }
-
-  const mergedTabs = mergeById(tabs, normalizedLegacyTabs);
-  const mergedPosts = mergeById(posts, normalizedLegacyPosts);
-  if (mergedTabs.length !== tabs.length || mergedPosts.length !== posts.length) {
-    tabs = mergedTabs;
-    posts = mergedPosts;
-    try {
-      await savePostTabs(firm, tabs);
-      if (posts.length) await savePosts(firm, posts);
+      await savePostCollections(firm, addedTabs, addedPosts);
     } catch (error) {
       if (!isPermissionError(error)) throw error;
       console.info('Brak uprawnień do synchronizacji lokalnych postów z Firestore. Zachowuję je lokalnie.', error);
@@ -184,14 +157,22 @@ export async function loadFirmPostCollections(firm) {
   return { tabs, posts, deletedPostTabs };
 }
 
-export async function savePostTabs(firm, tabs) {
+export async function savePostCollections(firm, tabs, posts) {
   await ensureFirmPostDoc(firm);
   const batch = writeBatch(db);
   for (const tab of tabs) {
     const normalized = normalizeTab({ ...tab, firmId: firm.id });
     batch.set(doc(db, 'firmy_clients', firm.id, 'post_tabs', normalized.id), normalized, { merge: true });
   }
+  for (const post of posts) {
+    const normalized = normalizePost({ ...post, firmId: firm.id });
+    batch.set(doc(db, 'firmy_clients', firm.id, 'posts', normalized.id), normalized, { merge: true });
+  }
   await batch.commit();
+}
+
+export function savePostTabs(firm, tabs) {
+  return savePostCollections(firm, tabs, []);
 }
 
 export async function savePostTab(firm, tab) {
@@ -222,25 +203,11 @@ export async function savePost(firm, post) {
   await setDoc(doc(db, 'firmy_clients', firm.id, 'posts', normalized.id), normalized, { merge: true });
 }
 
-export async function savePosts(firm, posts) {
-  await ensureFirmPostDoc(firm);
-  const batch = writeBatch(db);
-  for (const post of posts) {
-    const normalized = normalizePost({ ...post, firmId: firm.id });
-    batch.set(doc(db, 'firmy_clients', firm.id, 'posts', normalized.id), normalized, { merge: true });
-  }
-  await batch.commit();
+export function savePosts(firm, posts) {
+  return savePostCollections(firm, [], posts);
 }
 
 export async function deletePost(firm, postId) {
   await ensureFirmyAdminSession();
   await deleteDoc(doc(db, 'firmy_clients', firm.id, 'posts', postId));
-}
-
-async function migrateLegacyPosts(firm, tabs, posts) {
-  await ensureFirmPostDoc(firm);
-  await savePostTabs(firm, tabs);
-  if (posts.length) {
-    await savePosts(firm, posts);
-  }
 }

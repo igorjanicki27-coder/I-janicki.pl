@@ -2,8 +2,9 @@ import {
   compensationFrequencyLabel,
   getCompensationReminderStatus,
 } from '../firma/compensation-reminders.mjs';
-import { isIrregularPostFrequency, normalizePostFrequency } from '../firma/post-frequency.mjs';
-import { filterDeletedPostCollections, mergeDeletedPostTabs } from '../firma/post-state.mjs';
+import { postTodayKey as warsawTodayKey } from '../firma/post-schedule.mjs';
+import { getPostReminderDigest } from './firma-post-reminders.mjs';
+import { filterDeletedPostCollections, mergeDeletedPostTabs, mergePostRecords } from '../firma/post-state.mjs';
 import { requestJson } from './firma-reminder-request.mjs';
 
 const FIREBASE_API_KEY = (process.env.FIREBASE_API_KEY || 'AIzaSyDnBGZh-HSHx2gqFm78S7p86coHk25u0xc').trim();
@@ -24,32 +25,10 @@ const SMTP_FROM = (process.env.SMTP_FROM || SMTP_USER || REMINDER_EMAIL).trim();
 const STATE_DOC = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/firmy_settings/state`;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-function warsawTodayKey() {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Warsaw',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
 function parseDateKey(value) {
   if (!value) return null;
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function dateKey(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addDays(value, days) {
-  const date = parseDateKey(value);
-  if (!date) return value;
-  date.setUTCDate(date.getUTCDate() + Number(days || 0));
-  return dateKey(date);
 }
 
 function daysBetween(fromValue, toValue) {
@@ -74,150 +53,8 @@ function formatPeriodPl(value) {
   return year && month ? `${month}/${year}` : String(value || '');
 }
 
-function addMonthsKey(value, months) {
-  const date = parseDateKey(value);
-  if (!date) return value;
-  const day = date.getUTCDate();
-  date.setUTCMonth(date.getUTCMonth() + Number(months || 0));
-  if (date.getUTCDate() !== day) {
-    date.setUTCDate(0);
-  }
-  return dateKey(date);
-}
-
-function addFrequencyKey(value, frequency) {
-  const normalizedFrequency = normalizePostFrequency(frequency);
-  if (normalizedFrequency === 'weekly') return addDays(value, 7);
-  if (normalizedFrequency === 'biweekly') return addDays(value, 14);
-  return addMonthsKey(value, 1);
-}
-
-function frequencyLabel(value) {
-  const frequency = normalizePostFrequency(value);
-  if (frequency === 'weekly') return 'Raz w tygodniu';
-  if (frequency === 'biweekly') return 'Raz na 2 tygodnie';
-  if (frequency === 'irregular') return 'Nieregularnie';
-  return 'Raz w miesiacu';
-}
-
 function firmName(firm) {
   return (firm && (firm.displayName || firm.name)) || 'Firma bez nazwy';
-}
-
-function postsForTab(firm, tabId) {
-  return Array.isArray(firm.posts)
-    ? firm.posts.filter((post) => post.tabId === tabId)
-    : [];
-}
-
-function latestPublishedPost(firm, tabId) {
-  return postsForTab(firm, tabId)
-    .filter((post) => post.status === 'published')
-    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
-}
-
-function nearestScheduledPost(firm, tabId, referenceDate = warsawTodayKey()) {
-  const scheduled = postsForTab(firm, tabId)
-    .filter((post) => post.status !== 'published')
-    .filter((post) => post.publishDate || post.title || post.content);
-  if (!scheduled.length) return null;
-
-  const futureOrToday = scheduled
-    .filter((post) => String(post.publishDate || '').slice(0, 10) >= referenceDate)
-    .sort((a, b) => String(a.publishDate || '').localeCompare(String(b.publishDate || '')));
-  if (futureOrToday.length) return futureOrToday[0];
-
-  return scheduled
-    .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')))[0] || null;
-}
-
-function getPostTabStatus(firm, tab) {
-  const startDate = tab.startDate || warsawTodayKey();
-  const lastPost = latestPublishedPost(firm, tab.id);
-  const today = warsawTodayKey();
-  if (isIrregularPostFrequency(tab.frequency)) {
-    return {
-      dueDate: null,
-      isOverdue: false,
-      lastPost,
-      isSkipped: true,
-    };
-  }
-  let dueDate = startDate;
-
-  if (lastPost?.publishDate && String(lastPost.publishDate) >= dueDate) {
-    while (dueDate <= lastPost.publishDate) {
-      dueDate = addFrequencyKey(dueDate, tab.frequency);
-    }
-  }
-
-  return {
-    dueDate,
-    isOverdue: today >= dueDate,
-    lastPost,
-  };
-}
-
-function findDueReminders(state) {
-  const reminders = [];
-  for (const firm of state.firms || []) {
-    const sentKeys = new Set(Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : []);
-    for (const tab of firm.postTabs || []) {
-      const status = getPostTabStatus(firm, tab);
-      if (status.isSkipped) continue;
-      const reminderKey = `${tab.id}:${status.dueDate}`;
-      if (!status.isOverdue || sentKeys.has(reminderKey)) continue;
-      reminders.push({
-        firm,
-        tab,
-        status,
-        nearestScheduledPost: nearestScheduledPost(firm, tab.id, status.dueDate || warsawTodayKey()),
-        reminderKey,
-      });
-    }
-  }
-  return reminders;
-}
-
-function findDuePostTabs(state) {
-  const dueTabs = [];
-  for (const firm of state.firms || []) {
-    for (const tab of firm.postTabs || []) {
-      const status = getPostTabStatus(firm, tab);
-      if (status.isSkipped || !status.isOverdue) continue;
-      dueTabs.push({ firm, tab, status });
-    }
-  }
-  return dueTabs;
-}
-
-function findScheduledPostsForToday(state) {
-  const today = warsawTodayKey();
-  const posts = [];
-  for (const firm of state.firms || []) {
-    for (const post of firm.posts || []) {
-      if (post.status === 'published') continue;
-      if (String(post.publishDate || '').slice(0, 10) !== today) continue;
-      posts.push({ firm, post });
-    }
-  }
-  return posts;
-}
-
-function findScheduledPostReminders(state) {
-  const reminders = [];
-  const today = warsawTodayKey();
-  for (const firm of state.firms || []) {
-    const sentKeys = new Set(Array.isArray(firm.postReminderKeys) ? firm.postReminderKeys : []);
-    for (const post of firm.posts || []) {
-      if (post.status === 'published') continue;
-      if (String(post.publishDate || '').slice(0, 10) !== today) continue;
-      const reminderKey = `scheduled-post:${post.id || post.title || 'post'}:${today}`;
-      if (sentKeys.has(reminderKey)) continue;
-      reminders.push({ firm, post, reminderKey });
-    }
-  }
-  return reminders;
 }
 
 function findDomainExpiryReminders(state) {
@@ -378,16 +215,23 @@ function toStringArrayValue(values) {
 }
 
 async function listDocs(idToken, path) {
-  const url = `${FIRESTORE_BASE}/${path}`;
-  const data = await requestJson(url, {
-    headers: { Authorization: `Bearer ${idToken}` },
-  }).catch((error) => {
-    if (String(error.message || '').includes('404')) return { documents: [] };
-    throw error;
-  });
-  return (data.documents || []).map((doc) => ({
-    id: doc.name.split('/').pop(),
+  const documents = [];
+  let pageToken;
+  do {
+    const url = new URL(`${FIRESTORE_BASE}/${path}`);
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const data = await requestJson(url.href, {
+      headers: { Authorization: `Bearer ${idToken}` },
+    }).catch((error) => {
+      if (String(error.message || '').includes('404')) return { documents: [] };
+      throw error;
+    });
+    documents.push(...(data.documents || []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return documents.map((doc) => ({
     ...fromFirestoreFields(doc.fields || {}),
+    id: doc.name.split('/').pop(),
   }));
 }
 
@@ -420,31 +264,13 @@ async function loadFirmPostCollections(idToken, firm) {
       : (firm.compensationReminderKeys || []),
     ...filterDeletedPostCollections({
       deletedPostTabs: mergeDeletedPostTabs(firm, firmDoc),
-      postTabs: tabs.length ? tabs : (firmDocTabs.length ? firmDocTabs : (firm.postTabs || [])),
-      posts: posts.length ? posts : (firmDocPosts.length ? firmDocPosts : (firm.posts || [])),
+      postTabs: mergePostRecords(tabs, Array.isArray(firm.postTabs) ? firm.postTabs : firmDocTabs),
+      posts: mergePostRecords(posts, Array.isArray(firm.posts) ? firm.posts : firmDocPosts),
     }),
   };
 }
 
-async function saveState(idToken, state) {
-  const updatedAt = new Date().toISOString();
-  state.updatedAt = updatedAt;
-  await requestJson(`${STATE_DOC}?updateMask.fieldPaths=state&updateMask.fieldPaths=updatedAt`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      fields: {
-        state: { stringValue: JSON.stringify(state) },
-        updatedAt: { stringValue: updatedAt },
-      },
-    }),
-  });
-}
-
-function buildReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders) {
+function buildReminderDigest(postDigest, domainReminders, compensationReminders) {
   const lines = [
     `Podsumowanie przypomnień na ${warsawTodayKey()}`,
     '',
@@ -474,35 +300,22 @@ function buildReminderDigest(overdueReminders, scheduledReminders, domainReminde
     });
   }
 
-  if (scheduledReminders.length) {
-    lines.push('Zaplanowane publikacje na dzis:');
-    scheduledReminders.forEach((reminder, index) => {
-      const { firm, post } = reminder;
-      lines.push(`${index + 1}. ${firmName(firm)}`);
-      lines.push(`   Tytul: ${post.title || 'Bez tytulu'}`);
-      lines.push(`   Data: ${post.publishDate || warsawTodayKey()}`);
-      lines.push(`   Utworzony: ${post.isCreated ? 'tak' : 'nie'}`);
-      if (post.link) lines.push(`   Link: ${post.link}`);
-      lines.push('');
-    });
+  if (postDigest.reminders.length) {
+    lines.push('Brak tytułów publikacji:');
+    for (const { firm, tab, date, days } of postDigest.reminders) {
+      const timing = days < 0 ? 'po terminie' : days === 0 ? 'dzisiaj' : `za ${days} dni`;
+      lines.push(`- ${firmName(firm)} / ${tab.name} — ${formatDatePl(date)} (${timing})`);
+    }
+    lines.push('');
   }
 
-  if (overdueReminders.length) {
-    lines.push('Podzakladki wymagajace publikacji:');
-    overdueReminders.forEach((reminder, index) => {
-      const { firm, tab, status, nearestScheduledPost: nearestPost } = reminder;
-      lines.push(`${index + 1}. ${firmName(firm)} / ${tab.name}`);
-      lines.push(`   Czestotliwosc: ${frequencyLabel(tab.frequency)}`);
-      lines.push(`   Termin: ${status.dueDate}`);
-      lines.push(`   Ostatnia publikacja: ${status.lastPost ? `${status.lastPost.title || 'Bez tytulu'} (${status.lastPost.publishDate})` : 'brak'}`);
-      if (nearestPost) {
-        lines.push(`   Najblizszy zaplanowany post: ${nearestPost.title || 'Bez tytulu'} (${nearestPost.publishDate || 'brak daty'})`);
-        lines.push(`   Utworzony: ${nearestPost.isCreated ? 'tak' : 'nie'}`);
-      } else {
-        lines.push('   Najblizszy zaplanowany post: brak');
-      }
-      lines.push('');
-    });
+  if (postDigest.allClear) {
+    lines.push('Wszystkie publikacje są na bieżąco. Najbliższe wolne terminy:');
+    for (const { firm, next } of postDigest.allClear.statuses) {
+      const label = next ? `${formatDatePl(next.date)} / ${next.tab.name}` : 'brak stałych terminów';
+      lines.push(`- ${firmName(firm)} — ${label}`);
+    }
+    lines.push('');
   }
 
   return lines.join('\n').trim();
@@ -635,10 +448,10 @@ async function sendWeb3FormsMail({ subject, message }) {
   }
 }
 
-async function sendReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders) {
-  const total = overdueReminders.length + scheduledReminders.length + domainReminders.length + compensationReminders.length;
-  const message = buildReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders);
-  const subject = `Firma - przypomnienia (${total})`;
+async function sendReminderDigest(postDigest, domainReminders, compensationReminders) {
+  const total = postDigest.reminders.length + domainReminders.length + compensationReminders.length;
+  const message = buildReminderDigest(postDigest, domainReminders, compensationReminders);
+  const subject = total ? `Firma - przypomnienia (${total})` : 'Firma - publikacje na bieżąco';
 
   if (hasSmtpConfig()) {
     console.log(`SMTP configured: ${SMTP_HOST}:${SMTP_PORT} (${SMTP_SECURE ? 'TLS' : 'STARTTLS'}) as ${SMTP_USER}.`);
@@ -662,8 +475,8 @@ async function sendReminderDigest(overdueReminders, scheduledReminders, domainRe
   await sendWeb3FormsMail({ subject, message });
 }
 
-async function markReminderSent(idToken, firmId, existingKeys, reminderKey, fieldName = 'postReminderKeys') {
-  const nextKeys = Array.from(new Set([...(existingKeys || []), reminderKey]));
+async function markReminderSent(idToken, firmId, existingKeys, reminderKeys, fieldName = 'postReminderKeys') {
+  const nextKeys = Array.from(new Set([...(existingKeys || []), ...reminderKeys]));
   await requestJson(`${FIRESTORE_BASE}/firmy_clients/${firmId}?updateMask.fieldPaths=${fieldName}&updateMask.fieldPaths=updatedAt`, {
     method: 'PATCH',
     headers: {
@@ -699,41 +512,23 @@ async function main() {
 
   const state = await loadState(auth.idToken);
   const firms = await Promise.all((state.firms || []).map((firm) => loadFirmPostCollections(auth.idToken, firm)));
-  const duePostTabs = findDuePostTabs({ firms });
-  const scheduledPostsToday = findScheduledPostsForToday({ firms });
-  const overdueReminders = findDueReminders({ firms });
-  const scheduledReminders = findScheduledPostReminders({ firms });
+  const today = warsawTodayKey();
+  const postDigest = getPostReminderDigest(firms, today);
   const domainReminders = findDomainExpiryReminders({ firms });
   const compensationReminders = findCompensationReminders({ firms });
+  const postReminders = postDigest.allClear ? [postDigest.allClear] : postDigest.reminders;
 
-  const tabCount = firms.reduce((sum, firm) => sum + ((firm.postTabs || []).length), 0);
-  const postCount = firms.reduce((sum, firm) => sum + ((firm.posts || []).length), 0);
-  console.log([
-    `Post reminder scan for ${warsawTodayKey()}:`,
-    `${firms.length} firms`,
-    `${tabCount} post tabs`,
-    `${postCount} posts`,
-    `${duePostTabs.length} tabs due today or overdue`,
-    `${scheduledPostsToday.length} scheduled posts for today`,
-    `${domainReminders.length} domain expiry reminders`,
-    `${compensationReminders.length} compensation reminders`,
-    `${overdueReminders.length + scheduledReminders.length + domainReminders.length + compensationReminders.length} reminders pending after sent-key filtering`,
-  ].join(' '));
-  if (postCount === 0) {
-    console.warn('No posts were loaded from Firestore. Scheduled-post reminders cannot be detected until posts are saved/migrated to firmy_clients/*/posts or preserved in firmy_settings/state.');
-  }
+  console.log(`Reminder scan for ${today}: ${firms.length} firms, ${postDigest.reminders.length} publication reminders, ${domainReminders.length} domain reminders, ${compensationReminders.length} compensation reminders, all clear: ${Boolean(postDigest.allClear)}.`);
+  if (!postReminders.length && !domainReminders.length && !compensationReminders.length) return;
 
-  if (!overdueReminders.length && !scheduledReminders.length && !domainReminders.length && !compensationReminders.length) {
-    console.log('No overdue post tabs, scheduled posts, domain expiry or compensation reminders for today found.');
-    return;
-  }
-
-  await sendReminderDigest(overdueReminders, scheduledReminders, domainReminders, compensationReminders);
-  console.log(`Sent reminder digest: ${overdueReminders.length} overdue tab(s), ${scheduledReminders.length} scheduled post(s), ${domainReminders.length} domain reminder(s), ${compensationReminders.length} compensation reminder(s).`);
+  await sendReminderDigest(postDigest, domainReminders, compensationReminders);
 
   const sent = [
-    ...overdueReminders.map((reminder) => ({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey })),
-    ...scheduledReminders.map((reminder) => ({ firmId: reminder.firm.id, reminderKey: reminder.reminderKey })),
+    ...postReminders.map((reminder) => ({
+      firmId: reminder.firm.id,
+      reminderKey: reminder.reminderKey,
+      fieldName: 'postReminderKeys',
+    })),
     ...domainReminders.map((reminder) => ({
       firmId: reminder.firm.id,
       reminderKey: reminder.reminderKey,
@@ -745,11 +540,12 @@ async function main() {
       fieldName: 'compensationReminderKeys',
     })),
   ];
-  for (const item of sent) {
-    const firm = firms.find((candidate) => candidate.id === item.firmId);
-    const fieldName = item.fieldName || 'postReminderKeys';
-    const nextKeys = await markReminderSent(auth.idToken, item.firmId, firm?.[fieldName] || [], item.reminderKey, fieldName);
-    if (firm) firm[fieldName] = nextKeys;
+  for (const firm of firms) {
+    for (const fieldName of ['postReminderKeys', 'domainReminderKeys', 'compensationReminderKeys']) {
+      const keys = sent.filter((item) => item.firmId === firm.id && item.fieldName === fieldName)
+        .map((item) => item.reminderKey);
+      if (keys.length) await markReminderSent(auth.idToken, firm.id, firm[fieldName], keys, fieldName);
+    }
   }
 }
 

@@ -308,6 +308,7 @@ function normalizeFirm(firm) {
       status: post.status === 'published' ? 'published' : 'scheduled',
       isCreated: post.status === 'published' ? false : Boolean(post.isCreated),
       publishDate: post.publishDate || post.date || now.slice(0, 10),
+      slotDate: typeof post.slotDate === 'string' ? post.slotDate : '',
       title: post.title || '',
       link: post.link || post.url || '',
       content: post.content || '',
