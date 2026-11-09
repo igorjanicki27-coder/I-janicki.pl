@@ -1568,6 +1568,10 @@ function renderPostsPage(firm) {
   const year = postYear ?? currentYear;
   const posts = activeTab ? postsForTab(firm, activeTab.id) : [];
   const slots = activeTab ? postSlots(activeTab, posts, `${year}-01-01`, `${year}-12-31`) : [];
+  const currentMonth = today.slice(0, 7);
+  const pastSlots = slots.filter(({ date }) => date.slice(0, 7) < currentMonth);
+  const upcomingSlots = slots.filter(({ date }) => date.slice(0, 7) >= currentMonth);
+  const pastMonthCount = new Set(pastSlots.map(({ date }) => date.slice(0, 7))).size;
   const irregular = activeTab && isIrregularPostTab(activeTab);
   const irregularPosts = irregular ? posts.filter((post) =>
     (String(post.title || '').trim() || isOpenIrregularPost(post)) && String(post.publishDate || post.publicationYear).slice(0, 4) === String(year)) : [];
@@ -1623,7 +1627,13 @@ function renderPostsPage(firm) {
             ` : slots.length ? `
               <div class="post-schedule" id="postSchedule" data-tab-id="${escapeHtml(activeTab.id)}" data-year="${year}">
                 <p>Tytuł zapisuje się automatycznie po opuszczeniu pola. Puste pole oznacza brak publikacji.</p>
-                <div class="post-months">${renderPostMonths(slots, today)}</div>
+                ${upcomingSlots.length ? `<div class="post-months">${renderPostMonths(upcomingSlots, today)}</div>` : ''}
+                ${pastMonthCount ? `
+                  <details class="post-past-months">
+                    <summary>Minione miesiące (${pastMonthCount})</summary>
+                    <div class="post-months">${renderPostMonths(pastSlots, today)}</div>
+                  </details>
+                ` : ''}
               </div>
             ` : '<p>Brak terminów w tym roku.</p>'}
             ${archive.length ? `

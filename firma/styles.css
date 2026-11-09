@@ -4658,6 +4658,15 @@ body {
   align-items: stretch;
 }
 
+.post-past-months > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.post-past-months > .post-months {
+  margin-top: 12px;
+}
+
 .post-month {
   display: grid;
   align-content: start;
