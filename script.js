@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────
 const FIREBASE_RTDB_BASE = 'https://i-janicki-default-rtdb.europe-west1.firebasedatabase.app';
 const GOOGLE_REVIEWS_ENDPOINT = `${FIREBASE_RTDB_BASE}/publicGoogleReviews.json`;
+const GOOGLE_REVIEWS_TIMEOUT_MS = 8000;
 const COOKIE_POLICY_VERSION = '1.4';
 
 // ─────────────────────────────────────────────────────────────────
@@ -432,12 +433,13 @@ const TRANSLATIONS = {
     'contact-sent': '✓ Wiadomość wysłana! Odpiszę możliwie szybko.',
     'contact-error': '✗ Coś poszło nie tak. Napisz bezpośrednio na kontakt@i-janicki.pl',
     'reviews-loading': 'Ładowanie opinii z Google…',
-    'reviews-empty': 'Profil Google nie ma jeszcze opinii.',
+    'reviews-empty': 'Brak opinii do wyświetlenia na stronie.',
     'reviews-pending': 'Jesteś zadowolony z moich usług? Oceń mnie, klikając przycisk poniżej.',
     'reviews-error': 'Opinie Google są chwilowo niedostępne.',
     'reviews-anonymous': 'Użytkownik Google',
     'reviews-no-comment': 'Ocena bez komentarza',
     'reviews-google-write': 'Wystaw opinię',
+    'reviews-google-read': 'Zobacz w Mapach Google',
     'reviews-average': '{rating}/5 na podstawie {count} opinii',
     'returning-title': 'Witaj ponownie!',
     'returning-message': 'Witaj ponownie, <strong>{name}</strong>! Jak pewnie pamiętasz, jestem <strong>i-JANEK</strong>. W czym mogę Ci pomóc?',
@@ -577,12 +579,13 @@ const TRANSLATIONS = {
     'contact-sent': '✓ Message sent! I\'ll get back to you as soon as possible.',
     'contact-error': '✗ Something went wrong. Please write directly to kontakt@i-janicki.pl',
     'reviews-loading': 'Loading Google reviews…',
-    'reviews-empty': 'The Google profile has no reviews yet.',
+    'reviews-empty': 'There are no reviews to display here.',
     'reviews-pending': 'Happy with my services? Leave a review using the button below.',
     'reviews-error': 'Google reviews are temporarily unavailable.',
     'reviews-anonymous': 'Google user',
     'reviews-no-comment': 'Rating without a comment',
     'reviews-google-write': 'Leave a review',
+    'reviews-google-read': 'View on Google Maps',
     'reviews-average': '{rating}/5 based on {count} reviews',
     'returning-title': 'Welcome back!',
     'returning-message': 'Welcome back, <strong>{name}</strong>! As you probably remember, I\'m <strong>i-JANEK</strong>. How can I help you today?',
@@ -1186,14 +1189,12 @@ function renderReviewStep() {
     <div class="section-step-content" id="secContent"></div>
   `);
 
+  const content = $('secContent');
   const tpl = document.getElementById('tpl-reviews');
-  if (tpl) $('secContent').appendChild(tpl.content.cloneNode(true));
+  if (tpl) content.appendChild(tpl.content.cloneNode(true));
 
   $('panel')?.classList.add('has-section');
-  requestAnimationFrame(() => {
-    const el = $('modalReviewsCarousel');
-    if (el) loadReviews(el);
-  });
+  loadReviews(content.querySelector('.reviews-carousel'));
 }
 
 function renderFinish() {
@@ -1337,14 +1338,6 @@ function handleTopic(topic) {
 
   openModal(topic);
 
-  if (topic === 'reviews') {
-    // Load into modal carousel after DOM is updated
-    requestAnimationFrame(() => {
-      const el = $('modalReviewsCarousel');
-      if (el) loadReviews(el);
-    });
-  }
-
   sessionStorage.setItem(SS.SECTION, topic);
   setNavActive(topic);
 }
@@ -1379,10 +1372,7 @@ function openModal(topic) {
 
   if (topic === 'reviews') {
     dom.modalRoot.querySelector('.modal').classList.add('modal--wide');
-    requestAnimationFrame(() => {
-      const el = $('modalReviewsCarousel');
-      if (el) loadReviews(el);
-    });
+    loadReviews(dom.modalBody.querySelector('.reviews-carousel'));
   }
 
   // Pricing "Skontaktuj się" jump button
@@ -1665,12 +1655,13 @@ function closeDoc() {
 
 async function loadReviews(container) {
   if (!container) return;
-  container.innerHTML = `<div class="reviews-loading"><span>${t('reviews-loading')}</span></div>`;
-  container.setAttribute('aria-busy', 'true');
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GOOGLE_REVIEWS_TIMEOUT_MS);
   try {
     const res = await fetch(GOOGLE_REVIEWS_ENDPOINT, {
       headers: { Accept: 'application/json' },
+      signal: controller.signal,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -1679,11 +1670,12 @@ async function loadReviews(container) {
       container.innerHTML = `<p class="reviews-empty reviews-empty--pending">${t('reviews-pending')}</p>`;
       return;
     }
-    if (typeof data !== 'object') throw new Error('Invalid Google reviews snapshot');
+    if (typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Invalid Google reviews snapshot');
+    }
     const reviews = Array.isArray(data.reviews)
       ? data.reviews.slice(0, 5).map(parseGoogleReview)
       : [];
-    updateGoogleReviewSummary(container, data);
 
     if (!reviews.length) {
       container.innerHTML = `<p class="reviews-empty">${t('reviews-empty')}</p>`;
@@ -1692,11 +1684,13 @@ async function loadReviews(container) {
 
     container.innerHTML = '';
     reviews.forEach(review => container.appendChild(buildCard(review)));
+    updateGoogleReviewSummary(container, data);
 
   } catch (err) {
     console.warn('Google reviews load error:', err);
     container.innerHTML = `<p class="reviews-empty">${t('reviews-error')}</p>`;
   } finally {
+    clearTimeout(timeout);
     container.setAttribute('aria-busy', 'false');
   }
 }
@@ -1708,7 +1702,6 @@ function parseGoogleReview(review) {
     authorPhotoUrl: safeHttpsUrl(review?.authorPhotoUrl),
     comment: String(review?.comment || ''),
     rating: Math.max(0, Math.min(5, Number(review?.rating) || 0)),
-    timestamp: String(review?.createTime || review?.updateTime || ''),
     sourceUrl: safeHttpsUrl(review?.sourceUrl),
   };
 }
@@ -1750,10 +1743,6 @@ function buildCard(r) {
   div.setAttribute('aria-label', `${r.name}, ${r.rating}/5`);
   const filled = '★'.repeat(Math.max(0, Math.min(5, r.rating)));
   const empty  = '☆'.repeat(5 - filled.length);
-  const parsedDate = new Date(r.timestamp);
-  const date = Number.isNaN(parsedDate.getTime()) ? '' : parsedDate.toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'pl-PL', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
   const avatar = r.authorPhotoUrl
     ? `<img class="review-card-avatar" src="${escHtml(r.authorPhotoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
     : '<span class="review-card-avatar review-card-avatar--fallback" aria-hidden="true">G</span>';
@@ -1762,23 +1751,22 @@ function buildCard(r) {
   div.innerHTML = `
     <div class="review-card-stars">${filled}${empty}</div>
     <p class="review-card-comment">${escHtml(comment)}</p>
-    <div class="review-card-author">${avatar}<div><div class="review-card-name">${escHtml(r.name)}</div><div class="review-card-source">Google Maps</div></div></div>
-    <div class="review-card-date">${date}</div>`;
+    <div class="review-card-author">${avatar}<div><div class="review-card-name">${escHtml(r.name)}</div><div class="review-card-source">Google Maps</div></div></div>`;
 
   div.addEventListener('click', (e) => {
     e.stopPropagation();
-    openReviewPreview(r, filled, empty, date);
+    openReviewPreview(r, filled, empty);
   });
   div.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
-    openReviewPreview(r, filled, empty, date);
+    openReviewPreview(r, filled, empty);
   });
 
   return div;
 }
 
-function openReviewPreview(r, filled, empty, date) {
+function openReviewPreview(r, filled, empty) {
   const existing = document.querySelector('.review-preview-overlay');
   if (existing) existing.remove();
 
@@ -1794,7 +1782,6 @@ function openReviewPreview(r, filled, empty, date) {
       <div class="review-preview-stars">${filled}${empty}</div>
       <p class="review-preview-comment">${escHtml(comment)}</p>
       <div class="review-card-author">${avatar}<div><div class="review-preview-name">${escHtml(r.name)}</div><div class="review-card-source">Google Maps</div></div></div>
-      <div class="review-preview-date">${date}</div>
     </div>`;
 
   document.body.appendChild(overlay);
