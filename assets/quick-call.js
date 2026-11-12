@@ -18,8 +18,33 @@
   `;
   (container ?? document.body).append(call);
 
-  window.setTimeout(() => {
-    call.classList.add('is-expanded');
-    call.setAttribute('aria-describedby', 'ijanicki-quick-call-status');
-  }, 5_000);
+  const warsawClock = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  });
+  const hourInMs = 60 * 60 * 1_000;
+  const revealAt = Date.now() + 5_000;
+  let timer;
+
+  function updateQuickCall() {
+    window.clearTimeout(timer);
+    const now = Date.now();
+    const hour = Number(warsawClock.format(now));
+    const expanded = now >= revealAt && hour >= 6 && hour < 22;
+    call.classList.toggle('is-expanded', expanded);
+    if (expanded) call.setAttribute('aria-describedby', 'ijanicki-quick-call-status');
+    else call.removeAttribute('aria-describedby');
+
+    if (!document.hidden) {
+      // Warsaw's UTC offset is a whole number of hours in both seasons.
+      const untilNextHour = hourInMs - now % hourInMs;
+      const delay = now < revealAt ? Math.min(untilNextHour, revealAt - now) : untilNextHour;
+      timer = window.setTimeout(updateQuickCall, delay);
+    }
+  }
+
+  updateQuickCall();
+  document.addEventListener('visibilitychange', updateQuickCall);
+  window.addEventListener('pageshow', updateQuickCall);
 })();

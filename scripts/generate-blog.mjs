@@ -288,7 +288,7 @@ function renderShellHead({ title, description, canonical, structuredData, type =
   <script defer src="/cookie-consent.js?v=2"></script>
   <script defer src="/analytics.js?v=11"></script>
   <link rel="stylesheet" href="/assets/quick-call.css?v=1">
-  <script defer src="/assets/quick-call.js?v=1"></script>
+  <script defer src="/assets/quick-call.js?v=2"></script>
   <script defer src="/oferta.js?v=11"></script>`;
 }
 
