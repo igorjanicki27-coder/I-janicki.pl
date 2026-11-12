@@ -71,6 +71,11 @@
       text-decoration: none;
     }
     .not-found-page a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+    @media (pointer: fine) {
+      .not-found-page:not(.has-custom-cursor), .not-found-page:not(.has-custom-cursor) * {
+        cursor: revert !important;
+      }
+    }
     @media (max-width: 600px) {
       .not-found { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
       .not-found-actions { justify-content: center; }
@@ -97,7 +102,7 @@
         <div class="spinner"></div>
         <div class="spinner1"></div>
       </div>
-      <svg class="bot-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+      <svg class="bot-svg" id="botSvg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="botg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#7f40ff"/>
@@ -115,14 +120,18 @@
         <rect x="48" y="48" width="124" height="104" rx="22" fill="#0f1320" stroke="url(#botg)" stroke-width="2.5"/>
         <rect x="56" y="56" width="108" height="88" rx="16" fill="none" stroke="url(#botg)" stroke-width="1" opacity="0.45"/>
         <circle cx="88" cy="100" r="13" fill="url(#eyeg)"/>
-        <circle cx="88" cy="100" r="6" fill="#07090f"/>
-        <circle cx="90.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        <g id="botEyeLeft">
+          <circle cx="88" cy="100" r="6" fill="#07090f"/>
+          <circle cx="90.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        </g>
         <rect id="eyelidL" x="75" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)"/>
         <circle cx="132" cy="100" r="13" fill="url(#eyeg)"/>
-        <circle cx="132" cy="100" r="6" fill="#07090f"/>
-        <circle cx="134.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        <g id="botEyeRight">
+          <circle cx="132" cy="100" r="6" fill="#07090f"/>
+          <circle cx="134.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        </g>
         <rect id="eyelidR" x="119" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)"/>
-        <path d="M94 128 Q110 136 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path id="botMouth" d="M94 128 Q110 136 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
         <rect x="36" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
         <rect x="172" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
         <rect x="70" y="158" width="80" height="44" rx="12" fill="#0f1320" stroke="url(#botg)" stroke-width="2"/>
@@ -141,5 +150,132 @@
       </div>
     </div>
   </main>
+
+  <div class="cursor-dot" id="cursorDot" aria-hidden="true" hidden></div>
+  <div class="cursor-ring" id="cursorRing" aria-hidden="true" hidden></div>
+  <script>
+    (() => {
+      const page = document.documentElement;
+      const svg = document.getElementById('botSvg');
+      const leftEye = document.getElementById('botEyeLeft');
+      const rightEye = document.getElementById('botEyeRight');
+      const mouth = document.getElementById('botMouth');
+      const dot = document.getElementById('cursorDot');
+      const ring = document.getElementById('cursorRing');
+      const finePointer = matchMedia('(pointer: fine)');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const smile = mouth.getAttribute('d');
+      let pointer;
+      let eyeTarget;
+      let ringX;
+      let ringY;
+      let frame;
+      let closeTimer;
+
+      function moveEye(eye, centerX, target) {
+        const dx = target.x - centerX;
+        const dy = target.y - 100;
+        const scale = 5 / Math.max(40, Math.hypot(dx, dy));
+        eye.setAttribute('transform', `translate(${dx * scale} ${dy * scale})`);
+      }
+
+      function renderPointer() {
+        frame = undefined;
+        if (eyeTarget) {
+          const matrix = svg.getScreenCTM();
+          if (matrix) {
+            const target = new DOMPoint(eyeTarget.x, eyeTarget.y).matrixTransform(matrix.inverse());
+            moveEye(leftEye, 88, target);
+            moveEye(rightEye, 132, target);
+          }
+          eyeTarget = undefined;
+        }
+        if (!pointer) return;
+        const dx = pointer.x - ringX;
+        const dy = pointer.y - ringY;
+        const settled = reducedMotion.matches || Math.hypot(dx, dy) < .5;
+        ringX = settled ? pointer.x : ringX + dx * .18;
+        ringY = settled ? pointer.y : ringY + dy * .18;
+        ring.style.left = `${ringX}px`;
+        ring.style.top = `${ringY}px`;
+        if (!settled) frame = requestAnimationFrame(renderPointer);
+      }
+
+      function movePointer(event) {
+        if (event.pointerType === 'touch') return;
+        const position = { x: event.clientX, y: event.clientY };
+        eyeTarget = position;
+
+        if (finePointer.matches) {
+          const hoveringLink = Boolean(event.target.closest('a'));
+          dot.classList.toggle('is-hover', hoveringLink);
+          ring.classList.toggle('is-hover', hoveringLink);
+          dot.style.left = `${position.x}px`;
+          dot.style.top = `${position.y}px`;
+          if (!pointer) {
+            ringX = position.x;
+            ringY = position.y;
+            ring.style.left = dot.style.left;
+            ring.style.top = dot.style.top;
+            dot.hidden = false;
+            ring.hidden = false;
+            page.classList.add('has-custom-cursor');
+          }
+          pointer = position;
+        }
+
+        if (frame === undefined) frame = requestAnimationFrame(renderPointer);
+      }
+
+      function releasePointer() {
+        dot.classList.remove('is-click');
+        ring.classList.remove('is-click');
+      }
+
+      function closeMouth() {
+        clearTimeout(closeTimer);
+        mouth.setAttribute('d', smile);
+        mouth.setAttribute('fill', 'none');
+      }
+
+      function resetPointer() {
+        pointer = undefined;
+        eyeTarget = undefined;
+        dot.hidden = true;
+        ring.hidden = true;
+        page.classList.remove('has-custom-cursor');
+        releasePointer();
+        closeMouth();
+      }
+
+      document.addEventListener('pointermove', movePointer, { passive: true });
+      document.addEventListener('pointerdown', event => {
+        if (!event.isPrimary || event.button !== 0) return;
+        if (event.pointerType === 'touch') resetPointer();
+        else movePointer(event);
+        clearTimeout(closeTimer);
+        mouth.setAttribute('d', 'M100 126 a10,8 0 0,1 20,0 a10,8 0 0,1 -20,0');
+        mouth.setAttribute('fill', '#0f1320');
+        if (event.pointerType !== 'touch') {
+          dot.classList.add('is-click');
+          ring.classList.add('is-click');
+        }
+      });
+      document.addEventListener('pointerup', event => {
+        if (!event.isPrimary || event.button !== 0) return;
+        releasePointer();
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(closeMouth, 140);
+      });
+      document.addEventListener('pointercancel', event => {
+        if (event.isPrimary) resetPointer();
+      });
+      document.addEventListener('pointerout', event => {
+        if (event.pointerType !== 'touch' && !event.relatedTarget) resetPointer();
+      });
+      window.addEventListener('blur', resetPointer);
+      finePointer.addEventListener('change', resetPointer);
+    })();
+  </script>
 </body>
 </html>
