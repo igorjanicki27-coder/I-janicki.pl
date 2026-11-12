@@ -6,9 +6,9 @@ Termin wynosi 12 miesięcy kalendarzowych od otrzymania zgłoszenia. Dla starsze
 
 Usunięcie lub przycięcie wpisu oraz zwiększenie licznika odbywają się w jednym atomowym commit z warunkiem `updateTime`. Chroni to przed skasowaniem równoczesnej zmiany i podwójnym naliczeniem po ponowieniu zadania. Po przebiegu dokument `contact_form_stats/total` zawiera tylko liczby: `archivedCount` i `totalCount`. Nie pozostają identyfikatory nadawców, daty pojedynczych zgłoszeń, treść ani kopie danych po usunięciu ich z `contact_leads`. `/stats` odczytuje tylko zbiorczy `totalCount`; licznik jest aktualizowany raz dziennie.
 
-Stary lokalny znacznik `ijanek_form_last_submit` jest także usuwany przez `cookie-consent.js` po 12 miesiącach od wysłania, niezależnie od daty zgody cookies.
+Lokalny znacznik `ijanek_form_last_submit` jest usuwany przez `cookie-consent.js` po 12 miesiącach od wysłania, niezależnie od daty zgody cookies.
 
-Obecna strona `/kontakt` nie zawiera formularza. Mechanizm obsługuje historyczne dane `contact_leads`, nie przywraca formularza. Starszy formularz zapisywał w tej kolekcji imię, nazwisko, e-mail i daty zgód; treść wysyłał przez Web3Forms do poczty. Ten skrypt nie ma dostępu do skrzynki ani danych dostawcy Web3Forms i nie usuwa tamtych kopii. Ich usuwanie po 12 miesiącach wymaga odrębnej konfiguracji i dostępu do odpowiedniej usługi.
+Formularz na `/kontakt/` wysyła wiadomość przez Web3Forms do poczty. Po udanej wysyłce zgłoszenia z e-mailem formularz dodaje do `contact_leads` dokument z imieniem, nazwiskiem, e-mailem i datą zgody. Nowy dokument ma losowy identyfikator. Skrypt nie ma dostępu do skrzynki ani danych dostawcy Web3Forms i nie usuwa tamtych kopii. Ich usuwanie po 12 miesiącach wymaga odrębnej konfiguracji i dostępu do odpowiedniej usługi.
 
 ## Uruchomienie i sprawdzenie
 

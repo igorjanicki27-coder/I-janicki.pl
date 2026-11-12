@@ -39,8 +39,7 @@ html[data-theme="light"] .ijanicki-quick-call {
   --quick-call-edge: 60px;
 }
 
-.ijanicki-quick-call[data-placement="above-actions"],
-body:has(.tutorial-return-button:not([hidden])) .ijanicki-quick-call {
+.ijanicki-quick-call[data-placement="above-actions"] {
   --quick-call-edge: 96px;
 }
 
@@ -109,6 +108,42 @@ body:has(.tutorial-return-button:not([hidden])) .ijanicki-quick-call {
   opacity: 1;
   visibility: visible;
   transition-delay: .18s;
+}
+
+body:has(> .tutorial-return-button:not([hidden])) {
+  --tutorial-action-edge: calc(40px + env(safe-area-inset-bottom));
+  --tutorial-action-height: 56px;
+  --tutorial-return-width: 144px;
+}
+
+body:has(> .ijanicki-quick-call) > .tutorial-return-button {
+  bottom: var(--tutorial-action-edge);
+  width: var(--tutorial-return-width);
+  height: var(--tutorial-action-height);
+}
+
+body:has(> .tutorial-return-button:not([hidden])) > .ijanicki-quick-call {
+  --quick-call-size: var(--tutorial-action-height);
+  bottom: var(--tutorial-action-edge);
+}
+
+@media (max-width: 680px) {
+  body:has(> .tutorial-return-button:not([hidden])) {
+    --tutorial-return-width: clamp(88px, 30vw, 144px);
+  }
+
+  body:has(> .ijanicki-quick-call) > .tutorial-return-button {
+    left: max(16px, env(safe-area-inset-left));
+    transform: none;
+  }
+
+  body:has(> .ijanicki-quick-call) > .tutorial-return-button:hover {
+    transform: translateY(-2px);
+  }
+
+  body:has(> .tutorial-return-button:not([hidden])) > .ijanicki-quick-call.is-expanded {
+    width: min(208px, calc(100vw - var(--quick-call-left) - var(--quick-call-right) - var(--tutorial-return-width) - 12px));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
