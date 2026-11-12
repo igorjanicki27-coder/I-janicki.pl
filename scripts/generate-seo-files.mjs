@@ -83,6 +83,7 @@ async function buildSitemapEntries() {
 
   for (const filePath of htmlFiles) {
     const relativePath = path.relative(ROOT, filePath).replace(/\\/g, '/');
+    if (relativePath === '404.html') continue;
     if (relativePath === 'dokumenty/warunki-korzystania-z-aplikacji-i-janek.html') continue;
     const route = filePathToRoute(relativePath);
     const lastmod = await getLastModified(filePath);

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pl" class="not-found-page" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b0e13">
+  <title>404 — Nie znaleziono strony | i-JANICKI</title>
+  <script>
+    try {
+      if (localStorage.getItem('ijanek_theme') === 'light') {
+        document.documentElement.dataset.theme = 'light';
+        document.querySelector('meta[name="theme-color"]').content = '#f3f4fb';
+      }
+    } catch {}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Orbitron:wght@700&amp;display=swap">
+  <link rel="stylesheet" href="/styles.min.css?v=57">
+  <style>
+    .not-found-page, .not-found-page body { overflow-y: auto; }
+    .not-found-page body {
+      isolation: isolate;
+      background: transparent;
+      grid-template-rows: auto 1fr;
+      grid-template-areas: "topbar" "main";
+    }
+    .not-found-page .topbar { position: relative; grid-area: topbar; }
+    .not-found {
+      grid-area: main;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      align-self: center;
+      gap: clamp(1rem, 4vw, 3rem);
+      width: min(100%, 54rem);
+      margin-inline: auto;
+      padding: clamp(1.25rem, 5vw, 4rem) clamp(1rem, 5vw, 2.5rem);
+    }
+    .not-found .bot { width: clamp(8rem, 24vw, 13.5rem); }
+    .not-found .panel {
+      width: 100%;
+      padding: clamp(1.25rem, 5vw, 2.5rem);
+    }
+    .not-found h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.15rem, 3.3vw, 1.65rem);
+      line-height: 1.3;
+    }
+    .not-found-code {
+      display: block;
+      margin-bottom: .75rem;
+      font-size: clamp(3.75rem, 10vw, 6rem);
+      letter-spacing: .04em;
+      line-height: 1;
+      color: var(--accent-4);
+      text-shadow: 0 0 28px rgba(64, 201, 255, .35);
+    }
+    [data-theme="light"] .not-found-code { color: #5428ad; }
+    .not-found .panel-content { margin-top: .8rem; font-size: 1rem; }
+    .not-found-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.4rem; }
+    .not-found-actions .tut-btn {
+      display: inline-flex;
+      flex: 0 1 auto;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      min-width: 0;
+      text-decoration: none;
+    }
+    .not-found-page a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+    @media (max-width: 600px) {
+      .not-found { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+      .not-found-actions { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-scan"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="i-JANICKI — strona główna"><span class="brand-name">i-JANICKI</span></a>
+  </header>
+
+  <main class="not-found">
+    <!-- Ten sam robot i-JANEK co na stronie głównej. -->
+    <div class="bot" aria-hidden="true">
+      <div class="bot-spinner-wrap">
+        <div class="spinner"></div>
+        <div class="spinner1"></div>
+      </div>
+      <svg class="bot-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="botg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7f40ff"/>
+            <stop offset="50%" stop-color="#4056ff"/>
+            <stop offset="100%" stop-color="#ff00d4"/>
+          </linearGradient>
+          <radialGradient id="eyeg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#baeaff"/>
+            <stop offset="60%" stop-color="#40c9ff"/>
+            <stop offset="100%" stop-color="#7f40ff"/>
+          </radialGradient>
+        </defs>
+        <line x1="110" y1="20" x2="110" y2="48" stroke="url(#botg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="110" cy="15" r="6" fill="url(#botg)"/>
+        <rect x="48" y="48" width="124" height="104" rx="22" fill="#0f1320" stroke="url(#botg)" stroke-width="2.5"/>
+        <rect x="56" y="56" width="108" height="88" rx="16" fill="none" stroke="url(#botg)" stroke-width="1" opacity="0.45"/>
+        <circle cx="88" cy="100" r="13" fill="url(#eyeg)"/>
+        <circle cx="88" cy="100" r="6" fill="#07090f"/>
+        <circle cx="90.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        <rect id="eyelidL" x="75" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)"/>
+        <circle cx="132" cy="100" r="13" fill="url(#eyeg)"/>
+        <circle cx="132" cy="100" r="6" fill="#07090f"/>
+        <circle cx="134.5" cy="97" r="2.2" fill="rgba(186,234,255,0.92)"/>
+        <rect id="eyelidR" x="119" y="87" width="26" height="26" rx="13" fill="#0f1320" transform="scale(1,0)"/>
+        <path d="M94 128 Q110 136 126 128" stroke="url(#botg)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <rect x="36" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
+        <rect x="172" y="82" width="12" height="36" rx="4" fill="url(#botg)" opacity="0.8"/>
+        <rect x="70" y="158" width="80" height="44" rx="12" fill="#0f1320" stroke="url(#botg)" stroke-width="2"/>
+        <circle cx="110" cy="180" r="7" fill="url(#eyeg)" opacity="0.7"/>
+        <rect x="82" y="171" width="8" height="4" rx="2" fill="url(#botg)" opacity="0.5"/>
+        <rect x="130" y="171" width="8" height="4" rx="2" fill="url(#botg)" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <div class="panel">
+      <h1><span class="not-found-code">404</span> Nie znaleziono strony</h1>
+      <p class="panel-content">Nie mogę znaleźć tej strony. Sprawdź adres lub wróć na stronę główną. Jeśli link jest uszkodzony, daj znać.</p>
+      <div class="not-found-actions">
+        <a class="tut-btn tut-next" href="/">Wróć na stronę główną</a>
+        <a class="tut-btn" href="/kontakt/">Kontakt</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
