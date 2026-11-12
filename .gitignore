@@ -6,6 +6,7 @@ node_modules/
 .firebase/
 # Plik metadanych ikony folderu macOS (`Icon\r`) jest nieprawidłową ścieżką w Windows.
 /Icon?
+!/icons/
 i-JANEK/node_modules/
 i-JANEK/.npm-cache/
 i-JANEK/.env
