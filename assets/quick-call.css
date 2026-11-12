@@ -1,0 +1,119 @@
+.ijanicki-quick-call {
+  --quick-call-size: 56px;
+  --quick-call-left: max(16px, env(safe-area-inset-left));
+  --quick-call-right: max(16px, env(safe-area-inset-right));
+  --quick-call-edge: 16px;
+  --quick-call-signal: #82e7b4;
+  position: fixed;
+  z-index: 85;
+  right: var(--quick-call-right);
+  bottom: calc(var(--quick-call-edge) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--quick-call-size);
+  height: var(--quick-call-size);
+  padding: 0 15px;
+  overflow: hidden;
+  border: 1px solid #9166ee;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #23183c, #11192d);
+  color: #e6e8ff;
+  box-shadow: 0 6px 18px #05060c66, 0 0 20px #7f40ff52;
+  font: 400 14px/1.2 'Inter', system-ui, sans-serif;
+  text-align: left;
+  text-decoration: none;
+  transition: width .36s cubic-bezier(.2, .75, .25, 1), border-color .18s, box-shadow .18s;
+}
+
+html[data-theme="light"] .ijanicki-quick-call {
+  --quick-call-signal: #126644;
+  border-color: #7149c9;
+  background: linear-gradient(135deg, #faf6ff, #e8eeff);
+  color: #161a25;
+  box-shadow: 0 6px 18px #26214a29, 0 0 20px #7f40ff38;
+}
+
+.ijanicki-quick-call[data-placement="above-footer"] {
+  --quick-call-edge: 60px;
+}
+
+.ijanicki-quick-call[data-placement="above-actions"],
+body:has(.tutorial-return-button:not([hidden])) .ijanicki-quick-call {
+  --quick-call-edge: 96px;
+}
+
+.ijanicki-quick-call[data-placement="left"] {
+  z-index: 25;
+  right: auto;
+  left: var(--quick-call-left);
+  justify-content: flex-start;
+}
+
+.quick-call-dock > .ijanicki-quick-call {
+  position: absolute;
+}
+
+@media (max-width: 500px) {
+  .quick-call-dock:has(> .quick-call.is-expanded) > .ijanicki-quick-call {
+    --quick-call-edge: 88px;
+  }
+}
+
+.ijanicki-quick-call:hover,
+.ijanicki-quick-call:focus-visible {
+  border-color: #40c9ff;
+}
+
+.ijanicki-quick-call:focus-visible {
+  outline: 2px solid #40c9ff;
+  outline-offset: 3px;
+}
+
+.ijanicki-quick-call svg {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--quick-call-signal);
+}
+
+.ijanicki-quick-call-message {
+  position: absolute;
+  inset-inline: 16px var(--quick-call-size);
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease, visibility .15s;
+}
+
+.ijanicki-quick-call-message strong {
+  font-weight: 700;
+}
+
+.ijanicki-quick-call[data-placement="left"] .ijanicki-quick-call-message {
+  inset-inline: var(--quick-call-size) 16px;
+}
+
+.ijanicki-quick-call-message strong span {
+  color: var(--quick-call-signal);
+}
+
+.ijanicki-quick-call.is-expanded {
+  width: min(208px, calc(100vw - var(--quick-call-left) - var(--quick-call-right)));
+}
+
+.ijanicki-quick-call.is-expanded .ijanicki-quick-call-message {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: .18s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ijanicki-quick-call,
+  .ijanicki-quick-call.is-expanded .ijanicki-quick-call-message {
+    transition: none;
+  }
+}

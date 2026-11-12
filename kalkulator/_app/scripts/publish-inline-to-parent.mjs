@@ -31,6 +31,11 @@ const safeInlineCss = cssCode.replace(/<\/style>/gi, '<\\/style>');
 // are treated as plain text instead of special replacement patterns.
 let outHtml = distHtml.replace(scriptMatch[0], () => `<script type="module">\n${safeInlineScript}\n</script>`);
 outHtml = outHtml.replace(cssMatch[0], () => `<style>\n${safeInlineCss}\n</style>`);
+outHtml = outHtml.replace(/^  <\/head>/m, [
+  '    <link rel="stylesheet" href="/assets/quick-call.css?v=1">',
+  '    <script defer src="/assets/quick-call.js?v=1" data-placement="left"></script>',
+  '  </head>',
+].join('\n'));
 
 const srcAssets = join(distRoot, 'assets');
 const dstAssets = join(targetRoot, 'assets');

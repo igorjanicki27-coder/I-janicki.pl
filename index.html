@@ -611,7 +611,8 @@
 
       body {
         grid-template-columns: minmax(0, 1fr);
-        padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+        /* Miejsce na przycisk telefonu nad przypiętą stopką. */
+        padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
       }
 
       .page-bottom {
@@ -1050,6 +1051,8 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/assets/quick-call.css?v=1">
+  <script defer src="/assets/quick-call.js?v=1" data-placement="above-footer"></script>
 </head>
 <body>
   <script>
